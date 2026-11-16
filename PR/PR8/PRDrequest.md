@@ -64,3 +64,21 @@ No unbounded cache when a configured byte budget is active.
 - Multi-byte UTF-8/Chinese/emoji and CRLF must round-trip line
   start addresses correctly; strict range and EOF validation.
 - Actual editor viewport and PieceTree/B+ integration still pending.
+
+## Patch(+17): verified slice-level writeback acceptance
+- The trusted commit path must read a SHA-256 verified checkpoint,
+  never arbitrary text supplied directly to the low-level writer.
+- Validate expected disk file revision, byte range and source-region
+  checksum before an explicit authorized file write.
+- Stream unaffected prefix/suffix with bounded buffers; allow
+  size-changing UTF-8 replacement and verify saved bytes.
+- Handle writes must not evict or clear the dirty revision until
+  readback succeeds and checkpoint retirement is CAS-safe.
+- Failure statuses must preserve journal recovery (400/403/409/
+  413/422/503 as appropriate), with OMU EHU and directed relations.
+- Browser-file OS atomicity is not universal; recovery must handle
+  the case where file close succeeds but verification does not.
+- Validate in real Chromium OPFS and simulated file failure tests.
+- No production FileDocument replacement or user-facing UI in this
+  patch; integrate only after real selected-file permissions,
+  full Recovery and UTF-16/UTF-8 mapping pass acceptance.
