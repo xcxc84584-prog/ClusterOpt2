@@ -111,7 +111,8 @@ test("Patch18 recovery retains virtual marker and never restores preview",
     const doc = restored.workspace.active;
     assert.equal(doc.virtualReadOnly, true);
     assert.ok(doc instanceof VirtualFileDocument);
-    assert.notEqual(doc.text, snapshot.documents[0].text);
+    assert.equal(snapshot.documents[0].text, "");
+    assert.ok(doc.text.length <= 65540);
   });
 
 test("Patch18 keeps small FileDocument behavior intact", async () => {
