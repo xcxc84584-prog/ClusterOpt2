@@ -43,6 +43,21 @@ test("PR8 Plugin opens as a single file-style TAB, not a modal", async ({ page }
   await expect(page.locator("#tabs .tab[data-tab-kind=tool]")).toHaveCount(1);
 });
 
+test("PR8 tool TAB and selected category survive reload independently", async ({ page }) => {
+  await page.goto("/");
+  await openPlugin(page);
+  await page.locator("#pluginProcessorBtn").click();
+  await expect(page.locator("#pluginProcessorOptions")).toBeVisible();
+  await page.reload();
+  await expect(page.locator("#pluginWindow")).toBeVisible();
+  await expect(page.locator("#tabs .tab[data-tab-kind=tool]")).toHaveCount(1);
+  await expect(page.locator("#pluginProcessorOptions")).toBeVisible();
+  await page.locator("#tabs .tab[data-tab-kind=tool] .close").click();
+  await expect(page.locator("#pluginWindow")).toBeHidden();
+  await page.reload();
+  await expect(page.locator("#tabs .tab[data-tab-kind=tool]")).toHaveCount(0);
+});
+
 test("PR8 category buttons sit in tool-window top-right, not global header", async ({ page }) => {
   await page.setViewportSize({ width: 1050, height: 700 });
   await page.goto("/");
