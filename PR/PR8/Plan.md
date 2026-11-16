@@ -558,3 +558,8 @@ this limit currently applies only to the independent registry.
 - Retain scroll coordinates across virtual save and document switching.
 - Browser clamping after zoom/wrapping changes requires anchored-line QA.
 - No new secret storage or network traffic; snapshot payload +8 bytes per doc.
+
+### Patch(+21) viewport line-height extension
+- Record last rendered line height, validate <=512 CSS pixels.
+- On different zoom, preserve visible row by line-height ratio.
+- Wrapped lines and font-width changes still need browser QA.
