@@ -489,3 +489,6 @@ may dispatch concurrently via HubUnit.
 - On Save: virtual writeback -> page reload -> restore stored coordinates.
 - Property: existing RecoveryPolicy; no new object.
 - EHU: corrupt snapshots 400, cache/writes 503; relation tests pending.
+
+- Zoom extension: UI scroll -> viewportLineHeight (CSS pixels) ->
+  Workspace.snapshot -> RecoveryPolicy -> UI render CSS line-height ratio.
