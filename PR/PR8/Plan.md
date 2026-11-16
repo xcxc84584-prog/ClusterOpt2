@@ -65,3 +65,18 @@ this limit currently applies only to the independent registry.
 - Same-object edits are serial requests; optional expected revision
   detects stale edits (409). End-to-end file loading remains unfinished.
 - CI acceptance: Node unit tests, lint, and Playwright regressions.
+
+## Patch(+7): bounded virtual Blob slice foundation
+- SliceLoader open stores Blob + chunk metadata without reading text.
+- Loading only a requested chunk uses Blob.slice with UTF-8 aligned
+  byte boundaries; TextDecoder fatal rejects malformed input.
+- Every SliceRegistry registration/load travels through HubUnit.
+- Default 64 KiB; configurable 1 KiB to 1 MiB chunk size.
+- Read memory O(chunk size), excluding host Blob backing storage.
+- Tests: Unicode boundaries, lazy reads, mode rules and EHU errors.
+- Remains isolated from main editor; no viewport, cancellation or
+  editor memory-budget guarantee until later integration.
+- Plugin modal design, default enable toggles, developer plugin
+  import and downloadable API standards added to future acceptance.
+- Plugin interfaces must define input/output types, permissions,
+  versioning, time/memory limits, failure policy and safe fallback.
