@@ -4,14 +4,14 @@ All entries OPEN until verified. PR8 remains NOT PASS.
 
 | No. | Priority | Test / limitation |
 | --- | --- | --- |
-| 17.1 | P0 | Patch17 full CI + VTE/Playwright |
+| 17.1 | P0 | CI and VTE/Playwright PASS on PR19 head; manual acceptance OPEN |
 | 17.2 | P0 | File byte replacement, UTF-8, CRLF, prefix/suffix |
 | 17.3 | P0 | Stale mtime/size/source-region SHA-256 -> EHU 409 |
 | 17.4 | P0 | Stream failure/abort -> persistent journal retained |
 | 17.5 | P0 | Readback error / truncated file -> EHU 422 and dirty |
 | 17.6 | P0 | Atomic journal retirement version/checksum CAS |
 | 17.7 | P0 | Hub Request/Response, EHU, OMU/Dependency 10/01 |
-| 17.8 | P0 | Chromium OPFS E2E added; external selected-file permission tests pending |
+| 17.8 | P0 | Chromium OPFS E2E PASS; external selected-file permission tests pending |
 | 17.9 | P0 | OS/external file race and browser interruption |
 | 17.10 | P1 | Full-file write amplification/large-file performance |
 | 18.1 | P0 | Piece Tree/B+ and UTF-16/UTF-8 editor integration |
