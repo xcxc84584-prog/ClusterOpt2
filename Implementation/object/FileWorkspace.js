@@ -1,5 +1,6 @@
 import { Language } from "../property/Language.js";
 import { FileDocument } from "./FileDocument.js";
+import { VirtualFileDocument } from "./VirtualFileDocument.js";
 import { DocumentStatus } from "../property/DocumentStatus.js";
 import { StoragePriority } from "../property/StoragePriority.js";
 import { FileManagement } from "../property/FileManagement.js";
@@ -16,15 +17,16 @@ export class FileWorkspace {
     this.authorization = Object.freeze({ default: "Public" });
     this.strictOCDA = true;
     this.ocda = Object.freeze({
-      Request: ["new", "open", "activate", "close", "closeAll",
+      Request: ["new", "open", "page", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal", "list",
         "entries", "snapshot", "restore", "closeMany"],
-      Response: ["new", "open", "activate", "close", "closeAll",
+      Response: ["new", "open", "page", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
-      UserAPI: ["new", "open", "activate", "close", "closeAll",
+      UserAPI: ["new", "open", "page", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       AgentAPI: [],
-      Property: ["DocumentStatus", "StoragePriority", "FileManagement"],
+      Property: ["DocumentStatus", "StoragePriority", "FileManagement",
+        "VirtualDocumentPolicy"],
       Program: "FileWorkspace",
       EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
@@ -37,11 +39,14 @@ export class FileWorkspace {
     return {
       activeId: this.activeId,
       documents: this.documents.map(doc => ({
-        id: doc.id, name: doc.name, text: doc.text,
+        id: doc.id, name: doc.name,
+        text: doc.virtualReadOnly ? "" : doc.text,
         handle: doc.handle, status: doc.status,
         cursor: doc.cursor, scrollTop: doc.scrollTop,
         revision: doc.revision, diskRevision: doc.diskRevision,
-        lineEnding: doc.lineEnding, hasUtf8Bom: doc.hasUtf8Bom
+        lineEnding: doc.lineEnding, hasUtf8Bom: doc.hasUtf8Bom,
+        virtual: Boolean(doc.virtualReadOnly),
+        virtualPageIndex: doc.virtualPageIndex ?? 0
       }))
     };
   }
@@ -59,10 +64,18 @@ export class FileWorkspace {
     const ids = new Map();
     try {
       for (const state of snapshot.documents) {
-        const doc = new FileDocument(state.name, state.handle ?? null);
-        doc.text = state.text;
-        // A page reload cannot prove that the disk is still in sync.
-        doc.status = DocumentStatus.DIRTY;
+        // Never restore a page preview as if it were a whole file.
+        if (state.virtual && !state.handle) continue;
+        const doc = state.virtual ?
+          new VirtualFileDocument(state.name, state.handle, this.core) :
+          new FileDocument(state.name, state.handle);
+        doc.text = state.virtual ? "" : state.text;
+        // Virtual documents must reload their Blob page from disk.
+        doc.status = state.virtual ?
+          DocumentStatus.LOADING : DocumentStatus.DIRTY;
+        if (state.virtual) {
+          doc.virtualPageIndex = state.virtualPageIndex ?? 0;
+        }
         doc.cursor = Math.min(state.cursor, doc.text.length);
         doc.scrollTop = state.scrollTop;
         doc.revision = state.revision ?? 0;
@@ -79,6 +92,14 @@ export class FileWorkspace {
     } catch (error) {
       for (const doc of restored) this.core.unregister(doc.id);
       throw error;
+    }
+    // Page restoration is asynchronous and never trusts cached text
+    // from the last session as authoritative file contents.
+    for (const doc of restored.filter(item => item.virtualReadOnly)) {
+      void this.core.request(this.id, doc.id, "load", {
+        index: doc.virtualPageIndex,
+        onProgress: () => this.onChange()
+      }).then(() => this.onChange());
     }
     this.documents = restored;
     this.activeId = ids.get(snapshot.activeId) ??
@@ -102,6 +123,7 @@ export class FileWorkspace {
     if (action === "closeMany") return this.closeMany(payload.ids);
     if (action === "new") return this.create();
     if (action === "open") return this.open(payload.handles);
+    if (action === "page") return this.page(payload);
     if (action === "activate") return this.activate(payload.id);
     if (action === "close") return this.close(payload.id);
     if (action === "closeAll") return this.closeAll();
@@ -139,7 +161,14 @@ export class FileWorkspace {
         this.activeId = existing.id;
         continue;
       }
-      const doc = new FileDocument(handle.name, handle);
+      const file = await handle.getFile();
+      // FileDocument still uses its bounded legacy path for small files.
+      // Large files are opened as read-only, page-backed documents.
+      const large = this.core.readProperty(this.id,
+        "VirtualDocumentPolicy").value.isVirtual(file.size);
+      const doc = large ?
+        new VirtualFileDocument(handle.name, handle, this.core) :
+        new FileDocument(handle.name, handle);
       if (!this.core.register(doc)) throw new Error("Registration failed");
       this.documents.push(doc);
       created.push(doc);
@@ -156,6 +185,26 @@ export class FileWorkspace {
     const failure = results.find(result => !result.ok);
     if (failure) throw new Error(failure.error);
     return this.activeId;
+  }
+
+
+  async page({ id = this.activeId, index } = {}) {
+    const doc = this.documents.find(item => item.id === id);
+    if (!doc?.virtualReadOnly) {
+      const error = new Error("Document has no virtual page");
+      error.status = 400;
+      throw error;
+    }
+    const result = await this.core.request(this.id, doc.id, "page", {
+      index, onProgress: () => this.onChange()
+    });
+    if (!result.ok) {
+      const error = new Error(result.error);
+      error.status = result.status;
+      throw error;
+    }
+    this.onChange();
+    return result.value;
   }
 
   activate(id) {
@@ -290,6 +339,11 @@ export class FileWorkspace {
   async save(handle = null) {
     const doc = this.active;
     if (!doc) return false;
+    if (doc.virtualReadOnly) {
+      const error = new Error("Virtual page cannot use whole-file save");
+      error.status = 409;
+      throw error;
+    }
     const priority = this.core.readProperty(this.id, "StoragePriority").value;
     if (!handle && doc.handle) {
       const check = await this.core.request(this.id, doc.id, "reconcile", {

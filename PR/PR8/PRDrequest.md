@@ -82,3 +82,18 @@ No unbounded cache when a configured byte budget is active.
 - No production FileDocument replacement or user-facing UI in this
   patch; integrate only after real selected-file permissions,
   full Recovery and UTF-16/UTF-8 mapping pass acceptance.
+
+## Patch(+18): first large-file read-only editor admission
+- Files exceeding the 64 MiB legacy whole-buffer threshold open
+  in the original UI as a bounded, read-only virtual page.
+- Do not duplicate all file bytes or silently switch partial page
+  content into whole-file save/recovery.
+- Page text must pass UTF8SlicePolicy, PieceTreePolicy and
+  BPlusSliceIndex, with exact page byte addresses preserved.
+- Existing FileWorkspace tab lifecycle and Language/UI_COLOR
+  Properties remain authoritative. No additional standalone UI.
+- Page navigation via original editor, following its scroll/wheel
+  and keyboard conventions. Blue status tracks current load.
+- Preserve the existing small-file workflow completely.
+- Editable large-file viewport, global line positions and
+  durable MVCC writeback are acceptance items for Patch19+.

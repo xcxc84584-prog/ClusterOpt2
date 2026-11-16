@@ -140,6 +140,19 @@ export class FileDocument {
     const handle = selectedHandle ?? this.handle;
     if (!handle) throw new Error("Save needs an authorized file handle");
 
+    // Recovery data cannot downgrade a large file to a partial
+    // FileDocument and overwrite the full source with one page.
+    // Real FileSystemFileHandle always provides getFile(). Some
+    // historical test doubles only implement createWritable().
+    if (typeof handle.getFile === "function") {
+      const disk = await handle.getFile();
+      if (disk.size > PR1_SAFE_BYTES) {
+        const error = new Error("Large file requires virtual writeback");
+        error.status = 409;
+        throw error;
+      }
+    }
+
     const lineNormalized = this.lineEnding === "\r\n" ?
       this.text.replace(/\n/g, "\r\n") : this.text;
     const snapshot = (this.hasUtf8Bom ? "\uFEFF" : "") + lineNormalized;
