@@ -19,7 +19,10 @@
 - Existing volatile editing / disk FileDocument remains unchanged.
 - Live main registers sandbox Objects for HubUnit + VTE only.
 - Test suite: recovery after recreated core runtime, storage failure
-  rollback, corruption rejection, stale revision, unauthorized API.
+  rollback, corruption rejection, stale revision, unauthorized API,
+  OMU EventChain and directed 10/01 relation assertions.
+- Browser E2E: real IndexedDB reload with Chinese text, and same-origin
+  two-tab revision CAS conflict. Pending CI on latest head.
 - LinkCore published version `0.0.8-pr8.patch16`.
 - Plan, ArcD and global property registry updated.
 
