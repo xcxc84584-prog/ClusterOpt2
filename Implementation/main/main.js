@@ -200,7 +200,6 @@ function appendExplorerActions(row, node) {
   const secondary = [
     ["back", "‹", "explorerBack"],
     ["folder", "▣", "explorerNewFolder"],
-    ["file", "+", "explorerNewFile"],
     ["cut", "✂", "explorerCut"],
     ["copy", "▤", "explorerCopy"],
     ["paste", "▧", "explorerPaste"],
