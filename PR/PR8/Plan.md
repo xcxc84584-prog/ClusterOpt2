@@ -157,3 +157,13 @@ this limit currently applies only to the independent registry.
 - Tests: UTF-8/Chinese/emoji/CRLF, sparse checkpoint jump/backseek,
   byte boundaries, EOF, empty blob, VTE EHU and Relation 10/01;
   preserve existing editor + Plugin TAB browser tests.
+
+### Patch(+12): cleanup lifecycle and risk containment
+- On closing a virtual document, preflight the owned
+  SliceRegistry entries for dirty content.
+- If dirty, return 409 before freeing Blob or index resources.
+- For clean slices, release registry descriptors, loader-owned Blob
+  and sparse line-index checkpoints via HubUnit EventChain.
+- Allow virtual ID reuse only after complete close.
+- Tests: EHU 409 on dirty close, no loss of resident dirty data,
+  successful cleanup and subsequent open with same ID.
