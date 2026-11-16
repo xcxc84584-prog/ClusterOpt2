@@ -95,3 +95,29 @@ test("File save chunks large output and can round-trip", async () => {
   assert.ok(progress.length > 2);
   assert.equal(progress.at(-1), 100);
 });
+
+test("CRLF and UTF-8 BOM survive a text editing round-trip", async () => {
+  const raw = "\uFEFFline 1\r\nline 2\r\n";
+  const handle = memoryHandle("windows.txt", raw);
+  const doc = new FileDocument(handle.name, handle);
+  await doc.load();
+  assert.equal(doc.text, "line 1\nline 2\n");
+  assert.equal(doc.lineEnding, "\r\n");
+  assert.equal(doc.hasUtf8Bom, true);
+  await doc.save();
+  assert.equal(handle.value(), raw);
+});
+
+test("Unsupported byte encodings fail instead of silently corrupting", async () => {
+  const handle = {
+    name: "binary.txt",
+    async getFile() {
+      const blob = new Blob([new Uint8Array([0xff, 0xfe, 0x00])]);
+      Object.defineProperty(blob, "name", { value: "binary.txt" });
+      return blob;
+    }
+  };
+  const doc = new FileDocument(handle.name, handle);
+  await assert.rejects(doc.load());
+  assert.equal(doc.status, DocumentStatus.ERROR);
+});
