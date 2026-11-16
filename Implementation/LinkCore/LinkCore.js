@@ -29,12 +29,15 @@ export class LinkCore {
 
   register(object) { return this.hub.register(object); }
   unregister(id) { return this.hub.unregister(id); }
-  request(source, target, action, payload = {}) {
-    return this.hub.request(source, target, action, payload);
+  request(source, target, action, payload = {}, options = {}) {
+    return this.hub.request(source, target, action, payload, options);
   }
   readProperty(source, name) {
     return this.hub.readProperty(source, name);
   }
+
+  subobjects(path) { return this.uru.subobjects(path); }
+  inheritedProperties(path) { return this.edpmu.inheritedBy(path); }
 
   getSnapshot() {
     return {
@@ -54,6 +57,8 @@ if (typeof window !== "undefined") {
     objectlist: () => linkCore.getSnapshot().objects,
     propertylist: () => linkCore.getSnapshot().properties,
     rep: () => linkCore.getSnapshot().dependencies,
+    subobject: (path) => linkCore.subobjects(path),
+    inheritedProperties: (path) => linkCore.inheritedProperties(path),
     version: () => linkCore.getSnapshot().version
   });
   Object.defineProperty(window, "Cluster", {
