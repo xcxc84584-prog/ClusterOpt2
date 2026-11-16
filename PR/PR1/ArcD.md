@@ -146,3 +146,19 @@ flowchart LR
 - Request context does not yet include an immutable trace-parent token;
   event tree linkage is inferred from source/target edges.
 - CPU-heavy code runs on the main JS thread until Worker support is added.
+
+## Patch(+5) original UI integration
+Legacy source: `ClusterOpt/Program/src/style.css` and original
+`#app/#tabs/#workspace/#editorPane/#gutter/footer` structure.
+PR1 `main.js` maps these legacy elements to independent FileWorkspace
+and FileDocument objects; UI remains a consumer of LinkCore APIs.
+
+### E2E Event Chain
+Click File menu -> browser picker (user gesture) -> authorized handle
+-> UI Request -> HubUnit -> Workspace -> FileDocument -> File API
+-> EHU/Log -> status and progress -> visual assertion.
+
+### Verification boundary
+Playwright uses mock File System Access handles, while Node tests use
+in-memory fake handles and Blob streams. Native permission prompts and
+OS-specific file changes still require actual browser manual tests.
