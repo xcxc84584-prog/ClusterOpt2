@@ -1,7 +1,7 @@
 import { FileDocument } from "./FileDocument.js";
 import { DocumentStatus } from "../property/DocumentStatus.js";
 
-/** Manages document collection, activation, and close lifecycle. */
+/** Workspace object owns the document collection and active tab. */
 export class FileWorkspace {
   constructor(core, onChange) {
     this.id = "workspace";
@@ -9,47 +9,51 @@ export class FileWorkspace {
     this.onChange = onChange;
     this.documents = [];
     this.activeId = null;
-    core.register(this);
+    this.authorization = Object.freeze({ default: "Public" });
+    this.ocda = Object.freeze({
+      Request: ["new", "open", "activate", "close", "save"],
+      Response: ["new", "open", "activate", "close", "save"],
+      UserAPI: ["new", "open", "activate", "close", "save"],
+      AgentAPI: [],
+      Property: ["DocumentStatus"],
+      Program: "FileWorkspace",
+      EHU: "LinkCore.OMU",
+      Log: "LinkCore.OMU"
+    });
+    if (!core.register(this)) throw new Error("Workspace registration failed");
   }
 
   get active() {
     return this.documents.find(doc => doc.id === this.activeId) ?? null;
   }
 
-  async receive(action, payload) {
+  async receive(action, payload = {}) {
     if (action === "new") return this.create();
-    if (action === "open") return this.open();
+    if (action === "open") return this.open(payload.handles);
     if (action === "activate") return this.activate(payload.id);
     if (action === "close") return this.close(payload.id);
-    if (action === "save") return this.save(payload.saveAs);
-    throw new Error("Unknown workspace action");
+    if (action === "save") return this.save(payload.handle);
+    throw new Error("Unknown workspace action: " + action);
   }
 
   create() {
     const doc = new FileDocument();
+    if (!this.core.register(doc)) throw new Error("Registration failed");
     this.documents.push(doc);
-    this.core.register(doc);
     this.activeId = doc.id;
     this.onChange();
     return doc.id;
   }
 
-  async open() {
-    if (!window.showOpenFilePicker) {
-      throw new Error("此瀏覽器不支援檔案開啟；請使用 Chromium HTTPS 或 localhost");
-    }
-    let handles;
-    try {
-      handles = await window.showOpenFilePicker({ multiple: true });
-    } catch (error) {
-      if (error.name === "AbortError") return null;
-      throw error;
+  async open(handles) {
+    if (!Array.isArray(handles) || !handles.length) {
+      throw new TypeError("Authorized file handles required");
     }
     for (const handle of handles) {
-      // If the same handle was already opened, use its existing tab.
       let existing = null;
       for (const doc of this.documents) {
-        if (doc.handle && await doc.handle.isSameEntry(handle)) {
+        if (doc.handle && typeof doc.handle.isSameEntry === "function" &&
+            await doc.handle.isSameEntry(handle)) {
           existing = doc;
           break;
         }
@@ -59,9 +63,8 @@ export class FileWorkspace {
         continue;
       }
       const doc = new FileDocument(handle.name, handle);
-      doc.status = DocumentStatus.LOADING;
+      if (!this.core.register(doc)) throw new Error("Registration failed");
       this.documents.push(doc);
-      this.core.register(doc);
       this.activeId = doc.id;
       this.onChange();
       const result = await this.core.request(this.id, doc.id, "load", {
@@ -99,11 +102,12 @@ export class FileWorkspace {
     return true;
   }
 
-  async save(saveAs = false) {
+  async save(handle = null) {
     const doc = this.active;
     if (!doc) return false;
     const result = await this.core.request(this.id, doc.id, "save", {
-      saveAs
+      handle,
+      onProgress: () => this.onChange()
     });
     this.onChange();
     if (!result.ok) throw new Error(result.error);
