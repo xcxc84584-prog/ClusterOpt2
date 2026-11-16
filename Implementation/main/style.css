@@ -177,3 +177,33 @@ header .menu-wrap { margin-left:auto; }
 }
 #explorerRefresh { font-size:17px; }
 .explorer-entry { cursor:default; user-select:none; touch-action:pan-y; }
+
+/* PR7: original ClusterOpt context actions and zoom-aware file menu. */
+#menu {
+  max-height: calc(100dvh - 76px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#explorerPanel { position: relative; }
+.explorer-context {
+  position: absolute;
+  z-index: 100;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-panel);
+  box-shadow: 0 12px 28px #0008;
+}
+.explorer-context button {
+  border: 0;
+  border-radius: 8px;
+  text-align: left;
+  background: transparent;
+  color: var(--ui-text-on-panel);
+  padding: 8px 10px;
+  font: inherit;
+}
+.explorer-context button:hover { background: var(--ui-hover); }

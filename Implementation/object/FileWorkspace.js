@@ -18,7 +18,7 @@ export class FileWorkspace {
     this.ocda = Object.freeze({
       Request: ["new", "open", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal", "list",
-        "entries", "snapshot", "restore"],
+        "entries", "snapshot", "restore", "closeMany"],
       Response: ["new", "open", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       UserAPI: ["new", "open", "activate", "close", "closeAll",
@@ -99,6 +99,7 @@ export class FileWorkspace {
       id: doc.id, name: doc.name, status: doc.status,
       handle: doc.handle
     }));
+    if (action === "closeMany") return this.closeMany(payload.ids);
     if (action === "new") return this.create();
     if (action === "open") return this.open(payload.handles);
     if (action === "activate") return this.activate(payload.id);
@@ -179,6 +180,32 @@ export class FileWorkspace {
     if (this.activeId === id) {
       this.activeId = this.documents[Math.min(index,
         this.documents.length - 1)]?.id ?? null;
+    }
+    this.onChange();
+    return true;
+  }
+
+  /**
+   * Close a related group atomically: no tab is removed if the user
+   * refuses to discard any unsaved changes.
+   */
+  closeMany(ids) {
+    if (!Array.isArray(ids)) {
+      const error = new TypeError("Document IDs must be an array");
+      error.status = 400;
+      throw error;
+    }
+    const targets = this.documents.filter(doc => ids.includes(doc.id));
+    const dirty = targets.filter(doc =>
+      doc.status !== DocumentStatus.SYNCED);
+    if (dirty.length && !window.confirm(Language.translate(
+      this.core.readProperty(this.id, "Language").value,
+      "confirmCloseAll", { count: dirty.length }))) return false;
+    const selected = new Set(targets.map(doc => doc.id));
+    this.documents = this.documents.filter(doc => !selected.has(doc.id));
+    for (const doc of targets) this.core.unregister(doc.id);
+    if (!this.documents.some(doc => doc.id === this.activeId)) {
+      this.activeId = this.documents[0]?.id ?? null;
     }
     this.onChange();
     return true;

@@ -15,7 +15,7 @@ export class Explorer {
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["list", "create", "open", "activate", "openEntry",
       "importFolder", "expand", "refreshTree",
-      "snapshotRoots", "restoreRoots", "syncExternal"];
+      "snapshotRoots", "restoreRoots", "syncExternal", "closeRoot"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["FileManagement"],
@@ -209,6 +209,33 @@ export class Explorer {
           }
         }
       }
+      return true;
+    }
+    if (action === "closeRoot") {
+      const index = this.roots.findIndex(root =>
+        root.id === payload.id);
+      if (index < 0) {
+        const error = new Error("Root not found");
+        error.status = 404;
+        throw error;
+      }
+      const root = this.roots[index];
+      if (typeof root.handle.resolve !== "function") {
+        const error = new Error("Directory identity resolution unavailable");
+        error.status = 503;
+        throw error;
+      }
+      const documents = await this.requestWorkspace("entries");
+      const ids = [];
+      for (const document of documents) {
+        if (!document.handle) continue;
+        // DirectoryHandle.resolve identifies descendants even if collapsed.
+        const path = await root.handle.resolve(document.handle);
+        if (Array.isArray(path)) ids.push(document.id);
+      }
+      const closed = await this.requestWorkspace("closeMany", { ids });
+      if (!closed) return false;
+      this.roots.splice(index, 1);
       return true;
     }
     if (action === "syncExternal") return this.syncExternal();

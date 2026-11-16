@@ -5,6 +5,8 @@
 const CATALOG = Object.freeze({
 	"zh-Hant": Object.freeze({
 		explorerOpenDocuments: "已開啟文件",
+		explorerCloseRoot: "關閉根目錄",
+		explorerOpenFile: "開啟文件",
 		explorerTitle: "檔案總管",
 		explorerImportFolder: "導入資料夾",
 		explorerImportFile: "導入文件",
@@ -38,6 +40,8 @@ const CATALOG = Object.freeze({
 	}),
 	"en": Object.freeze({
 		explorerOpenDocuments: "Open documents",
+		explorerCloseRoot: "Close Root",
+		explorerOpenFile: "Open File",
 		explorerTitle: "Explorer",
 		explorerImportFolder: "Import Folder",
 		explorerImportFile: "Import File",
