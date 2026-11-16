@@ -118,3 +118,15 @@ No unbounded cache when a configured byte budget is active.
   test, plus O(page) UTF-16/UTF-8 and EventChain failures required.
 - Explicitly defer continuous multi-GiB scroll, cross-page
   transaction and 1/5-GiB save performance to Patch20+.
+
+## PR8 Patch(+19-Fix1) acceptance amendment
+- Backward page must land on prior page's final line and bottom,
+  while forward page must land on next page's first line and top.
+- Preserve original textarea, tabs and global gutter; no new UI.
+- Dirty large-file Close requires confirmation to save first;
+  declined confirmation keeps edit and journal; accepted
+  confirmation must finish verified writeback before tab removal.
+- Existing clean-file Close must preserve synchronous API behavior.
+- 65 MiB browser selected/OPFS regression must wait for a complete
+  loaded page, then assert no unintended truncation on equal-length
+  edit and Save; only validated success may mark status green.
