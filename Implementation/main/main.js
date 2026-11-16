@@ -49,44 +49,98 @@ function queueRecovery() {
 let explorerRequestId = 0;
 let explorerExpanded = false;
 let explorerMenu = null;
+let explorerSelectedId = null;
+let explorerMenuLevel = "primary";
+let explorerMenuId = null;
+let explorerObservedActiveId = null;
 function closeExplorerMenu() {
   explorerMenu?.remove();
   explorerMenu = null;
+  explorerMenuId = null;
 }
-function openExplorerMenu(node, event) {
-  closeExplorerMenu();
-  const menu = document.createElement("div");
-  menu.className = "explorer-context";
-  menu.setAttribute("role", "menu");
-  const button = document.createElement("button");
-  button.type = "button";
-  button.setAttribute("role", "menuitem");
-  button.textContent = node.kind === "directory" ?
-    localized("explorerCloseRoot") : localized("explorerOpenFile");
-  button.addEventListener("click", async () => {
-    closeExplorerMenu();
-    const action = node.kind === "directory" ?
-      "closeRoot" : "openEntry";
-    const result = await linkCore.request("ui", "explorer",
-      action, { id: node.id }, { origin: "user" });
-    if (!result.ok) notify(result.error);
-    if (result.ok) {
-      queueRecovery();
+/**
+ * Original ClusterOpt row-local context toolbar. One selected path
+ * is tracked independently of editor status and folder expansion.
+ */
+function openExplorerMenu(node) {
+  explorerSelectedId = node.id;
+  explorerMenuId = node.id;
+  explorerMenuLevel = "primary";
+  void renderExplorer();
+}
+function appendExplorerActions(row, node) {
+  if (explorerMenuId !== node.id) return;
+  const toolbar = document.createElement("span");
+  toolbar.className = "explorer-inline-actions";
+  toolbar.setAttribute("role", "toolbar");
+  toolbar.setAttribute("aria-label", localized("explorerActions"));
+  const primary = [
+    ["open", "◇", "explorerOpenFile"],
+    ["rename", "✎", "explorerRename"],
+    ["more", "⋯", "explorerMore"],
+    ["close", "×", "explorerCloseEntry"]
+  ];
+  const secondary = [
+    ["back", "‹", "explorerBack"],
+    ["folder", "▣", "explorerNewFolder"],
+    ["cut", "✂", "explorerCut"],
+    ["copy", "▤", "explorerCopy"],
+    ["paste", "▧", "explorerPaste"],
+    ["delete", "⌫", "explorerDelete"]
+  ];
+  const entries = explorerMenuLevel === "primary" ? primary : secondary;
+  for (const [key, glyph, label] of entries) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "explorer-inline-action";
+    button.dataset.action = key;
+    button.title = localized(label);
+    button.setAttribute("aria-label", localized(label));
+    const symbol = document.createElement("span");
+    symbol.className = "explorer-action-symbol";
+    symbol.textContent = glyph;
+    button.append(symbol);
+    // File CRUD, clipboard, and rename are separately scheduled to
+    // avoid unsafe partial writes; never present a nonworking action.
+    button.disabled = ["rename", "folder", "cut",
+      "copy", "paste", "delete"].includes(key);
+    button.addEventListener("click", async event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (key === "more" || key === "back") {
+        explorerMenuLevel = key === "more" ? "secondary" : "primary";
+        await renderExplorer();
+        return;
+      }
+      explorerMenuId = null;
+      if (key === "close") {
+        if (node.kind === "directory" &&
+            node.id.startsWith("root-") &&
+            !node.id.includes("/")) {
+          const response = await linkCore.request("ui", "explorer",
+            "closeRoot", { id: node.id }, { origin: "user" });
+          if (!response.ok) notify(response.error);
+          if (response.ok && response.value) {
+            explorerSelectedId = null;
+            queueRecovery();
+          }
+        } else if (node.documentId) {
+          await perform("close", { id: node.documentId });
+        }
+      } else if (key === "open") {
+        const action = node.kind === "directory" ? "expand" : "openEntry";
+        const response = await linkCore.request("ui", "explorer",
+          action, { id: node.id }, { origin: "user" });
+        if (!response.ok) notify(response.error);
+      }
       await renderExplorer();
-    }
-  });
-  menu.append(button);
-  const panel = document.getElementById("explorerPanel");
-  panel.append(menu);
-  const bounds = panel.getBoundingClientRect();
-  menu.style.left = Math.max(0, Math.min(
-    event.clientX - bounds.left,
-    bounds.width - menu.offsetWidth)) + "px";
-  menu.style.top = Math.max(0, Math.min(
-    event.clientY - bounds.top,
-    bounds.height - menu.offsetHeight)) + "px";
-  explorerMenu = menu;
+    });
+    toolbar.append(button);
+  }
+  row.classList.add("has-inline-actions");
+  row.append(toolbar);
 }
+
 document.addEventListener("click", event => {
   if (!event.target.closest(".explorer-context")) closeExplorerMenu();
 });
@@ -300,6 +354,22 @@ async function renderExplorer() {
     return;
   }
   const fragment = document.createDocumentFragment();
+  const activeId = workspace.activeId;
+  if (activeId !== explorerObservedActiveId) {
+    explorerObservedActiveId = activeId;
+    explorerSelectedId = null;
+    explorerMenuId = null;
+  }
+  const activeNodes = [];
+  const collectActive = nodes => {
+    for (const node of nodes) {
+      if (node.documentId === activeId) activeNodes.push(node.id);
+      collectActive(node.children ?? []);
+    }
+  };
+  collectActive(result.value);
+  const selectedId = explorerSelectedId ??
+    (activeNodes.length === 1 ? activeNodes[0] : null);
   const appendNode = (node, depth = 0) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -307,9 +377,7 @@ async function renderExplorer() {
     button.setAttribute("role", "treeitem");
     button.setAttribute("aria-level", String(depth + 1));
     button.style.paddingLeft = (8 + depth * 14) + "px";
-    if (node.documentId === workspace.activeId) {
-      button.classList.add("active");
-    }
+    if (selectedId === node.id) button.classList.add("active");
     const arrow = document.createElement("span");
     arrow.className = "explorer-arrow";
     arrow.textContent = node.kind === "directory" ?
@@ -349,15 +417,32 @@ async function renderExplorer() {
     });
     button.addEventListener("contextmenu", event => {
       event.preventDefault();
-      openExplorerMenu(node, event);
+      openExplorerMenu(node);
     });
-    button.addEventListener("click", async () => {
-      const action = node.kind === "directory" ? "expand" : "openEntry";
-      const response = await linkCore.request("ui", "explorer", action,
-        { id: node.id }, { origin: "user" });
-      if (!response.ok) notify(response.error);
-      if (node.kind === "directory") await renderExplorer();
+    button.addEventListener("click", async event => {
+      if (event.target.closest(".explorer-disclosure")) return;
+      explorerSelectedId = node.id;
+      explorerMenuId = null;
+      if (node.kind === "file") {
+        const response = await linkCore.request("ui", "explorer",
+          "openEntry", { id: node.id }, { origin: "user" });
+        if (!response.ok) notify(response.error);
+      }
+      await renderExplorer();
     });
+    if (node.kind === "directory") {
+      arrow.classList.add("explorer-disclosure");
+      arrow.addEventListener("click", async event => {
+        event.preventDefault();
+        event.stopPropagation();
+        explorerMenuId = null;
+        const response = await linkCore.request("ui", "explorer",
+          "expand", { id: node.id }, { origin: "user" });
+        if (!response.ok) notify(response.error);
+        await renderExplorer();
+      });
+    }
+    appendExplorerActions(button, node);
     fragment.append(button);
     if (node.expanded) {
       node.children.forEach(child => appendNode(child, depth + 1));

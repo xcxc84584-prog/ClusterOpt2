@@ -33,3 +33,7 @@ Patch(+9): Chromium reload test revealed missing restorable IndexedDB
 snapshot; added text-only sessionStorage fallback. Require green E2E.
 
 Patch(+10) waits for both durable markers before Chromium reload.
+
+Patch(+11): legacy selected-row and search styling, inline right-click
+toolbar added. Rename/create/copy/cut/paste/delete remain disabled;
+must implement safely via HubUnit for complete legacy parity.

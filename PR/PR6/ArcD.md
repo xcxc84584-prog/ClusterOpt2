@@ -80,3 +80,9 @@ Workspace.restore; imported roots need IndexedDB and permission.
 
 ## Patch(+10) acceptance order
 edit -> Hub.persist -> IDB oncomplete -> fallback marker -> reload.
+
+## Patch(+11) event chain
+DOM right-click -> selected Explorer row -> inline toolbar (UI only).
+UI open/expand/close -> HubUnit -> Explorer/Workspace -> render.
+Selection does not mutate file buffers and does not emit extra
+cross-object operations. EHU records failed Request responses.

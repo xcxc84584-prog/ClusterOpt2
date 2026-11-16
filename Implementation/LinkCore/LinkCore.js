@@ -20,7 +20,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.7-pr7.patch5";
+    this.version = "0.0.7-pr7.patch6";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });

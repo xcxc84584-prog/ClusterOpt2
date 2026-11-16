@@ -84,3 +84,10 @@ Log fallback failure without erasing existing snapshots.
 Playwright waits for the IndexedDB transaction and sessionStorage
 post-commit marker before triggering navigation. This validates a
 completed write rather than an in-flight read.
+
+## Patch(+11) legacy Explorer interaction correction
+Original ClusterOpt Explorer v0.0.19 selected-row and search styling
+is reused. Only a single row receives .active; no folder/root
+automatically inherits active text editor status. Right-click
+shows row-local primary/secondary toolbar. Unsupported destructive
+operations remain disabled until an OCDA transactional design exists.
