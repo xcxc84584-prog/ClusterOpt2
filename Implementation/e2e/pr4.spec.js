@@ -6,16 +6,14 @@ test("PR4 Close All cancels safely and supports bilingual menu", async ({ page }
   await page.locator("#newFile").click();
   await page.locator("#editor").fill("unsaved");
   await page.locator("#menuBtn").click();
-  await page.locator("#toolBtn").click();
-  await expect(page.locator("#closeAll")).toBeVisible();
+  await expect(page.locator("#closeAllMain")).toBeVisible();
   page.once("dialog", dialog => dialog.dismiss());
-  await page.locator("#closeAll").click();
+  await page.locator("#closeAllMain").click();
   await expect(page.locator("#tabs .tab")).toHaveCount(1);
 
   await page.locator("#menuBtn").click();
-  await page.locator("#toolBtn").click();
   page.once("dialog", dialog => dialog.accept());
-  await page.locator("#closeAll").click();
+  await page.locator("#closeAllMain").click();
   await expect(page.locator("#tabs .tab")).toHaveCount(0);
 
   await page.locator("#menuBtn").click();
@@ -23,8 +21,7 @@ test("PR4 Close All cancels safely and supports bilingual menu", async ({ page }
   await page.locator("#languageBtn").click();
   await page.locator('[data-locale="en"]').click();
   await page.locator("#menuBtn").click();
-  await page.locator("#toolBtn").click();
-  await expect(page.locator("#closeAll")).toHaveText("Close All");
+  await expect(page.locator("#closeAllMain")).toHaveText("Close All");
 });
 
 test("PR4 native drag and drop reorders tabs without losing text", async ({ page }) => {

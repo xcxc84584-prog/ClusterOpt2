@@ -1,6 +1,5 @@
 import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
-import { StoragePriority } from "../property/StoragePriority.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
@@ -11,11 +10,14 @@ const uiIds = {
   tabs: "tabs", editor: "editor", editorSurface: "editorPane",
   emptyState: "empty", lineNumbers: "gutter", statusLamp: "statusLamp",
   statusText: "status", lineInfo: "position",
-  progressFill: "meterFill", progressText: "meterPercent"
+  progressFill: "meterFill", progressText: "meterPercent",
+  tabGuide: "tabGuide"
 };
 const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
   [key, document.getElementById(id)]));
 
+let guideFrame = 0;
+let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
 exposeVTE(window);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
@@ -63,7 +65,8 @@ linkCore.register({
       "activate", "setPriority", "syncExternal"],
     Response: [], UserAPI: ["new", "open", "save", "close", "closeAll",
       "reorder", "setPriority", "syncExternal"],
-    AgentAPI: [], Property: ["DocumentStatus", "SystemVersion", "Language"],
+    AgentAPI: [], Property: ["DocumentStatus", "SystemVersion",
+      "Language", "EditorInteractionPolicy"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
   receive: async () => {
@@ -71,6 +74,8 @@ linkCore.register({
   }
 });
 
+const editorPolicy =
+  linkCore.readProperty("ui", "EditorInteractionPolicy").value;
 let paletteStorage = null;
 try {
   paletteStorage = window.localStorage;
@@ -161,11 +166,13 @@ function render() {
   ui.editor.readOnly = active.status === DocumentStatus.LOADING;
   ui.editor.dataset.documentId = active.id;
   if (switchedTab) {
+    guideAnchor = null;
     ui.editor.selectionStart = ui.editor.selectionEnd =
       Math.min(active.cursor, ui.editor.value.length);
   }
   if (switchedTab) ui.editor.scrollTop = active.scrollTop;
   renderLines();
+  scheduleGuides();
   updateStatus();
 }
 
@@ -173,6 +180,26 @@ function renderPriority() {
   const priority = linkCore.readProperty("ui", "StoragePriority").value;
   const control = document.getElementById("priority");
   if (control && control.value !== priority) control.value = priority;
+}
+
+function scheduleGuides() {
+  if (guideFrame) return;
+  guideFrame = window.requestAnimationFrame(() => {
+    guideFrame = 0;
+    if (!workspace.active) {
+      ui.tabGuide.textContent = "";
+      return;
+    }
+    const computed = window.getComputedStyle(ui.editor);
+    const lineHeight = parseFloat(computed.lineHeight) || 22;
+    const bounds = editorPolicy.guideWindow(
+      ui.editor.value, ui.editor.scrollTop, lineHeight,
+      ui.editor.clientHeight, guideAnchor);
+    guideAnchor = { firstLine: bounds.firstLine, offset: bounds.offset };
+    ui.tabGuide.textContent = bounds.lines.join("\\n");
+    ui.tabGuide.style.top = (16 -
+      (ui.editor.scrollTop % lineHeight)) + "px";
+  });
 }
 
 function renderLines() {
@@ -202,6 +229,8 @@ function updateStatus() {
 }
 
 ui.editor.addEventListener("input", async () => {
+  guideAnchor = null;
+  scheduleGuides();
   const doc = workspace.active;
   if (!doc) return;
   doc.cursor = ui.editor.selectionStart;
@@ -223,6 +252,7 @@ ui.editor.addEventListener("scroll", () => {
   const doc = workspace.active;
   if (doc) doc.scrollTop = ui.editor.scrollTop;
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
+  scheduleGuides();
 });
 ui.editor.addEventListener("click", () => {
   if (workspace.active) workspace.active.cursor = ui.editor.selectionStart;
@@ -233,13 +263,27 @@ ui.editor.addEventListener("keyup", () => {
   renderLines();
 });
 ui.editor.addEventListener("keydown", event => {
-  if (event.key === "Tab") {
-    event.preventDefault();
-    const start = ui.editor.selectionStart;
-    const end = ui.editor.selectionEnd;
-    ui.editor.setRangeText("\t", start, end, "end");
-    ui.editor.dispatchEvent(new Event("input"));
+  if (event.ctrlKey || event.altKey || event.metaKey ||
+      event.isComposing || ui.editor.readOnly) return;
+  const transform = editorPolicy.transform(
+    ui.editor.value, ui.editor.selectionStart,
+    ui.editor.selectionEnd, event.key, {
+      shiftKey: event.shiftKey, composing: event.isComposing
+    });
+  if (!transform) return;
+  event.preventDefault();
+  ui.editor.setSelectionRange(transform.start, transform.end);
+  // On Chromium, insertText joins native edit history (Ctrl+Z / Redo).
+  // Keep the standards-based RangeText fallback for other engines.
+  const nativeUndo = document.execCommand?.(
+    "insertText", false, transform.insert) === true;
+  if (!nativeUndo) {
+    ui.editor.setRangeText(transform.insert, transform.start,
+      transform.end, "preserve");
+    ui.editor.dispatchEvent(new Event("input", { bubbles: true }));
   }
+  ui.editor.setSelectionRange(transform.caret,
+    transform.selectionEnd ?? transform.caret);
 });
 async function perform(action, payload = {}) {
   closeMenu();
@@ -283,7 +327,6 @@ document.getElementById("saveFile").onclick = () => perform("save");
 document.getElementById("saveAsFile").onclick = () =>
   perform("save", { saveAs: true });
 document.getElementById("closeFile").onclick = () => perform("close");
-document.getElementById("closeAll").onclick = () => perform("closeAll");
 document.getElementById("closeAllMain").onclick = () =>
   perform("closeAll");
 document.getElementById("priority").addEventListener("change", event => {

@@ -34,7 +34,6 @@
             aria-controls="toolOptions">工具 ›</button>
           <div id="toolOptions" hidden role="group" aria-label="工具">
             <div class="file-tool-heading">FILE TOOL <span>WORKSPACE</span></div>
-            <button id="closeAll" type="button">關閉所有視窗</button>
             <button id="languageBtn" type="button" aria-expanded="false"
               aria-controls="languageOptions">語言 ›</button>
             <div id="languageOptions" hidden>
@@ -75,6 +74,7 @@
           <div id="editorPane" class="editor-surface" hidden>
             <pre id="gutter" class="line-numbers"
               aria-hidden="true">1</pre>
+            <pre id="tabGuide" aria-hidden="true"></pre>
             <textarea id="editor" spellcheck="false"
               aria-label="文字編輯器" wrap="off"></textarea>
           </div>

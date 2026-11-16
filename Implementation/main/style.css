@@ -83,3 +83,32 @@
   min-width: 3em;
   font-variant-numeric: tabular-nums;
 }
+
+/* PR5: reuse legacy editor surface; overlay shows only viewport indent guides. */
+#editorPane {
+  position: relative;
+}
+#tabGuide {
+  position: absolute;
+  z-index: 0;
+  left: 60px;
+  right: 0;
+  margin: 0;
+  padding: 0 16px;
+  overflow: hidden;
+  pointer-events: none;
+  white-space: pre;
+  font: 14px/22px Consolas, 'Microsoft JhengHei', monospace;
+  color: var(--ui-muted, #8793a6);
+  opacity: 0.6;
+}
+#editorPane #editor {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+@media (max-width: 650px) {
+  #tabGuide {
+    left: 43px;
+  }
+}
