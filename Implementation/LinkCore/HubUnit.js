@@ -72,6 +72,34 @@ export class HubUnit {
     }
   }
 
+  registerProperty(name, value, options = {}) {
+    const result = this.registry.registerProperty(name, value, options);
+    this.omu.record(result.ok ? "Log" : "EHU", "HubUnit",
+      "RegisterProperty." + name, result.status);
+    return result;
+  }
+
+  readProperty(source, name) {
+    if (!this.registry.resolve(source).ok) {
+      this.omu.record("EHU", source, "Property.Read", 404, name);
+      return { ok: false, status: 404 };
+    }
+    const definition = this.properties.describe(name);
+    if (!definition) {
+      this.omu.record("EHU", source, "Property.Read", 404, name);
+      return { ok: false, status: 404 };
+    }
+    const permitted = definition.visibility === "Public" ||
+      definition.owners.some(owner => AccessPolicy.canInvoke(
+        source, owner, definition.visibility));
+    if (!permitted) {
+      this.omu.record("EHU", source, "Property.Read", 403, name);
+      return { ok: false, status: 403 };
+    }
+    this.omu.record("Log", source, "Property.Read", 200, name);
+    return { ok: true, status: 200, value: this.properties.get(name) };
+  }
+
   publishProperty(name, value) {
     const result = this.properties.update(name, value);
     this.omu.record(result.ok ? "Log" : "EHU", "HubUnit",
