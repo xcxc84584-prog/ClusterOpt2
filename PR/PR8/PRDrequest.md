@@ -172,3 +172,13 @@ No unbounded cache when a configured byte budget is active.
   or editing/cancellation.
 - Explicitly verify abort-before-commit, journal integrity, byte
   size/changed span and no implicit full-text loading.
+
+## Patch(+19-Fix5): recover from repeated external generation 409
+- A clean virtual document may follow an updated file generation
+  without throwing `External virtual file changed` every page.
+- Dirty/recovered slices must never be discarded or silently
+  overwritten by an external file revision. Preserve EHU409.
+- A user wheel scroll should not flood dozens of duplicated EHU409
+  records for a single unresolved conflict.
+- Reset global line-index checkpoints when the file generation
+  changes so later-page global line numbers are accurate.
