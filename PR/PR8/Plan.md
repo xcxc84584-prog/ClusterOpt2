@@ -547,7 +547,8 @@ this limit currently applies only to the independent registry.
 - Bring back Explorer context CRUD using Hub Request/Response.
 - Reuse ExplorerEntryPolicy for validation, disallow traversal and collisions.
 - Block mutations of open files/subtrees; explicit confirmation for delete.
-- Avoid unsafe copy-delete fallback for unsupported native rename.
+- File rename fallback only deletes original after byte-for-byte
+  readback and source revalidation, using bounded 1 MiB slices.
 - O(directory entries) preflight, O(file bytes) file copy.
 - Pending: real filesystem authorization, directory paste and native move QA.
 
