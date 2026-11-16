@@ -166,3 +166,77 @@ test("Patch12 rejects invalid line indices and duplicates with EHU",
         item.status === status));
     }
   });
+
+test("Patch12 clean close releases all slices and reusable Blob id",
+  async () => {
+    const { vte, request } = fixture();
+    const blob = new Blob(["a".repeat(3500)]);
+    assert.equal((await request("viewport-slices", "open", {
+      id: "closing", blob, chunkBytes: 1024
+    })).status, 200);
+    assert.equal((await request("viewport-slices", "navigate", {
+      id: "closing", first: 0, last: 1, adjacent: 1
+    })).status, 200);
+    const before = (await request("slice-registry", "list")).value;
+    assert.ok(before.entries.some(item =>
+      item.id.startsWith("closing-slice-")));
+    const closed = await request("viewport-slices", "close", {
+      id: "closing"
+    });
+    assert.equal(closed.status, 200);
+    const after = (await request("slice-registry", "list")).value;
+    assert.ok(!after.entries.some(item =>
+      item.id.startsWith("closing-slice-")));
+    assert.equal((await request("virtual-line-index", "describe", {
+      id: "closing"
+    })).status, 404);
+    assert.equal((await request("slice-loader", "describe", {
+      id: "closing"
+    })).status, 404);
+    assert.equal((await request("viewport-slices", "navigate", {
+      id: "closing", first: 0, last: 0
+    })).status, 404);
+    assert.equal((await request("viewport-slices", "open", {
+      id: "closing", blob, chunkBytes: 1024
+    })).status, 200);
+    const deps = vte.snapshot().dependencies;
+    assert.ok(deps.some(item =>
+      item.link === "viewport-slices->slice-loader" &&
+      item.code === "10"));
+    assert.ok(deps.some(item =>
+      item.link === "slice-loader->slice-registry" &&
+      item.code === "10"));
+  });
+
+test("Patch12 dirty virtual close fails without losing any edits",
+  async () => {
+    const { vte, request } = fixture();
+    await request("viewport-slices", "open", {
+      id: "dirtydoc", blob: new Blob(["a".repeat(2048)]),
+      chunkBytes: 1024
+    });
+    await request("viewport-slices", "navigate", {
+      id: "dirtydoc", first: 0, last: 0, adjacent: 0
+    });
+    assert.equal((await request("slice-registry", "markDirty", {
+      id: "dirtydoc-slice-0"
+    })).status, 200);
+    assert.equal((await request("viewport-slices", "close", {
+      id: "dirtydoc"
+    })).status, 409);
+    assert.equal((await request("slice-loader", "describe", {
+      id: "dirtydoc"
+    })).status, 200);
+    assert.equal((await request("virtual-line-index", "describe", {
+      id: "dirtydoc"
+    })).status, 200);
+    const kept = (await request("slice-registry", "list")).value.entries
+      .find(item => item.id === "dirtydoc-slice-0");
+    assert.equal(kept.state, "full");
+    assert.equal(kept.dirty, true);
+    assert.equal((await request("slice-registry", "release", {
+      id: "dirtydoc-slice-0"
+    })).status, 409);
+    assert.ok(vte.log().some(item =>
+      item.kind === "EHU" && item.status === 409));
+  });
