@@ -45,8 +45,11 @@ export class ToolTabManager {
         return this.failure(400, "Invalid tool recovery state");
       }
       const count = payload.documentCount;
+      if (!Number.isSafeInteger(state.position) || state.position < 0) {
+        return this.failure(400, "Invalid recovered tab position");
+      }
       const position = this.policy().validIndex(
-        state.position, count);
+        Math.min(state.position, count), count);
       this.opened = state.open;
       this.active = state.active;
       this.position = this.opened ? position : 0;
