@@ -41,3 +41,10 @@ UI -> HubUnit -> Explorer.list -> HubUnit -> Workspace.list -> DOM tree.
 User import folder -> authorized showDirectoryPicker -> HubUnit
 -> Explorer.importFolder -> root handle registration.
 Directory traversal and persistent trees remain outstanding.
+
+## Patch(+4) Event Chain
+UI -> Hub -> Explorer.importFolder -> FileSystemHandle.values -> roots
+UI -> Hub -> Explorer.expand -> FileSystemHandle.values -> tree
+UI -> Hub -> Explorer.refreshTree -> collapse tree
+UI -> Hub -> Explorer.list -> Hub -> Workspace.list -> UI
+All failures are observed by OMU; no direct workspace mutation in Explorer.

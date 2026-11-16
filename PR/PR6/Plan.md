@@ -40,3 +40,12 @@ Patch(+2) adds browser smoke checks for the Explorer sidebar.
 - OCDA Explorer/Workspace interaction preserved; no legacy global state.
 - Directory picker action is available; full tree import and recovery
   remain pending. No PR6 PASS claim.
+
+## Patch(+4) folder tree baseline
+- Original Explorer visual shell is preserved.
+- Directory import reads first level lazily, nested folders on expansion.
+- Refresh collapses folders without discarding open tabs.
+- Filesystem handles live only in runtime memory for this patch.
+- O(number of children) per directory expansion, no network traffic.
+- Native handle permissions, directory traversal errors -> Hub EHU.
+- Still pending: IndexedDB restore, file click/open, external CRUD sync.

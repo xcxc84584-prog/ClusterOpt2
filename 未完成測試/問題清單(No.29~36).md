@@ -12,3 +12,7 @@
 
 PR6 Patch(+3): Original Explorer UI shell applied; native folder
 picker is wired but folder tree traversal/persistence is still pending.
+
+Patch(+4): directory hierarchy and collapse implemented in memory.
+Pending: IndexedDB root restoration, file activation from folder tree,
+external CRUD refresh and browsing scroll recovery.
