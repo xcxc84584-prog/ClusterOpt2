@@ -14,6 +14,7 @@ import { EditorViewportObserver } from "../object/EditorViewportObserver.js";
 import { SliceRecoveryJournal } from "../object/SliceRecoveryJournal.js";
 import { SliceEditTransaction } from "../object/SliceEditTransaction.js";
 import { SliceWritebackUnit } from "../object/SliceWritebackUnit.js";
+import { SliceBatchWritebackUnit } from "../object/SliceBatchWritebackUnit.js";
 import { SliceSaveTask } from "../object/SliceSaveTask.js";
 import { ToolTabManager } from "../object/ToolTabManager.js";
 import { FileTypeManager } from "../object/FileTypeManager.js";
@@ -74,6 +75,7 @@ new SliceRecoveryJournal(linkCore);
 new SliceEditTransaction(linkCore);
 // Trusted sandbox only; the production FileDocument save stays unchanged.
 new SliceWritebackUnit(linkCore);
+new SliceBatchWritebackUnit(linkCore);
 new SliceSaveTask(linkCore);
 const fileTypes = new FileTypeManager(linkCore);
 // Read-only viewport observation: never mutates editor text or disk.
@@ -774,10 +776,6 @@ let virtualPageBusy = false;
 async function turnVirtualPage(direction) {
   const doc = workspace.active;
   if (!doc?.virtualReadOnly || virtualPageBusy) return;
-  if (doc.status === DocumentStatus.DIRTY) {
-    notify(localized("virtualSaveFirst"));
-    return;
-  }
   const next = doc.virtualPageIndex + direction;
   if (next < 0 || next >= doc.virtualPageCount) return;
   virtualPageBusy = true;
@@ -793,8 +791,7 @@ async function turnVirtualPage(direction) {
 
 ui.editor.addEventListener("wheel", event => {
   const doc = workspace.active;
-  if (!doc?.virtualReadOnly || virtualPageBusy ||
-      doc.status === DocumentStatus.DIRTY) return;
+  if (!doc?.virtualReadOnly || virtualPageBusy) return;
   const down = event.deltaY > 0;
   const editor = ui.editor;
   const bottom = editor.scrollTop + editor.clientHeight >=
