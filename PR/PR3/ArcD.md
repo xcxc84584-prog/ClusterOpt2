@@ -51,3 +51,9 @@ flowchart LR
 - Language choice is serialized, file operations can overlap.
 - UI-local repaint callback does not itself mutate a Property.
 - All inter-object state requests use HubUnit.
+
+## Patch(+2) additions
+UI → HubUnit → LanguageManager → Language Property → UI repaint
+also updates File menu / Tools / Dialog accessible labels.
+No new Object, no new dependency category; existing 200/400/403/503
+EHU table and FIFO language updates remain unchanged.
