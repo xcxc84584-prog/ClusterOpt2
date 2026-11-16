@@ -45,7 +45,7 @@ async function prepare(page, slowName) {
     .toBe(65536);
   const original = await editor.inputValue();
   expect(original.startsWith("ORIGINAL")).toBe(true);
-  await editor.fill("REPLACED" + original.slice(8));
+  await editor.fill("REPLACED!" + original.slice(8));
   await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
   return { editor, largeTab, otherTab };
 }
@@ -76,7 +76,7 @@ test("Patch19 Fix3: save progress survives tab switching",
       return { size: file.size, prefix: await file.slice(0, 8).text() };
     }, name);
     expect(disk).toEqual({
-      size: 65 * 1024 * 1024, prefix: "REPLACED"
+      size: 65 * 1024 * 1024 + 1, prefix: "REPLACED"
     });
   });
 
