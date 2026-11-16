@@ -131,7 +131,16 @@ export class VirtualFileDocument extends FileDocument {
     const file = await this.handle.getFile();
     const fingerprint = this.fingerprint(file);
     if (this.fileFingerprint && this.fileFingerprint !== fingerprint) {
-      this.failure("External virtual file changed", 409);
+      // A clean virtual page can safely rebind to the current file.
+      // FileSystemFileHandle.lastModified also changes after a
+      // successful internal Save; that is not an edit conflict.
+      // Never rebase if ANY edited or recovered page is outstanding.
+      if (this.unsaved || this.saveActive) {
+        this.failure("External virtual file changed", 409);
+      }
+      this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+      this.fileFingerprint = null;
+      this.diskRevision = null;
     }
     const bytes = this.property("UTF8SlicePolicy");
     const count = bytes.count(file.size, bytes.defaultChunkBytes);
