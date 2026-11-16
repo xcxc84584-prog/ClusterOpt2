@@ -17,6 +17,7 @@ const uiIds = {
 const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
   [key, document.getElementById(id)]));
 
+let guideFrame = 0;
 const workspace = new FileWorkspace(linkCore, render);
 exposeVTE(window);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
@@ -177,7 +178,6 @@ function renderPriority() {
   if (control && control.value !== priority) control.value = priority;
 }
 
-let guideFrame = 0;
 function scheduleGuides() {
   if (guideFrame) return;
   guideFrame = window.requestAnimationFrame(() => {
