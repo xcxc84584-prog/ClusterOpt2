@@ -43,3 +43,9 @@ PRD → Plan → ArcD → Implementation + Relation Test → Project.
 ## Pending acceptance
 Automated tests must complete successfully at the *latest* PR head.
 Native browser visual and accessibility acceptance remains separate.
+
+## Patch(+2)
+Accessibility labels are part of the shared locale projection: File menu,
+Tools group and Palette dialog close are translated with Language,
+not hard-coded per Object. Validate them in Chromium in addition to
+visible text. Runtime cost O(3) extra attribute assignments per change.
