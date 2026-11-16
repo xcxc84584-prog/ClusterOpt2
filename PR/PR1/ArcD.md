@@ -79,3 +79,70 @@ flowchart TD
 Hub validates parties -> scheduler queues by receiver ID -> scheduler starts
 -> Hub records request -> receiver executes -> Hub records response/EHU
 -> scheduler releases key and wakes next request.
+
+## Patch(+4) — updated Object / Property / Event Chain
+
+### New Properties
+- AccessPolicy: Public/Protected/Private authorization algorithm.
+- ParallelExecutionPolicy: maxConcurrency, maxNested, queue limits,
+  object lock key, and pure runnable-task selection logic.
+
+### New Units
+- ExecutionScheduler Object: queue/lock lifecycle and scheduling API.
+- VirtualTestEnvironment Object: isolated memory-only simulation.
+- ObjectContract: validates required OCDA object descriptors.
+
+### Event Chain: file opening
+User click -> browser file picker -> UI Request -> HubUnit -> URU lookup
+-> AccessPolicy -> scheduler -> Workspace Request -> HubUnit
+-> FileDocument Response(load) -> browser File stream
+-> OMU Log/EHU -> UI operation progress.
+
+### Event Chain: file saving
+User click -> optional Save As picker -> HubUnit -> Workspace
+-> HubUnit -> FileDocument -> chunked write -> response
+-> OMU Log/EHU -> green/yellow/red status.
+
+### Parallelism
+```mermaid
+flowchart LR
+  UI[User UI] --> Hub[HubUnit]
+  Hub --> Auth[AccessPolicy Property]
+  Hub --> P[ParallelExecutionPolicy Property]
+  P --> Queue[ExecutionScheduler Object]
+  Queue --> A[FileDocument A]
+  Queue --> B[FileDocument B]
+  Queue --> C[FileDocument C]
+  A --> OMU[OMU]
+  B --> OMU
+  C --> OMU
+```
+
+### Updated EHU status table
+| Code | Meaning |
+| --- | --- |
+| 200 | Completed operation |
+| 201 | Registered Object or Property |
+| 400 | Invalid contract or request |
+| 403 | Access denied |
+| 404 | Unregistered resource |
+| 409 | Registration conflict |
+| 413 | File exceeds PR1 memory budget |
+| 423 | Circular nested wait |
+| 429 | Queue or nested execution capacity reached |
+| 499 | Queued operation cancelled |
+| 500 | Object response exception |
+
+### Runtime registry / inheritance
+- URU lists Object IDs, including fully qualified SubObject paths.
+- EDPMU owns Property values and owner metadata.
+- A Child path may inherit a parent's registered Properties.
+- Hub performs visibility checks before protected reads.
+- Reload clears runtime registration; source code registers again.
+
+### Known architectural risks
+- Calls from unrelated JS can currently claim another source Object ID.
+  A robust external Agent boundary must authenticate origin and capability.
+- Request context does not yet include an immutable trace-parent token;
+  event tree linkage is inferred from source/target edges.
+- CPU-heavy code runs on the main JS thread until Worker support is added.
