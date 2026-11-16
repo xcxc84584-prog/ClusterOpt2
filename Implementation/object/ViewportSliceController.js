@@ -10,10 +10,10 @@ export class ViewportSliceController {
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["open", "close", "navigate", "navigateBytes",
-      "navigateLines", "describe"];
+      "navigateLines", "navigateViewport", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
-      AgentAPI: [], Property: ["ViewportSlicePolicy"],
+      AgentAPI: [], Property: ["ViewportSlicePolicy", "ViewportLinePolicy"],
       Program: "ViewportSliceController", EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
     });
@@ -73,17 +73,23 @@ export class ViewportSliceController {
       return { ...document, full: [...document.full],
         preloaded: [...document.preloaded] };
     }
-    if (!["navigate", "navigateBytes", "navigateLines"]
-      .includes(action)) {
+    if (!["navigate", "navigateBytes", "navigateLines",
+      "navigateViewport"].includes(action)) {
       const error = new Error("Unknown viewport operation");
       error.status = 400;
       throw error;
     }
     let plan;
-    if (action === "navigateLines") {
+    let lines = null;
+    if (action === "navigateViewport") {
+      const geometry = this.core.readProperty(this.id,
+        "ViewportLinePolicy").value;
+      lines = geometry.range(payload);
+    }
+    if (action === "navigateLines" || lines) {
       const address = await this.call("virtual-line-index", "range", {
-        id: document.id, firstLine: payload.firstLine,
-        lastLine: payload.lastLine
+        id: document.id, firstLine: lines?.firstLine ?? payload.firstLine,
+        lastLine: lines?.lastLine ?? payload.lastLine
       });
       plan = this.policy().bytePlan(document.byteLength,
         document.chunkBytes, address.start, address.end,
@@ -148,6 +154,6 @@ export class ViewportSliceController {
     document.full = [...plan.full];
     document.preloaded = [...preloaded];
     return { id: document.id, full: [...document.full],
-      preloaded: [...document.preloaded] };
+      preloaded: [...document.preloaded], ...(lines ? { lines } : {}) };
   }
 }
