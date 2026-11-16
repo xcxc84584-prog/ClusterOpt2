@@ -12,6 +12,8 @@ export const RecoveryPolicy = Object.freeze({
       value.name.length <= 1024 && typeof value.text === "string" &&
       new TextEncoder().encode(value.text).byteLength <= this.maxTextBytes &&
       Number.isFinite(value.scrollTop) && value.scrollTop >= 0 &&
+      (value.scrollLeft === undefined ||
+        (Number.isFinite(value.scrollLeft) && value.scrollLeft >= 0)) &&
       Number.isFinite(value.cursor) && value.cursor >= 0;
   },
   isSnapshot(value) {
