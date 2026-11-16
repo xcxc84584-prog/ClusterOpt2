@@ -372,7 +372,8 @@ this limit currently applies only to the independent registry.
   invalidate them after writeback or external file change.
   No full-file text buffers or whole-file DOM line-number lists.
 - Recovery snapshots hold only edit checkpoint identifier,
-  original file fingerprint, page index and byte range, never the
+  original file fingerprint, source-region SHA-256, page index and
+  byte range, never the
   whole page as an unverified complete document. On reload,
   restoreDurable validates file identity before publishing text.
 - Existing FileWorkspace and LinkCore remain the event authorities;
