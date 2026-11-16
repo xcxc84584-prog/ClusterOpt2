@@ -148,9 +148,9 @@ ui.editor.addEventListener("input", async () => {
   if (!doc) return;
   doc.cursor = ui.editor.selectionStart;
   doc.scrollTop = ui.editor.scrollTop;
-  const result = await linkCore.request("workspace", doc.id, "edit", {
+  const result = await linkCore.request("ui", doc.id, "edit", {
     text: ui.editor.value
-  });
+  }, { origin: "user" });
   if (!result.ok) notify(result.error);
   renderLines();
   updateStatus();
@@ -208,7 +208,8 @@ async function perform(action, payload = {}) {
         });
       }
     }
-    const result = await linkCore.request("ui", "workspace", action, payload);
+    const result = await linkCore.request("ui", "workspace", action, payload,
+      { origin: "user" });
     if (!result.ok) notify(result.error);
   } catch (error) {
     if (error.name !== "AbortError") {
