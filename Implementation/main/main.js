@@ -22,6 +22,18 @@ let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
 const explorer = new Explorer(linkCore);
 let explorerRequestId = 0;
+let explorerExpanded = false;
+const explorerPanel = document.getElementById("explorerPanel");
+const explorerToggle = document.getElementById("explorerToggle");
+function toggleExplorer(visible = explorerPanel.hidden) {
+  explorerExpanded = visible;
+  explorerPanel.hidden = !visible;
+  explorerToggle.setAttribute("aria-expanded", String(visible));
+  if (visible) void renderExplorer();
+}
+explorerToggle.addEventListener("click", () => toggleExplorer());
+document.getElementById("explorerClose").addEventListener(
+  "click", () => toggleExplorer(false));
 exposeVTE(window);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
 const menu = document.getElementById("menu");
@@ -185,7 +197,8 @@ function render() {
  * replace a newer search result after a fast query change.
  */
 async function renderExplorer() {
-  const container = document.getElementById("explorerFiles");
+  if (!explorerExpanded) return;
+  const container = document.getElementById("explorerTree");
   const query = document.getElementById("explorerSearch").value;
   const requestId = ++explorerRequestId;
   const result = await linkCore.request("ui", "explorer", "list", {
@@ -198,13 +211,27 @@ async function renderExplorer() {
     return;
   }
   const fragment = document.createDocumentFragment();
+  const section = document.createElement("div");
+  section.className = "explorer-section";
+  section.textContent = localized("explorerOpenDocuments");
+  fragment.append(section);
   for (const entry of result.value) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "explorer-entry";
+    button.setAttribute("role", "treeitem");
     if (entry.id === workspace.activeId) button.classList.add("active");
-    button.textContent = entry.name;
+    const arrow = document.createElement("span");
+    arrow.className = "explorer-arrow";
+    arrow.textContent = " ";
+    const icon = document.createElement("span");
+    icon.className = "explorer-file-icon";
+    icon.textContent = "◇";
+    const name = document.createElement("span");
+    name.className = "explorer-name";
+    name.textContent = entry.name;
     button.title = entry.name;
+    button.append(arrow, icon, name);
     button.addEventListener("click", () => {
       void linkCore.request("ui", "explorer", "activate", {
         id: entry.id
@@ -362,10 +389,30 @@ async function perform(action, payload = {}) {
 }
 document.getElementById("explorerSearch").addEventListener(
   "input", () => { void renderExplorer(); });
-document.getElementById("explorerNew").addEventListener(
-  "click", () => { void perform("new"); });
-document.getElementById("explorerOpen").addEventListener(
+document.getElementById("explorerAddFile").addEventListener(
   "click", () => { void perform("open"); });
+document.getElementById("explorerAddFolder").addEventListener(
+  "click", () => { void importExplorerFolder(); });
+document.getElementById("explorerRefresh").addEventListener(
+  "click", () => { void renderExplorer(); });
+async function importExplorerFolder() {
+  try {
+    if (!window.showDirectoryPicker) {
+      throw new Error(localized("folderUnavailable"));
+    }
+    const handle = await window.showDirectoryPicker();
+    const result = await linkCore.request("ui", "explorer",
+      "importFolder", { handle }, { origin: "user" });
+    if (!result.ok) notify(result.error);
+    await renderExplorer();
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      linkCore.omu.record("EHU", "ui", "Explorer.ImportFolder",
+        500, "explorer", { error: String(error) });
+      notify(String(error));
+    }
+  }
+}
 document.getElementById("newFile").onclick = () => perform("new");
 document.getElementById("openFile").onclick = () => perform("open");
 document.getElementById("saveFile").onclick = () => perform("save");

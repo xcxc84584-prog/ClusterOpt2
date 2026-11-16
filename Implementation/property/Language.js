@@ -4,6 +4,13 @@
  */
 const CATALOG = Object.freeze({
 	"zh-Hant": Object.freeze({
+		explorerOpenDocuments: "已開啟文件",
+		explorerTitle: "檔案總管",
+		explorerImportFolder: "導入資料夾",
+		explorerImportFile: "導入文件",
+		explorerRefresh: "重新整理",
+		explorerSearch: "搜尋文件",
+		folderUnavailable: "此瀏覽器無法使用資料夾選擇器",
 		file: "檔案", fileMenu: "檔案選單",
 		toolsGroup: "工具", closeDialog: "關閉對話框", newFile: "建立新檔", openFile: "開啟檔案",
 		saveFile: "儲存", saveAsFile: "另存新檔", closeFile: "關閉分頁", closeAll: "關閉所有視窗", closeAllMain: "關閉全部",
@@ -30,6 +37,13 @@ const CATALOG = Object.freeze({
 		plainText: "純文字", palettePreview: "UI PREVIEW"
 	}),
 	"en": Object.freeze({
+		explorerOpenDocuments: "Open documents",
+		explorerTitle: "Explorer",
+		explorerImportFolder: "Import Folder",
+		explorerImportFile: "Import File",
+		explorerRefresh: "Refresh",
+		explorerSearch: "Search files",
+		folderUnavailable: "Folder picker is unavailable",
 		file: "File", fileMenu: "File menu",
 		toolsGroup: "Tools", closeDialog: "Close dialog", newFile: "New File", openFile: "Open File",
 		saveFile: "Save", saveAsFile: "Save As",

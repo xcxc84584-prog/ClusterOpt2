@@ -34,3 +34,10 @@ Explorer <-> FileManagement: shared immutable property
 ## Browser relation checks
 Create -> Explorer.list -> row; query filters rows; click row ->
 Explorer.activate -> Workspace.activate; browser asserts no duplicates.
+
+## Patch(+3) — UI event chain
+User click ExplorerToggle -> DOM adapter -> visibility (no cross-object).
+UI -> HubUnit -> Explorer.list -> HubUnit -> Workspace.list -> DOM tree.
+User import folder -> authorized showDirectoryPicker -> HubUnit
+-> Explorer.importFolder -> root handle registration.
+Directory traversal and persistent trees remain outstanding.

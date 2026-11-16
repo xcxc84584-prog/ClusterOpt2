@@ -113,54 +113,67 @@
   }
 }
 
-/* PR6: narrow Explorer layout using existing shared color tokens. */
-#explorerPanel {
-  display: flex;
-  flex-direction: column;
-  width: 220px;
-  flex: 0 0 220px;
-  min-width: 120px;
-  border-right: 1px solid var(--ui-border, #404858);
-  background: var(--ui-panel, #171c24);
-  color: var(--ui-text, inherit);
-  overflow: hidden;
+/* EXPLORER: docked graphite sidebar based on legacy Cluster CEXP. */
+#clusterWorkspaceShell { flex:1; min-height:0; display:flex; overflow:hidden; }
+#clusterEditorColumn { flex:1; min-width:0; display:flex; flex-direction:column; }
+#clusterEditorColumn main { min-height:0; }
+#explorerPanel { width:255px; flex:0 0 255px; min-width:0; display:flex;
+  flex-direction:column; border-right:1px solid var(--ui-border);
+  background:var(--ui-panel); color:var(--ui-text-on-panel); }
+#explorerPanel[hidden] { display:none!important; }
+.explorer-header { min-height:44px; display:flex; align-items:center;
+  justify-content:space-between; padding:8px 10px 8px 15px;
+  border-bottom:1px solid var(--ui-border); font-size:12px; letter-spacing:.6px; }
+.explorer-header button { padding:3px 9px; }
+.explorer-actions { display:flex; gap:5px; padding:8px 10px; }
+.explorer-actions button { flex:1; padding:5px; background:var(--ui-control);
+  color:var(--ui-text-on-control); border:1px solid var(--ui-border); }
+#explorerSearch { width:calc(100% - 20px); margin:0 10px 8px; padding:8px 10px;
+  border:1px solid var(--ui-border); border-radius:5px; outline-offset:1px;
+  background:var(--ui-control); color:var(--ui-text-on-control); font-size:12px; font-family:inherit; }
+#explorerSearch::placeholder { color:var(--ui-muted); }
+#explorerTree { flex:1; min-height:0; overflow:auto; padding-bottom:12px; }
+.explorer-section { padding:11px 12px 6px; font-size:10px; font-weight:700;
+  letter-spacing:.7px; color:var(--ui-muted); }
+.explorer-entry { width:100%; min-height:29px; border:0; border-radius:0;
+  background:transparent; color:var(--ui-text-on-panel); display:flex;
+  align-items:center; gap:5px; text-align:left; padding:4px 8px; font-size:12px; }
+.explorer-entry:hover { background:var(--ui-hover); }
+.explorer-entry.active { background:var(--ui-control); font-weight:600;
+  border-left:2px solid var(--ui-accent); }
+.explorer-arrow { width:13px; flex-shrink:0; text-align:center; }
+.explorer-file-icon { width:15px; flex-shrink:0; text-align:center; }
+.explorer-name { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+#explorerToggle { margin-left:auto; margin-right:10px; padding:7px 11px; }
+@media(max-width:650px) {
+  #explorerPanel { width:min(75vw,280px); flex-basis:min(75vw,280px); }
+  #explorerToggle { margin-left:auto; }
 }
-.explorer-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px;
-  font-size: 12px;
-  letter-spacing: 1px;
+
+/* v0.0.17.1: Explorer control belongs to the upper-left utility rail. */
+header { justify-content:initial; gap:10px; }
+.header-utility { display:flex; align-items:center; margin-left:8px; }
+header .menu-wrap { margin-left:auto; }
+#explorerToggle { margin:0; padding:7px 11px; min-width:92px;
+  background:var(--ui-control); color:var(--ui-text-on-control);
+  border:1px solid var(--ui-border); }
+#explorerToggle[aria-expanded="true"] { background:var(--ui-hover); }
+@media(max-width:650px) { .header-utility { margin-left:0; }
+  #explorerToggle { min-width:0; padding:7px; font-size:11px; } }
+
+
+/* Original ClusterOpt compact sidebar geometry. */
+#explorerPanel { position:relative; width:290px; flex-basis:290px; }
+.explorer-actions {
+  display:grid;
+  grid-template-columns:1fr 1fr 32px;
+  gap:5px;
 }
-.explorer-actions { display: flex; gap: 4px; }
-.explorer-actions button, .explorer-entry {
-  color: inherit;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
+.explorer-actions button {
+  min-width:0;
+  font-size:11px;
+  padding:7px 4px;
+  border-radius:4px;
 }
-#explorerSearch {
-  width: calc(100% - 16px);
-  margin: 0 8px 8px;
-  padding: 6px;
-  color: inherit;
-  background: var(--ui-input, transparent);
-  border: 1px solid var(--ui-border, #404858);
-}
-#explorerFiles { overflow: auto; flex: 1; }
-.explorer-entry {
-  display: block;
-  width: 100%;
-  padding: 6px 10px;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.explorer-entry:hover, .explorer-entry.active {
-  background: var(--ui-accent-soft, #354052);
-}
-@media (max-width: 650px) {
-  #explorerPanel { width: 145px; flex-basis: 145px; }
-}
+#explorerRefresh { font-size:17px; }
+.explorer-entry { cursor:default; user-select:none; touch-action:pan-y; }

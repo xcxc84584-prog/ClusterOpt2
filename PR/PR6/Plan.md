@@ -32,3 +32,11 @@ single serialized owner of tab changes.
 ## CI extension
 PR6 feature branches now trigger the OCDA CI workflow on push.
 Patch(+2) adds browser smoke checks for the Explorer sidebar.
+
+## Patch(+3) — faithful original Explorer shell
+- DOM IDs, top-left Explorer toggle, close, import controls and tree
+  copied directly from original ClusterOpt Program/index.html.
+- Explorer CSS geometry/typography adapted from Program/src/style.css.
+- OCDA Explorer/Workspace interaction preserved; no legacy global state.
+- Directory picker action is available; full tree import and recovery
+  remain pending. No PR6 PASS claim.

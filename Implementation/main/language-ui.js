@@ -11,6 +11,7 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 		storage, onChange: locale => {
 			const t = (key, args) => Language.translate(locale, key, args);
 			const labels = {
+				explorerTitle: "explorerTitle",
 				menuBtn: "file", newFile: "newFile", openFile: "openFile",
 				saveFile: "saveFile", saveAsFile: "saveAsFile",
 				closeFile: "closeFile",
@@ -35,6 +36,12 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
                   id === "blockedTypesBtn" ? "▧ " : "";
                 node.textContent = symbol + t(key) + arrow;
 			}
+			$("explorerSearch").placeholder = t("explorerSearch");
+			$("explorerAddFolder").textContent =
+				"▣ " + t("explorerImportFolder");
+			$("explorerAddFile").textContent =
+				"◇ " + t("explorerImportFile");
+			$("explorerRefresh").title = t("explorerRefresh");
 			$("editor").setAttribute("aria-label", t("editor"));
 			$("tabs").setAttribute("aria-label", t("tabs"));
 			doc.documentElement.lang = locale;

@@ -17,6 +17,11 @@
         <strong>Cluster</strong>
         <small id="versionLabel"></small>
       </div>
+      <div class="header-utility">
+        <button id="explorerToggle" type="button"
+          aria-controls="explorerPanel" aria-expanded="false"
+          title="檔案總管">☰ Explorer</button>
+      </div>
       <div class="menu-wrap">
         <button id="menuBtn" type="button" aria-expanded="false"
           aria-controls="menu">檔案⌄</button>
@@ -63,17 +68,23 @@
       </div>
     </header>
     <div id="clusterWorkspaceShell">
-      <aside id="explorerPanel" aria-label="Explorer">
-        <div class="explorer-heading">EXPLORER
-          <span class="explorer-actions">
-            <button id="explorerNew" type="button" title="New">＋</button>
-            <button id="explorerOpen" type="button" title="Open">↥</button>
-          </span>
+      <aside id="explorerPanel" hidden aria-label="Explorer">
+        <div class="explorer-header">
+          <strong id="explorerTitle">檔案總管</strong>
+          <button id="explorerClose" type="button" title="關閉">×</button>
         </div>
-        <input id="explorerSearch" type="search"
+        <div class="explorer-actions">
+          <button id="explorerAddFolder" type="button"
+            title="導入本地資料夾">▣ 導入資料夾</button>
+          <button id="explorerAddFile" type="button"
+            title="導入本地文件">◇ 導入文件</button>
+          <button id="explorerRefresh" type="button"
+            title="重新整理" aria-label="重新整理">↻</button>
+        </div>
+        <input id="explorerSearch" type="search" autocorrect="off"
+          autocapitalize="off" spellcheck="false" autocomplete="off"
           placeholder="搜尋文件" aria-label="搜尋文件">
-        <div id="explorerFiles" role="group"
-          aria-label="Explorer files"></div>
+        <div id="explorerTree" role="tree"></div>
       </aside>
       <div id="clusterEditorColumn">
         <div id="tabs" class="tabs" aria-label="文件分頁"></div>

@@ -9,3 +9,6 @@
 | 34 | Pending | IndexedDB permissions, quota and recovery |
 | 35 | Pending | Locale, palette and responsiveness regression |
 | 36 | Pending | Backup restore gate before main merge |
+
+PR6 Patch(+3): Original Explorer UI shell applied; native folder
+picker is wired but folder tree traversal/persistence is still pending.

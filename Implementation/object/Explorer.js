@@ -9,11 +9,12 @@ export class Explorer {
     this.id = "explorer";
     this.core = core;
     this.strictOCDA = true;
+    this.roots = [];
     this.authorization = Object.freeze({ default: "Public" });
     this.ocda = Object.freeze({
-      Request: ["list", "create", "open", "activate"],
-      Response: ["list", "create", "open", "activate"],
-      UserAPI: ["list", "create", "open", "activate"],
+      Request: ["list", "create", "open", "activate", "importFolder"],
+      Response: ["list", "create", "open", "activate", "importFolder"],
+      UserAPI: ["list", "create", "open", "activate", "importFolder"],
       AgentAPI: [],
       Property: ["FileManagement"],
       Program: "Explorer",
@@ -26,6 +27,17 @@ export class Explorer {
   }
 
   async receive(action, payload = {}) {
+    if (action === "importFolder") {
+      if (payload.handle?.kind !== "directory") {
+        const error = new TypeError("Directory handle required");
+        error.status = 400;
+        throw error;
+      }
+      if (!this.roots.some(root => root === payload.handle)) {
+        this.roots.push(payload.handle);
+      }
+      return payload.handle.name;
+    }
     if (action === "list") {
       const result = await this.core.request(this.id, "workspace", "list");
       if (!result.ok) {
