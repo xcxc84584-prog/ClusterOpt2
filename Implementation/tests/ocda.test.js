@@ -69,3 +69,25 @@ test("Registered SubObject inherits parent Property definitions", () => {
   assert.ok(core.inheritedProperties("Parent.Child").includes("CommonMethod"));
   assert.equal(core.readProperty("Parent.Child", "CommonMethod").status, 200);
 });
+
+test("User and Agent API entrypoints enforce declared action lists", async () => {
+  const core = new LinkCore();
+  core.register({ id: "ui", receive: async () => null });
+  core.register({
+    id: "editor",
+    ocda: {
+      Request: ["save"], Response: ["save"],
+      UserAPI: ["save"], AgentAPI: [], Property: [],
+      Program: "Editor", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
+    },
+    receive: async () => true
+  });
+  const user = await core.request("ui", "editor", "save", {},
+    { origin: "user" });
+  const agent = await core.request("ui", "editor", "save", {},
+    { origin: "agent" });
+  assert.equal(user.status, 200);
+  assert.equal(agent.status, 403);
+  assert.ok(core.getSnapshot().logs.some(x =>
+    x.kind === "EHU" && x.status === 403));
+});
