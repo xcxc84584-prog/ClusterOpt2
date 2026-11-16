@@ -12,7 +12,7 @@
 | 19F4.8 | P0 | Browser UI Explorer context menu during Save |
 | 19F4.9 | P0 | Browser file Open and tab Activate during Save |
 | 19F4.10 | P0 | Browser editing aborts write and queues new MVCC |
-| 19F4.11 | P0 | Reload recovery for multiple dirty pages |
+| 19F4.11 | P0 | Reload hidden page from journal and Save all pages |
 | 19F4.12 | P0 | Full Node/OCDA/Chromium CI, final HEAD |
 | 19F4.13 | P0 | Backup identical to main before merge |
 | 19F4.14 | P0 | Windows/Chrome real FileSystemHandle manual test |
