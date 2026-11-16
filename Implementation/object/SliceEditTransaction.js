@@ -10,8 +10,8 @@ export class SliceEditTransaction {
     this.slices = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "transact", "read", "locate",
-      "info", "close"];
+    const actions = ["open", "transact", "transactDurable",
+      "restoreDurable", "read", "locate", "info", "close"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["SliceTransactionPolicy",
@@ -48,13 +48,48 @@ export class SliceEditTransaction {
     return {
       id: item.id, revision: item.revision,
       length: this.property("PieceTreePolicy").length(item.root),
-      dirty: item.dirty
+      dirty: item.dirty, durable: item.durable
     };
+  }
+
+  async callJournal(action, payload) {
+    const response = await this.core.request(this.id,
+      "slice-recovery-journal", action, payload);
+    if (!response.ok) {
+      const error = new Error(response.error);
+      error.status = response.status;
+      throw error;
+    }
+    return response.value;
   }
 
   async receive(action, payload = {}) {
     const policy = this.property("SliceTransactionPolicy");
     const tree = this.property("PieceTreePolicy");
+
+    if (action === "restoreDurable") {
+      const id = policy.checkId(payload.id);
+      if (this.slices.has(id)) {
+        const error = new Error("Slice is already open");
+        error.status = 409;
+        throw error;
+      }
+      if (this.slices.size >= policy.maxOpenSlices) {
+        const error = new Error("Too many open edit slices");
+        error.status = 413;
+        throw error;
+      }
+      const restored = await this.callJournal("restore", { id });
+      policy.checkText(restored.text);
+      const root = restored.text ?
+        tree.insert(null, 0, restored.text, () => 1) : null;
+      const item = {
+        id, root, revision: restored.revision,
+        dirty: true, durable: true, index: null, seed: 0
+      };
+      this.slices.set(id, item);
+      return this.describe(item);
+    }
 
     if (action === "open") {
       const id = policy.checkId(payload.id);
@@ -71,7 +106,7 @@ export class SliceEditTransaction {
       }
       const root = text ? tree.insert(null, 0, text, () => 1) : null;
       const item = { id, root, revision: 0, dirty: false,
-        index: null, seed: 0 };
+        durable: false, index: null, seed: 0 };
       this.slices.set(id, item);
       return this.describe(item);
     }
@@ -102,7 +137,7 @@ export class SliceEditTransaction {
         .seek(item.index, payload.offset);
     }
 
-    if (action === "transact") {
+    if (action === "transact" || action === "transactDurable") {
       if (!Number.isSafeInteger(payload.revision) ||
           payload.revision !== item.revision) {
         const error = new Error("Stale slice MVCC revision");
@@ -125,11 +160,20 @@ export class SliceEditTransaction {
           throw error;
         }
       }
+      if (action === "transactDurable") {
+        // Write a verified checkpoint before publishing the candidate.
+        // A storage failure leaves the prior in-memory root intact.
+        const text = tree.read(candidate, 0, tree.length(candidate));
+        await this.callJournal("persist", {
+          id: item.id, revision: item.revision + 1, text
+        });
+      }
       // All-or-nothing publication: errors leave old root/revision intact.
       item.root = candidate;
       item.seed = seed;
       item.revision++;
       item.dirty = true;
+      item.durable = action === "transactDurable";
       item.index = null;
       return this.describe(item);
     }
