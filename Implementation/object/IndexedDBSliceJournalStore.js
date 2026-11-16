@@ -7,13 +7,13 @@ export class IndexedDBSliceJournalStore {
     this.factory = factory;
   }
 
-  async withStore(mode, callback) {
+  async openDatabase() {
     if (!this.factory) {
       const error = new Error("IndexedDB unavailable");
       error.status = 503;
       throw error;
     }
-    const db = await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const request = this.factory.open("clusteropt2-slice-journal", 1);
       request.onupgradeneeded = () => {
         if (!request.result.objectStoreNames.contains("entries")) {
@@ -23,6 +23,10 @@ export class IndexedDBSliceJournalStore {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
     });
+  }
+
+  async withStore(mode, callback) {
+    const db = await this.openDatabase();
     try {
       return await new Promise((resolve, reject) => {
         let result;
@@ -47,9 +51,40 @@ export class IndexedDBSliceJournalStore {
     return this.withStore("readonly", store => store.get(id));
   }
 
-  put(entry) {
-    return this.withStore("readwrite", store =>
-      store.put(entry, entry.id));
+  /**
+   * Atomic compare-and-store across tabs sharing the same database.
+   * The revision check and put both run within one readwrite tx.
+   */
+  async putIfNewer(entry) {
+    const db = await this.openDatabase();
+    try {
+      return await new Promise((resolve, reject) => {
+        let failure = null;
+        const tx = db.transaction("entries", "readwrite");
+        const store = tx.objectStore("entries");
+        const get = store.get(entry.id);
+        get.onsuccess = () => {
+          if (get.result && entry.revision <= get.result.revision) {
+            failure = new Error("Non-increasing journal revision");
+            failure.status = 409;
+            tx.abort();
+            return;
+          }
+          store.put(entry, entry.id);
+        };
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => {
+          failure ??= tx.error;
+        };
+        tx.onabort = () => {
+          const error = failure ?? new Error("Journal write aborted");
+          if (!Number.isInteger(error.status)) error.status = 503;
+          reject(error);
+        };
+      });
+    } finally {
+      db.close();
+    }
   }
 
   delete(id) {
