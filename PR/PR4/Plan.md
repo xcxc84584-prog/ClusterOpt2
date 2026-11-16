@@ -72,3 +72,19 @@ invalid priority is 400; read errors propagate to EHU and red status.
 Parallelism: per-file operations are serialized in HubUnit; independent
 reconciles overlap across files. Each focus poll has one active guard.
 Tests were authored but execution and Chrome/Edge acceptance are pending.
+
+## Patch(+4) Legacy File menu restoration
+Compared against ClusterOpt Program/index.html v0.0.69 and the original
+Program/src/style.css. Keep New/Open/Save/Save As/Close Tab in the
+original order and restore Close All in the File menu.
+Retain the PR4 Tool -> Close All entry requested by the user.
+Restore the legacy Tool menu order: Language, Highlighter, Palette,
+Blocked File Types, storage-priority label and select.
+The Highlighter and Blocked File Types entries are disabled until
+PR5 / PR7 functionality exists, never deceptive functional placeholders.
+StoragePriority is still one shared LinkCore Property and is changed via
+the original select, not multiple custom buttons.
+Changing language also updates the select label/options without
+changing the selected priority. No new UI component/style framework.
+Acceptance: legacy order, shared priority, zh-Hant/en translations,
+Close All cancel and tab reorder unchanged, and Chrome/Edge validation.
