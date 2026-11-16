@@ -463,3 +463,55 @@ this limit currently applies only to the independent registry.
   file revisions retain dirty journal; no silent truncation.
 - Test Node task independence, EHU conflicts, Chromium slow 65MiB
   background write, tab switch/progress restore and edit interruption.
+
+## PR8 Patch(+19-Fix4): multi-page MVCC and fast changed-range saving
+- Reference: old ClusterOpt Program/src/fmc/virtual-file-session.js
+  retains dirty pages in a Map, avoids unloading them, and streams
+  Blob slices directly for unmodified ranges. The older
+  storage-progress-tracker.js tracks operations by document.
+- Current ClusterOpt2 used a single dirty page, blocked navigation
+  before Save, and hashed every untouched 64 KiB block on each Save.
+- VirtualFileDocument now holds a bounded dirtyPages Map of source
+  byte address, Piece Tree snapshot text, revision and original hash.
+  Navigating away keeps the durable slice registration; returning
+  uses the latest saved in-memory Piece Tree state, never a disk
+  overwrite. Global line positions include earlier dirty LF deltas.
+- Recovery snapshot records each page's journal ID, source hash,
+  revision, byte range and original/edited LF counts (no full text).
+  Dirty pages lazily recover via SHA-256-verified IndexedDB journals.
+  Up to 64 simultaneously registered slice revisions are supported
+  under current SliceTransactionPolicy.maxOpenSlices; overflow must
+  fail without evicting dirty data.
+- New SliceBatchWritebackUnit commits all outstanding journal
+  revisions through HubUnit in one file operation; only after
+  readback of changed regions and size verification are the
+  journals retired and transactions marked clean.
+- New SliceBatchWritePolicy has two safe paths:
+  equal-UTF8-byte-size replacements: FSA createWritable with
+  keepExistingData:true and position-specific write calls;
+  length-changing edits: copy unmodified ranges as native Blob
+  slices in bounded blocks without text decoding or per-block
+  JavaScript SHA-256, then insert each dirty revision.
+- Source size/mtime and each dirty original region SHA-256 are
+  checked before write; edited byte regions + final size checked
+  after close. Unchanged ranges rely on source snapshot plus
+  FileSystemWritableFileStream/OS semantics, NOT end-to-end
+  cryptographic verification of the full file. This is an explicit
+  integrity tradeoff relative to old Patch17 full verification.
+- The browser may still clone the entire physical file during
+  keepExistingData:true; fast application path is not a guarantee
+  of O(changed bytes) physical disk I/O or atomicity on OS crashes.
+- Existing background Save, per-document progress and separate
+  SliceSaveTask cancellation remain. Cancellation before close
+  aborts the writer and retains all dirty journals.
+- Unrelated Explorer / Open / Activate requests must be able to
+  execute concurrently with a long Save without blocking
+  Workspace's Hub resource; add actual slow-disk browser tests.
+- PR1–PR7 editor UI unchanged; no new visible dev controls.
+- Acceptance: two unsaved pages, forward/backward navigation,
+  global LF adjustment, equal-length two-range Save, multibyte
+  length-changing Save, aborted batch, corrupted source 409,
+  EHU + directed dependency, existing PR1 regression.
+- Remaining: UI continuous scroll across arbitrary pages,
+  1 GiB/5 GiB performance, multi-tab same-file conflict,
+  complete cross-document crash recovery and disk power-loss tests.
