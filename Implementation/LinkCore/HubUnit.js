@@ -66,9 +66,11 @@ export class HubUnit {
           this.omu.record("Log", target, "Response." + action, 200, source);
           return { ok: true, status: 200, value };
         } catch (error) {
-          this.omu.record("EHU", target, "Response." + action, 500,
+          const status = Number.isInteger(error?.status) ?
+            error.status : 500;
+          this.omu.record("EHU", target, "Response." + action, status,
             source, { error: String(error) });
-          return { ok: false, status: 500, error: String(error) };
+          return { ok: false, status, error: String(error) };
         }
       }, { signal: options.signal });
     } catch (error) {
