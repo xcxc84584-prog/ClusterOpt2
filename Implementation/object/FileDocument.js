@@ -108,7 +108,9 @@ export class FileDocument {
         if (!bytes.length) await writer.write(new Uint8Array(0));
         await writer.close();
       } catch (error) {
-        await writer.abort?.().catch(() => {});
+        if (typeof writer.abort === "function") {
+          try { await writer.abort(); } catch { /* preserve first error */ }
+        }
         throw error;
       }
       this.handle = handle;
