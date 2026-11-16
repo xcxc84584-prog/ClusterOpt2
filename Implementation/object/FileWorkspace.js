@@ -47,15 +47,18 @@ export class FileWorkspace {
         lineEnding: doc.lineEnding, hasUtf8Bom: doc.hasUtf8Bom,
         virtual: Boolean(doc.virtualReadOnly),
         virtualPageIndex: doc.virtualPageIndex ?? 0,
-        virtualEdit: doc.pendingRecovery ??
-          (doc.virtualReadOnly &&
-          doc.status === DocumentStatus.DIRTY ? {
-            id: doc.editSliceId, revision: doc.editRevision,
+        virtualEdit: doc.pendingRecovery ?? null,
+        virtualEdits: doc.virtualReadOnly ? [
+          ...[...doc.dirtyPages.values()].map(entry => ({
+            id: entry.id, revision: entry.revision,
             fingerprint: doc.fileFingerprint,
-            sourceHash: doc.sourceHash,
-            index: doc.virtualPageIndex,
-            start: doc.pageStart, end: doc.pageEnd
-          } : null)
+            sourceHash: entry.sourceHash,
+            index: entry.index, start: entry.start, end: entry.end,
+            baselineLineBreaks: entry.baselineLineBreaks,
+            editedLineBreaks: entry.editedLineBreaks
+          })),
+          ...doc.pendingRecoveries.values()
+        ] : []
       }))
     };
   }
@@ -84,6 +87,16 @@ export class FileWorkspace {
           DocumentStatus.LOADING : DocumentStatus.DIRTY;
         if (state.virtual) {
           doc.virtualPageIndex = state.virtualPageIndex ?? 0;
+          if (Array.isArray(state.virtualEdits) &&
+              state.virtualEdits.length <= 4096) {
+            for (const entry of state.virtualEdits) {
+              if (entry?.id && entry.fingerprint &&
+                  Number.isSafeInteger(entry.index) &&
+                  entry.index >= 0) {
+                doc.pendingRecoveries.set(entry.index, entry);
+              }
+            }
+          }
           if (state.virtualEdit?.id && state.virtualEdit?.fingerprint) {
             doc.pendingRecovery = state.virtualEdit;
           }

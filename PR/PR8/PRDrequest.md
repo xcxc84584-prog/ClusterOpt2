@@ -155,3 +155,20 @@ No unbounded cache when a configured byte budget is active.
   processing the next edit: prevent false cancellation claims.
 - No developer messages visible; preserve existing ClusterOpt UI.
 - End-to-end slow I/O and cancellation tests are mandatory.
+
+## PR8 Patch(+19-Fix4) multi-page/fast-save acceptance
+- Dirty pages MUST remain editable and MVCC recoverable while
+  navigating to and from other slices; global LF lines stay correct
+  if prior dirty pages insert/remove newline characters.
+- Save must compose all dirty slices into one ordered byte-splice
+  transaction, not discard hidden edits or write one page at a time.
+- Prefer positioned writes for unchanged-byte-length patches;
+  otherwise reuse immutable Blob spans without re-decoding or
+  re-hashing unchanged bytes on the JavaScript main thread.
+- Never claim unchanged full-file bytes are cryptographically
+  reverified when this optimized path only validates dirty ranges.
+- Preserve original ClusterOpt UI; background Save must not
+  monopolize Explorer context menu, file opening, tab switching
+  or editing/cancellation.
+- Explicitly verify abort-before-commit, journal integrity, byte
+  size/changed span and no implicit full-text loading.

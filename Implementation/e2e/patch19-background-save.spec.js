@@ -22,7 +22,7 @@ async function prepare(page, slowName) {
         const stream = await large.createWritable(options);
         return {
           async write(bytes) {
-            await new Promise(resolve => setTimeout(resolve, 2));
+            await new Promise(resolve => setTimeout(resolve, 20));
             return stream.write(bytes);
           },
           close: () => stream.close(),
@@ -45,7 +45,7 @@ async function prepare(page, slowName) {
     .toBe(65536);
   const original = await editor.inputValue();
   expect(original.startsWith("ORIGINAL")).toBe(true);
-  await editor.fill("REPLACED" + original.slice(8));
+  await editor.fill("REPLACED!" + original.slice(8));
   await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
   return { editor, largeTab, otherTab };
 }
@@ -57,9 +57,21 @@ test("Patch19 Fix3: save progress survives tab switching",
     const { largeTab, otherTab } = await prepare(page, name);
     await page.keyboard.press("Control+s");
     await expect(page.locator("#statusLamp")).toHaveClass(/blue/);
-    await expect.poll(async () =>
-      Number.parseInt(await page.locator("#meterPercent")
-        .textContent(), 10)).toBeGreaterThan(0);
+    try {
+      await expect.poll(async () =>
+        Number.parseInt(await page.locator("#meterPercent")
+          .textContent(), 10), { timeout: 12000 })
+        .toBeGreaterThan(0);
+    } catch (error) {
+      const info = await page.evaluate(() => ({
+        lamp: document.getElementById("statusLamp")?.className,
+        label: document.getElementById("status")?.textContent,
+        percent: document.getElementById("meterPercent")?.textContent,
+        ehu: window.Cluster?.log?.().filter(item =>
+          item.kind === "EHU").slice(-8)
+      }));
+      throw new Error(JSON.stringify(info) + " " + error.message);
+    }
     const first = Number.parseInt(
       await page.locator("#meterPercent").textContent(), 10);
     await otherTab.click();
@@ -76,7 +88,7 @@ test("Patch19 Fix3: save progress survives tab switching",
       return { size: file.size, prefix: await file.slice(0, 8).text() };
     }, name);
     expect(disk).toEqual({
-      size: 65 * 1024 * 1024, prefix: "REPLACED"
+      size: 65 * 1024 * 1024 + 1, prefix: "REPLACED"
     });
   });
 
@@ -87,9 +99,21 @@ test("Patch19 Fix3: edit aborts uncommitted save and retains edits",
     const { editor } = await prepare(page, name);
     await page.keyboard.press("Control+s");
     await expect(page.locator("#statusLamp")).toHaveClass(/blue/);
-    await expect.poll(async () =>
-      Number.parseInt(await page.locator("#meterPercent")
-        .textContent(), 10)).toBeGreaterThan(0);
+    try {
+      await expect.poll(async () =>
+        Number.parseInt(await page.locator("#meterPercent")
+          .textContent(), 10), { timeout: 12000 })
+        .toBeGreaterThan(0);
+    } catch (error) {
+      const info = await page.evaluate(() => ({
+        lamp: document.getElementById("statusLamp")?.className,
+        label: document.getElementById("status")?.textContent,
+        percent: document.getElementById("meterPercent")?.textContent,
+        ehu: window.Cluster?.log?.().filter(item =>
+          item.kind === "EHU").slice(-8)
+      }));
+      throw new Error(JSON.stringify(info) + " " + error.message);
+    }
     const value = await editor.inputValue();
     await editor.fill("NEWER!!!" + value.slice(8));
     await expect(page.locator("#statusLamp"))

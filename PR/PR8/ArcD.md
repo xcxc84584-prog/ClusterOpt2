@@ -419,3 +419,38 @@ UI Save/Close/CloseAll (transient user activation)
 - OMU logs EHU499 aborted stream, EHU409 stale revision,
   EHU422 readback mismatch, EHU503 file errors.
 - Request/Response edges remain Hub-routed (10/01); no SendTo.
+
+## PR8 Patch(+19-Fix4): OCDA object graph and EventChain
+New Object: SliceBatchWritebackUnit (Hub-only commit, no UserAPI).
+New shared Property: SliceBatchWritePolicy registered through EDPMU.
+Reused Objects: VirtualFileDocument, SliceEditTransaction,
+SliceRecoveryJournal, FileWorkspace, SliceSaveTask, Explorer/HubUnit.
+1. UI edit -> Hub -> VirtualFileDocument.edit ->
+   SliceTransactionPolicy + PieceTree candidate ->
+   Hub -> SliceEditTransaction.transactDurable ->
+   Hub -> SliceRecoveryJournal.persist CAS ->
+   dirtyPages[pageIndex] publish -> OMU 200/EHU.
+2. UI page -> Hub -> FileWorkspace.page ->
+   Hub -> VirtualFileDocument.page -> preserve old dirty registry ->
+   UTF8SlicePolicy.read(next) or reload retained dirty text ->
+   PieceTree + BPlusSliceIndex, global LF delta -> OMU.
+3. UI Save -> Hub -> FileWorkspace.save releases Workspace key ->
+   SliceSaveTask.begin -> Hub -> VirtualFileDocument.save ->
+   Hub -> SliceBatchWritebackUnit.commit ->
+   N × SliceRecoveryJournal.restore verified ->
+   SliceBatchWritePolicy.commit single writer ->
+   full edited-span readback, final size check ->
+   N × SliceRecoveryJournal.retire CAS ->
+   N × SliceEditTransaction.finalizeBatch ->
+   disk page reload / dirty Map clear -> OMU Response200.
+4. UI input during Save -> Hub -> SliceSaveTask.cancel ->
+   AbortSignal causes writer.abort before close -> EHU499,
+   original disk remains unchanged; queued new revision persists.
+5. SessionRecovery -> Workspace.restoreSnapshot -> pendingRecoveries
+   map: when visited, exact source fingerprint/SHA-256 and journal
+   are validated before the dirty page is displayed.
+EHU: 400 invalid/overlapping segments, 409 stale revision/source,
+413 max-open or max-edit quota, 422 edited readback mismatch,
+499 cancelled writer, 503 disk/crypto/quota. Relation codes:
+request 10, response 01; same-object FIFO, independent objects
+may dispatch concurrently via HubUnit.

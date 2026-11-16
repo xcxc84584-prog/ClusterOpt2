@@ -6,6 +6,7 @@ import { VirtualFileDocument } from "../object/VirtualFileDocument.js";
 import { SliceEditTransaction } from "../object/SliceEditTransaction.js";
 import { SliceRecoveryJournal } from "../object/SliceRecoveryJournal.js";
 import { SliceWritebackUnit } from "../object/SliceWritebackUnit.js";
+import { SliceBatchWritebackUnit } from "../object/SliceBatchWritebackUnit.js";
 
 const SIZE = 65 * 1024 * 1024;
 
@@ -53,6 +54,7 @@ function setup() {
   });
   new SliceEditTransaction(core);
   new SliceWritebackUnit(core);
+  new SliceBatchWritebackUnit(core);
   const workspace = new FileWorkspace(core, () => {});
   const request = (target, action, payload = {}) =>
     core.request("ui", target, action, payload, { origin: "user" });
@@ -101,12 +103,13 @@ test("Patch19 large page edits cannot bypass verified writeback",
     assert.equal(doc.status, "yellow");
     assert.equal((await request("workspace", "page", {
       id: doc.id, index: 1
-    })).status, 409);
+    })).ok, true);
     // Mock handle has no authorized createWritable method:
     // a partial page may never silently become a full-file save.
     assert.equal((await request(doc.id, "save")).status, 400);
     assert.equal(doc.status, "yellow");
-    assert.equal(doc.text, "replaced bounded page");
+    assert.equal(doc.dirtyPages.get(0).text,
+      "replaced bounded page");
     const state = await request(doc.id, "describePage");
     assert.equal(state.ok, true, state.error);
     assert.equal(state.value.textLength, doc.text.length);

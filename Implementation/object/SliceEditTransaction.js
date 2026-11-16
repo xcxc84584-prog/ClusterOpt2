@@ -11,8 +11,8 @@ export class SliceEditTransaction {
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["open", "transact", "transactDurable",
-      "restoreDurable", "commitWriteback", "read", "locate",
-      "info", "close"];
+      "restoreDurable", "commitWriteback", "finalizeBatch",
+      "read", "locate", "info", "close"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["SliceTransactionPolicy",
@@ -114,6 +114,20 @@ export class SliceEditTransaction {
 
     const item = this.slice(payload.id);
     if (action === "info") return this.describe(item);
+
+    if (action === "finalizeBatch") {
+      if (!item.dirty || !item.durable ||
+          payload.revision !== item.revision) {
+        const error = new Error("Stale batch finalize revision");
+        error.status = 409;
+        throw error;
+      }
+      // Batch coordinator already verified disk and retired the
+      // matching journal. No disk I/O occurs in this transaction.
+      item.dirty = false;
+      item.durable = false;
+      return this.describe(item);
+    }
 
     if (action === "commitWriteback") {
       if (!item.dirty || !item.durable ||
