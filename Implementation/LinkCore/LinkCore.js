@@ -7,6 +7,7 @@ import { SliceBudgetPolicy } from "../property/SliceBudgetPolicy.js";
 import { ToolTabPolicy } from "../property/ToolTabPolicy.js";
 import { ViewportSlicePolicy } from "../property/ViewportSlicePolicy.js";
 import { LineAddressPolicy } from "../property/LineAddressPolicy.js";
+import { ViewportLinePolicy } from "../property/ViewportLinePolicy.js";
 import { UTF8SlicePolicy } from "../property/UTF8SlicePolicy.js";
 import { PieceTreePolicy } from "../property/PieceTreePolicy.js";
 import { BPlusSliceIndex } from "../property/BPlusSliceIndex.js";
@@ -28,7 +29,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.8-pr8.patch12";
+    this.version = "0.0.8-pr8.patch13";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -51,6 +52,8 @@ export class LinkCore {
     this.hub.registerProperty("BPlusSliceIndex", BPlusSliceIndex,
       { owners: ["LinkCore"], visibility: "Public" });
     this.hub.registerProperty("UTF8SlicePolicy", UTF8SlicePolicy,
+      { owners: ["LinkCore"], visibility: "Public" });
+    this.hub.registerProperty("ViewportLinePolicy", ViewportLinePolicy,
       { owners: ["LinkCore"], visibility: "Public" });
     this.hub.registerProperty("LineAddressPolicy", LineAddressPolicy,
       { owners: ["LinkCore"], visibility: "Public" });
