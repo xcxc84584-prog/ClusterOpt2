@@ -54,3 +54,14 @@ setting persists in localStorage and passes via HubUnit Request.
 Custom highlighter remains disabled until safe CSS plugin pipeline
 and actual editor slice loader are built. The UI explicitly states
 this limit currently applies only to the independent registry.
+
+## Patch(+6): independent piece tree foundation
+- PieceTreeIndex Object exposes insert/remove/read/locate/info through Hub.
+- PieceTreePolicy provides an immutable treap with expected logarithmic
+  split/merge/position edits. BPlusSliceIndex is a lazy rebuilt leaf index.
+- UTF-16 offsets follow current browser editor conventions; loader must
+  map disk bytes. No disk/network I/O, privileged plugin execution or keys.
+- Rebuild O(P) after mutations on next seek; seek O(log P).
+- Same-object edits are serial requests; optional expected revision
+  detects stale edits (409). End-to-end file loading remains unfinished.
+- CI acceptance: Node unit tests, lint, and Playwright regressions.

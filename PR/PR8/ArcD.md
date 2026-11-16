@@ -51,3 +51,14 @@ File.Tool.Plugin.Performance -> UI -> Hub -> SliceRegistry.setLimit
 -> SliceBudgetPolicy.evictions -> localStorage preferences.
 On reload SliceRegistry initializes from localStorage after registration.
 Highlighter entry disabled until plugin processor Object is installed.
+
+## Patch(+6): Object / Property / EventChain / EHU
+- New Object: PieceTreeIndex (Hub-routed request API and immutable root).
+- New Properties: PieceTreePolicy, BPlusSliceIndex; EDPMU once each.
+- Request.insert/remove -> Hub -> PieceTreeIndex -> PieceTreePolicy
+  -> new immutable tree root -> revision increment -> OMU Log.
+- Request.locate -> Hub -> PieceTreeIndex -> lazy index build
+  -> BPlusSliceIndex.seek -> Response -> OMU Log.
+- EHU: 200 success, 400 invalid offset/range, 409 stale revision.
+- Index rebuild O(P) after mutation; seek O(log P). UTF-16 positions.
+- Integration with SliceRegistry and disk-backed virtual layer deferred.
