@@ -114,8 +114,9 @@ export const SliceFileWritePolicy = Object.freeze({
       copiedHashes = await this.writeBlob(
         writer, original, 0, start, 0);
       await writer.write(encoded);
-      copiedHashes.push(...await this.writeBlob(
-        writer, original, end, original.size, start + encoded.length));
+      const suffixHashes = await this.writeBlob(
+        writer, original, end, original.size, start + encoded.length);
+      for (const item of suffixHashes) copiedHashes.push(item);
       await writer.close();
       closed = true;
     } catch (error) {
