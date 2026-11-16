@@ -13,9 +13,9 @@ export class FileWorkspace {
     this.authorization = Object.freeze({ default: "Public" });
     this.strictOCDA = true;
     this.ocda = Object.freeze({
-      Request: ["new", "open", "activate", "close", "save"],
-      Response: ["new", "open", "activate", "close", "save"],
-      UserAPI: ["new", "open", "activate", "close", "save"],
+      Request: ["new", "open", "activate", "close", "closeAll", "reorder", "save"],
+      Response: ["new", "open", "activate", "close", "closeAll", "reorder", "save"],
+      UserAPI: ["new", "open", "activate", "close", "closeAll", "reorder", "save"],
       AgentAPI: [],
       Property: ["DocumentStatus"],
       Program: "FileWorkspace",
@@ -34,6 +34,8 @@ export class FileWorkspace {
     if (action === "open") return this.open(payload.handles);
     if (action === "activate") return this.activate(payload.id);
     if (action === "close") return this.close(payload.id);
+    if (action === "closeAll") return this.closeAll();
+    if (action === "reorder") return this.reorder(payload.from, payload.to);
     if (action === "save") return this.save(payload.handle);
     throw new Error("Unknown workspace action: " + action);
   }
@@ -107,6 +109,38 @@ export class FileWorkspace {
       this.activeId = this.documents[Math.min(index,
         this.documents.length - 1)]?.id ?? null;
     }
+    this.onChange();
+    return true;
+  }
+
+  /** One confirmation protects all unsaved documents as one operation. */
+  closeAll() {
+    const dirty = this.documents.filter(doc =>
+      doc.status !== DocumentStatus.SYNCED);
+    if (dirty.length && !window.confirm(Language.translate(
+      this.core.readProperty(this.id, "Language").value,
+      "confirmCloseAll", { count: dirty.length }))) {
+      return false;
+    }
+    for (const doc of this.documents) this.core.unregister(doc.id);
+    this.documents = [];
+    this.activeId = null;
+    this.onChange();
+    return true;
+  }
+
+  /** Preserve document identity and active selection while reordering. */
+  reorder(from, to) {
+    if (!Number.isInteger(from) || !Number.isInteger(to) ||
+        from < 0 || to < 0 ||
+        from >= this.documents.length || to >= this.documents.length) {
+      const error = new RangeError("Invalid tab order index");
+      error.status = 400;
+      throw error;
+    }
+    if (from === to) return true;
+    const [document] = this.documents.splice(from, 1);
+    this.documents.splice(to, 0, document);
     this.onChange();
     return true;
   }
