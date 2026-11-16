@@ -21,7 +21,8 @@ function memoryHandle(name, initial = "") {
         async write(data) { chunks.push(new Uint8Array(data)); },
         async close() {
           const blob = new Blob(chunks);
-          text = await blob.text();
+          text = new TextDecoder("utf-8", { ignoreBOM: true })
+            .decode(await blob.arrayBuffer());
         },
         async abort() { chunks.length = 0; }
       };
