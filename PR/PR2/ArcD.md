@@ -63,3 +63,9 @@ RGB updates are short operations and must serialize by the single
 `InterfacePalette` Object key, rather than run in parallel and reorder.
 Other independent Object operations may run concurrently with palette.
 Algorithm is owned by the UI_COLOR Property; routing/scheduling by Objects.
+
+## Patch(+2) Event Chain 增修
+- RGB 無效：UI → HubUnit → InterfacePalette.set → UI_COLOR.valid →
+  400 EHU → UI → HubUnit → InterfacePalette.get → 舊值恢復。
+- 純黑端點：UI_COLOR.derive([0,0,0]) 返回原 ClusterOpt CSS token。
+- 取消 Object 直接回呼 UI，訊息仍走 HubUnit Request/Response。
