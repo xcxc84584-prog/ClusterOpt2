@@ -59,6 +59,7 @@ export class FileWorkspace {
         continue;
       }
       const doc = new FileDocument(handle.name, handle);
+      doc.status = DocumentStatus.LOADING;
       this.documents.push(doc);
       this.core.register(doc);
       this.activeId = doc.id;
