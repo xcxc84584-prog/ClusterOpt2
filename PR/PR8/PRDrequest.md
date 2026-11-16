@@ -130,3 +130,15 @@ No unbounded cache when a configured byte budget is active.
 - 65 MiB browser selected/OPFS regression must wait for a complete
   loaded page, then assert no unintended truncation on equal-length
   edit and Save; only validated success may mark status green.
+
+## Patch(+19-Fix2) correction to acceptance
+- Large-file Save/Close must work both through tab Close and through
+  File/CloseAll and Explorer-close-group pathways.
+- Uncommitted page must NEVER be discarded on failed save, cancelled
+  confirmation, denied readwrite permission or a journal failure.
+- Local file access must request permission in a live user gesture
+  when supported, without altering original file picker behavior.
+- All group tabs are retained if group save fails; no premature
+  unregister, while completed verified saves may be clean.
+- Regression must cover 65 MiB OPFS, existing PR1 synchronous Close,
+  status EHU and final source byte-size.
