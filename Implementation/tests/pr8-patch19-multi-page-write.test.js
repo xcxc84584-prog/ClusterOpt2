@@ -39,6 +39,13 @@ function makeHandle(text) {
   const stats = { writes: 0, openedWithExisting: false };
   return {
     name: "multi-page.txt", stats,
+    tamperSameMetadata(content) {
+      const replacement = new TextEncoder().encode(content);
+      if (replacement.length !== bytes.length) {
+        throw new Error("Tamper must keep byte size");
+      }
+      bytes = replacement;
+    },
     async getFile() {
       const blob = new Blob([bytes]);
       Object.defineProperty(blob, "lastModified", {
@@ -126,6 +133,9 @@ test("Patch19 Fix4: edit across two pages without an interim Save",
       "Z" + source.slice(1, 65536) + "Q\nTAIL");
     assert.equal(handle.stats.openedWithExisting, true);
     assert.equal(handle.stats.writes, 2);
+    assert.ok(doc.core.getSnapshot().dependencies.some(item =>
+      item.link === doc.id + "->slice-batch-writeback-unit" &&
+      item.code === "10"));
   });
 
 test("Patch19 Fix4: length-changing two-page edits use Blob spans",
@@ -209,4 +219,18 @@ test("Patch19 Fix4: reloaded hidden dirty page is restored on Save",
     assert.equal(reopened.doc.dirtyPages.size, 0);
     assert.equal(await (await handle.getFile()).text(),
       "Z" + source.slice(1, 65536) + "Q\nTAIL");
+  });
+
+test("Patch19 Fix4: same-metadata dirty byte tampering returns EHU409",
+  async () => {
+    const { doc, request, handle, store, core } = setup(source);
+    await doc.core.request("workspace", doc.id, "load");
+    await request("edit", { text: "Z" + doc.text.slice(1) });
+    handle.tamperSameMetadata("X" + source.slice(1));
+    const saved = await request("save");
+    assert.equal(saved.status, 409);
+    assert.equal(doc.status, "yellow");
+    assert.equal(store.entries.size, 1);
+    assert.ok(core.getSnapshot().logs.some(entry =>
+      entry.kind === "EHU" && entry.status === 409));
   });
