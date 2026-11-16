@@ -13,7 +13,7 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 			const labels = {
 				menuBtn: "file", newFile: "newFile", openFile: "openFile",
 				saveFile: "saveFile", saveAsFile: "saveAsFile",
-				closeFile: "closeFile", toolBtn: "tool",
+				closeFile: "closeFile", closeAll: "closeAll", toolBtn: "tool",
 				paletteBtn: "palette", languageBtn: "language",
 				paletteTitle: "paletteTitle", paletteLabel: "paletteRGB",
 				paletteHint: "paletteHint", palettePresetLabel: "palettePreset",
