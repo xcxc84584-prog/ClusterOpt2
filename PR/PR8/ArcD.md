@@ -136,3 +136,23 @@ Highlighter entry disabled until plugin processor Object is installed.
 - Plugin category dropdown is local UI state; no cross-Object call.
 - Main editor remains full-buffer. Future: viewport pixel mapping,
   cancellation/generation protection and true slice editor.
+
+## Patch(+12): Object / Property / EventChain / EHU
+- New Object: VirtualLineIndex, open/locate/range/describe. Owns
+  private Blob pointer, sparse checkpoint list and scan watermark.
+- New Property: LineAddressPolicy, EDPMU-registered by LinkCore.
+- UI/VTE -> HubUnit -> virtual-line-index.open -> Blob metadata
+  only -> OMU response 200 without reading text.
+- UI/VTE -> Hub -> virtual-line-index.locate/range
+  -> LineAddressPolicy.scan(64 KiB, yield) -> sparse checkpoint
+  -> OMU Log and response. Request/Response relation 10/01.
+- UI/VTE -> Hub -> viewport-slices.navigateLines
+  -> Hub -> virtual-line-index.range -> ViewportSlicePolicy.bytePlan
+  -> Hub -> SliceLoader.load -> Hub -> SliceRegistry.setViewport/load
+  -> OMU dependency/EHU.
+- Failure status: 400 invalid range, 404 missing document,
+  409 repeated open, 416 absent line, 413 memory budget,
+  422 data read error, 503 storage unavailable.
+- Multi-object dependency chain is observable in real VTE.
+- Two existing editor limitations remain: no real viewport DOM
+  binding and no safe edited-slice writeback or reload recovery.
