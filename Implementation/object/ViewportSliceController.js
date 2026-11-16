@@ -174,7 +174,11 @@ export class ViewportSliceController {
     const snapshot = await this.call("slice-registry", "list", {});
     const keep = new Set([...plan.full, ...preloaded].map(sliceId));
     for (const entry of snapshot.entries) {
-      if (keep.has(entry.id) || entry.dirty ||
+      // Never demote another document's full or preloaded chunks.
+      // Each ViewportSliceController instance may coordinate multiple
+      // documents, but residency ownership remains document-scoped.
+      if (!entry.id.startsWith(document.id + "-slice-") ||
+          keep.has(entry.id) || entry.dirty ||
           entry.state === "virtual") continue;
       await this.call("slice-registry", "demote", { id: entry.id });
     }
