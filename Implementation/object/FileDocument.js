@@ -2,6 +2,7 @@ import { DocumentStatus } from "../property/DocumentStatus.js";
 
 let nextId = 1;
 const CHUNK_BYTES = 256 * 1024;
+const PR1_SAFE_BYTES = 64 * 1024 * 1024;
 
 /**
  * Black-box document: all data mutations arrive through receive().
@@ -19,6 +20,8 @@ export class FileDocument {
     this.cursor = 0;
     this.scrollTop = 0;
     this.revision = 0;
+    this.hasUtf8Bom = false;
+    this.lineEnding = "\\n";
     this.strictOCDA = true;
     this.ocda = Object.freeze({
       Request: ["edit", "load", "save"],
@@ -58,8 +61,13 @@ export class FileDocument {
     this.error = "";
     try {
       const file = await this.handle.getFile();
+      if (file.size > PR1_SAFE_BYTES) {
+        const error = new RangeError("PR1 supports files up to 64 MiB; use PR7 for larger files");
+        error.status = 413;
+        throw error;
+      }
       const reader = file.stream().getReader();
-      const decoder = new TextDecoder("utf-8", { fatal: false });
+      const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
       const parts = [];
       let loaded = 0;
       while (true) {
@@ -72,7 +80,11 @@ export class FileDocument {
         onProgress(this.progress);
       }
       parts.push(decoder.decode());
-      this.text = parts.join("");
+      const rawText = parts.join("");
+      this.hasUtf8Bom = rawText.startsWith("\\uFEFF");
+      const text = this.hasUtf8Bom ? rawText.slice(1) : rawText;
+      this.lineEnding = text.includes("\\r\\n") ? "\\r\\n" : "\\n";
+      this.text = text.replace(/\\r\\n/g, "\\n");
       this.revision++;
       this.progress = 100;
       this.status = DocumentStatus.SYNCED;
@@ -90,7 +102,9 @@ export class FileDocument {
     const handle = selectedHandle ?? this.handle;
     if (!handle) throw new Error("Save needs an authorized file handle");
 
-    const snapshot = this.text;
+    const lineNormalized = this.lineEnding === "\\r\\n" ?
+      this.text.replace(/\\n/g, "\\r\\n") : this.text;
+    const snapshot = (this.hasUtf8Bom ? "\\uFEFF" : "") + lineNormalized;
     const snapshotRevision = this.revision;
     this.status = DocumentStatus.LOADING;
     this.progress = 0;
