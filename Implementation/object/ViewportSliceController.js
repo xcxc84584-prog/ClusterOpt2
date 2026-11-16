@@ -106,6 +106,28 @@ export class ViewportSliceController {
         payload.first, payload.last, payload.adjacent ?? 1);
     }
     const sliceId = index => document.id + "-slice-" + index;
+    // Skip redundant navigation without trusting stale residency:
+    // a budget change may have evicted any preloaded slice.
+    const stable = document.full.length === plan.full.length &&
+      document.full.every((item, index) => item === plan.full[index]) &&
+      document.preloaded.length === plan.preloaded.length &&
+      document.preloaded.every((item, index) =>
+        item === plan.preloaded[index]);
+    if (stable) {
+      const existing = await this.call("slice-registry", "list", {});
+      const byId = new Map(existing.entries.map(item => [item.id, item]));
+      const allReady = plan.full.every(index =>
+        byId.get(sliceId(index))?.state === "full") &&
+        plan.preloaded.every(index => {
+          const state = byId.get(sliceId(index))?.state;
+          return state === "preloaded" || state === "full";
+        });
+      if (allReady) {
+        return { id: document.id, full: [...document.full],
+          preloaded: [...document.preloaded],
+          ...(lines ? { lines } : {}) };
+      }
+    }
     // Drop stale visibility so offscreen clean slices can be evicted.
     await this.call("slice-registry", "setViewport", {
       owner: document.id, ids: []
