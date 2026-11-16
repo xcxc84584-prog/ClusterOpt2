@@ -34,6 +34,10 @@ test("PR8 Patch13 rejects invalid or unbounded geometry", () => {
 
 test("PR8 Patch13 routes geometry through indexed slices and Hub", async () => {
   const core = new LinkCore();
+  // A real OCDA sender must exist before HubUnit accepts user requests.
+  if (!core.register({ id: "ui", receive: async () => true })) {
+    throw new Error("Test UI registration failed");
+  }
   new SliceRegistry(core);
   new SliceLoader(core);
   new VirtualLineIndex(core);
