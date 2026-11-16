@@ -77,3 +77,6 @@ Recovery.restore -> UI render -> scrollTop restored, one tab.
 Recovery.persist -> IndexedDB commit -> sessionStorage(text only).
 Recovery.restore -> IndexedDB or sessionStorage fallback -> Hub ->
 Workspace.restore; imported roots need IndexedDB and permission.
+
+## Patch(+10) acceptance order
+edit -> Hub.persist -> IDB oncomplete -> fallback marker -> reload.

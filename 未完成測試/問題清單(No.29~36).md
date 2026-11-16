@@ -31,3 +31,5 @@ permissions and large quota failures remain separate acceptance gates.
 
 Patch(+9): Chromium reload test revealed missing restorable IndexedDB
 snapshot; added text-only sessionStorage fallback. Require green E2E.
+
+Patch(+10) waits for both durable markers before Chromium reload.

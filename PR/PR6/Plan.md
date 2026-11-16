@@ -79,3 +79,8 @@ Observed Chromium CI returned no persisted IndexedDB snapshot immediately
 after navigation. Add a bounded sessionStorage text-only fallback without
 FileSystemHandles. IndexedDB remains authoritative for handles and roots.
 Log fallback failure without erasing existing snapshots.
+
+## Patch(+10) reload stability
+Playwright waits for the IndexedDB transaction and sessionStorage
+post-commit marker before triggering navigation. This validates a
+completed write rather than an in-flight read.
