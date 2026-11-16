@@ -46,7 +46,14 @@ export class FileWorkspace {
         revision: doc.revision, diskRevision: doc.diskRevision,
         lineEnding: doc.lineEnding, hasUtf8Bom: doc.hasUtf8Bom,
         virtual: Boolean(doc.virtualReadOnly),
-        virtualPageIndex: doc.virtualPageIndex ?? 0
+        virtualPageIndex: doc.virtualPageIndex ?? 0,
+        virtualEdit: doc.virtualReadOnly &&
+          doc.status === DocumentStatus.DIRTY ? {
+            id: doc.editSliceId, revision: doc.editRevision,
+            fingerprint: doc.fileFingerprint,
+            index: doc.virtualPageIndex,
+            start: doc.pageStart, end: doc.pageEnd
+          } : null
       }))
     };
   }
@@ -75,6 +82,9 @@ export class FileWorkspace {
           DocumentStatus.LOADING : DocumentStatus.DIRTY;
         if (state.virtual) {
           doc.virtualPageIndex = state.virtualPageIndex ?? 0;
+          if (state.virtualEdit?.id && state.virtualEdit?.fingerprint) {
+            doc.pendingRecovery = state.virtualEdit;
+          }
         }
         doc.cursor = Math.min(state.cursor, doc.text.length);
         doc.scrollTop = state.scrollTop;
@@ -218,6 +228,11 @@ export class FileWorkspace {
     const index = this.documents.findIndex(doc => doc.id === id);
     if (index < 0) return false;
     const doc = this.documents[index];
+    if (doc.virtualReadOnly && doc.status === DocumentStatus.DIRTY) {
+      const error = new Error("Save virtual page before closing");
+      error.status = 409;
+      throw error;
+    }
     if (doc.status !== DocumentStatus.SYNCED &&
         !window.confirm(Language.translate(
           this.core.readProperty(this.id, "Language").value,
@@ -245,6 +260,12 @@ export class FileWorkspace {
       throw error;
     }
     const targets = this.documents.filter(doc => ids.includes(doc.id));
+    if (targets.some(doc => doc.virtualReadOnly &&
+        doc.status === DocumentStatus.DIRTY)) {
+      const error = new Error("Save edited virtual pages before closing");
+      error.status = 409;
+      throw error;
+    }
     const dirty = targets.filter(doc =>
       doc.status !== DocumentStatus.SYNCED);
     if (dirty.length && !window.confirm(Language.translate(
@@ -262,6 +283,12 @@ export class FileWorkspace {
 
   /** One confirmation protects all unsaved documents as one operation. */
   closeAll() {
+    if (this.documents.some(doc => doc.virtualReadOnly &&
+        doc.status === DocumentStatus.DIRTY)) {
+      const error = new Error("Save edited virtual pages before closing");
+      error.status = 409;
+      throw error;
+    }
     const dirty = this.documents.filter(doc =>
       doc.status !== DocumentStatus.SYNCED);
     if (dirty.length && !window.confirm(Language.translate(
@@ -340,9 +367,16 @@ export class FileWorkspace {
     const doc = this.active;
     if (!doc) return false;
     if (doc.virtualReadOnly) {
-      const error = new Error("Virtual page cannot use whole-file save");
-      error.status = 409;
-      throw error;
+      const result = await this.core.request(this.id, doc.id, "save", {
+        handle, onProgress: () => this.onChange()
+      });
+      this.onChange();
+      if (!result.ok) {
+        const error = new Error(result.error);
+        error.status = result.status;
+        throw error;
+      }
+      return true;
     }
     const priority = this.core.readProperty(this.id, "StoragePriority").value;
     if (!handle && doc.handle) {
