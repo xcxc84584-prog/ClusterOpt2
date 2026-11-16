@@ -29,3 +29,22 @@ Status: unverified unless explicitly marked. Submission is not proof of PASS.
 | 23 | Property updates routed exclusively through Hub | Partial |
 | 24 | CI status | Not yet verified |
 | 25 | Full OCDA relation test | Not implemented |
+
+## Patch(+4) status additions
+- 26: Legacy ClusterOpt stylesheet copied — visual browser review pending.
+- 27: Browser user-gesture picker flow corrected — Chromium test pending.
+- 28: Strict Object contract registration — automated test submitted.
+- 29: Protected inherited Properties — automated test submitted.
+- 30: VTE isolation — automated test submitted.
+- 31: Independent file load overlap — code implemented, browser test pending.
+- 32: UTF-8 BOM/CRLF preservation — automated test submitted.
+- 33: Reject unsafe encoding — automated test submitted.
+- 34: 64 MiB PR1 memory bound — code implemented, test pending.
+- 35: Nested deadlock detection EHU 423 — automated test submitted.
+- 36: Code-conventions lint — CI submitted.
+- 37: Cross-tab locking — out of PR1 scope, must document.
+- 38: Browser end-to-end interaction — still pending.
+- 39: Runtime identity spoof prevention — future agent security boundary.
+- 40: Latest CI status — must be read from GitHub before merging.
+
+PR1 is not considered accepted based on source code alone.
