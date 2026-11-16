@@ -1,3 +1,4 @@
+import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
@@ -8,6 +9,7 @@ const ui = Object.fromEntries([
 ].map(id => [id, document.getElementById(id)]));
 
 const workspace = new FileWorkspace(linkCore, render);
+exposeVTE(window);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
 const menu = document.getElementById("menu");
 const menuButton = document.getElementById("menuBtn");
@@ -160,8 +162,38 @@ ui.editor.addEventListener("keydown", event => {
 });
 async function perform(action, payload = {}) {
   closeMenu();
-  const result = await linkCore.request("ui", "workspace", action, payload);
-  if (!result.ok) notify(result.error);
+  try {
+    // Browser pickers must run synchronously inside a user gesture,
+    // BEFORE asynchronous HubUnit scheduling starts.
+    if (action === "open") {
+      if (!window.showOpenFilePicker) {
+        throw new Error("需要 Chromium HTTPS 或 localhost 才能開啟文件");
+      }
+      payload.handles = await window.showOpenFilePicker({
+        multiple: true
+      });
+    }
+    if (action === "save") {
+      const doc = workspace.active;
+      if (!doc) return;
+      if (payload.saveAs || !doc.handle) {
+        if (!window.showSaveFilePicker) {
+          throw new Error("需要 Chromium HTTPS 或 localhost 才能儲存文件");
+        }
+        payload.handle = await window.showSaveFilePicker({
+          suggestedName: doc.name
+        });
+      }
+    }
+    const result = await linkCore.request("ui", "workspace", action, payload);
+    if (!result.ok) notify(result.error);
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      linkCore.omu.record("EHU", "ui", "Picker." + action,
+        500, "workspace", { error: String(error) });
+      notify(String(error));
+    }
+  }
 }
 document.getElementById("newFile").onclick = () => perform("new");
 document.getElementById("openFile").onclick = () => perform("open");
