@@ -433,3 +433,33 @@ this limit currently applies only to the independent registry.
   cancel and denied permission; existing PR1 synchronous Close.
 - Security: no direct Object calls; limits on external OS locks,
   platform support and 1/5GiB latency remain open.
+
+## Patch(+19-Fix3): non-blocking large save and per-file progress
+- Begin save in a detached async task so FileWorkspace Hub dispatch
+  returns immediately, allowing activate/new tab while a large
+  writeback is ongoing. Only a verified commit marks it synced.
+- SliceSaveTask is a separate OCDA Object keyed by document id;
+  it owns AbortController, revision, task percent and cancellation.
+  Cancellation uses a distinct Hub resource key, so a text edit
+  can interrupt a Writeback waiting under the document Object.
+- SliceFileWritePolicy counts bytes during bounded-prefix/suffix
+  stream copy and readback verification. Yield to browser event
+  loop after eight 64KiB chunks. Report operation progress only,
+  never percent of total file materialized in memory.
+- Abort is honored before writer.close; after close, finish readback
+  and checkpoint retirement before accepting the next edit.
+- FileWorkspace owns saveActive/saveProgress/saveError on each doc,
+  enabling correct progress when returning from another tab.
+  Paint progress directly on active status widget; NEVER re-render
+  tabs or Explorer on every percent increment.
+- Main UI observes actual background save: blue state while active,
+  percent advances from 0–99, and 100 only on verification.
+  Typing sends a Hub-routed cancel to SliceSaveTask before edit.
+- Existing PR1 small-file save/close and ClusterOpt UI remain intact.
+- Performance: single 65MiB file writes O(fileSize) with fixed
+  64KiB I/O blocks, cooperative yielding and O(fileSize/blockSize)
+  verification hashes. No claim of OS-atomic multi-GiB writeback.
+- Risks: permission denial, quota failure, aborted writes and stale
+  file revisions retain dirty journal; no silent truncation.
+- Test Node task independence, EHU conflicts, Chromium slow 65MiB
+  background write, tab switch/progress restore and edit interruption.
