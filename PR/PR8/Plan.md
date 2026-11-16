@@ -583,3 +583,15 @@ this limit currently applies only to the independent registry.
 - Re-run all regression/CI tests and verify previous-main backup.
 - Keep six-stage all-text slicing, 1/5 GiB and Windows file locks OPEN
   until actual implementation and performance evidence are available.
+
+### Patch(+24-Fix1): bounded parallel preload and source-of-truth cache
+- Add SliceLoader.loadBatch, restricted to 4 unique slices per request.
+- Read Blob chunks concurrently, commit memory through Registry serially.
+- Report only final resident slices; skipped preloads do not claim success.
+- Deduplicate fast wheel requests under stable viewport and failed budget.
+- Protect full resident text from speculative demotion.
+- Tests: parallel reads, 413 pinned-full behavior, 5 GiB sparse byte seek,
+  no repeated unsuccessful preload I/O, EHU/Log relation compliance.
+- CPU Worker offloading remains OPEN; Promise.all overlaps Blob I/O only.
+- This milestone may be BC merged once CI passes, while PR8 overall remains
+  NOT PASS until authoritative all-file slicing and real stress acceptance.
