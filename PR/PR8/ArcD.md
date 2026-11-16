@@ -88,3 +88,13 @@ Highlighter entry disabled until plugin processor Object is installed.
   404 original missing, 409 duplicate replacement, 413 budget limit.
 - Plugin API markdown is downloadable documentation; no new Object
   executing third-party code, so no untrusted JS in this patch.
+
+## Patch(+9) EHU and UI EventChains
+- UI.Plugin.category -> local panel state; no false runtime request.
+- UI.Plugin.performance -> Hub -> SliceRegistry.list/setLimit -> OMU.
+- UI.BlockedTypes.edit -> legacy prompt -> Hub -> FileTypeManager.replace
+  -> FileTypePolicy validation -> EDPMU.BlockedFileTypes -> Explorer.
+- Request/Response: valid=200; invalid extension=400;
+  missing old extension=404; duplicate replacement=409.
+- All user-facing color/locale uses shared UI_COLOR/Language properties.
+- No new Property/Object introduced, global registry unchanged.
