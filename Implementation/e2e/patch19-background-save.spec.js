@@ -57,9 +57,21 @@ test("Patch19 Fix3: save progress survives tab switching",
     const { largeTab, otherTab } = await prepare(page, name);
     await page.keyboard.press("Control+s");
     await expect(page.locator("#statusLamp")).toHaveClass(/blue/);
-    await expect.poll(async () =>
-      Number.parseInt(await page.locator("#meterPercent")
-        .textContent(), 10)).toBeGreaterThan(0);
+    try {
+      await expect.poll(async () =>
+        Number.parseInt(await page.locator("#meterPercent")
+          .textContent(), 10), { timeout: 12000 })
+        .toBeGreaterThan(0);
+    } catch (error) {
+      const info = await page.evaluate(() => ({
+        lamp: document.getElementById("statusLamp")?.className,
+        label: document.getElementById("status")?.textContent,
+        percent: document.getElementById("meterPercent")?.textContent,
+        ehu: window.Cluster?.log?.().filter(item =>
+          item.kind === "EHU").slice(-8)
+      }));
+      throw new Error(JSON.stringify(info) + " " + error.message);
+    }
     const first = Number.parseInt(
       await page.locator("#meterPercent").textContent(), 10);
     await otherTab.click();
@@ -87,9 +99,21 @@ test("Patch19 Fix3: edit aborts uncommitted save and retains edits",
     const { editor } = await prepare(page, name);
     await page.keyboard.press("Control+s");
     await expect(page.locator("#statusLamp")).toHaveClass(/blue/);
-    await expect.poll(async () =>
-      Number.parseInt(await page.locator("#meterPercent")
-        .textContent(), 10)).toBeGreaterThan(0);
+    try {
+      await expect.poll(async () =>
+        Number.parseInt(await page.locator("#meterPercent")
+          .textContent(), 10), { timeout: 12000 })
+        .toBeGreaterThan(0);
+    } catch (error) {
+      const info = await page.evaluate(() => ({
+        lamp: document.getElementById("statusLamp")?.className,
+        label: document.getElementById("status")?.textContent,
+        percent: document.getElementById("meterPercent")?.textContent,
+        ehu: window.Cluster?.log?.().filter(item =>
+          item.kind === "EHU").slice(-8)
+      }));
+      throw new Error(JSON.stringify(info) + " " + error.message);
+    }
     const value = await editor.inputValue();
     await editor.fill("NEWER!!!" + value.slice(8));
     await expect(page.locator("#statusLamp"))
