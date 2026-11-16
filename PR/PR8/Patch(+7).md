@@ -29,3 +29,9 @@ No binary encoding fallback is attempted. UTF-8-only at this stage.
 Node tests cover Unicode/emoji cut points, lazy Blob access,
 mode semantics and invalid input. Full CI/browser results required.
 Do not merge without verified rollback and green checks.
+
+## Patch7 fix: EHU status mapping
+- A failed CI run found out-of-range slice indices returned 500.
+- Corrected validation to emit 400; aligned byte bounds are now
+  returned separately as byteStart/byteEnd for auditing.
+- Latest CI must be checked before declaring a PASS.
