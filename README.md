@@ -66,3 +66,9 @@ Settings are persisted locally when browser storage permits.
 
 PR2 details and the versioned handoff are under `PR/PR2/` and
 `總工作交接提示詞(v0.0.2-PR2).md`.
+
+## PR3 — global language (in review)
+Switch language with File > Tool > Language (繁體中文 / English).
+The chosen locale is shared via LinkCore Language and restored across
+reloads when local browser storage is available. PR3 documentation and
+versioned handoff are in `PR/PR3/`.
