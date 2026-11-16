@@ -267,6 +267,54 @@ export class VirtualFileDocument extends FileDocument {
     return this.describePage();
   }
 
+  /**
+   * Restore all pending durable revisions before a multi-page Save.
+   * Never omit an offscreen recovery checkpoint from the commit.
+   */
+  async hydratePendingPages(file) {
+    const pending = new Map(this.pendingRecoveries);
+    if (this.pendingRecovery) {
+      pending.set(this.pendingRecovery.index, this.pendingRecovery);
+    }
+    const bytes = this.property("UTF8SlicePolicy");
+    const policy = this.property("SliceBatchWritePolicy");
+    for (const [index, record] of pending) {
+      if (this.dirtyPages.has(index)) {
+        this.pendingRecoveries.delete(index);
+        continue;
+      }
+      if (record.fingerprint !== this.fingerprint(file)) {
+        this.failure("Recovered source fingerprint changed", 409);
+      }
+      const segment = await bytes.read(
+        file, index, bytes.defaultChunkBytes);
+      const sourceHash = await policy.digest(
+        await file.slice(segment.start, segment.end).arrayBuffer());
+      if (sourceHash !== record.sourceHash ||
+          segment.start !== record.start ||
+          segment.end !== record.end) {
+        this.failure("Recovered source bytes changed", 409);
+      }
+      const restored = await this.invoke("restoreDurable", {
+        id: record.id
+      });
+      const content = await this.invoke("read", {
+        id: record.id, start: 0, end: restored.length
+      });
+      this.dirtyPages.set(index, {
+        id: record.id, index, revision: restored.revision,
+        text: content, start: record.start, end: record.end,
+        sourceHash, baselineLineBreaks:
+          this.countLines(segment.text),
+        editedLineBreaks: this.countLines(content)
+      });
+      this.pendingRecoveries.delete(index);
+      if (this.pendingRecovery?.index === index) {
+        this.pendingRecovery = null;
+      }
+    }
+  }
+
   async savePage(handle, onProgress = () => {}, signal = null) {
     if (handle && handle !== this.handle) {
       this.failure("Virtual Save As unsupported", 409);
@@ -275,14 +323,11 @@ export class VirtualFileDocument extends FileDocument {
       this.failure("Virtual page not ready", 409);
     }
     if (!this.unsaved) return true;
-    if (this.pendingRecoveries.size || this.pendingRecovery) {
-      // Prevent committing only a subset of recovered dirty pages.
-      this.failure("Restore all pending pages before Save", 409);
-    }
     const file = await this.handle.getFile();
     if (this.fingerprint(file) !== this.fileFingerprint) {
       this.failure("External file changed before multi-page write", 409);
     }
+    await this.hydratePendingPages(file);
     const edits = [...this.dirtyPages.values()]
       .sort((a, b) => a.start - b.start).map(item => ({
         id: item.id, revision: item.revision,
