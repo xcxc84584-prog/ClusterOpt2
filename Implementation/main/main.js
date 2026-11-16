@@ -64,7 +64,14 @@ linkCore.register({
   }
 });
 
-mountPaletteUI(linkCore, document, window.localStorage);
+let paletteStorage = null;
+try {
+  paletteStorage = window.localStorage;
+} catch {
+  linkCore.omu.record("EHU", "ui", "Storage.Access", 503,
+    "UI_COLOR", { reason: "Color preference storage is unavailable" });
+}
+mountPaletteUI(linkCore, document, paletteStorage);
 const notify = message => { ui.statusText.textContent = message; };
 
 function render() {
