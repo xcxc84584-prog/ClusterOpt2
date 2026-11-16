@@ -58,3 +58,11 @@ Run npm run check, npm run test:e2e on the latest branch, evaluate
 undo/redo, IME, multi-file switching, indentation, shortcuts, overlays,
 100KB/1MB/64MB performance and desktop/browser zoom.
 Keep PR5 NOT PASS unless all required regressions are verified.
+
+## Performance refinement within Patch(+1)
+The guideWindow algorithm accepts an optional viewport anchor
+(firstLine/offset) and seeks forward or backward from it. MainUI
+invalidates the anchor on document changes and on switching tabs.
+Consecutive scroll operations typically scan only changed visible
+lines rather than all lines above the viewport.
+Use the PR8 tree index for initial random jumping at large offsets.
