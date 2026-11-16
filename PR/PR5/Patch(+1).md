@@ -32,3 +32,16 @@ addressed in PR8 indexed virtualization.
 Run tests, fix regressions, benchmark and then decide main merge.
 Future separate patches should add language-aware indentation rules,
 precise undo transaction handling, and broader keyboard support.
+
+## Verification recorded after implementation
+- 17/17 dynamically executed transformations on the **actual GitHub
+  EditorInteractionPolicy.js source**: PASS. Includes pair insertion,
+  surround, deletion, overtype, Enter, IME bypass, and guide anchors.
+- Static syntax checks on modified JS: PASS; source lines <=120 columns
+  in inspected code. Browser/CI runs are still not confirmed.
+- PR5 numbered outstanding issues recorded in
+  未完成測試/問題清單(No.21~28).md.
+- Guide scanner improved with a reusable viewport anchor instead of
+  starting from line zero on each adjacent scroll event.
+- Native undo, large-document benchmark, Chrome/Edge visual acceptance:
+  PENDING. No declaration of PR5 PASS.
