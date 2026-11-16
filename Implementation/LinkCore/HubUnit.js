@@ -76,6 +76,16 @@ export class HubUnit {
       });
       return { ok: false, status: receiver.status, error: receiver.error };
     }
+    if (options.origin === "user" || options.origin === "agent") {
+      const apiName = options.origin === "user" ? "UserAPI" : "AgentAPI";
+      if (!receiver.value.ocda?.[apiName]?.includes(action)) {
+        this.omu.record("EHU", source, "Request." + action, 403, target, {
+          error: "Not exposed by " + apiName
+        });
+        return { ok: false, status: 403,
+          error: "Action not allowed by " + apiName };
+      }
+    }
     if (!AccessPolicy.canUseAction(source, target, action, receiver.value)) {
       this.omu.record("EHU", source, "Request." + action, 403,
         target, { error: "Access denied" });
