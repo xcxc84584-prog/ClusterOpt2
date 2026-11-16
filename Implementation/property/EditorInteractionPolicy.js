@@ -92,7 +92,7 @@ export const EditorInteractionPolicy = Object.freeze({
       line = 0;
     }
     while (line < firstLine && cursor < text.length) {
-      const next = text.indexOf("\\n", cursor);
+      const next = text.indexOf("\n", cursor);
       if (next < 0) {
         return { firstLine, lines: [], offset: text.length };
       }
@@ -100,7 +100,7 @@ export const EditorInteractionPolicy = Object.freeze({
       line++;
     }
     while (line > firstLine) {
-      cursor = text.lastIndexOf("\\n", Math.max(0, cursor - 2)) + 1;
+      cursor = text.lastIndexOf("\n", Math.max(0, cursor - 2)) + 1;
       line--;
     }
     const offset = cursor;
