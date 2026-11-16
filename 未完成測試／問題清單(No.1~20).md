@@ -48,3 +48,12 @@ Status: unverified unless explicitly marked. Submission is not proof of PASS.
 - 40: Latest CI status — must be read from GitHub before merging.
 
 PR1 is not considered accepted based on source code alone.
+
+## PR2 Pending Checks
+- PR2-01: RGB picker updates global token — automated tests submitted.
+- PR2-02: RGB numeric fields and endpoints — browser tests submitted.
+- PR2-03: Saved preference reload — browser and Node tests submitted.
+- PR2-04: Invalid RGB preserves last valid state and logs EHU — submitted.
+- PR2-05: Permission checks for AgentAPI mutation — submitted.
+- PR2-06: Original modal visual parity on desktop/mobile — pending manual review.
+- PR2-07: Verify final PR2 commit both CI jobs PASS — pending.
