@@ -12,7 +12,8 @@ export class VirtualLineIndex {
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["open", "close", "locate", "range", "describe"];
     this.ocda = Object.freeze({
-      Request: actions, Response: actions, UserAPI: actions,
+      Request: actions, Response: actions,
+      UserAPI: actions.filter(name => name !== "close"),
       AgentAPI: [], Property: ["LineAddressPolicy"],
       Program: "VirtualLineIndex", EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
