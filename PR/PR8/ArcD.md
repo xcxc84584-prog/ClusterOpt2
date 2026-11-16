@@ -98,3 +98,18 @@ Highlighter entry disabled until plugin processor Object is installed.
   missing old extension=404; duplicate replacement=409.
 - All user-facing color/locale uses shared UI_COLOR/Language properties.
 - No new Property/Object introduced, global registry unchanged.
+
+## Patch(+10): workbench tool window Object and EventChain
+- New Object: ToolTabManager (UI-visible read-only tool lifecycle).
+- New Property: ToolTabPolicy, registered by LinkCore once.
+- UI.PluginButton -> HubUnit -> ToolTabManager.open -> OMU 200.
+- UI.ToolTab -> Hub -> ToolTabManager.activate/move/close -> OMU 200.
+- UI.FileTab -> Hub -> ToolTabManager.deactivate -> Hub ->
+  FileWorkspace.activate -> OMU 200, directed relations 10/01.
+- UI.PluginWindow.Performance -> Hub -> SliceRegistry -> OMU.
+- Error: 400 malformed/unknown action or invalid position;
+  404 activation/movement of closed tool. Failures always EHU.
+- ToolTabPolicy computes a projection of file IDs plus one tool ID;
+  no FileDocument is allocated and workspace snapshots are unaffected.
+- Same ToolTabManager resource key remains FIFO; workspace file IO
+  remains independently scheduled and protected by existing policies.
