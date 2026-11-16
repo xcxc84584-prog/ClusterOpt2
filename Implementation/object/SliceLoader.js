@@ -12,7 +12,8 @@ export class SliceLoader {
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["open", "load", "close", "describe"];
     this.ocda = Object.freeze({
-      Request: actions, Response: actions, UserAPI: actions,
+      Request: actions, Response: actions,
+      UserAPI: actions.filter(name => name !== "close"),
       AgentAPI: [], Property: ["UTF8SlicePolicy"],
       Program: "SliceLoader", EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
