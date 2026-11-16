@@ -141,7 +141,7 @@ test("PR3 switches file menu, status, tabs and palette to English", async ({ pag
 	await page.locator("#languageBtn").click();
 	await page.locator('[data-locale="en"]').click();
 
-	await expect(page.locator("#menuBtn")).toHaveText("File ›");
+	await expect(page.locator("#menuBtn")).toHaveText("File⌄");
 	await expect(page.locator("#status")).toHaveText("Ready");
 	await expect(page.locator("#emptyHint")).toContainText("Choose File");
 	await expect(page.locator("#editor")).toHaveAttribute("aria-label", "Text editor");
@@ -173,7 +173,7 @@ test("PR3 language persists across reload and can return to Chinese", async ({ p
 		.toHaveAttribute("aria-pressed", "true");
 	await page.locator('[data-locale="zh-Hant"]').click();
 	await expect(page.locator("#status")).toHaveText("就緒");
-	await expect(page.locator("#menuBtn")).toHaveText("檔案 ›");
+	await expect(page.locator("#menuBtn")).toHaveText("檔案⌄");
 	await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
 });
 
