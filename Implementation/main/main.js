@@ -356,6 +356,8 @@ function render() {
     ui.tabs.append(tab);
   }
   pluginWindow.hidden = !toolActive;
+  document.getElementById("fileType").textContent = toolActive ?
+    localized("plugin") : localized("plainText");
   ui.editorSurface.hidden = !active || toolActive;
   ui.emptyState.hidden = !!active || toolActive;
   if (toolActive || !active) {
