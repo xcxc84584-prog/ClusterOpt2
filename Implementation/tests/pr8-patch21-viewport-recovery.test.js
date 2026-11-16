@@ -12,10 +12,12 @@ test("PR8+21 recovery stores physical viewport independently of caret", () => {
   workspace.active.cursor = 1;
   workspace.active.scrollTop = 147.5;
   workspace.active.scrollLeft = 39.25;
+  workspace.active.viewportLineHeight = 24;
   const snapshot = workspace.snapshot();
   assert.equal(snapshot.documents[0].scrollTop, 147.5);
   assert.equal(snapshot.documents[0].scrollLeft, 39.25);
   assert.equal(snapshot.documents[0].cursor, 1);
+  assert.equal(snapshot.documents[0].viewportLineHeight, 24);
   assert.equal(RecoveryPolicy.isSnapshot({
     schema: RecoveryPolicy.schema,
     ...snapshot, roots: []
@@ -26,6 +28,7 @@ test("PR8+21 recovery stores physical viewport independently of caret", () => {
   restored.restoreSnapshot(snapshot);
   assert.equal(restored.active.scrollTop, 147.5);
   assert.equal(restored.active.scrollLeft, 39.25);
+  assert.equal(restored.active.viewportLineHeight, 24);
   assert.equal(restored.active.cursor, 1);
 });
 
