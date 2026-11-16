@@ -5,9 +5,9 @@
 | 1 | Pending | PR4 Close All browser tests | Confirm/cancel in Chrome and Edge |
 | 2 | Pending | PR4 tab drag | Long left-drag, active ID, text retention |
 | 3 | Pending | Close All API | Req/Rep, FAIL and EHU coverage |
-| 4 | Pending | StoragePriority ExternalFirst | External overwrite reload behavior |
-| 5 | Pending | StoragePriority InternalFirst | Preserve local draft and deliberate overwrite |
-| 6 | Pending | External file conflict detection | Document revision/collision and 409 |
+| 4 | Test pending | StoragePriority ExternalFirst | External overwrite reload behavior; unit test added |
+| 5 | Test pending | StoragePriority InternalFirst | Preserve local draft and deliberate overwrite; unit test added |
+| 6 | Partial | External file conflict detection | Fingerprint size+mtime; same-metadata conflicts need stronger detection |
 | 7 | Pending | PR3 browser version consistency | Chrome and Edge serve same SystemVersion |
 | 8 | Pending | File System Access permission | Denial, cancellation, missing path and 503 |
 | 9 | Pending | GitHub CI checks | npm run check, test:e2e evidence |
