@@ -17,6 +17,7 @@ const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
   [key, document.getElementById(id)]));
 
 let guideFrame = 0;
+let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
 exposeVTE(window);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
@@ -165,6 +166,7 @@ function render() {
   ui.editor.readOnly = active.status === DocumentStatus.LOADING;
   ui.editor.dataset.documentId = active.id;
   if (switchedTab) {
+    guideAnchor = null;
     ui.editor.selectionStart = ui.editor.selectionEnd =
       Math.min(active.cursor, ui.editor.value.length);
   }
@@ -192,7 +194,8 @@ function scheduleGuides() {
     const lineHeight = parseFloat(computed.lineHeight) || 22;
     const bounds = editorPolicy.guideWindow(
       ui.editor.value, ui.editor.scrollTop, lineHeight,
-      ui.editor.clientHeight);
+      ui.editor.clientHeight, guideAnchor);
+    guideAnchor = { firstLine: bounds.firstLine, offset: bounds.offset };
     ui.tabGuide.textContent = bounds.lines.join("\\n");
     ui.tabGuide.style.top = (16 -
       (ui.editor.scrollTop % lineHeight)) + "px";
@@ -226,6 +229,8 @@ function updateStatus() {
 }
 
 ui.editor.addEventListener("input", async () => {
+  guideAnchor = null;
+  scheduleGuides();
   const doc = workspace.active;
   if (!doc) return;
   doc.cursor = ui.editor.selectionStart;
