@@ -277,7 +277,8 @@ this limit currently applies only to the independent registry.
   full-file copying before streamed assembly. File API behavior still
   depends on browser/OS: no universal atomic file-replace guarantee.
 - After close, re-open and byte-compare changed range and all untouched
-  portions; verify file length. This detects unexpected writeback
+  portions using source chunk SHA-256 collected before stream close;
+  verify file length. This detects unexpected writeback
   content, but cannot prevent external writes outside browser locks.
 - SliceEditTransaction.commitWriteback verifies matching dirty durable
   revision before routing to SliceWritebackUnit via Hub; marks clean
@@ -300,3 +301,5 @@ this limit currently applies only to the independent registry.
 - Tests: successful size-changing byte splice, original byte
   preservation, dirty close, stale fingerprint, write abort,
   corrupted readback, journal CAS and EHU/Dependency relation.
+- Chromium OPFS E2E verifies actual authorized file-handle writing,
+  Unicode byte-range replacement, checkpoint cleanup and readback.
