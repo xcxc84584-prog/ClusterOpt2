@@ -127,3 +127,38 @@ test("HubUnit uses per-object scheduling and records response errors", async () 
   assert.ok(core.getSnapshot().logs.some(event =>
     event.kind === "EHU" && event.status === 500));
 });
+
+test("Nested Request completes with normal slot saturated", async () => {
+  const core = new LinkCore();
+  core.hub.scheduler.maxConcurrency = 1;
+  core.register({ id: "ui", receive: async () => null });
+  core.register({
+    id: "A",
+    receive: async () => {
+      const child = await core.request("A", "B", "work");
+      return child.status;
+    }
+  });
+  core.register({ id: "B", receive: async () => "done" });
+  const result = await core.request("ui", "A", "work");
+  assert.equal(result.status, 200);
+  assert.equal(result.value, 200);
+});
+
+test("Circular nested wait is rejected with EHU 423", async () => {
+  const core = new LinkCore();
+  core.register({ id: "ui", receive: async () => null });
+  core.register({
+    id: "A",
+    receive: async () => core.request("A", "B", "work")
+  });
+  core.register({
+    id: "B",
+    receive: async () => core.request("B", "A", "work")
+  });
+  const result = await core.request("ui", "A", "work");
+  assert.equal(result.status, 200);
+  assert.equal(result.value.value.status, 423);
+  assert.ok(core.getSnapshot().logs.some(item =>
+    item.kind === "EHU" && item.status === 423));
+});
