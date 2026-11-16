@@ -8,8 +8,9 @@
   no safe Save and Close path.
 - Prior 65 MiB OPFS Save browser suite did not await a fully populated
   64 KiB page before starting an equal-length replacement. The
-  resulting size mismatch was a test race, not an established
-  writeback truncation defect; retaining the byte-size assertion
+  resulting size mismatch was a test race from reading an empty
+  page before load, not an established writeback defect; the test
+  now waits for the complete page and the byte-size assertion
   detects a real regression.
 
 ## Implementation
@@ -19,10 +20,11 @@
 - Original editor DOM render now restores viewport scroll to
   scrollHeight for end-entry and 0 for start-entry, synchronizing
   line number gutter. Does not add or redesign any UI.
-- FileWorkspace.close becomes async only for the operation's caller:
-  dirty virtual page asks via the original window.confirm,
-  affirmative invokes doc.save through HubUnit, verifies success
-  and then closes; cancel preserves document/journal, save failure
+- FileWorkspace.close remains synchronous for clean/small files.
+  Dirty virtual page asks via the original window.confirm,
+  affirmative uses an asynchronous saveVirtualBeforeClose helper,
+  invokes doc.save through HubUnit, verifies success and then
+  closes; cancel preserves document/journal, save failure
   preserves document/journal and returns EHU.
 - New shared Language keys zh-Hant/en for save-before-close prompt.
 - LinkCore centrally publishes version 0.0.8-pr8.patch19.fix1.
