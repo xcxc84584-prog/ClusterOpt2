@@ -24,7 +24,7 @@ export class FileWorkspace {
         "reorder", "save", "setPriority", "syncExternal",
       "sliceManifest"],
       UserAPI: ["new", "open", "page", "activate", "close", "closeAll",
-        "reorder", "save", "setPriority", "syncExternal"],
+        "reorder", "save", "setPriority", "syncExternal", "sliceManifest"],
       AgentAPI: [],
       Property: ["DocumentStatus", "StoragePriority", "FileManagement",
         "VirtualDocumentPolicy", "DocumentSliceContract"],
