@@ -8,18 +8,23 @@ import { HubUnit } from "./HubUnit.js";
 /** Stable LinkCore facade: all cross-object activity uses the HubUnit. */
 export class LinkCore {
   constructor() {
-    this.uru = new UnifiedRegistrationUnit();
-    this.omu = new ObjectManagementUnit();
     this.edpmu = new EntireDomainPropertyManagementUnit();
+    this.uru = new UnifiedRegistrationUnit(this.edpmu);
+    this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
     this.version = "0.0.1-pr1.patch4";
-    this.edpmu.register("SystemVersion", this.version);
-    this.edpmu.register("ParallelExecutionPolicy", ParallelExecutionPolicy);
-    this.edpmu.register("AccessPolicy", AccessPolicy);
-    this.edpmu.register("DocumentStatus", Object.freeze({
+    this.hub.registerProperty("SystemVersion", this.version, {
+      owners: ["LinkCore"], visibility: "Public"
+    });
+    this.hub.registerProperty("ParallelExecutionPolicy",
+      ParallelExecutionPolicy, { owners: ["LinkCore"] });
+    this.hub.registerProperty("AccessPolicy", AccessPolicy, {
+      owners: ["LinkCore"]
+    });
+    this.hub.registerProperty("DocumentStatus", Object.freeze({
       SYNCED: "green", DIRTY: "yellow",
       ERROR: "red", LOADING: "blue"
-    }));
+    }), { owners: ["LinkCore"] });
   }
 
   register(object) { return this.hub.register(object); }
@@ -27,6 +32,10 @@ export class LinkCore {
   request(source, target, action, payload = {}) {
     return this.hub.request(source, target, action, payload);
   }
+  readProperty(source, name) {
+    return this.hub.readProperty(source, name);
+  }
+
   getSnapshot() {
     return {
       version: this.edpmu.get("SystemVersion"),
