@@ -7,6 +7,8 @@ import { FileWorkspace } from "../object/FileWorkspace.js";
 import { Explorer } from "../object/Explorer.js";
 import { SessionRecovery } from "../object/SessionRecovery.js";
 import { SliceRegistry } from "../object/SliceRegistry.js";
+import { SliceLoader } from "../object/SliceLoader.js";
+import { ViewportSliceController } from "../object/ViewportSliceController.js";
 import { ToolTabManager } from "../object/ToolTabManager.js";
 import { FileTypeManager } from "../object/FileTypeManager.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
@@ -54,6 +56,8 @@ async function requestTool(action, payload = {}) {
 const explorer = new Explorer(linkCore);
 const recovery = new SessionRecovery(linkCore);
 const sliceRegistry = new SliceRegistry(linkCore);
+new SliceLoader(linkCore);
+new ViewportSliceController(linkCore);
 const fileTypes = new FileTypeManager(linkCore);
 let recoveryReady = false;
 let recoveryTimer = 0;
