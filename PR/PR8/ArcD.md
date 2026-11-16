@@ -470,3 +470,22 @@ may dispatch concurrently via HubUnit.
   until explicit navigation succeeds or user edits.
 - Relation remains Hub-mediated 10 Request / 01 Response.
 - No new shared Property/Object, no visual UI redesign.
+
+## Patch(+20): Explorer filesystem mutation EventChain
+- UI -> HubUnit -> Explorer(Request.createFile/createFolder/renameEntry/
+  deleteEntry/copyEntry/cutEntry/pasteEntry) -> ExplorerEntryPolicy.
+- Explorer -> HubUnit -> Workspace(Response.entries) to reject open-file
+  mutation, with browser permission enforcement for disk actions.
+- Result -> HubUnit -> OMU(Log/EHU/Dependency) -> UI refresh.
+- New shared property: ExplorerEntryPolicy. Existing Explorer reused.
+- Relation: UI -> Explorer 10; Explorer -> Workspace 10; paired responses 01.
+- EHU 400 invalid name, 404 missing source, 409 collision/open file,
+  501 unsupported folder paste/native rename; unexpected write 503.
+
+## Patch(+21): physical viewport recovery EventChain
+- UI(editor scroll) -> workspace state -> Hub -> SessionRecovery.persist.
+- On reload: SessionRecovery.restore -> Workspace.restore -> per-file
+  virtual page async load -> render scrollTop/scrollLeft.
+- On Save: virtual writeback -> page reload -> restore stored coordinates.
+- Property: existing RecoveryPolicy; no new object.
+- EHU: corrupt snapshots 400, cache/writes 503; relation tests pending.
