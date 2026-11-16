@@ -1,12 +1,15 @@
+import { ExecutionScheduler } from "./ExecutionScheduler.js";
+
 /**
  * Hub-only request/response crossing, registration and event observation.
  * A missing target may be registered only from a trusted predeclared factory.
  */
 export class HubUnit {
-  constructor(registry, properties, omu) {
+  constructor(registry, properties, omu, scheduler = new ExecutionScheduler()) {
     this.registry = registry;
     this.properties = properties;
     this.omu = omu;
+    this.scheduler = scheduler;
   }
 
   register(object) {
@@ -22,7 +25,7 @@ export class HubUnit {
     return this.registry.unregister(id);
   }
 
-  async request(source, target, action, payload = {}) {
+  async request(source, target, action, payload = {}, options = {}) {
     const sender = this.registry.resolve(source);
     if (!sender.ok) {
       this.omu.record("EHU", source, action, sender.status, target, {
@@ -37,18 +40,28 @@ export class HubUnit {
       });
       return { ok: false, status: receiver.status, error: receiver.error };
     }
-    this.omu.dependency(source, target, "request");
-    this.omu.record("Log", source, "Request." + action, 200, target);
+    // Serialize each destination object; independent destinations can overlap.
+    // No caller may override the target-derived key.
     try {
-      const value = await receiver.value.receive(action, payload);
-      this.omu.dependency(target, source, "response");
-      this.omu.record("Log", target, "Response." + action, 200, source);
-      return { ok: true, status: 200, value };
+      return await this.scheduler.schedule(target, async () => {
+        this.omu.dependency(source, target, "request");
+        this.omu.record("Log", source, "Request." + action, 200, target);
+        try {
+          const value = await receiver.value.receive(action, payload);
+          this.omu.dependency(target, source, "response");
+          this.omu.record("Log", target, "Response." + action, 200, source);
+          return { ok: true, status: 200, value };
+        } catch (error) {
+          this.omu.record("EHU", target, "Response." + action, 500,
+            source, { error: String(error) });
+          return { ok: false, status: 500, error: String(error) };
+        }
+      }, { signal: options.signal });
     } catch (error) {
-      this.omu.record("EHU", target, "Response." + action, 500, source, {
-        error: String(error)
-      });
-      return { ok: false, status: 500, error: String(error) };
+      const status = error.name === "AbortError" ? 499 : 429;
+      this.omu.record("EHU", source, "Schedule." + action, status,
+        target, { error: String(error) });
+      return { ok: false, status, error: String(error) };
     }
   }
 
