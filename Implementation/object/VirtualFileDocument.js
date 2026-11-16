@@ -24,7 +24,7 @@ export class VirtualFileDocument extends FileDocument {
         "edit", "reconcile"],
       Response: ["load", "page", "describePage", "save",
         "edit", "reconcile"],
-      UserAPI: ["page"], AgentAPI: [],
+      UserAPI: ["page", "edit", "save"], AgentAPI: [],
       Property: ["UTF8SlicePolicy", "PieceTreePolicy",
         "BPlusSliceIndex", "DocumentStatus"],
       Program: "VirtualFileDocument",
