@@ -32,7 +32,9 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 			$("editor").setAttribute("aria-label", t("editor"));
 			$("tabs").setAttribute("aria-label", t("tabs"));
 			doc.documentElement.lang = locale;
-			$("paletteClose").setAttribute("aria-label", t("paletteDone"));
+			$("paletteClose").setAttribute("aria-label", t("closeDialog"));
+			$("menu").setAttribute("aria-label", t("fileMenu"));
+			$("toolOptions").setAttribute("aria-label", t("toolsGroup"));
 			for (const button of doc.querySelectorAll("[data-locale]")) {
 				const selected = button.dataset.locale === locale;
 				button.querySelector(".locale-check").textContent =
