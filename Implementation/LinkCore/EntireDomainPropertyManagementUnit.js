@@ -19,6 +19,14 @@ export class EntireDomainPropertyManagementUnit {
     return { ok: true, status: 201 };
   }
 
+  describe(name) {
+    const record = this.properties.get(name);
+    return record ? {
+      visibility: record.visibility,
+      owners: [...record.owners]
+    } : null;
+  }
+
   get(name) {
     return this.properties.get(name)?.value;
   }
