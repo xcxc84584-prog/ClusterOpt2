@@ -36,3 +36,11 @@ processing remain open.
   demotion loop still traversed slices belonging to other documents.
 - Restrict demotion to IDs beginning with this document's slice prefix.
 - Re-run multi-document budget/visibility and full regression CI.
+
+## Patch(+24-Fix1) improvement
+- Bounded 4-way Blob prefetch through SliceLoader.loadBatch.
+- Registry admission serializes after parallel reads to preserve budget.
+- Batch results reflect actual FINAL residency after later evictions.
+- Repeated denied preloads are memoized until the memory budget changes.
+- Speculative preloaded mode cannot demote existing full slices.
+- New Node/VTE tests assert concurrency, pinned residency and retry.
