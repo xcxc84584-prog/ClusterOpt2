@@ -1,0 +1,13 @@
+{
+  "name": "clusteropt2",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "test": "node --test Implementation/tests/*.test.js",
+    "check": "node --check Implementation/LinkCore/LinkCore.js && node --check Implementation/main/main.js && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
