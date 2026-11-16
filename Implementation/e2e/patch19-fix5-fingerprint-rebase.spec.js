@@ -39,6 +39,9 @@ test("PR8 Fix5: clean OPFS file rebases across changed generation",
         type: "write", position: 65536,
         data: "NEW NEXT PAGE"
       });
+      // Make the source generation unambiguously different even
+      // when OPFS lastModified has coarse timestamp resolution.
+      await writer.truncate(65 * 1024 * 1024 + 1);
       await writer.close();
     });
     await editor.press("Alt+PageDown");
@@ -68,6 +71,9 @@ test("PR8 Fix5: dirty OPFS page retains edits on external conflict",
         type: "write", position: 65536,
         data: "CONFLICT PAGE"
       });
+      // Make the source generation unambiguously different even
+      // when OPFS lastModified has coarse timestamp resolution.
+      await writer.truncate(65 * 1024 * 1024 + 1);
       await writer.close();
     });
     await editor.press("Alt+PageDown");
