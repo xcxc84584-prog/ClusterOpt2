@@ -228,3 +228,36 @@ this limit currently applies only to the independent registry.
   via close. Tests required before any integration or merge.
 - Later: durable journal, crash-safe commit, per-slice scheduler keys,
   recovery, and actual EditorViewport text rendering.
+
+## Patch(+16): durable slice checkpoint journal / recovery foundation
+- New Object SliceRecoveryJournal persists per-slice revision/text/hash to
+  separate IndexedDB database clusteropt2-slice-journal. No direct disk write.
+- IndexedDBSliceJournalStore is an isolated storage adapter. Each write
+  acknowledges only after the readwrite transaction completes; no
+  sessionStorage silent fallback for failed durable writes.
+- New shared EDPMU Property SliceJournalPolicy validates schema (v1),
+  slice ID, bounded text, monotonic revisions and SHA-256 integrity.
+- SliceEditTransaction.transactDurable computes immutable candidate,
+  persists candidate revision through HubUnit, then publishes in-memory
+  root only if the checkpoint is acknowledged.
+- SliceEditTransaction.restoreDurable recovers verified text and original
+  revision in a fresh object runtime; recovered slices remain dirty and
+  refuse unsafe close.
+- Existing volatile transact/edit path and FileDocument are unchanged.
+  New Objects are registered for Hub/VTE; no end-user toggle/exposure.
+- Security: UserAPI denies direct journal persist/discard; it only
+  permits verified read recovery. SHA-256 detects corruption but is
+  not authentication. Browser storage is same-origin.
+- EHU: 200 verified success; 400 malformed payload, 403 unexposed
+  UserAPI, 404 missing checkpoint, 409 non-increasing revision/dirty
+  close, 422 corrupt checkpoint, 503 storage/crypto unavailable.
+- Load: at most 1 Mi UTF-16 units per checkpoint; sealing uses
+  O(slice bytes) time and memory. No whole-document allocation by
+  this journal. Write amplification is a full bounded slice snapshot.
+- Remaining: cross-tab IndexedDB CAS (get/put are currently separate
+  transactions), actual file writeback, crash fault injection with
+  real browser IndexedDB and durable recovery of cursor/viewport.
+  Treat this as a **foundation**, not proven crash-safe full MVCC.
+- Tests: simulated persistent storage across runtime recreation,
+  disk-like quota failure rollback, checksum tampering, 403/404/409,
+  EHU and Relation/Dependency, plus full CI/Playwright regression.
