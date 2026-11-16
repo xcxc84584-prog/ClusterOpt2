@@ -65,3 +65,10 @@ PR1 is not considered accepted based on source code alone.
 - PR3-04: AgentAPI blocks mutation, invalid locale EHU: automated checks submitted.
 - PR3-05: Windows Chrome manual UI/permissions and accessibility review pending.
 - PR3-06: Latest head CI verify + Chromium browser jobs pending.
+
+## PR3 automated results (Patch+2)
+- Node relation/unit tests: 43/43 PASS, source commit c1e2a98b.
+- Chromium UI integration: 9/9 PASS, source commit c1e2a98b.
+- Code conventions: 30 source files PASS.
+- Native Windows browser visual comparison and file permission dialogs:
+  manual acceptance pending; does not negate automated pass.
