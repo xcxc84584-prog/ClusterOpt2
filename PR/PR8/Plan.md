@@ -394,3 +394,25 @@ this limit currently applies only to the independent registry.
 - Tests include UTF-16 emoji+Chinese splice, persistent checkpoint,
   conflict/error 409/503, browser large-file editing and continuous
   gutter, verified Save and checkpoint retirement.
+
+## Patch(+19-Fix1): practical navigation and safe close
+- Backward page navigation publishes the previous page's last-line
+  caret at text.length and UI scrollHeight; forward navigation
+  anchors at the page's first line, scrollTop 0. No UI redesign.
+- Dirty virtual tab Close shows shared-language native confirm;
+  Cancel keeps journal and tab unchanged. Confirm dispatches an
+  internal Hub request to save, then closes only on verified success.
+- Existing synchronous FileWorkspace.close remains synchronous for
+  all clean/small files. The dirty virtual branch delegates to
+  saveVirtualBeforeClose for asynchronous transactional writeback.
+- Save still uses bounded stream/readback+checkpoint retirement; no
+  partial-page whole-document overwrite or unconditional discard.
+- Chromium 65 MiB OPFS regression waits for complete 64 KiB page
+  before equal-size replacement, asserts original file length
+  survives, then verifies Ctrl+S/Close and dirty cancel/confirm.
+- CPU/memory: navigation has O(page bytes) editor rendering;
+  writeback remains O(full source bytes) I/O, O(slice + block hashes)
+  bounded RAM. No change to maximum slice budget.
+- Race: one document's HubUnit serializes save/close; unsuccessful
+  save throws EHU, retaining dirty tab and journal. Cross-tab file
+  writes remain a separate P0 requirement.
