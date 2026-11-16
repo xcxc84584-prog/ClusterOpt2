@@ -22,7 +22,7 @@ async function prepare(page, slowName) {
         const stream = await large.createWritable(options);
         return {
           async write(bytes) {
-            await new Promise(resolve => setTimeout(resolve, 2));
+            await new Promise(resolve => setTimeout(resolve, 20));
             return stream.write(bytes);
           },
           close: () => stream.close(),
