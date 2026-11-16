@@ -13,8 +13,10 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 			const labels = {
 				menuBtn: "file", newFile: "newFile", openFile: "openFile",
 				saveFile: "saveFile", saveAsFile: "saveAsFile",
-				closeFile: "closeFile", closeAll: "closeAll", toolBtn: "tool",
-				externalFirst: "externalFirst", internalFirst: "internalFirst",
+				closeFile: "closeFile", closeAll: "closeAll",
+				closeAllMain: "closeAllMain", toolBtn: "tool",
+				highlighterBtn: "highlighter", blockedTypesBtn: "blockedTypes",
+				priorityHeading: "priorityHeading",
 				paletteBtn: "palette", languageBtn: "language",
 				paletteTitle: "paletteTitle", paletteLabel: "paletteRGB",
 				paletteHint: "paletteHint", palettePresetLabel: "palettePreset",
@@ -27,8 +29,11 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 				const node = $(id);
 				if (!node) continue;
 				const arrow = id === "menuBtn" ? "⌄" :
-					["toolBtn", "paletteBtn", "languageBtn"].includes(id) ? " ›" : "";
-				node.textContent = t(key) + arrow;
+					["toolBtn", "paletteBtn", "languageBtn",
+					"blockedTypesBtn"].includes(id) ? " ›" : "";
+				const symbol = id === "highlighterBtn" ? "◇ " :
+                  id === "blockedTypesBtn" ? "▧ " : "";
+                node.textContent = symbol + t(key) + arrow;
 			}
 			$("editor").setAttribute("aria-label", t("editor"));
 			$("tabs").setAttribute("aria-label", t("tabs"));
@@ -42,7 +47,14 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 					selected ? "✓" : "";
 				button.setAttribute("aria-pressed", String(selected));
 			}
-			onLocaleChange?.(locale);
+            const select = $("priority");
+            for (const option of select.options) {
+              option.textContent = t(option.value === "internal" ?
+                "internalFirst" : "externalFirst");
+            }
+            select.setAttribute("title", t("priorityHeading"));
+            select.setAttribute("aria-label", t("priorityHeading"));
+            onLocaleChange?.(locale);
 		}
 	});
 	const languageButton = $("languageBtn");
