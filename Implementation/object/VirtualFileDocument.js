@@ -176,6 +176,7 @@ export class VirtualFileDocument extends FileDocument {
     this.error = "";
     this.cursor = 0;
     this.scrollTop = 0;
+    this.pageEntryEdge = "start";
     this.revision++;
     return this.describePage();
   }
@@ -257,9 +258,16 @@ export class VirtualFileDocument extends FileDocument {
       this.progress = 0;
       payload.onProgress?.(0);
       try {
-        const value = await this.loadPage(
-          action === "load" ?
-            payload.index ?? this.virtualPageIndex : payload.index);
+        const oldIndex = this.virtualPageIndex;
+        const requestedIndex = action === "load" ?
+          payload.index ?? this.virtualPageIndex : payload.index;
+        const value = await this.loadPage(requestedIndex);
+        // Backwards navigation enters at the last line and caret.
+        // Forward navigation enters at the first line.
+        if (action === "page" && requestedIndex < oldIndex) {
+          this.pageEntryEdge = "end";
+          this.cursor = this.text.length;
+        }
         payload.onProgress?.(100);
         return value;
       } catch (error) {
