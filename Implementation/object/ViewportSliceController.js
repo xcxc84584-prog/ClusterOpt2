@@ -173,8 +173,10 @@ export class ViewportSliceController {
       });
       preloaded.push(...batch.loaded);
     }
+    const orderedPreloads = plan.preloaded.filter(index =>
+      preloaded.includes(index));
     const snapshot = await this.call("slice-registry", "list", {});
-    const keep = new Set([...plan.full, ...preloaded].map(sliceId));
+    const keep = new Set([...plan.full, ...orderedPreloads].map(sliceId));
     for (const entry of snapshot.entries) {
       // Never demote another document's full or preloaded chunks.
       // Each ViewportSliceController instance may coordinate multiple
@@ -185,7 +187,7 @@ export class ViewportSliceController {
       await this.call("slice-registry", "demote", { id: entry.id });
     }
     document.full = [...plan.full];
-    document.preloaded = [...preloaded];
+    document.preloaded = [...orderedPreloads];
     return { id: document.id, full: [...document.full],
       preloaded: [...document.preloaded], ...(lines ? { lines } : {}) };
   }
