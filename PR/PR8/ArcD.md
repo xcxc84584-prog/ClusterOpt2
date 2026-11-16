@@ -205,3 +205,22 @@ Highlighter entry disabled until plugin processor Object is installed.
   413 memory admission, 416 line out of range, 422 encoding.
 - All write operations remain with FileDocument; shadow observer has no
   edit/save API. No User API can directly release protected dirty slices.
+
+## Patch(+15): atomic slice transaction EventChain and EHU
+- New Object: SliceEditTransaction (volatile sandbox, not editor).
+- New Property: SliceTransactionPolicy (LinkCore/EDPMU Public).
+- UI/VTE -> HubUnit -> SliceEditTransaction.open -> PieceTreePolicy.insert
+  -> OMU 200; duplicate ID -> EHU 409.
+- UI/VTE -> HubUnit -> SliceEditTransaction.transact ->
+  SliceTransactionPolicy.checkOperations -> PieceTreePolicy
+  immutable candidate edits -> revision compare -> atomic root publish ->
+  invalidate BPlusSliceIndex cache -> OMU Request/Response + Dependency.
+- UI/VTE -> HubUnit -> SliceEditTransaction.read/locate ->
+  PieceTreePolicy / BPlusSliceIndex -> OMU.
+- UI/VTE -> HubUnit -> close -> EHU 409 if dirty, otherwise 200.
+- 400 malformed ID/ranges/operations; 404 missing slice;
+  409 stale revision or dirty close; 413 exceeds slice budget.
+- Hub's current scheduler serializes this Object's actions (safe,
+  conservative). Per-slice resource-key parallelism requires redesign
+  and tests; no unsupported performance claims.
+- No connections to FileDocument, persistence, disk or Plugin hooks.
