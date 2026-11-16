@@ -171,3 +171,17 @@ Highlighter entry disabled until plugin processor Object is installed.
 - Authorized user request goes through viewport-slices.close,
   which dispatches trusted nested Hub Requests to components.
 - EHU/Log records are inspected in a detached real-object VTE.
+
+## Patch(+13): viewport geometry / EventChain / EHU
+- New shared Property: ViewportLinePolicy, registered once through
+  LinkCore EDPMU; no new Object or duplicate global Property.
+- UI/VTE -> HubUnit -> ViewportSliceController.navigateViewport
+  -> ViewportLinePolicy.range -> VirtualLineIndex.range
+  -> ViewportSlicePolicy.bytePlan -> SliceLoader -> SliceRegistry
+  -> HubUnit Response / OMU Log and directed Dependency.
+- Status 200: valid line-indexed navigation; 400: malformed geometry
+  or excessive rows; 404: no viewport document; 416: line past EOF;
+  413: resident budget; 422: malformed UTF-8 or failed read.
+- No direct editor UI integration, no unsafe mutation, no writeback.
+- Same document route remains serialized by Hub; clean preloads may
+  be evicted, dirty slices remain protected.
