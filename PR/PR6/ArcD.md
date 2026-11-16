@@ -86,3 +86,7 @@ DOM right-click -> selected Explorer row -> inline toolbar (UI only).
 UI open/expand/close -> HubUnit -> Explorer/Workspace -> render.
 Selection does not mutate file buffers and does not emit extra
 cross-object operations. EHU records failed Request responses.
+
+## Patch(+12) relation test
+Right-click UI -> inline menu, open -> Hub Explorer.openEntry -> Workspace.
+Disabled close on subdirectory cannot issue an unsupported Request.

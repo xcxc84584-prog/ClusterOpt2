@@ -8,8 +8,8 @@ test("PR7 original Explorer context menu opens a file", async ({ page }) => {
   const entry = page.locator("#explorerTree .explorer-entry").first();
   await expect(entry).toBeVisible();
   await entry.click({ button: "right" });
-  await expect(page.locator(".explorer-context")).toBeVisible();
-  await page.locator(".explorer-context button").click();
+  await expect(page.locator(".explorer-inline-actions")).toBeVisible();
+  await page.locator(".explorer-inline-actions [data-action=\"open\"]").click();
   await expect(page.locator("#tabs .tab")).toHaveCount(1);
 });
 

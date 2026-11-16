@@ -91,3 +91,8 @@ is reused. Only a single row receives .active; no folder/root
 automatically inherits active text editor status. Right-click
 shows row-local primary/secondary toolbar. Unsupported destructive
 operations remain disabled until an OCDA transactional design exists.
+
+## Patch(+12) accepted UI regression
+PR7 browser test now checks original row-local action toolbar instead of
+obsolete floating context popup. Child directories without a supported
+close lifecycle expose a disabled close action, preventing fake success.

@@ -37,3 +37,7 @@ Patch(+10) waits for both durable markers before Chromium reload.
 Patch(+11): legacy selected-row and search styling, inline right-click
 toolbar added. Rename/create/copy/cut/paste/delete remain disabled;
 must implement safely via HubUnit for complete legacy parity.
+
+Patch(+12): Updated obsolete floating-menu browser assertion; all
+new inline-action tests retained. Subdirectory close disabled pending
+atomic descendant lifecycle support.

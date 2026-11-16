@@ -103,7 +103,9 @@ function appendExplorerActions(row, node) {
     // File CRUD, clipboard, and rename are separately scheduled to
     // avoid unsafe partial writes; never present a nonworking action.
     button.disabled = ["rename", "folder", "cut",
-      "copy", "paste", "delete"].includes(key);
+      "copy", "paste", "delete"].includes(key) ||
+      (key === "close" && node.kind === "directory" &&
+      (!node.id.startsWith("root-") || node.id.includes("/")));
     button.addEventListener("click", async event => {
       event.preventDefault();
       event.stopPropagation();
