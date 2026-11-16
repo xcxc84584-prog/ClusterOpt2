@@ -6,6 +6,7 @@ import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { Explorer } from "../object/Explorer.js";
 import { SessionRecovery } from "../object/SessionRecovery.js";
+import { SliceRegistry } from "../object/SliceRegistry.js";
 import { FileTypeManager } from "../object/FileTypeManager.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
 
@@ -24,6 +25,7 @@ let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
 const explorer = new Explorer(linkCore);
 const recovery = new SessionRecovery(linkCore);
+const sliceRegistry = new SliceRegistry(linkCore);
 const fileTypes = new FileTypeManager(linkCore);
 let recoveryReady = false;
 let recoveryTimer = 0;

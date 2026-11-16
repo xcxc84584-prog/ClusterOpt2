@@ -35,3 +35,13 @@ Invalid extension -> EHU 400; closeRoot must not modify disk.
 UI scroll -> EditorInteractionPolicy.guideWindow(rawIndents)
 -> DFOM-style text/Tab spans -> EditorViewportPolicy.guidePosition
 -> mirror translateX and pseudo-element dashed line. No disk mutation.
+
+## Patch(+4): objects/properties/event chain
+Object: SliceRegistry (virtual registration, load, read, demote,
+viewport, dirty marker, memory limit).
+Property: SliceBudgetPolicy, EDPMU registered once by LinkCore.
+UI/Loader -> Hub -> SliceRegistry.registerVirtual -> descriptor only.
+Loader -> Hub -> SliceRegistry.load -> SliceBudgetPolicy.evictions
+-> evict clean nonvisible -> materialize slice.
+EHU: 400 invalid descriptor/limit, 404 missing ID, 409 dirty conflict,
+413 insufficient cache budget. No disk writes or data loss.

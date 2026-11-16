@@ -35,3 +35,14 @@ real browser grants, OS updates and UI visual parity still require QA.
 - Render a viewport-bounded mirror and translate inner content on
   horizontal scroll; negative CSS padding is invalid.
 - Retain original text bytes. Memory scales with visible rows.
+
+## Patch(+4): isolated virtual slice registry
+- SliceRegistry Object owns virtual descriptors and resident text slices.
+- SliceBudgetPolicy Property performs pure memory-budget admission
+  with preloaded-first eviction, then offscreen clean fully loaded slices.
+- Dirty and visible chunks are never discarded by memory pressure.
+- Limit null=Off; numeric limits 1 KiB to 1 GiB.
+- Registered slices hold start/end addresses only until loaded.
+- O(N log N) eviction planning at each admission; memory O(resident text).
+- Future integration: P-tree primary, B+ index, filesystem range reads,
+  per-slice parallel Object scheduling and Plugin processor stages.
