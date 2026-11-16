@@ -58,8 +58,8 @@ linkCore.register({
   id: "ui",
   strictOCDA: true,
   ocda: Object.freeze({
-    Request: ["new", "open", "save", "close", "activate"],
-    Response: [], UserAPI: ["new", "open", "save", "close"],
+    Request: ["new", "open", "save", "close", "closeAll", "reorder", "activate"],
+    Response: [], UserAPI: ["new", "open", "save", "close", "closeAll", "reorder"],
     AgentAPI: [], Property: ["DocumentStatus", "SystemVersion", "Language"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
@@ -87,11 +87,30 @@ const notify = message => { ui.statusText.textContent = message; };
 function render() {
   const active = workspace.active;
   ui.tabs.replaceChildren();
-  for (const doc of workspace.documents) {
+  for (const [index, doc] of workspace.documents.entries()) {
     const tab = document.createElement("button");
     tab.className = "tab" + (active?.id === doc.id ? " active" : "");
     tab.type = "button";
     tab.title = doc.name;
+    tab.draggable = true;
+    tab.addEventListener("dragstart", event => {
+      if (event.target.closest(".close")) {
+        event.preventDefault();
+        return;
+      }
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(index));
+    });
+    tab.addEventListener("dragover", event => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    });
+    tab.addEventListener("drop", event => {
+      event.preventDefault();
+      const from = Number(event.dataTransfer.getData("text/plain"));
+      if (!Number.isInteger(from) || from < 0) return;
+      void perform("reorder", { from, to: index });
+    });
     const label = document.createElement("span");
     label.className = "name";
     label.textContent = doc.name;
@@ -249,6 +268,7 @@ document.getElementById("saveFile").onclick = () => perform("save");
 document.getElementById("saveAsFile").onclick = () =>
   perform("save", { saveAs: true });
 document.getElementById("closeFile").onclick = () => perform("close");
+document.getElementById("closeAll").onclick = () => perform("closeAll");
 window.addEventListener("beforeunload", event => {
   if (!workspace.documents.some(doc =>
     doc.status !== DocumentStatus.SYNCED)) return;
