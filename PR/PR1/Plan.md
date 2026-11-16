@@ -86,3 +86,13 @@ required OCDA contract checks pass and outstanding blockers are resolved.
 - Multi-tab unsaved changes, permissions, reopening and keyboard shortcuts.
 - User-agent identity spoof protection is not enforced at untrusted API boundaries.
 - Browser single-page async scheduling is not cross-tab locking.
+
+## Patch(+5) test strategy
+- Use the exact original ClusterOpt stylesheet and original editor IDs.
+- Keep only a narrow adapter for PR1 state, status and event binding.
+- Run Node.js contract, relation, file and concurrency tests on every PR.
+- Run Chromium Playwright tests on every PR for user-facing interactions.
+- Headless file picker stubs exercise the UI route; manually test native
+  filesystem permissions in Chrome before claiming complete acceptance.
+- Browser regression checks focus on file operations and tab state,
+  not deferred Explorer, syntax highlighting or PowerShell features.
