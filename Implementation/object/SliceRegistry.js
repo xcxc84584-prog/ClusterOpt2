@@ -11,7 +11,7 @@ export class SliceRegistry {
     this.generation = 0;
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["registerVirtual", "load", "demote",
+    const actions = ["registerVirtual", "release", "load", "demote",
       "markDirty", "setViewport", "setLimit", "read", "list"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
@@ -76,6 +76,18 @@ export class SliceRegistry {
       };
       this.entries.set(id, entry);
       return this.state(entry);
+    }
+    if (action === "release") {
+      const entry = this.find(payload.id);
+      if (entry.dirty) {
+        const error = new Error("Dirty slice must be saved before release");
+        error.status = 409;
+        throw error;
+      }
+      // Explicit close removes both residency and virtual metadata.
+      this.visibleIds.delete(entry.id);
+      this.entries.delete(entry.id);
+      return true;
     }
     if (action === "setViewport") {
       if (!Array.isArray(payload.ids) ||
