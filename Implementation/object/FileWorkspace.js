@@ -226,7 +226,7 @@ export class FileWorkspace {
     return true;
   }
 
-  async close(id = this.activeId) {
+  close(id = this.activeId) {
     const index = this.documents.findIndex(doc => doc.id === id);
     if (index < 0) return false;
     const doc = this.documents[index];
@@ -236,14 +236,7 @@ export class FileWorkspace {
       const locale = this.core.readProperty(this.id, "Language").value;
       if (!window.confirm(Language.translate(locale,
         "virtualSaveBeforeClose", { name: doc.name }))) return false;
-      const saved = await this.core.request(this.id, doc.id, "save", {
-        onProgress: () => this.onChange()
-      });
-      if (!saved.ok) {
-        const error = new Error(saved.error);
-        error.status = saved.status;
-        throw error;
-      }
+      return this.saveVirtualBeforeClose(doc, id);
     }
     if (doc.status !== DocumentStatus.SYNCED &&
         !window.confirm(Language.translate(
@@ -259,6 +252,24 @@ export class FileWorkspace {
     }
     this.onChange();
     return true;
+  }
+
+  /**
+   * Keep the original synchronous Close contract for clean files.
+   * Only a confirmed dirty virtual file needs asynchronous writeback.
+   */
+  async saveVirtualBeforeClose(doc, id) {
+    const saved = await this.core.request(this.id, doc.id, "save", {
+      onProgress: () => this.onChange()
+    });
+    if (!saved.ok) {
+      const error = new Error(saved.error);
+      error.status = saved.status;
+      throw error;
+    }
+    // A successful file commit is the only point at which the
+    // document may be unregistered from the workspace.
+    return this.close(id);
   }
 
   /**
