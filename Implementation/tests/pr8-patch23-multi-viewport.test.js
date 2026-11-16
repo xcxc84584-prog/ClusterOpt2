@@ -28,8 +28,6 @@ test("PR8+23 two document viewports do not clear one another", async () => {
       id, first: 0, last: 0, adjacent: 0
     })).status, 200);
   }
-  const registry = core.uru.get?.("slice-registry") ??
-    core.uru.objects?.get?.("slice-registry");
   // Read the public admission contract rather than implementation maps:
   // both full slices must be protected from eviction at 1 KiB.
   assert.equal((await call("slice-registry", "setLimit", {
