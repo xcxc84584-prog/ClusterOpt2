@@ -377,3 +377,19 @@ UI Close(dirty) -> HubUnit -> FileWorkspace.close ->
 - Clean small-file close remains synchronous unchanged, preventing
   regression in PR1's application and testing contracts.
 - Relation Request=10, Response=01 across routed Object pairs.
+
+## Patch(+19-Fix2): Save/Close EventChain and EHU
+UI Save/Close/CloseAll (transient user activation)
+-> FileSystemHandle.requestPermission(readwrite) when needed
+-> HubUnit Request -> FileWorkspace.close/closeMany/closeAll
+-> EDPMU Language confirmation
+-> FileWorkspace.saveVirtualGroupBeforeClose
+-> HubUnit Request -> VirtualFileDocument.save
+-> SliceEditTransaction.commitWriteback (revision CAS)
+-> SliceWritebackUnit.commit (readback/checkpoint retirement)
+-> success: unregister group and OMU Response200
+-> failure: preserve tabs/checkpoints and OMU EHU.
+- 403 write permission denied; 409 changed source/revision;
+  422 readback integrity mismatch; 503 file/system failure.
+- Relation Object Request=10, Response=01. No direct sibling
+  Request path or SendTo; same-workspace close must remain serialized.
