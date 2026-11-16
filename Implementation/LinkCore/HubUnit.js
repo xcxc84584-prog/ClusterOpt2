@@ -1,3 +1,5 @@
+import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
+import { AccessPolicy } from "../property/AccessPolicy.js";
 import { ExecutionScheduler } from "./ExecutionScheduler.js";
 
 /**
@@ -40,10 +42,15 @@ export class HubUnit {
       });
       return { ok: false, status: receiver.status, error: receiver.error };
     }
+    if (!AccessPolicy.canUseAction(source, target, action, receiver.value)) {
+      this.omu.record("EHU", source, "Request." + action, 403,
+        target, { error: "Access denied" });
+      return { ok: false, status: 403, error: "Access denied" };
+    }
     // Serialize each destination object; independent destinations can overlap.
     // No caller may override the target-derived key.
     try {
-      return await this.scheduler.schedule(target, async () => {
+      return await this.scheduler.schedule(ParallelExecutionPolicy.resourceKey(target), async () => {
         this.omu.dependency(source, target, "request");
         this.omu.record("Log", source, "Request." + action, 200, target);
         try {
