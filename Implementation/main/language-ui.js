@@ -25,8 +25,8 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 			for (const [id, key] of Object.entries(labels)) {
 				const node = $(id);
 				if (!node) continue;
-				const arrow = ["menuBtn", "toolBtn", "paletteBtn",
-					"languageBtn"].includes(id) ? " ›" : "";
+				const arrow = id === "menuBtn" ? "⌄" :
+					["toolBtn", "paletteBtn", "languageBtn"].includes(id) ? " ›" : "";
 				node.textContent = t(key) + arrow;
 			}
 			$("editor").setAttribute("aria-label", t("editor"));
