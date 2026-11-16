@@ -303,3 +303,50 @@ this limit currently applies only to the independent registry.
   corrupted readback, journal CAS and EHU/Dependency relation.
 - Chromium OPFS E2E verifies actual authorized file-handle writing,
   Unicode byte-range replacement, checkpoint cleanup and readback.
+
+## Patch(+18): large-file admission and Piece Tree/B+ page bridge
+- Goal: make files larger than the legacy 64 MiB ceiling open
+  through the existing editor tab, without loading the whole file.
+- New VirtualDocumentPolicy defines size-based admission and
+  centralizes the full-buffer threshold as a shared EDPMU Property.
+- New VirtualFileDocument OCDA Object extends the existing
+  FileDocument black-box contract for read-only, bounded pages.
+- Workspace.open calls getFile() for metadata and routes large
+  files to VirtualFileDocument. Existing small-file edit/save
+  and styling paths remain unchanged.
+- VirtualFileDocument.load/page uses existing UTF8SlicePolicy.read
+  (64-KiB byte windows, UTF-8-aligned boundaries); builds a
+  PieceTreePolicy immutable root and BPlusSliceIndex for each
+  loaded page, replacing the previous page only after successful
+  read/decode/index construction.
+- Existing textarea/tab/line-number DOM is reused unchanged,
+  displays one bounded page, and navigates adjacent pages on
+  boundary wheel or Alt+PageUp/Alt+PageDown. No new UI layout.
+- The visible page is read-only: edits and Save return 409.
+  We must not write a partial page as a whole document.
+  A second guard blocks FileDocument.save when the actual disk
+  size exceeds its safe 64-MiB threshold, even after bad recovery.
+- Session snapshots include virtual page index and handle, but
+  exclude preview text. On reload, a valid handle reopens the
+  virtual page through Hub. Without a handle, the virtual tab
+  cannot be restored, rather than creating an unsafe full doc.
+- Load progress reports the current page request (0–100%),
+  not whole-file residency. Offscreen preview is replaced,
+  not retained as an ever-growing string.
+- Performance: per page at most ~64 KiB UTF-8 source plus
+  bounded boundary alignment; immutable tree and B+ creation
+  O(page text). File size metadata O(1); navigation O(page).
+  Whole-file indexing, global line numbering and editable
+  viewport remain for Patch19. Synthetic 65-MiB and real OPFS
+  65-MiB browser acceptance test initial scope only.
+- Security: no new plugin execution, no invented absolute path
+  or credentials. File handle permission is provided by the
+  existing user picker. External file fingerprint changes block
+  page advancement unless explicit ExternalFirst reload.
+- Parallelism: independent document load operations may run
+  concurrently, but each document's page swaps remain serialized
+  by HubUnit object resource queue; no cross-document global
+  synchronization. No direct Object-to-Object bypass.
+- Limitations: this begins large-file opening and read-only page
+  traversal, NOT a full slice-editable editor, not 1/5-GiB
+  validated performance, and not PR8 PASS.
