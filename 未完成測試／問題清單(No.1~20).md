@@ -57,3 +57,11 @@ PR1 is not considered accepted based on source code alone.
 - PR2-05: Permission checks for AgentAPI mutation — submitted.
 - PR2-06: Original modal visual parity on desktop/mobile — pending manual review.
 - PR2-07: Verify final PR2 commit both CI jobs PASS — pending.
+
+## PR3 open verification list
+- PR3-01: Chinese/English shared Language Property and UI menu: automated checks submitted.
+- PR3-02: Editor, palette and file-close warnings all reflect locale: automated checks submitted.
+- PR3-03: Persistence across refresh and invalid/unavailable storage: automated checks submitted.
+- PR3-04: AgentAPI blocks mutation, invalid locale EHU: automated checks submitted.
+- PR3-05: Windows Chrome manual UI/permissions and accessibility review pending.
+- PR3-06: Latest head CI verify + Chromium browser jobs pending.
