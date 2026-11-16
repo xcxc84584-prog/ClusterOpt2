@@ -10,7 +10,7 @@ export class SliceLoader {
     this.documents = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "load", "describe"];
+    const actions = ["open", "load", "close", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["UTF8SlicePolicy"],
@@ -74,6 +74,38 @@ export class SliceLoader {
       const document = { id, blob, chunkBytes, registered: new Set() };
       this.documents.set(id, document);
       return this.describe(document);
+    }
+    if (action === "close") {
+      const document = this.document(payload.id);
+      const snapshot = await this.core.request(this.id,
+        "slice-registry", "list");
+      if (!snapshot.ok) {
+        const error = new Error(snapshot.error);
+        error.status = snapshot.status;
+        throw error;
+      }
+      const ids = [...document.registered].map(index =>
+        document.id + "-slice-" + index);
+      const owned = new Set(ids);
+      if (snapshot.value.entries.some(entry =>
+        owned.has(entry.id) && entry.dirty)) {
+        const error = new Error("Dirty slices require durable writeback");
+        error.status = 409;
+        throw error;
+      }
+      for (const index of [...document.registered]) {
+        const id = document.id + "-slice-" + index;
+        const release = await this.core.request(this.id,
+          "slice-registry", "release", { id });
+        if (!release.ok && release.status !== 404) {
+          const error = new Error(release.error);
+          error.status = release.status;
+          throw error;
+        }
+        document.registered.delete(index);
+      }
+      this.documents.delete(document.id);
+      return true;
     }
     if (action === "describe") {
       return this.describe(this.document(payload.id));
