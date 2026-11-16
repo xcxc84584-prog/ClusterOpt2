@@ -1,7 +1,7 @@
 name: OCDA CI
 on:
   push:
-    branches: [main, "pr4/**", "pr5/**", "pr6/**"]
+    branches: [main, "pr4/**", "pr5/**", "pr6/**", "pr7/**"]
   pull_request:
     branches: [main]
 permissions:

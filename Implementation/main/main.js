@@ -46,6 +46,51 @@ function queueRecovery() {
 }
 let explorerRequestId = 0;
 let explorerExpanded = false;
+let explorerMenu = null;
+function closeExplorerMenu() {
+  explorerMenu?.remove();
+  explorerMenu = null;
+}
+function openExplorerMenu(node, event) {
+  closeExplorerMenu();
+  const menu = document.createElement("div");
+  menu.className = "explorer-context";
+  menu.setAttribute("role", "menu");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.setAttribute("role", "menuitem");
+  button.textContent = node.kind === "directory" ?
+    localized("explorerCloseRoot") : localized("explorerOpenFile");
+  button.addEventListener("click", async () => {
+    closeExplorerMenu();
+    const action = node.kind === "directory" ?
+      "closeRoot" : "openEntry";
+    const result = await linkCore.request("ui", "explorer",
+      action, { id: node.id }, { origin: "user" });
+    if (!result.ok) notify(result.error);
+    if (result.ok) {
+      queueRecovery();
+      await renderExplorer();
+    }
+  });
+  menu.append(button);
+  const panel = document.getElementById("explorerPanel");
+  panel.append(menu);
+  const bounds = panel.getBoundingClientRect();
+  menu.style.left = Math.max(0, Math.min(
+    event.clientX - bounds.left,
+    bounds.width - menu.offsetWidth)) + "px";
+  menu.style.top = Math.max(0, Math.min(
+    event.clientY - bounds.top,
+    bounds.height - menu.offsetHeight)) + "px";
+  explorerMenu = menu;
+}
+document.addEventListener("click", event => {
+  if (!event.target.closest(".explorer-context")) closeExplorerMenu();
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") closeExplorerMenu();
+});
 const explorerPanel = document.getElementById("explorerPanel");
 const explorerToggle = document.getElementById("explorerToggle");
 function saveExplorerView() {
@@ -63,6 +108,7 @@ function saveExplorerView() {
 }
 function toggleExplorer(visible = explorerPanel.hidden) {
   explorerExpanded = visible;
+  closeExplorerMenu();
   explorerPanel.hidden = !visible;
   explorerToggle.setAttribute("aria-expanded", String(visible));
   saveExplorerView();
@@ -271,6 +317,10 @@ async function renderExplorer() {
     name.textContent = node.name;
     button.title = node.name;
     button.append(arrow, icon, name);
+    button.addEventListener("contextmenu", event => {
+      event.preventDefault();
+      openExplorerMenu(node, event);
+    });
     button.addEventListener("click", async () => {
       const action = node.kind === "directory" ? "expand" : "openEntry";
       const response = await linkCore.request("ui", "explorer", action,
