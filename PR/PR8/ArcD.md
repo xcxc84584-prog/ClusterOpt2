@@ -492,3 +492,23 @@ may dispatch concurrently via HubUnit.
 
 - Zoom extension: UI scroll -> viewportLineHeight (CSS pixels) ->
   Workspace.snapshot -> RecoveryPolicy -> UI render CSS line-height ratio.
+
+## Patch(+22): uniform document slice manifest EventChain
+- Caller -> HubUnit -> Workspace.Request.sliceManifest ->
+  EDPMU.DocumentSliceContract -> Workspace.Response.sliceManifest.
+- EHU 404 for nonexistent document; Log 200 and relation 10/01.
+- New Property DocumentSliceContract; existing Workspace Object.
+
+## Patch(+23): document-scoped memory and scroll EventChain
+- ViewportSliceController -> HubUnit -> SliceRegistry.setViewport
+  {owner: documentId, ids: visibleSliceIds} -> OMU.
+- SliceRegistry keeps owner->IDs and union-visible guards for budget.
+- On close/release, owner guard is cleared after successful cleanup.
+- Identical viewport navigations verify registry residency and return
+  without SliceLoader.load if all required chunks remain resident.
+- EHU 400 bad owner, 409 dirty eviction, 413 budget; VTE test added.
+
+## Patch(+24): acceptance graph
+- Documents -> HubUnit -> SliceLoader/Registry -> editor ->
+  MVCC Journal -> batch writeback -> SessionRecovery / OMU.
+- Full graph remains pending and must not be declared PASS.
