@@ -123,3 +123,19 @@ this limit currently applies only to the independent registry.
 - Restore tool-tab state/category after document recovery, clamping
   positions if documents become unavailable; closing the tab persists.
 - Never put tool tabs into FileWorkspace or editable document snapshots.
+
+## Patch(+11): compact Plugin menu + virtual viewport coordinator
+- Replace always-visible category buttons with a File-style dropdown,
+  right-aligned inside Plugin tool window, collapsed by default.
+- Keyboard interaction per WAI-ARIA Menu Button, locale and RGB support.
+- Add ViewportSlicePolicy pure bounded logical slice index planner,
+  and ViewportSliceController OCDA Object orchestrating Loader/Registry.
+- Virtual open reads no text; full-load requested visible byte slices;
+  speculative adjacent preloads; demote clean offscreen entries.
+- Resource guard: max 16 visible, max 2 neighbor slices per side,
+  existing max <=1 MiB/slice and configurable registry memory limit.
+- Dirty slices never overwritten/evicted. Budget 413 skips preloads;
+  requested full-load failures always propagate as EHU.
+- No pixel/line->byte mapping or virtual editor integration yet.
+- VTE should confirm 200/400/404/409/413 EventChain and Req/Rep.
+- CI covers accessible dropdown and legacy workbench TAB behavior.
