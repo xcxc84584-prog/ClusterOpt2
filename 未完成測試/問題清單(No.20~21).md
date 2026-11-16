@@ -5,7 +5,7 @@
 | 20.1 | P0 | File/folder create in imported roots | Automated test added; CI pending |
 | 20.2 | P0 | Collision/path traversal rejection EHU 400/409 | Automated test added |
 | 20.3 | P0 | Open-file safe rename/delete/cut | Browser acceptance OPEN |
-| 20.4 | P0 | Native rename on Windows filesystem | OPEN (501 unsupported fallback) |
+| 20.4 | P0 | Windows native/fallback rename + byte comparison | Unit added; real browser OPEN |
 | 20.5 | P1 | Directory copy/cut/paste | OPEN (501) |
 | 20.6 | P0 | Clipboard file write failure leaves original intact | Browser fault test OPEN |
 | 20.7 | P0 | Locale + palette + context UI parity | Browser visual test OPEN |
