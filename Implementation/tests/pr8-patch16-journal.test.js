@@ -151,3 +151,31 @@ test("Patch16 competing runtimes cannot overwrite a higher revision",
       id: "shared"
     })).value.revision, 1);
   });
+
+test("Patch16 VTE EventChain includes dependency and failure EHU",
+  async () => {
+    const store = memoryStore();
+    const { core, edit } = setup(store);
+    await edit("open", { id: "observe", text: "x" });
+    const done = await edit("transactDurable", {
+      id: "observe", revision: 0,
+      operations: [{ type: "insert", start: 1, text: "y" }]
+    });
+    assert.equal(done.status, 200);
+    const failed = await edit("transactDurable", {
+      id: "observe", revision: 0,
+      operations: [{ type: "insert", start: 2, text: "z" }]
+    });
+    assert.equal(failed.status, 409);
+    const snapshot = core.getSnapshot();
+    assert.ok(snapshot.dependencies.some(item =>
+      item.link === "slice-edit-transaction->slice-recovery-journal" &&
+      item.code === "10"));
+    assert.ok(snapshot.dependencies.some(item =>
+      item.link === "slice-recovery-journal->slice-edit-transaction" &&
+      item.code === "01"));
+    assert.ok(snapshot.logs.some(item =>
+      item.kind === "EHU" && item.status === 409));
+    assert.ok(snapshot.logs.some(item =>
+      item.kind === "Log" && item.action === "Request.persist"));
+  });
