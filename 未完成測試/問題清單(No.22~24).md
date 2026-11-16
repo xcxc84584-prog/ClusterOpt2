@@ -22,3 +22,14 @@ PR8 remains NOT PASS.
 
 Latest test extension: synthetic 1/5GiB Blob metadata test added.
 Real disk benchmarks, Worker parallelism and full slice editor OPEN.
+
+## Patch(+24-Fix1) updated status
+- 22.1: implemented; sliceManifest now exposed in Workspace UserAPI.
+- 22.2 / 22.3: OPEN — full-buffer small-document authority retained.
+- 23.2: implemented cache fast path and bounded batch; true user-wheel
+  latency/throughput benchmark remains OPEN.
+- 23.3: unit/VTE added, dirty and pinned state protected.
+- 23.4: asynchronous I/O concurrency implemented; CPU Worker OPEN.
+- 23.5: eviction and duplicate requested preloads covered by new tests.
+- 24.3: synthetic 5 GiB byte seek test added; real disk I/O OPEN.
+- 24.1 / 24.5: require final HEAD CI and restore SHAs at BC.
