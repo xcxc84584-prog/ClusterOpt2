@@ -1,43 +1,53 @@
-# PR1 Architecture Design
+# PR1 — Architecture Design (Patch +2)
 
-## Objects
-- FileWorkspace: document registry, active tab, close lifecycle
-- FileDocument: text, disk handle, load/save
-- Main UI: tab bar, editor, progress, line numbers
-- LinkCore: runtime registration, mediated requests, OMU records
+## Object / Property inventory
+- Object: FileWorkspace — manages tabs and document lifecycle.
+- Object: FileDocument — owns text, handle, editing, reading and writing.
+- Object: UI — renders editor and status.
+- Property: DocumentStatus — shared document state.
+- Property: SystemVersion — LinkCore-published version identifier.
 
-## Properties
-- DocumentStatus: shared green / yellow / red / blue status
+## LinkCore
+- HubUnit: mediates requests/responses; publishes property changes.
+- UnifiedRegistrationUnit: dynamic in-memory object registration;
+  optional explicitly trusted factory for missing IDs.
+- ObjectManagementUnit: EHU, Log, event IDs, throttling and relation observation.
+- EntireDomainPropertyManagementUnit: shared property registry.
 
 ## Event chain
-UI -> HubUnit.request -> FileWorkspace.receive -> HubUnit.request ->
-FileDocument.receive -> file picker / FileSystem API -> response -> OMU log.
+1. UI.request -> HubUnit -> URU checks source and target.
+2. HubUnit records Request and forwards action.
+3. Object.receive handles action and returns a value.
+4. HubUnit records Response or EHU; OMU updates dependency observations.
 
-## Abstract architecture
+## Diagram
 ```mermaid
 flowchart LR
-  UI[User Interface] --> Hub[HubUnit]
-  Hub --> Workspace[FileWorkspace]
-  Workspace --> Hub
-  Hub --> Doc[FileDocument]
-  Doc --> Disk[File System Access API]
-  Hub --> Registry[UnifiedRegistrationUnit]
-  Hub --> OMU[ObjectManagementUnit]
-  Doc --> Status[DocumentStatus Property]
-  UI --> Status
+    UI[UI] --> Hub[HubUnit]
+    Hub <--> URU[UnifiedRegistrationUnit]
+    Hub <--> OMU[ObjectManagementUnit]
+    Hub <--> EDPMU[EntireDomainPropertyManagementUnit]
+    Hub --> WS[FileWorkspace]
+    WS --> Hub
+    Hub --> FD[FileDocument]
+    FD --> FS[Browser File System Access]
 ```
 
-## EHU table
-| Condition | HTTP-style code | Effect |
-| --- | --- | --- |
-| Request succeeded | 200 | Pass log (1s throttle) |
-| Invalid registration | 400 | EHU and refusal |
-| Unknown target | 404 | EHU and error response |
-| Duplicate ID | 409 | EHU and refusal |
-| Exception in receiver | 500 | EHU and error response |
+## Relation Code
+From source perspective, bit 1 = Request, bit 0 = Response.
+00 none; 10 Request only; 01 Response only; 11 both.
+Observed edges do not replace access authorization (pending).
 
-## Limitations
-LinkCore units are presently encapsulated in one file; split into
-HubUnit / OMU / EDPMU / URU in the next patch. No actual HTTP server is
-needed for local logs; codes are HTTP-style. Dynamic relation probes and
-VTE are not yet implemented.
+## EHU table
+| Event | Status | Handling |
+| --- | --- | --- |
+| Invalid object | 400 | Log EHU |
+| Missing registration | 404 | Log EHU, reject |
+| Duplicate registration | 409 | Log EHU, reject |
+| Successful interaction | 200 | Pass log; 1s cooldown |
+| Response exception | 500 | Log EHU, reject |
+
+## Outstanding design items
+Public/Protected/Private authorization; standardized User/Agent API;
+VTE sandbox; active virtual requests; complete lifecycle logs;
+property access mediation (current UI direct import); robust DOM E2E.
