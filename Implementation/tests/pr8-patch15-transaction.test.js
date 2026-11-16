@@ -68,3 +68,48 @@ test("Patch15 stale revision conflicts and independent slice isolation",
       id: "slice-2", start: 0, end: 4
     })).value, "bar!");
   });
+
+test("Patch15 UTF-16 offsets, B+ seek and bounded input", async () => {
+  const { act } = setup();
+  assert.equal((await act("open", {
+    id: "unicode", text: "A😀B"
+  })).ok, true);
+  const seek = await act("locate", { id: "unicode", offset: 1 });
+  assert.equal(seek.ok, true, seek.error);
+  assert.equal(seek.value.localOffset, 1);
+  const replace = await act("transact", {
+    id: "unicode", revision: 0, operations: [{
+      type: "replace", start: 1, end: 3, text: "中"
+    }]
+  });
+  assert.equal(replace.ok, true, replace.error);
+  assert.equal((await act("read", {
+    id: "unicode", start: 0, end: 3
+  })).value, "A中B");
+  const oversized = await act("transact", {
+    id: "unicode", revision: 1, operations: [{
+      type: "insert", start: 3, text: "x".repeat(1024 * 1024)
+    }]
+  });
+  assert.equal(oversized.status, 413);
+  assert.equal((await act("info", {
+    id: "unicode"
+  })).value.revision, 1);
+});
+
+test("Patch15 concurrent edits with same revision yield one conflict",
+  async () => {
+    const { act } = setup();
+    await act("open", { id: "race", text: "a" });
+    const payload = { id: "race", revision: 0, operations: [{
+      type: "insert", start: 1, text: "b"
+    }] };
+    const results = await Promise.all([
+      act("transact", payload), act("transact", payload)
+    ]);
+    assert.deepEqual(results.map(item => item.status).sort(),
+      [200, 409]);
+    assert.equal((await act("read", {
+      id: "race", start: 0, end: 2
+    })).value, "ab");
+  });
