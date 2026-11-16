@@ -53,3 +53,17 @@ Cancel stops before save; failed commit leaves dirty tab in place.
 - File permissions and OS-external races are not universally atomic.
 - CI must pass on final head and previous-main backup must be
   verified before any main merge.
+
+## CI and merge record (2026-11-17)
+- PR #22 merged to main; merge commit
+  `c587ba219547d834c990d52d73008cb3f2ca39a9`.
+- Final branch HEAD
+  `274efa83c55aae32852c901f65774b3dba60953a`
+  passed GitHub Actions OCDA CI and PR1 OCDA Verification,
+  including Node, EHU/Relation and both Chromium browser jobs.
+- Recovery baseline
+  `backup/pre-pr8-patch19-hotfix-main-20261117`
+  was confirmed identical to prior main
+  `7dab9ed9a382a9743297118f0c3e51847bc50b88`.
+- This does not certify manual external-file permission behavior,
+  crash safety or 1/5 GiB performance. PR8 remains not PASS.
