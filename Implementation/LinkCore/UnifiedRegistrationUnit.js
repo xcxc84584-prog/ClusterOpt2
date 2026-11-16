@@ -18,6 +18,11 @@ export class UnifiedRegistrationUnit {
       return { ok: false, status: 400,
         error: "Invalid object contract: " + validation.failures.join(", ") };
     }
+    if (object.parentPath &&
+        !object.id.startsWith(object.parentPath + ".")) {
+      return { ok: false, status: 400,
+        error: "SubObject requires the complete parent path" };
+    }
     const previous = this.objects.get(object.id);
     if (previous && previous !== object) {
       return { ok: false, status: 409, error: "Duplicate object ID" };
@@ -59,6 +64,12 @@ export class UnifiedRegistrationUnit {
 
   unregister(id) {
     return this.objects.delete(id);
+  }
+
+  subobjects(parentPath) {
+    if (typeof parentPath !== "string" || !parentPath) return [];
+    const prefix = parentPath + ".";
+    return this.list().filter(id => id.startsWith(prefix));
   }
 
   list() {
