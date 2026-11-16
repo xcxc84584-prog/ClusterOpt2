@@ -130,6 +130,7 @@ export class VirtualFileDocument extends FileDocument {
     if (this.pendingRecovery) {
       const pending = this.pendingRecovery;
       if (pending.fingerprint !== fingerprint ||
+          pending.sourceHash !== sourceHash ||
           pending.index !== index ||
           pending.start !== segment.start ||
           pending.end !== segment.end) {
