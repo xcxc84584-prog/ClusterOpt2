@@ -722,7 +722,13 @@ function renderLines() {
   const prior = text.slice(0, position);
   const line = prior.split("\n").length;
   const col = prior.length - prior.lastIndexOf("\n");
-  ui.lineInfo.textContent = "Ln " + line + ", Col " + col;
+  const current = workspace.active;
+  const page = current?.virtualReadOnly ?
+    localized("virtualPage", {
+      current: current.virtualPageIndex + 1,
+      count: current.virtualPageCount
+    }) + " · " : "";
+  ui.lineInfo.textContent = page + "Ln " + line + ", Col " + col;
 }
 
 function updateStatus() {
@@ -864,6 +870,12 @@ async function perform(action, payload = {}) {
     if (action === "save") {
       const doc = workspace.active;
       if (!doc) return;
+      if (doc.virtualReadOnly) {
+        const result = await linkCore.request("ui", "workspace",
+          "save", {}, { origin: "user" });
+        if (!result.ok) notify(result.error);
+        return;
+      }
       if (payload.saveAs || !doc.handle) {
         if (!window.showSaveFilePicker) {
           throw new Error(localized("saveUnavailable"));
