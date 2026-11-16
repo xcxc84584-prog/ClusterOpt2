@@ -68,3 +68,27 @@
   499 aborted stream; 503 unavailable storage.
 - Hub Request=10, Response=01, fail EHU always recorded.
 - PR8 overall NOT PASS until full acceptance.
+
+## Verified CI, backup and merge (2026-11-17)
+- PR #25 final branch SHA:
+  `d2e3c8913193241f6bb56fd02ba6dfccbcc18ba5`.
+- Both GitHub Actions workflows `OCDA CI` and
+  `PR1 OCDA Verification` PASSED: unit, verify and both
+  Chromium browser jobs.
+- Merge SHA: `c6a693e21ea43b4d0fc99fcac4b281e913d87ba2`.
+- Verified pre-merge rollback branch:
+  `backup/pre-pr8-patch19-fix4-main-20261117`,
+  identical to previous main
+  `5f5dbfa55885dfc8280d5d1e90398df7835b22a9`.
+- E2E included 65MiB background Save while showing Explorer context
+  menu, opening a file, switching tabs and editing a different
+  document, plus unsaved edits on two pages committed together.
+- Hidden dirty recovery pages can be hydrated from SHA-256 verified
+  Journal checkpoints during Save, so offscreen edits are not lost.
+- Node exercised same-metadata modified-source rejection (EHU409),
+  byte-neutral positioned writes, length-changing Blob fallback,
+  global LF offsets and cancellation with journals retained.
+- PR8 remains NOT PASS: multi-GiB latency, real Windows file
+  permission/lock, cross-tab same-disk conflicts, whole-file
+  post-save cryptographic hashing and power-loss recovery remain
+  outside automated acceptance.
