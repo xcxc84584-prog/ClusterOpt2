@@ -72,3 +72,8 @@ Explorer panel/search/tree scrollbar use sessionStorage (no handles).
 ## Patch(+8) regression event
 UI.edit/scroll -> Recovery.persist -> IndexedDB -> reload ->
 Recovery.restore -> UI render -> scrollTop restored, one tab.
+
+## Patch(+9) recovery event chain
+Recovery.persist -> IndexedDB commit -> sessionStorage(text only).
+Recovery.restore -> IndexedDB or sessionStorage fallback -> Hub ->
+Workspace.restore; imported roots need IndexedDB and permission.

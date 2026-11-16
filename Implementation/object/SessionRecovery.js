@@ -84,10 +84,42 @@ export class SessionRecovery {
         throw error;
       }
       await this.transact("write", snapshot);
+      // A second text-only recovery channel survives session navigation
+      // even when a browser cannot reopen structured-cloned handles.
+      try {
+        const fallback = {
+          ...snapshot,
+          roots: [],
+          documents: snapshot.documents.map(document => ({
+            ...document, handle: null
+          }))
+        };
+        globalThis.sessionStorage?.setItem(
+          "clusteropt2.recovery.fallback", JSON.stringify(fallback));
+      } catch (error) {
+        this.core.omu.record("EHU", this.id, "Fallback.Persist",
+          503, "sessionStorage", { error: String(error) });
+      }
       return true;
     }
     if (action === "restore") {
-      const snapshot = await this.transact("read");
+      let snapshot = null;
+      try {
+        snapshot = await this.transact("read");
+      } catch (error) {
+        this.core.omu.record("EHU", this.id, "Database.Restore",
+          503, "IndexedDB", { error: String(error) });
+      }
+      if (!snapshot) {
+        try {
+          const text = globalThis.sessionStorage?.getItem(
+            "clusteropt2.recovery.fallback");
+          snapshot = text ? JSON.parse(text) : null;
+        } catch (error) {
+          this.core.omu.record("EHU", this.id, "Fallback.Restore",
+            503, "sessionStorage", { error: String(error) });
+        }
+      }
       if (!snapshot) return false;
       if (!RecoveryPolicy.isSnapshot(snapshot)) {
         const error = new Error("Unsupported recovery snapshot");

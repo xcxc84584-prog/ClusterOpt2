@@ -28,3 +28,6 @@ and expanded-only external CRUD polling. Pending browser permission tests.
 
 Patch(+8): Chromium automated reload regression added. Browser
 permissions and large quota failures remain separate acceptance gates.
+
+Patch(+9): Chromium reload test revealed missing restorable IndexedDB
+snapshot; added text-only sessionStorage fallback. Require green E2E.

@@ -73,3 +73,9 @@ sessionStorage. Expanded directory polling every 2.5s while visible.
 ## Patch(+8): browser acceptance
 Playwright real Chromium reload checks editor scrollTop and IndexedDB
 recovery, without confusing the caret offset with the viewport.
+
+## Patch(+9): recovery fallback
+Observed Chromium CI returned no persisted IndexedDB snapshot immediately
+after navigation. Add a bounded sessionStorage text-only fallback without
+FileSystemHandles. IndexedDB remains authoritative for handles and roots.
+Log fallback failure without erasing existing snapshots.
