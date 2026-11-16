@@ -164,3 +164,10 @@ Highlighter entry disabled until plugin processor Object is installed.
 - Status 200: close complete; 404: document missing;
   409: dirty, preserve all Blob and index state for recovery/writeback.
 - OMU records directed dependencies at every hop. No SendTo.
+
+### Cleanup authorization / EHU
+- UserAPI rejects direct slice-registry.release,
+  slice-loader.close, virtual-line-index.close (403).
+- Authorized user request goes through viewport-slices.close,
+  which dispatches trusted nested Hub Requests to components.
+- EHU/Log records are inspected in a detached real-object VTE.
