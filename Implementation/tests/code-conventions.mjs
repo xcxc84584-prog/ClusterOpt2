@@ -28,7 +28,7 @@ for (const path of paths) {
     const label = path + ":" + (index + 1);
     if (line.length > 120) findings.push(label + ": over 120 columns");
     if (/\s+$/.test(line)) findings.push(label + ": trailing spaces");
-    if (/[A-Za-z]:[\\/]/.test(line)) {
+    if (/(?:^|[\s"'(])[A-Za-z]:[\\/]/.test(line)) {
       findings.push(label + ": machine-specific absolute path");
     }
   }
