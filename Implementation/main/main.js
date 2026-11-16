@@ -81,9 +81,11 @@ function render() {
     close.setAttribute("aria-label", "關閉 " + doc.name);
     close.addEventListener("click", event => {
       event.stopPropagation();
-      workspace.close(doc.id);
+      void perform("close", { id: doc.id });
     });
-    tab.addEventListener("click", () => workspace.activate(doc.id));
+    tab.addEventListener("click", () => {
+      void perform("activate", { id: doc.id });
+    });
     tab.append(label, dirty, close);
     ui.tabs.append(tab);
   }
