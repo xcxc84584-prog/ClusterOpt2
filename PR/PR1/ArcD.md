@@ -51,3 +51,31 @@ Observed edges do not replace access authorization (pending).
 Public/Protected/Private authorization; standardized User/Agent API;
 VTE sandbox; active virtual requests; complete lifecycle logs;
 property access mediation (current UI direct import); robust DOM E2E.
+
+## Patch(+3): ExecutionScheduler
+```mermaid
+flowchart TD
+    UI[UI / Agent] --> HUB[HubUnit]
+    HUB --> S[ExecutionScheduler]
+    S --> QA[Per-Object A Queue FIFO]
+    S --> QB[Per-Object B Queue FIFO]
+    QA --> A[Object A]
+    QB --> B[Object B]
+    A --> HUB
+    B --> HUB
+    HUB --> OMU[OMU Events / EHU]
+```
+
+### Concurrency rules
+- Default active requests: 4; pending queue cap: 1024.
+- Same receiver ID: serialized, FIFO; different IDs: overlapping async I/O.
+- No blocking locks, no Web Worker threads, no cross-tab synchronization.
+- Queue overload: HTTP-style 429 EHU; queued cancellation: 499 EHU.
+- Per-operation exceptions: HTTP-style 500 EHU and lock release.
+- Lock order/reentrancy is not yet validated; nested same-key requests
+  are a known source of deadlock and remain a release blocker.
+
+### Event and lock lifecycle
+Hub validates parties -> scheduler queues by receiver ID -> scheduler starts
+-> Hub records request -> receiver executes -> Hub records response/EHU
+-> scheduler releases key and wakes next request.
