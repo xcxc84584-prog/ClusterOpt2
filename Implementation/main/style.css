@@ -633,3 +633,146 @@ header .menu-wrap { margin-left:auto; }
   }
   .plugin-nav-symbol { display: none; }
 }
+
+/* PR8 Patch10: tool window lives inside #workspace (not as a modal). */
+#pluginWindow[hidden] { display: none !important; }
+#pluginWindow {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--ui-text-on-surface);
+  background: var(--ui-surface);
+}
+.plugin-workbench-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 22px 26px 18px;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-panel);
+  color: var(--ui-text-on-panel);
+}
+.plugin-workbench-identity { min-width: 0; }
+.plugin-workbench-identity h2 {
+  margin: 7px 0 5px;
+  font-size: clamp(18px, 2.3vw, 24px);
+  font-weight: 600;
+}
+.plugin-workbench-identity p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: .75;
+}
+.plugin-window-categories {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: flex-start;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  max-width: 65%;
+}
+.plugin-window-categories .plugin-nav-caption {
+  display: none;
+}
+.plugin-window-categories button[data-plugin-tab] {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 10px;
+  min-height: 35px;
+  border: 1px solid var(--ui-border);
+  border-radius: 7px;
+  background: var(--ui-control);
+  color: var(--ui-text-on-control);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.plugin-window-categories button:hover {
+  background: var(--ui-hover);
+}
+.plugin-window-categories button.selected {
+  background: color-mix(in srgb, var(--ui-accent) 20%, var(--ui-control));
+  border-color: var(--ui-accent);
+}
+.plugin-window-categories .plugin-nav-symbol {
+  width: auto;
+  flex: 0 0 auto;
+  color: inherit;
+  font-size: 15px;
+}
+.plugin-window-categories button:focus-visible,
+.plugin-workbench-footer button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.plugin-workbench-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 26px;
+}
+.plugin-workbench-body .plugin-dialog-content {
+  width: min(760px, 100%);
+  min-height: 0;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  display: block;
+}
+.plugin-workbench-body .plugin-setting-card {
+  max-width: 540px;
+}
+.plugin-workbench-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+  border-top: 1px solid var(--ui-border);
+  font-size: 11px;
+}
+.plugin-workbench-footer button {
+  padding: 7px 12px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-control);
+  color: var(--ui-text-on-control);
+  border-radius: 6px;
+  cursor: pointer;
+}
+#tabs .tab[data-tab-kind="tool"] .name {
+  font-weight: 600;
+}
+@media (max-width: 880px) {
+  .plugin-workbench-header {
+    flex-direction: column;
+    padding: 16px 18px 12px;
+    gap: 14px;
+  }
+  .plugin-window-categories {
+    max-width: 100%;
+    align-self: stretch;
+    justify-content: flex-end;
+  }
+  .plugin-workbench-body { padding: 18px; }
+}
+@media (max-width: 530px) {
+  .plugin-window-categories button[data-plugin-tab] {
+    padding: 7px 8px;
+    font-size: 11px;
+  }
+  .plugin-window-categories .plugin-nav-symbol { display: none; }
+  .plugin-workbench-footer { padding: 8px 12px; }
+}
