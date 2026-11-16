@@ -285,9 +285,8 @@ export class FileWorkspace {
     const targets = this.documents.filter(doc => ids.includes(doc.id));
     if (targets.some(doc => doc.virtualReadOnly &&
         doc.status === DocumentStatus.DIRTY)) {
-      const error = new Error("Save edited virtual pages before closing");
-      error.status = 409;
-      throw error;
+      return this.saveVirtualGroupBeforeClose(targets, () =>
+        this.closeMany(ids));
     }
     const dirty = targets.filter(doc =>
       doc.status !== DocumentStatus.SYNCED);
@@ -308,9 +307,8 @@ export class FileWorkspace {
   closeAll() {
     if (this.documents.some(doc => doc.virtualReadOnly &&
         doc.status === DocumentStatus.DIRTY)) {
-      const error = new Error("Save edited virtual pages before closing");
-      error.status = 409;
-      throw error;
+      return this.saveVirtualGroupBeforeClose(
+        [...this.documents], () => this.closeAll());
     }
     const dirty = this.documents.filter(doc =>
       doc.status !== DocumentStatus.SYNCED);
@@ -324,6 +322,33 @@ export class FileWorkspace {
     this.activeId = null;
     this.onChange();
     return true;
+  }
+
+  /**
+   * Bulk close may be asynchronous only when durable virtual edits
+   * require a disk write. No tab is removed until all writes verify.
+   * A failure preserves the remaining journals and workspace tabs.
+   */
+  async saveVirtualGroupBeforeClose(targets, finish) {
+    const pending = targets.filter(doc => doc.virtualReadOnly &&
+      doc.status === DocumentStatus.DIRTY);
+    if (!pending.length) return finish();
+    const locale = this.core.readProperty(this.id, "Language").value;
+    if (!window.confirm(Language.translate(locale,
+      "virtualSaveBeforeCloseAll", { count: pending.length }))) {
+      return false;
+    }
+    for (const doc of pending) {
+      const saved = await this.core.request(this.id, doc.id, "save", {
+        onProgress: () => this.onChange()
+      });
+      if (!saved.ok) {
+        const error = new Error(saved.error);
+        error.status = saved.status;
+        throw error;
+      }
+    }
+    return finish();
   }
 
   /** Preserve document identity and active selection while reordering. */
