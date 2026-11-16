@@ -44,3 +44,14 @@ Parallel file operations are permitted across independent document IDs, but each
 ## Test gate
 npm run check; npm run test:e2e; test UI in Chrome/Edge; inspect VTE and OMU log/error paths.
 Record exact commit SHA, commands, PASS/FAIL counts in Patch; a document-only patch is never a functional PASS.
+
+## Patch(+2) implementation
+- Reused the existing File menu and Tools submenu. Added only Close All button.
+- FileWorkspace owns Close All and tab reordering; no unnecessary new Object.
+- Close All prompts once if ANY document is non-SYNCED. Cancel is atomic.
+- Native HTML drag/drop transports original index; HubUnit routes reorder.
+- Tests added for cancellation, unregister, ordering and Chrome UI behavior.
+- StoragePriority and external-change detection remain TODO, not accepted.
+- Revised roadmap: PR5 edit experience, PR6 Explorer, PR7 Explorer polish,
+  PR8 sliced large files, PR9 go-to-line, PR10 PowerShell.
+- CI + browser results must be captured before merging to main.
