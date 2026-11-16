@@ -44,7 +44,7 @@ export class EntireDomainPropertyManagementUnit {
 
   inheritedBy(objectPath) {
     return [...this.properties].filter(([, property]) =>
-      property.owners.some(owner => objectPath === owner ||
+      [...property.owners].some(owner => objectPath === owner ||
         objectPath.startsWith(owner + "."))
     ).map(([name]) => name);
   }
