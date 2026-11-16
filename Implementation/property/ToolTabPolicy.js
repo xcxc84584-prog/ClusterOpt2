@@ -6,7 +6,8 @@
 export const ToolTabPolicy = Object.freeze({
   pluginId: "tool.plugin-manager",
   validIndex(index, length) {
-    if (!Number.isSafeInteger(index) || index < 0 || index > length) {
+    if (!Number.isSafeInteger(length) || length < 0 ||
+        !Number.isSafeInteger(index) || index < 0 || index > length) {
       const error = new RangeError("Invalid tool tab position");
       error.status = 400;
       throw error;
