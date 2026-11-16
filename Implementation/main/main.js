@@ -1,6 +1,6 @@
 import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
-import { StoragePriority } from "../property/StoragePriority.js";
+import { EditorInteractionPolicy } from "../property/EditorInteractionPolicy.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
@@ -11,7 +11,8 @@ const uiIds = {
   tabs: "tabs", editor: "editor", editorSurface: "editorPane",
   emptyState: "empty", lineNumbers: "gutter", statusLamp: "statusLamp",
   statusText: "status", lineInfo: "position",
-  progressFill: "meterFill", progressText: "meterPercent"
+  progressFill: "meterFill", progressText: "meterPercent",
+  tabGuide: "tabGuide"
 };
 const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
   [key, document.getElementById(id)]));
@@ -166,6 +167,7 @@ function render() {
   }
   if (switchedTab) ui.editor.scrollTop = active.scrollTop;
   renderLines();
+  scheduleGuides();
   updateStatus();
 }
 
@@ -173,6 +175,26 @@ function renderPriority() {
   const priority = linkCore.readProperty("ui", "StoragePriority").value;
   const control = document.getElementById("priority");
   if (control && control.value !== priority) control.value = priority;
+}
+
+let guideFrame = 0;
+function scheduleGuides() {
+  if (guideFrame) return;
+  guideFrame = window.requestAnimationFrame(() => {
+    guideFrame = 0;
+    if (!workspace.active) {
+      ui.tabGuide.textContent = "";
+      return;
+    }
+    const computed = window.getComputedStyle(ui.editor);
+    const lineHeight = parseFloat(computed.lineHeight) || 22;
+    const bounds = EditorInteractionPolicy.guideWindow(
+      ui.editor.value, ui.editor.scrollTop, lineHeight,
+      ui.editor.clientHeight);
+    ui.tabGuide.textContent = bounds.lines.join("\\n");
+    ui.tabGuide.style.top = (16 -
+      (ui.editor.scrollTop % lineHeight)) + "px";
+  });
 }
 
 function renderLines() {
@@ -223,6 +245,7 @@ ui.editor.addEventListener("scroll", () => {
   const doc = workspace.active;
   if (doc) doc.scrollTop = ui.editor.scrollTop;
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
+  scheduleGuides();
 });
 ui.editor.addEventListener("click", () => {
   if (workspace.active) workspace.active.cursor = ui.editor.selectionStart;
@@ -233,13 +256,20 @@ ui.editor.addEventListener("keyup", () => {
   renderLines();
 });
 ui.editor.addEventListener("keydown", event => {
-  if (event.key === "Tab") {
-    event.preventDefault();
-    const start = ui.editor.selectionStart;
-    const end = ui.editor.selectionEnd;
-    ui.editor.setRangeText("\t", start, end, "end");
-    ui.editor.dispatchEvent(new Event("input"));
-  }
+  if (event.ctrlKey || event.altKey || event.metaKey ||
+      event.isComposing || ui.editor.readOnly) return;
+  const transform = EditorInteractionPolicy.transform(
+    ui.editor.value, ui.editor.selectionStart,
+    ui.editor.selectionEnd, event.key, {
+      shiftKey: event.shiftKey, composing: event.isComposing
+    });
+  if (!transform) return;
+  event.preventDefault();
+  ui.editor.setRangeText(transform.insert, transform.start,
+    transform.end, "preserve");
+  ui.editor.setSelectionRange(transform.caret,
+    transform.selectionEnd ?? transform.caret);
+  ui.editor.dispatchEvent(new Event("input", { bubbles: true }));
 });
 async function perform(action, payload = {}) {
   closeMenu();
@@ -283,7 +313,6 @@ document.getElementById("saveFile").onclick = () => perform("save");
 document.getElementById("saveAsFile").onclick = () =>
   perform("save", { saveAs: true });
 document.getElementById("closeFile").onclick = () => perform("close");
-document.getElementById("closeAll").onclick = () => perform("closeAll");
 document.getElementById("closeAllMain").onclick = () =>
   perform("closeAll");
 document.getElementById("priority").addEventListener("change", event => {
