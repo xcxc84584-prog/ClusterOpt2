@@ -16,3 +16,10 @@
 | 12 | Pending | PR6 Explorer reload position | Viewport position, not cursor |
 | 13 | Pending | PR7 Explorer order persistence | Stable order across reload |
 | 14 | Pending | PR8 sliced load and recovery | Progress reflects current operation |
+
+| 15 | Browser pending | Legacy File menu PR4 | Check original menu structure in Chrome/Edge |
+| 16 | Planned | Highlighter menu item | Enable after PR5 implementation |
+| 17 | Planned | Blocked file types item | Enable after PR7 Explorer implementation |
+| 18 | Pending | PR8 demand loading | Zoom-aware viewport preload and downgrade/evict |
+| 19 | Pending | PR8 rapid navigation | Scroll/jump must cancel obsolete loads |
+| 20 | Pending | PR8 loading indication | Blue percentage tracks current operation |
