@@ -27,13 +27,26 @@ const workspace = new FileWorkspace(linkCore, render);
 const toolTabs = new ToolTabManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
 let toolState = { open: false, active: false, position: 0 };
+let pluginCategory = "performance";
 let observedWorkspaceActiveId = null;
+
+function saveToolView() {
+  try {
+    window.sessionStorage.setItem("clusteropt2.tool-view.v1",
+      JSON.stringify({ state: toolState, category: pluginCategory }));
+  } catch (error) {
+    linkCore.omu.record("EHU", "ui", "ToolView.Persist",
+      503, "sessionStorage", { error: String(error) });
+  }
+}
+
 
 async function requestTool(action, payload = {}) {
   const result = await linkCore.request("ui", "tool-tab-manager",
     action, payload, { origin: "user" });
   if (!result.ok) return notify(result.error);
   toolState = result.value;
+  saveToolView();
   render();
   return result.value;
 }
@@ -867,6 +880,9 @@ const pluginTabs = [...pluginWindow.querySelectorAll("[data-plugin-tab]")];
 const pluginPanels = [...pluginWindow.querySelectorAll("[data-plugin-panel]")];
 
 function selectPluginTab(tab) {
+  if (!pluginTabs.some(button => button.dataset.pluginTab === tab)) return;
+  pluginCategory = tab;
+  saveToolView();
   for (const button of pluginTabs) {
     const selected = button.dataset.pluginTab === tab;
     button.classList.toggle("selected", selected);
@@ -989,6 +1005,20 @@ void linkCore.request("ui", "session-recovery", "restore").then(
     } catch {
       linkCore.omu.record("EHU", "ui", "Explorer.ViewRestore",
         503, "sessionStorage");
+    }
+    try {
+      const stored = JSON.parse(window.sessionStorage.getItem(
+        "clusteropt2.tool-view.v1") ?? "null");
+      if (stored?.state?.open) {
+        await requestTool("restore", {
+          state: stored.state, documentCount: workspace.documents.length
+        });
+        selectPluginTab(stored.category ?? "performance");
+        if (toolState.active) void renderPluginBudget();
+      }
+    } catch (error) {
+      linkCore.omu.record("EHU", "ui", "ToolView.Restore",
+        503, "sessionStorage", { error: String(error) });
     }
     queueRecovery();
   });
