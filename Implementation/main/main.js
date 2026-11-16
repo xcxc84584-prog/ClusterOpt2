@@ -874,8 +874,37 @@ ui.editor.addEventListener("keydown", event => {
   ui.editor.setSelectionRange(transform.caret,
     transform.selectionEnd ?? transform.caret);
 });
+/**
+ * Request write access while the original user gesture is active.
+ * A delayed HubUnit/file write cannot reliably open permission UI.
+ * OPFS handles may omit requestPermission and need no picker grant.
+ */
+async function grantVirtualWriteAccess(action, payload) {
+  if (!["save", "close", "closeAll"].includes(action)) return true;
+  const candidates = action === "closeAll" ?
+    workspace.documents : [action === "close" && payload.id ?
+      workspace.documents.find(doc => doc.id === payload.id) :
+      workspace.active];
+  for (const doc of candidates) {
+    if (!doc?.virtualReadOnly ||
+        doc.status !== DocumentStatus.DIRTY ||
+        typeof doc.handle?.requestPermission !== "function") continue;
+    const result = await doc.handle.requestPermission({
+      mode: "readwrite"
+    });
+    if (result !== "granted") return false;
+  }
+  return true;
+}
+
 async function perform(action, payload = {}) {
   closeMenu();
+  // Invoke permission API before any other asynchronous action.
+  const permission = await grantVirtualWriteAccess(action, payload);
+  if (!permission) {
+    notify(localized("virtualWritePermissionDenied"));
+    return;
+  }
   if (action === "close" && !payload.id && toolState.active) {
     await requestTool("close");
     return;
