@@ -4,16 +4,16 @@ Status: OPEN until CI and browser/VTE validation.
 
 | Test | Priority | Description |
 | --- | --- | --- |
-| 19.1 | P0 | Full node/unit check, VTE Req/Rep/EHU/Dependency |
-| 19.2 | P0 | Real Chromium 65MiB editor accepts edits |
-| 19.3 | P0 | LF/CRLF page-first global line numbers continue |
-| 19.4 | P0 | Unicode emoji/Chinese PieceTree UTF-16 splice |
-| 19.5 | P0 | Durable checkpoint before publishing edit |
-| 19.6 | P0 | Quota failure leaves unchanged page and EHU 503 |
-| 19.7 | P0 | Dirty page prevents unload/close/navigation |
-| 19.8 | P0 | Verified writeback and exact checkpoint retirement |
-| 19.9 | P0 | Reload restores dirty edit by checkpoint and fingerprint |
-| 19.10 | P0 | External source modification blocks stale writeback |
+| 19.1 | P0 | PASS: final PR21 Node/OCDA CI, EHU and Relation tests |
+| 19.2 | P0 | PASS: Chromium OPFS 65MiB bounded editor edits |
+| 19.3 | P0 | PASS: LF/CRLF Chinese global line tests |
+| 19.4 | P0 | PASS: Chinese/emoji PieceTree tests |
+| 19.5 | P0 | PASS: journal-first edit Node tests |
+| 19.6 | P0 | PASS: quota-failure rollback/EHU test |
+| 19.7 | P0 | PASS: Node/Chromium dirty navigation; cross-tab manual check pending |
+| 19.8 | P0 | PASS: Node and Chromium OPFS byte readback/retire |
+| 19.9 | P0 | PASS: Node snapshot rebind; manual crash/reload verification pending |
+| 19.10 | P0 | PASS: source hash mismatch tests; external OS race pending |
 | 19.11 | P0 | Real externally selected file permission tests |
 | 19.12 | P0 | End-to-end 1GiB / 5GiB editing and save |
 | 20.1 | P1 | Fast continuous scroll and cancelable parallel loads |
