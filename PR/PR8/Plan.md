@@ -515,3 +515,7 @@ this limit currently applies only to the independent registry.
 - Remaining: UI continuous scroll across arbitrary pages,
   1 GiB/5 GiB performance, multi-tab same-file conflict,
   complete cross-document crash recovery and disk power-loss tests.
+
+- Hidden recovered pages are hydrated from IndexedDB and source
+  page ranges automatically on Save, under the same Hub MVCC and
+  SHA-256 verification, instead of requiring manual page visits.
