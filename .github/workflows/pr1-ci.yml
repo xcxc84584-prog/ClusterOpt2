@@ -1,0 +1,14 @@
+name: PR1 OCDA Verification
+on:
+  push:
+    branches: [main, "pr1/**"]
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm run check
