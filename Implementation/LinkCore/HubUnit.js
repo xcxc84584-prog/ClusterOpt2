@@ -12,6 +12,7 @@ export class HubUnit {
     this.properties = properties;
     this.omu = omu;
     this.scheduler = scheduler;
+    this.waitEdges = new Map();
   }
 
   register(object) {
@@ -26,6 +27,32 @@ export class HubUnit {
     this.omu.record(removed ? "Log" : "EHU", id, "Unregister",
       removed ? 200 : 404);
     return removed;
+  }
+
+  // Active wait-for edges are used only for deadlock detection.
+  hasWaitPath(start, destination, visited = new Set()) {
+    if (start === destination) return true;
+    if (visited.has(start)) return false;
+    visited.add(start);
+    for (const next of this.waitEdges.get(start)?.keys() ?? []) {
+      if (this.hasWaitPath(next, destination, visited)) return true;
+    }
+    return false;
+  }
+
+  addWaitEdge(source, target) {
+    const edges = this.waitEdges.get(source) ?? new Map();
+    edges.set(target, (edges.get(target) ?? 0) + 1);
+    this.waitEdges.set(source, edges);
+  }
+
+  removeWaitEdge(source, target) {
+    const edges = this.waitEdges.get(source);
+    if (!edges) return;
+    const remaining = (edges.get(target) ?? 1) - 1;
+    if (remaining > 0) edges.set(target, remaining);
+    else edges.delete(target);
+    if (!edges.size) this.waitEdges.delete(source);
   }
 
   async request(source, target, action, payload = {}, options = {}) {
@@ -54,8 +81,16 @@ export class HubUnit {
         target, { error: "Access denied" });
       return { ok: false, status: 403, error: "Access denied" };
     }
-    // Serialize each destination object; independent destinations can overlap.
-    // No caller may override the target-derived key.
+    // Nested requests need a separate bounded dispatch slot to avoid
+    // exhausting all normal slots while waiting for child operations.
+    const nested = this.scheduler.activeKeys.has(source);
+    if (nested && this.hasWaitPath(target, source)) {
+      this.omu.record("EHU", source, "Request." + action, 423, target, {
+        error: "Circular wait detected"
+      });
+      return { ok: false, status: 423, error: "Circular wait detected" };
+    }
+    if (nested) this.addWaitEdge(source, target);
     try {
       return await this.scheduler.schedule(ParallelExecutionPolicy.resourceKey(target), async () => {
         this.omu.dependency(source, target, "request");
@@ -72,12 +107,14 @@ export class HubUnit {
             source, { error: String(error) });
           return { ok: false, status, error: String(error) };
         }
-      }, { signal: options.signal });
+      }, { signal: options.signal, nested });
     } catch (error) {
       const status = error.name === "AbortError" ? 499 : 429;
       this.omu.record("EHU", source, "Schedule." + action, status,
         target, { error: String(error) });
       return { ok: false, status, error: String(error) };
+    } finally {
+      if (nested) this.removeWaitEdge(source, target);
     }
   }
 
