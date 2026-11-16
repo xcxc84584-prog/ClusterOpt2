@@ -34,6 +34,6 @@ test("PR8+21 restores physical viewport after switching and reload",
     })).toBe(true);
     await page.reload();
     await expect(editor).toHaveValue(body);
-    await expect.poll(() => editor.evaluate(node =>
-      Math.abs(node.scrollTop - first.top) <= 3)).toBe(true);
+    await expect.poll(() => editor.evaluate((node, expectedTop) =>
+      Math.abs(node.scrollTop - expectedTop) <= 3, first.top)).toBe(true);
   });
