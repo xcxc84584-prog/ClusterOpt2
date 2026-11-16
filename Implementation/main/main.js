@@ -899,9 +899,17 @@ async function grantVirtualWriteAccess(action, payload) {
 
 async function perform(action, payload = {}) {
   closeMenu();
-  // Invoke permission API before any other asynchronous action.
-  const permission = await grantVirtualWriteAccess(action, payload);
-  if (!permission) {
+  // Do not await anything for Open or legacy Save As: file
+  // pickers require an uninterrupted user activation.
+  const targets = action === "closeAll" ? workspace.documents :
+    [action === "close" && payload.id ?
+      workspace.documents.find(doc => doc.id === payload.id) :
+      workspace.active];
+  const needsGrant = ["save", "close", "closeAll"].includes(action) &&
+    targets.some(doc => doc?.virtualReadOnly &&
+      doc.status === DocumentStatus.DIRTY &&
+      typeof doc.handle?.requestPermission === "function");
+  if (needsGrant && !await grantVirtualWriteAccess(action, payload)) {
     notify(localized("virtualWritePermissionDenied"));
     return;
   }
