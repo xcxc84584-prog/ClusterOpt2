@@ -11,3 +11,6 @@
 | 07 | Tool menu → RGB dialog | Opens | editor.spec.js |
 | 08 | Color picker / RGB channels → CSS tokens | Live change | editor.spec.js |
 | 09 | Presets 0 / 255 → light/dark | PASS | editor.spec.js |
+
+RT10: Invalid RGB → EHU 400 → Hub.Get → UI value restored — editor.spec.js。
+RT11: Black endpoint → exact legacy CSS tokens — palette.test.js。
