@@ -3,36 +3,63 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ClusterOpt2 · PR1</title>
+  <title>ClusterOpt2</title>
+  <!-- Reuse the ClusterOpt UI; PR1 changes behavior, not visual design. -->
+  <link rel="stylesheet" href="./Implementation/main/clusteropt-legacy.css">
   <link rel="stylesheet" href="./Implementation/main/style.css">
   <script type="module" src="./Implementation/main/main.js"></script>
 </head>
 <body>
-  <div class="shell">
+  <div id="app" class="shell">
     <header class="toolbar">
-      <div class="brand"><span class="diamond">◇</span><strong>Cluster</strong><small>Opt2 · PR1</small></div>
-      <div class="actions">
-        <button id="newFile" title="建立新檔">新增</button>
-        <button id="openFile" title="開啟檔案">開啟</button>
-        <button id="saveFile" title="儲存檔案">儲存</button>
-        <button id="saveAsFile" title="另存新檔">另存</button>
-        <button id="closeFile" title="關閉目前分頁">關閉</button>
+      <div class="brand">
+        <span class="diamond">◇</span>
+        <strong>Cluster</strong>
+        <small id="versionLabel"></small>
+      </div>
+      <div class="menu-wrap">
+        <button id="menuBtn" type="button" aria-expanded="false"
+          aria-controls="menu">檔案⌄</button>
+        <nav id="menu" hidden aria-label="檔案選單">
+          <button id="newFile" type="button">建立新檔</button>
+          <button id="openFile" type="button">開啟檔案</button>
+          <div class="menu-divider"></div>
+          <button id="saveFile" type="button">儲存</button>
+          <button id="saveAsFile" type="button">另存新檔</button>
+          <div class="menu-divider"></div>
+          <button id="closeFile" type="button">關閉分頁</button>
+        </nav>
       </div>
     </header>
-    <nav id="tabs" class="tabs" aria-label="文件分頁"></nav>
-    <main class="editor-pane">
-      <div id="emptyState" class="empty-state">選擇「新增」或「開啟」開始編輯</div>
-      <div id="editorSurface" class="editor-surface" hidden>
-        <pre id="lineNumbers" class="line-numbers" aria-hidden="true">1</pre>
-        <textarea id="editor" spellcheck="false" aria-label="文字編輯器" wrap="off"></textarea>
+    <div id="clusterWorkspaceShell">
+      <div id="clusterEditorColumn">
+        <div id="tabs" class="tabs" aria-label="文件分頁"></div>
+        <main id="workspace" class="editor-pane">
+          <div id="empty" class="empty-state">
+            <div class="bigdiamond">◇</div>
+            <h1>Cluster</h1>
+            <p>選擇「檔案」建立或開啟文件</p>
+          </div>
+          <div id="editorPane" class="editor-surface" hidden>
+            <pre id="gutter" class="line-numbers"
+              aria-hidden="true">1</pre>
+            <textarea id="editor" spellcheck="false"
+              aria-label="文字編輯器" wrap="off"></textarea>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
     <footer class="statusbar">
+      <div class="meter progress-track" aria-hidden="true">
+        <div id="meterFill" class="progress-fill"></div>
+      </div>
+      <span id="meterPercent"></span>
       <span id="statusLamp" class="lamp green"></span>
-      <span id="statusText" aria-live="polite">就緒</span>
-      <span id="lineInfo">Ln 1, Col 1</span>
-      <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
-      <span id="progressText"></span>
+      <span id="status" aria-live="polite">就緒</span>
+      <span class="grow"></span>
+      <span id="position">Ln 1, Col 1</span>
+      <span>UTF-8</span>
+      <span>純文字</span>
     </footer>
   </div>
 </body>

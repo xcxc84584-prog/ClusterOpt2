@@ -1,88 +1,67 @@
-/**
- * LinkCore: runtime registry, mediated requests/responses and in-memory OMU.
- * Dynamic registration is permitted only for locally constructed objects.
- * Reset occurs on each page reload.
- */
+import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
+import { AccessPolicy } from "../property/AccessPolicy.js";
+import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
+import { ObjectManagementUnit } from "./ObjectManagementUnit.js";
+import { EntireDomainPropertyManagementUnit } from "./EntireDomainPropertyManagementUnit.js";
+import { HubUnit } from "./HubUnit.js";
+
+/** Stable LinkCore facade: all cross-object activity uses the HubUnit. */
 export class LinkCore {
   constructor() {
-    this.registry = new Map();
-    this.logs = [];
-    this.dependencies = new Map();
-    this.nextEventId = 1;
-    this.lastPassByKey = new Map();
-    this.version = "0.0.1-pr1";
-  }
-
-  register(object) {
-    if (!object || typeof object.id !== "string" ||
-        typeof object.receive !== "function") {
-      this.record("EHU", "Registration", "INVALID_OBJECT", 400);
-      return false;
-    }
-    if (this.registry.has(object.id) &&
-        this.registry.get(object.id) !== object) {
-      this.record("EHU", object.id, "ID_CONFLICT", 409);
-      return false;
-    }
-    this.registry.set(object.id, object);
-    return true;
-  }
-
-  unregister(id) {
-    this.registry.delete(id);
-  }
-
-  record(kind, source, action, status, target = "") {
-    const now = Date.now();
-    const key = [kind, source, action, target].join("|");
-    // Only successful ordinary logs are throttled. EHU/fail never are.
-    if (kind === "Log" && status >= 200 && status < 300) {
-      if (now - (this.lastPassByKey.get(key) ?? 0) < 1000) return;
-      this.lastPassByKey.set(key, now);
-    }
-    this.logs.unshift({
-      id: this.nextEventId++, time: new Date(now).toISOString(),
-      kind, source, target, action, status
+    this.edpmu = new EntireDomainPropertyManagementUnit();
+    this.uru = new UnifiedRegistrationUnit(this.edpmu);
+    this.omu = new ObjectManagementUnit();
+    this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
+    this.version = "0.0.1-pr1.patch6";
+    this.hub.registerProperty("SystemVersion", this.version, {
+      owners: ["LinkCore"], visibility: "Public"
     });
-    if (this.logs.length > 2000) this.logs.length = 2000;
+    this.hub.registerProperty("ParallelExecutionPolicy",
+      ParallelExecutionPolicy, { owners: ["LinkCore"] });
+    this.hub.registerProperty("AccessPolicy", AccessPolicy, {
+      owners: ["LinkCore"]
+    });
+    this.hub.registerProperty("DocumentStatus", Object.freeze({
+      SYNCED: "green", DIRTY: "yellow",
+      ERROR: "red", LOADING: "blue"
+    }), { owners: ["LinkCore"] });
   }
 
-  async request(source, target, action, payload = {}) {
-    const receiver = this.registry.get(target);
-    if (!receiver) {
-      this.record("EHU", source, action, 404, target);
-      return { ok: false, status: 404, error: "Target is not registered" };
-    }
-    const relation = this.dependencies.get(source) ?? new Set();
-    relation.add(target);
-    this.dependencies.set(source, relation);
-    try {
-      const result = await receiver.receive(action, payload);
-      this.record("Log", source, action, 200, target);
-      return { ok: true, status: 200, value: result };
-    } catch (error) {
-      this.record("EHU", source, action, 500, target);
-      return { ok: false, status: 500, error: String(error) };
-    }
+  register(object) { return this.hub.register(object); }
+  unregister(id) { return this.hub.unregister(id); }
+  request(source, target, action, payload = {}, options = {}) {
+    return this.hub.request(source, target, action, payload, options);
   }
+  readProperty(source, name) {
+    return this.hub.readProperty(source, name);
+  }
+
+  subobjects(path) { return this.uru.subobjects(path); }
+  inheritedProperties(path) { return this.edpmu.inheritedBy(path); }
 
   getSnapshot() {
     return {
-      version: this.version,
-      objects: [...this.registry.keys()],
-      dependencies: [...this.dependencies].map(([source, targets]) =>
-        ({ source, targets: [...targets] })),
-      logs: [...this.logs]
+      version: this.edpmu.get("SystemVersion"),
+      objects: this.uru.list(),
+      properties: this.edpmu.list(),
+      ...this.omu.snapshot()
     };
   }
 }
 
 export const linkCore = new LinkCore();
-// Read-only inspection API. Mutations are routed through requests.
-window.Cluster = Object.freeze({
-  log: () => linkCore.getSnapshot().logs,
-  objectlist: () => linkCore.getSnapshot().objects,
-  propertylist: () => ["DocumentStatus"],
-  rep: () => linkCore.getSnapshot().dependencies,
-  version: () => linkCore.version
-});
+
+if (typeof window !== "undefined") {
+  const methods = Object.freeze({
+    log: () => linkCore.getSnapshot().logs,
+    objectlist: () => linkCore.getSnapshot().objects,
+    propertylist: () => linkCore.getSnapshot().properties,
+    rep: () => linkCore.getSnapshot().dependencies,
+    subobject: (path) => linkCore.subobjects(path),
+    inheritedProperties: (path) => linkCore.inheritedProperties(path),
+    version: () => linkCore.getSnapshot().version
+  });
+  Object.defineProperty(window, "Cluster", {
+    configurable: false, writable: false, value: methods
+  });
+}
