@@ -39,9 +39,9 @@
 - Full slice snapshot uses bounded memory but is not write-ahead
   operation-delta journaling. This is a foundation, NOT a completed
   full-document persistent recovery or atomic file writeback.
-- Cross-tab compare-and-swap is still absent: read/put currently
-  happen in separate IndexedDB transactions. Future patch must
-  make revision check and store write one atomic transaction.
+- Cross-tab revision comparison and storage use
+  IndexedDBSliceJournalStore.putIfNewer with a single readwrite
+  transaction. Multi-tab browser E2E remains to be verified.
 - Corrupt persisted checkpoint returns EHU 422, never silent fallback.
 - No untrusted plugins or credentials introduced.
 - Real browser IndexedDB fault-injection tests remain outstanding.
