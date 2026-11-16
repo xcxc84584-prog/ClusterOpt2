@@ -9,7 +9,7 @@ export class ViewportSliceController {
     this.documents = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "navigate", "describe"];
+    const actions = ["open", "navigate", "navigateBytes", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["ViewportSlicePolicy"],
@@ -54,13 +54,17 @@ export class ViewportSliceController {
       return { ...document, full: [...document.full],
         preloaded: [...document.preloaded] };
     }
-    if (action !== "navigate") {
+    if (action !== "navigate" && action !== "navigateBytes") {
       const error = new Error("Unknown viewport operation");
       error.status = 400;
       throw error;
     }
-    const plan = this.policy().plan(document.count,
-      payload.first, payload.last, payload.adjacent ?? 1);
+    const plan = action === "navigateBytes" ?
+      this.policy().bytePlan(document.byteLength,
+        document.chunkBytes, payload.start, payload.end,
+        payload.adjacent ?? 1) :
+      this.policy().plan(document.count,
+        payload.first, payload.last, payload.adjacent ?? 1);
     const sliceId = index => document.id + "-slice-" + index;
     // Drop stale visibility so offscreen clean slices can be evicted.
     await this.call("slice-registry", "setViewport", { ids: [] });
@@ -106,8 +110,7 @@ export class ViewportSliceController {
     const snapshot = await this.call("slice-registry", "list", {});
     const keep = new Set([...plan.full, ...preloaded].map(sliceId));
     for (const entry of snapshot.entries) {
-      if (!entry.id.startsWith(document.id + "-slice-") ||
-          keep.has(entry.id) || entry.dirty ||
+      if (keep.has(entry.id) || entry.dirty ||
           entry.state === "virtual") continue;
       await this.call("slice-registry", "demote", { id: entry.id });
     }
