@@ -272,11 +272,18 @@ ui.editor.addEventListener("keydown", event => {
     });
   if (!transform) return;
   event.preventDefault();
-  ui.editor.setRangeText(transform.insert, transform.start,
-    transform.end, "preserve");
+  ui.editor.setSelectionRange(transform.start, transform.end);
+  // On Chromium, insertText joins native edit history (Ctrl+Z / Redo).
+  // Keep the standards-based RangeText fallback for other engines.
+  const nativeUndo = document.execCommand?.(
+    "insertText", false, transform.insert) === true;
+  if (!nativeUndo) {
+    ui.editor.setRangeText(transform.insert, transform.start,
+      transform.end, "preserve");
+    ui.editor.dispatchEvent(new Event("input", { bubbles: true }));
+  }
   ui.editor.setSelectionRange(transform.caret,
     transform.selectionEnd ?? transform.caret);
-  ui.editor.dispatchEvent(new Event("input", { bubbles: true }));
 });
 async function perform(action, payload = {}) {
   closeMenu();
