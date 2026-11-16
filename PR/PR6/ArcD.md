@@ -54,3 +54,11 @@ Explorer.list -> Hub -> Workspace.entries -> Explorer.project -> one tree
 Explorer.openEntry -> Hub -> Workspace.open / activate -> Document.load
 Folder and editor identity joined by FileSystemHandle.isSameEntry.
 EHU failures: invalid file 404; handle access/loading failures 500/413.
+
+## Patch(+6) Event chain
+UI -> Hub -> SessionRecovery.persist -> Hub -> Workspace.snapshot
+-> Hub -> Explorer.snapshotRoots -> IndexedDB transaction.
+Startup -> Hub -> Recovery.restore -> IndexedDB -> Hub ->
+Workspace.restore -> Hub -> Explorer.restoreRoots -> UI render.
+EHU: 400 bad schema, 409 duplicate restore, 413 too large,
+503 IndexedDB unavailable; no snapshot overwrites on errors.

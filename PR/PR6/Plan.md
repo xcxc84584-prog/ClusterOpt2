@@ -56,3 +56,11 @@ Match FileSystemHandles via isSameEntry to avoid duplicate entries.
 Folder files open through Explorer -> Hub -> FileWorkspace.open.
 Unattached tabs become top-level entries. Identity matching is O(D*F)
 for visible folder files and open documents; no remote network traffic.
+
+## Patch(+6): IndexedDB recovery
+One bounded versioned session includes editor content, tabs, handles,
+active document and scrollTop, plus imported Explorer root handles.
+Save is debounced at 350ms after user operations; writes serialized.
+Invalid schemas and IndexedDB failures produce EHU without erasing
+previous good snapshots. Each text <=8 MiB, <=100 docs, <=40 roots.
+Browser file permissions cannot be granted silently on reload.

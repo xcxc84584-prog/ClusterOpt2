@@ -14,7 +14,8 @@ export class Explorer {
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["list", "create", "open", "activate", "openEntry",
-      "importFolder", "expand", "refreshTree"];
+      "importFolder", "expand", "refreshTree",
+      "snapshotRoots", "restoreRoots"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["FileManagement"],
@@ -131,6 +132,40 @@ export class Explorer {
   }
 
   async receive(action, payload = {}) {
+    if (action === "snapshotRoots") {
+      return this.roots.map(root => ({
+        name: root.name, handle: root.handle,
+        expanded: root.expanded
+      }));
+    }
+    if (action === "restoreRoots") {
+      if (this.roots.length || !Array.isArray(payload.roots) ||
+          payload.roots.length > 40) {
+        const error = new Error("Unsafe or duplicate root restore");
+        error.status = 409;
+        throw error;
+      }
+      for (const record of payload.roots) {
+        if (record.handle?.kind !== "directory") continue;
+        const root = {
+          id: "root-" + this.nextRootId++,
+          name: record.name, kind: "directory",
+          handle: record.handle, expanded: false,
+          children: null
+        };
+        this.roots.push(root);
+        if (record.expanded) {
+          try {
+            await this.readChildren(root);
+            root.expanded = true;
+          } catch (error) {
+            this.core.omu.record("EHU", this.id, "Root.Restore",
+              503, root.id, { error: String(error) });
+          }
+        }
+      }
+      return true;
+    }
     if (action === "importFolder") {
       if (payload.handle?.kind !== "directory") {
         const error = new TypeError("Directory handle required");

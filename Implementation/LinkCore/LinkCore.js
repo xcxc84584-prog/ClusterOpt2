@@ -4,6 +4,7 @@ import { StoragePriority } from "../property/StoragePriority.js";
 import { EditorInteractionPolicy } from "../property/EditorInteractionPolicy.js";
 import { UI_COLOR } from "../property/UI_COLOR.js";
 import { FileManagement } from "../property/FileManagement.js";
+import { RecoveryPolicy } from "../property/RecoveryPolicy.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
 import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
 import { ObjectManagementUnit } from "./ObjectManagementUnit.js";
@@ -17,7 +18,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.6-pr6.patch5";
+    this.version = "0.0.6-pr6.patch6";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -39,6 +40,9 @@ export class LinkCore {
       EditorInteractionPolicy, {
         owners: ["LinkCore"], visibility: "Public"
       });
+    this.hub.registerProperty("RecoveryPolicy", RecoveryPolicy, {
+      owners: ["LinkCore"], visibility: "Public"
+    });
     this.hub.registerProperty("FileManagement", FileManagement, {
       owners: ["LinkCore"], visibility: "Public"
     });

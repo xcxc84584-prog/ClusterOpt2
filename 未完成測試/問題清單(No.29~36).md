@@ -19,3 +19,6 @@ external CRUD refresh and browsing scroll recovery.
 
 Patch(+5): one Explorer tree with file-handle identity deduplication,
 and folder-file activation. Pending durable recovery and PR7 features.
+
+Patch(+6): IndexedDB session restore implemented; browser reload,
+permissions, quota, and large-file failure injection still need E2E.

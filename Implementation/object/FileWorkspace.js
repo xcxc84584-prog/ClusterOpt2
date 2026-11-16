@@ -3,6 +3,7 @@ import { FileDocument } from "./FileDocument.js";
 import { DocumentStatus } from "../property/DocumentStatus.js";
 import { StoragePriority } from "../property/StoragePriority.js";
 import { FileManagement } from "../property/FileManagement.js";
+import { RecoveryPolicy } from "../property/RecoveryPolicy.js";
 
 /** Workspace object owns the document collection and active tab. */
 export class FileWorkspace {
@@ -17,7 +18,7 @@ export class FileWorkspace {
     this.ocda = Object.freeze({
       Request: ["new", "open", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal", "list",
-        "entries"],
+        "entries", "snapshot", "restore"],
       Response: ["new", "open", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       UserAPI: ["new", "open", "activate", "close", "closeAll",
@@ -32,11 +33,67 @@ export class FileWorkspace {
     this.restorePriority();
   }
 
+  snapshot() {
+    return {
+      activeId: this.activeId,
+      documents: this.documents.map(doc => ({
+        id: doc.id, name: doc.name, text: doc.text,
+        handle: doc.handle, status: doc.status,
+        cursor: doc.cursor, scrollTop: doc.scrollTop,
+        revision: doc.revision, diskRevision: doc.diskRevision,
+        lineEnding: doc.lineEnding, hasUtf8Bom: doc.hasUtf8Bom
+      }))
+    };
+  }
+
+  restoreSnapshot(snapshot) {
+    if (this.documents.length || !Array.isArray(snapshot?.documents) ||
+        snapshot.documents.length > RecoveryPolicy.maxDocuments ||
+        !snapshot.documents.every(item =>
+          RecoveryPolicy.isDocument(item))) {
+      const error = new Error("Unsafe or duplicate workspace restore");
+      error.status = 409;
+      throw error;
+    }
+    const restored = [];
+    const ids = new Map();
+    try {
+      for (const state of snapshot.documents) {
+        const doc = new FileDocument(state.name, state.handle ?? null);
+        doc.text = state.text;
+        // A page reload cannot prove that the disk is still in sync.
+        doc.status = DocumentStatus.DIRTY;
+        doc.cursor = Math.min(state.cursor, doc.text.length);
+        doc.scrollTop = state.scrollTop;
+        doc.revision = state.revision ?? 0;
+        doc.diskRevision = state.diskRevision ?? null;
+        doc.lineEnding = state.lineEnding === "\\r\\n" ?
+          "\\r\\n" : "\\n";
+        doc.hasUtf8Bom = Boolean(state.hasUtf8Bom);
+        if (!this.core.register(doc)) {
+          throw new Error("Recovered document registration failed");
+        }
+        restored.push(doc);
+        ids.set(state.id, doc.id);
+      }
+    } catch (error) {
+      for (const doc of restored) this.core.unregister(doc.id);
+      throw error;
+    }
+    this.documents = restored;
+    this.activeId = ids.get(snapshot.activeId) ??
+      restored[0]?.id ?? null;
+    this.onChange();
+    return true;
+  }
+
   get active() {
     return this.documents.find(doc => doc.id === this.activeId) ?? null;
   }
 
   async receive(action, payload = {}) {
+    if (action === "snapshot") return this.snapshot();
+    if (action === "restore") return this.restoreSnapshot(payload.snapshot);
     if (action === "list") return FileManagement.summarize(this.documents);
     if (action === "entries") return this.documents.map(doc => ({
       id: doc.id, name: doc.name, status: doc.status,

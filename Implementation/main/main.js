@@ -5,6 +5,7 @@ import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { Explorer } from "../object/Explorer.js";
+import { SessionRecovery } from "../object/SessionRecovery.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
 
 const uiIds = {
@@ -21,6 +22,28 @@ let guideFrame = 0;
 let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
 const explorer = new Explorer(linkCore);
+const recovery = new SessionRecovery(linkCore);
+let recoveryReady = false;
+let recoveryTimer = 0;
+let recoveryWrites = Promise.resolve();
+function queueRecovery() {
+  if (!recoveryReady) return;
+  window.clearTimeout(recoveryTimer);
+  recoveryTimer = window.setTimeout(() => {
+    // The previous write must finish before taking a new snapshot.
+    recoveryWrites = recoveryWrites.then(async () => {
+      const result = await linkCore.request("ui",
+        "session-recovery", "persist");
+      if (!result.ok) {
+        linkCore.omu.record("EHU", "ui", "Recovery.Persist",
+          result.status, "session-recovery", { error: result.error });
+      }
+    }).catch(error => {
+      linkCore.omu.record("EHU", "ui", "Recovery.Queue",
+        500, "session-recovery", { error: String(error) });
+    });
+  }, 350);
+}
 let explorerRequestId = 0;
 let explorerExpanded = false;
 const explorerPanel = document.getElementById("explorerPanel");
@@ -111,6 +134,7 @@ function render() {
   const active = workspace.active;
   renderPriority();
   void renderExplorer();
+  queueRecovery();
   ui.tabs.replaceChildren();
   for (const [index, doc] of workspace.documents.entries()) {
     const tab = document.createElement("button");
@@ -314,6 +338,7 @@ ui.editor.addEventListener("input", async () => {
   if (!result.ok) notify(result.error);
   renderLines();
   updateStatus();
+  queueRecovery();
   // Avoid regenerating all tabs on every keystroke in a large document.
   for (const tab of ui.tabs.children) {
     if (tab.classList.contains("active")) {
@@ -326,6 +351,7 @@ ui.editor.addEventListener("scroll", () => {
   if (doc) doc.scrollTop = ui.editor.scrollTop;
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
   scheduleGuides();
+  queueRecovery();
 });
 ui.editor.addEventListener("click", () => {
   if (workspace.active) workspace.active.cursor = ui.editor.selectionStart;
@@ -416,6 +442,7 @@ async function importExplorerFolder() {
     const result = await linkCore.request("ui", "explorer",
       "importFolder", { handle }, { origin: "user" });
     if (!result.ok) notify(result.error);
+    queueRecovery();
     await renderExplorer();
   } catch (error) {
     if (error.name !== "AbortError") {
@@ -454,6 +481,13 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) void checkExternal();
 });
 window.setInterval(() => { void checkExternal(); }, 3000);
+window.addEventListener("pagehide", () => {
+  window.clearTimeout(recoveryTimer);
+  if (recoveryReady) {
+    recoveryWrites = recoveryWrites.then(() =>
+      linkCore.request("ui", "session-recovery", "persist"));
+  }
+});
 window.addEventListener("beforeunload", event => {
   if (!workspace.documents.some(doc =>
     doc.status !== DocumentStatus.SYNCED)) return;
@@ -461,3 +495,11 @@ window.addEventListener("beforeunload", event => {
   event.returnValue = "";
 });
 render();
+void linkCore.request("ui", "session-recovery", "restore").then(result => {
+  recoveryReady = true;
+  if (!result.ok) {
+    linkCore.omu.record("EHU", "ui", "Recovery.Restore",
+      result.status, "session-recovery", { error: result.error });
+  }
+  queueRecovery();
+});
