@@ -28,7 +28,6 @@ export const SliceFileWritePolicy = Object.freeze({
     if (!Number.isSafeInteger(start) || start < 0 ||
         !Number.isSafeInteger(end) || end < start ||
         !Number.isSafeInteger(expectedSize) ||
-        expectedSize !== file.size || end > file.size ||
         !Number.isFinite(expectedLastModified) ||
         !/^[0-9a-f]{64}$/.test(expectedSliceHash ?? "")) {
       this.fail("Invalid writeback range or fingerprint", 400);
@@ -37,18 +36,27 @@ export const SliceFileWritePolicy = Object.freeze({
         end - start > this.maxSliceBytes) {
       this.fail("Writeback slice exceeds byte budget", 413);
     }
-    if (file.lastModified !== expectedLastModified) {
+    if (expectedSize !== file.size || end > file.size ||
+        file.lastModified !== expectedLastModified) {
       this.fail("External file revision changed", 409);
     }
   },
 
-  async writeBlob(writer, blob, start, end) {
+  async writeBlob(writer, blob, start, end, outputStart) {
+    const hashes = [];
     for (let offset = start; offset < end;
       offset += this.blockBytes) {
       const stop = Math.min(end, offset + this.blockBytes);
-      await writer.write(new Uint8Array(
-        await blob.slice(offset, stop).arrayBuffer()));
+      const bytes = await blob.slice(offset, stop).arrayBuffer();
+      // Hash the source BEFORE replacing the file. Old File blobs may
+      // become unreadable after the browser swaps the writable stream.
+      hashes.push({
+        offset: outputStart + offset - start,
+        size: stop - offset, checksum: await this.digest(bytes)
+      });
+      await writer.write(new Uint8Array(bytes));
     }
+    return hashes;
   },
 
   async verifyRegion(file, offset, expected) {
@@ -65,22 +73,13 @@ export const SliceFileWritePolicy = Object.freeze({
     }
   },
 
-  async verifyUntouched(before, after, prefix, suffixStart,
-    afterSuffixStart) {
-    for (const [oldOffset, newOffset, length] of [
-      [0, 0, prefix],
-      [suffixStart, afterSuffixStart, before.size - suffixStart]
-    ]) {
-      for (let n = 0; n < length; n += this.blockBytes) {
-        const end = Math.min(n + this.blockBytes, length);
-        const left = new Uint8Array(await before.slice(
-          oldOffset + n, oldOffset + end).arrayBuffer());
-        const right = new Uint8Array(await after.slice(
-          newOffset + n, newOffset + end).arrayBuffer());
-        if (left.length !== right.length ||
-            left.some((byte, index) => byte !== right[index])) {
-          this.fail("Unmodified file bytes differ after writeback", 422);
-        }
+  async verifyCopied(file, hashes) {
+    for (const item of hashes) {
+      const bytes = await file.slice(
+        item.offset, item.offset + item.size).arrayBuffer();
+      if (bytes.byteLength !== item.size ||
+          await this.digest(bytes) !== item.checksum) {
+        this.fail("Unmodified file bytes differ after writeback", 422);
       }
     }
   },
@@ -107,13 +106,16 @@ export const SliceFileWritePolicy = Object.freeze({
 
     let writer;
     let closed = false;
+    let copiedHashes = [];
     try {
       writer = await handle.createWritable({
         keepExistingData: false, mode: "exclusive"
       });
-      await this.writeBlob(writer, original, 0, start);
+      copiedHashes = await this.writeBlob(
+        writer, original, 0, start, 0);
       await writer.write(encoded);
-      await this.writeBlob(writer, original, end, original.size);
+      copiedHashes.push(...await this.writeBlob(
+        writer, original, end, original.size, start + encoded.length));
       await writer.close();
       closed = true;
     } catch (error) {
@@ -135,8 +137,7 @@ export const SliceFileWritePolicy = Object.freeze({
       this.fail("Writeback size mismatch", 422);
     }
     await this.verifyRegion(saved, start, encoded);
-    await this.verifyUntouched(original, saved, start,
-      end, start + encoded.length);
+    await this.verifyCopied(saved, copiedHashes);
     return { bytes: saved.size, insertedBytes: encoded.length,
       verified: true, retainedJournal: true };
   }
