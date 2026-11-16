@@ -8,6 +8,9 @@ const ui = Object.fromEntries([
 ].map(id => [id, document.getElementById(id)]));
 
 const workspace = new FileWorkspace(linkCore, render);
+linkCore.register({ id: "ui", receive: async () => {
+  throw new Error("UI does not accept external actions");
+} });
 const notify = message => { ui.statusText.textContent = message; };
 
 function render() {
@@ -105,8 +108,14 @@ ui.editor.addEventListener("scroll", () => {
   if (doc) doc.scrollTop = ui.editor.scrollTop;
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
 });
-ui.editor.addEventListener("click", renderLines);
-ui.editor.addEventListener("keyup", renderLines);
+ui.editor.addEventListener("click", () => {
+  if (workspace.active) workspace.active.cursor = ui.editor.selectionStart;
+  renderLines();
+});
+ui.editor.addEventListener("keyup", () => {
+  if (workspace.active) workspace.active.cursor = ui.editor.selectionStart;
+  renderLines();
+});
 ui.editor.addEventListener("keydown", event => {
   if (event.key === "Tab") {
     event.preventDefault();
