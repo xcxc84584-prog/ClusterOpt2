@@ -62,3 +62,18 @@ Highlighter entry disabled until plugin processor Object is installed.
 - EHU: 200 success, 400 invalid offset/range, 409 stale revision.
 - Index rebuild O(P) after mutation; seek O(log P). UTF-16 positions.
 - Integration with SliceRegistry and disk-backed virtual layer deferred.
+
+## Patch(+7): Object / Property / EventChain / EHU
+- Object: SliceLoader; Property: UTF8SlicePolicy (EDPMU/LinkCore).
+- Blob open -> Hub -> SliceLoader.open -> virtual metadata (no read).
+- Load(index, mode) -> Hub -> SliceLoader -> UTF8SlicePolicy.read
+  -> Blob.slice aligned to UTF-8 boundaries -> Hub -> SliceRegistry
+  registerVirtual/load -> Hub response -> OMU Log/EHU.
+- Error matrix: 200 success, 400 bad input/range, 404 missing file,
+  409 duplicate file or dirty-registry conflict, 413 cache budget,
+  422 malformed UTF-8; errors propagate through HubUnit.
+- Same loader Object operations currently serialized by scheduler;
+  no parallel per-slice API claim until dedicated resource keys.
+- Planned Plugin chains: SliceProcessor.process and
+  EditCommitter.process; disable defaults only with clear fallback
+  and documented data-integrity/security consequences.
