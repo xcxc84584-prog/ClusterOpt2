@@ -113,3 +113,9 @@ Highlighter entry disabled until plugin processor Object is installed.
   no FileDocument is allocated and workspace snapshots are unaffected.
 - Same ToolTabManager resource key remains FIFO; workspace file IO
   remains independently scheduled and protected by existing policies.
+
+### Patch(+10) recovery EventChain
+- UI.load -> SessionRecovery.restore(FileWorkspace) ->
+  sessionStorage.tool-view -> Hub -> ToolTabManager.restore ->
+  ToolTabPolicy.validatePosition -> UI.render -> OMU.
+- 400 invalid saved state, 503 blocked sessionStorage. No file mutation.
