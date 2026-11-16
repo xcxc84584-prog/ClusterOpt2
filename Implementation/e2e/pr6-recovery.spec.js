@@ -33,6 +33,14 @@ test("PR6 reload recovers editor text, tabs and viewport scroll", async ({ page 
     });
   });
   await page.reload({ waitUntil: "load" });
+  await page.waitForTimeout(500);
+  const diagnostic = await page.evaluate(() => ({
+    logs: window.Cluster?.log().slice(0,25),
+    version: window.Cluster?.version(),
+    tabCount: document.querySelectorAll("#tabs .tab").length,
+    status: document.querySelector("#status")?.textContent
+  }));
+  console.log("RECOVERY-DIAGNOSTIC", JSON.stringify(diagnostic));
   await expect(page.locator("#tabs .tab")).toHaveCount(1);
   await expect(page.locator("#editor")).toHaveValue(lines);
   await expect(page.locator("#explorerPanel")).toBeVisible();
