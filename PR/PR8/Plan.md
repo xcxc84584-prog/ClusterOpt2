@@ -21,3 +21,10 @@
 - Load estimate: viewport guide O(visible lines); no whole-file
   processing introduced. No disk/network access from the geometry policy.
 - PR8 full six-layer slice editor and Plugin manager remain outstanding.
+
+## Patch(+2): PR6/PR7 VTE acceptance
+Use the actual Explorer, FileWorkspace and FileTypeManager objects on
+a detached VTE LinkCore with synthetic FileSystemHandles. Exercise
+import, list, reorder, file-type blocking and close-root Request/Response.
+Check EHU 400 and two directed relation codes. Test only logic:
+real browser grants, OS updates and UI visual parity still require QA.

@@ -24,3 +24,9 @@ Invalid target/denied call -> EHU failure -> OMU log.
 EHU cases: 200 valid, 404 unknown Object, 400 bad request,
 503 unavailable storage (only in future slice implementation).
 No slice loads, plugin execution or writeback in this patch.
+
+## Patch(+2) VTE relation
+VTE.actor -> Hub -> Explorer.importFolder/list/reorder/closeRoot.
+VTE.actor -> Hub -> FileTypeManager.add -> EDPMU shared property.
+Responses: explorer/file-types -> VTE.actor; code 10 / 01.
+Invalid extension -> EHU 400; closeRoot must not modify disk.
