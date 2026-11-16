@@ -39,3 +39,17 @@ explicit bidirectional relation probes and large-file safety evaluation.
 ## Exit criteria
 No PR1 completion claim before CI succeeds, browser I/O is tested,
 required OCDA contract checks pass and outstanding blockers are resolved.
+
+## Patch(+3): concurrent execution requirement
+- Async requests to independent Object IDs may overlap (default limit 4).
+- Requests addressed to the same Object ID are FIFO and mutually exclusive.
+- The bounded queue rejects overload; abort can remove queued tasks.
+- No CPU parallelism is claimed: Web Workers are a later opt-in extension.
+- All work goes through HubUnit; clients cannot override lock/resource keys.
+- Nested requests must not target the currently held object (deadlock risk);
+  future patches should enforce reentrancy detection / call-graph validation.
+- Cross-browser or multi-tab locks are NOT covered by this in-memory scheduler.
+- Existing editor operations may still have UI races pending browser E2E.
+- Test suite expanded for independent overlap, FIFO, max concurrency,
+  queue overflow, cancellation and failure cleanup.
+- Validation is submitted but not marked PASS.
