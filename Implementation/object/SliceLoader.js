@@ -44,6 +44,17 @@ export class SliceLoader {
     };
   }
 
+  validate(run) {
+    try {
+      return run();
+    } catch (error) {
+      if (error instanceof RangeError || error instanceof TypeError) {
+        error.status ??= 400;
+      }
+      throw error;
+    }
+  }
+
   async receive(action, payload = {}) {
     if (action === "open") {
       const { id, blob } = payload;
@@ -58,8 +69,8 @@ export class SliceLoader {
         error.status = 409;
         throw error;
       }
-      const chunkBytes = this.policy().chunkBytes(
-        payload.chunkBytes ?? this.policy().defaultChunkBytes);
+      const chunkBytes = this.validate(() => this.policy().chunkBytes(
+        payload.chunkBytes ?? this.policy().defaultChunkBytes));
       const document = { id, blob, chunkBytes, registered: new Set() };
       this.documents.set(id, document);
       return this.describe(document);
@@ -75,8 +86,8 @@ export class SliceLoader {
         error.status = 400;
         throw error;
       }
-      const range = this.policy().range(document.blob.size,
-        index, document.chunkBytes);
+      const range = this.validate(() => this.policy().range(
+        document.blob.size, index, document.chunkBytes));
       const sliceId = document.id + "-slice-" + index;
       const { start, end, text } = await this.policy().read(
         document.blob, index, document.chunkBytes);
@@ -105,7 +116,7 @@ export class SliceLoader {
         error.status = loaded.status;
         throw error;
       }
-      return { id: sliceId, start, end, ...loaded.value };
+      return { ...loaded.value, byteStart: start, byteEnd: end };
     }
     const error = new TypeError("Unknown loader operation");
     error.status = 400;
