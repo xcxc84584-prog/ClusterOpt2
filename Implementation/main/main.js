@@ -705,34 +705,29 @@ function renderBlockedTypes() {
     row.setAttribute("role", "listitem");
     const name = document.createElement("code");
     name.textContent = extension;
+    const controls = document.createElement("div");
+    controls.className = "file-tool-type-actions";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.textContent = "✎";
+    edit.title = localized("blockedTypesEdit") + " " + extension;
+    edit.setAttribute("aria-label", edit.title);
+    edit.addEventListener("click", () => {
+      const next = window.prompt(localized("blockedTypesEditPrompt"),
+        extension);
+      if (next === null) return;
+      void changeBlockedTypes("replace", extension, next);
+    });
     const remove = document.createElement("button");
     remove.type = "button";
-    remove.textContent = localized("blockedTypesRemove");
+    remove.textContent = "×";
+    remove.title = localized("blockedTypesRemove") + " " + extension;
+    remove.setAttribute("aria-label", remove.title);
     remove.addEventListener("click", () => {
       void changeBlockedTypes("remove", extension);
     });
-    const edit = document.createElement("button");
-    edit.type = "button";
-    edit.textContent = localized("blockedTypesEdit");
-    edit.addEventListener("click", () => {
-      const input = document.createElement("input");
-      input.value = extension;
-      input.maxLength = 21;
-      input.setAttribute("aria-label", localized("blockedTypesEdit"));
-      const save = document.createElement("button");
-      save.type = "button";
-      save.textContent = localized("blockedTypesSave");
-      save.addEventListener("click", () => {
-        void changeBlockedTypes("replace", extension, input.value);
-      });
-      const cancel = document.createElement("button");
-      cancel.type = "button";
-      cancel.textContent = localized("blockedTypesCancel");
-      cancel.addEventListener("click", renderBlockedTypes);
-      row.replaceChildren(input, save, cancel);
-      input.focus();
-    });
-    row.append(name, edit, remove);
+    controls.append(edit, remove);
+    row.append(name, controls);
     container.append(row);
   }
 }
@@ -740,7 +735,10 @@ async function changeBlockedTypes(action, extension = "", replacement = "") {
   const result = await linkCore.request("ui", "file-types",
     action, { extension, replacement }, { origin: "user" });
   document.getElementById("blockedTypesError").textContent =
-    result.ok ? "" : result.error;
+    result.ok ? "" : result.status === 409 ?
+      localized("blockedTypesDuplicate") :
+      result.status === 400 ? localized("blockedTypesInvalid") :
+      result.error;
   if (result.ok) {
     renderBlockedTypes();
     await renderExplorer();
@@ -750,6 +748,7 @@ const blockedDialog = document.getElementById("blockedTypesDialog");
 document.getElementById("blockedTypesBtn").addEventListener("click", () => {
   closeMenu();
   renderBlockedTypes();
+  document.getElementById("blockedTypesError").textContent = "";
   blockedDialog.showModal();
 });
 for (const id of ["blockedTypesClose", "blockedTypesDone"]) {
@@ -783,8 +782,29 @@ async function renderPluginBudget() {
 }
 const pluginBtn = document.getElementById("pluginBtn");
 const pluginDialog = document.getElementById("pluginDialog");
+const pluginTabs = [...pluginDialog.querySelectorAll("[data-plugin-tab]")];
+const pluginPanels = [...pluginDialog.querySelectorAll("[data-plugin-panel]")];
+
+function selectPluginTab(tab) {
+  for (const button of pluginTabs) {
+    const selected = button.dataset.pluginTab === tab;
+    button.classList.toggle("selected", selected);
+    if (selected) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  }
+  for (const panel of pluginPanels) {
+    panel.hidden = panel.dataset.pluginPanel !== tab;
+  }
+}
+
+for (const button of pluginTabs) {
+  button.addEventListener("click", () => {
+    selectPluginTab(button.dataset.pluginTab);
+  });
+}
 pluginBtn.addEventListener("click", () => {
   closeMenu();
+  selectPluginTab("performance");
   pluginDialog.showModal();
   void renderPluginBudget();
 });

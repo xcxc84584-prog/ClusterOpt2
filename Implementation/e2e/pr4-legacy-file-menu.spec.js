@@ -10,7 +10,13 @@ test("legacy File menu keeps order and original priority selector", async ({ pag
   await expect(page.locator("#closeAll")).toHaveCount(0);
   await expect(page.locator("#priority")).toHaveValue("internal");
   await expect(page.locator("#pluginBtn")).toBeEnabled();
-  await expect(page.locator("#pluginHighlighterBtn")).toBeDisabled();
+  await page.locator("#pluginBtn").click();
+  await page.locator("#pluginHighlighterBtn").click();
+  await expect(page.locator("#pluginHighlighterState")).toBeVisible();
+  await expect(page.locator("#pluginHighlighterDescription")).toBeVisible();
+  await page.locator("#pluginDone").click();
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
   await expect(page.locator("#blockedTypesBtn")).toBeEnabled();
 
   await page.locator("#priority").selectOption("external");
@@ -19,6 +25,7 @@ test("legacy File menu keeps order and original priority selector", async ({ pag
     Cluster.propertylist().find(item => item.name === "StoragePriority"));
   expect(priority).toBeTruthy();
 
+  // Changing priority closes the File menu via perform().
   await page.locator("#menuBtn").click();
   await page.locator("#toolBtn").click();
   await page.locator("#languageBtn").click();

@@ -92,3 +92,13 @@ this limit currently applies only to the independent registry.
   disabling critical MVCC does not disable core conflict protection.
 - UI E2E: modal opening, escape/done, language, narrow layout,
   preference persistence and disabled unfinished actions.
+
+## Patch(+9): visual parity and navigable Plugin configuration
+- Compared actual legacy blocked-file-type UI implementation.
+- Restored pencil/cross compact controls, prompt rename, localized 400/409
+  feedback without bypassing HubUnit or changing stored file bytes.
+- Plugin dialog separates performance, highlighter, processor and
+  committer panels, using VS Code-style categories and details.
+- Unimplemented runtimes remain inactive; API specs are downloadable.
+- Test modal navigation, narrow viewport, locale and blocked list actions.
+- No change to slice-loader/editor memory architecture in this patch.
