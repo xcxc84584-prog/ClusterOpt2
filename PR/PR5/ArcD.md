@@ -58,3 +58,8 @@ flowchart LR
   Hub --> OMU[OMU Log EHU Dependency]
   UI --> Guide[Tab guide overlay]
 ```
+
+## Incremental guide anchor
+MainUI retains a non-persistent, view-only {firstLine,offset} anchor.
+A text edit or tab switch invalidates it; only guideWindow() uses it
+and it has no effect on text or file state. No new Object is needed.
