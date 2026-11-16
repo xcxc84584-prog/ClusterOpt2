@@ -32,6 +32,12 @@ test("PR6 reload recovers editor text, tabs and viewport scroll", async ({ page 
       };
     });
   });
+  await page.waitForFunction(() => {
+    const raw = window.sessionStorage.getItem(
+      "clusteropt2.recovery.fallback");
+    if (!raw) return false;
+    return JSON.parse(raw).documents?.[0]?.text?.includes("Line 199");
+  });
   await page.reload({ waitUntil: "load" });
   await page.waitForTimeout(500);
   const diagnostic = await page.evaluate(() => ({
