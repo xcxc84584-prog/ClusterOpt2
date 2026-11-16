@@ -55,3 +55,17 @@ Cancel/denied/error exits before unregister; OMU records EHU.
 - Node/VTE Request+Response/EHU and prior PR1 close regression
 - Chromium E2E 65MiB save/CloseAll/permission denial/cancel.
 - CI and premerge backup must pass before merge.
+
+## CI and merge record — 2026-11-17
+- PR #23 final HEAD
+  `b1e3719e46cf749a4e931c3f85de740983634208`
+  passed `OCDA CI` and `PR1 OCDA Verification`, including unit,
+  verify and both Chromium browser suites.
+- PR #23 merge SHA:
+  `10676b88f66a7baff0ead7873c1ca73355fb47d1`.
+- Verified rollback `backup/pre-pr8-patch19-fix2-main-20261117`
+  identical to previous main
+  `f92ebb9c9ecdbc71babd299040cc62b4a4fecafc`.
+- 65 MiB OPFS tests passed. Real Windows picker readwrite
+  permission, 1/5 GiB throughput and crash restoration are
+  separately OPEN. PR8 remains NOT PASS.
