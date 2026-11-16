@@ -91,13 +91,21 @@ test("PR8+23 full batch fails closed on memory exhaustion", async () => {
   assert.equal((await call("slice-registry", "setLimit", {
     bytes: 1024
   })).status, 200);
+  assert.equal((await call("slice-loader", "load", {
+    id: "parallel", index: 0, mode: "full"
+  })).status, 200);
+  assert.equal((await call("slice-registry", "setViewport", {
+    owner: "parallel", ids: ["parallel-slice-0"]
+  })).status, 200);
   const response = await call("slice-loader", "loadBatch", {
-    id: "parallel", indices: [0, 1], mode: "full"
+    id: "parallel", indices: [1, 2], mode: "full"
   });
   assert.equal(response.status, 413);
   const entries = (await call("slice-registry", "list")).value.entries;
   const resident = entries.filter(entry => entry.residentBytes > 0);
-  assert.equal(resident.length, 1);
+  assert.deepEqual(resident.map(entry => entry.id), [
+    "parallel-slice-0"
+  ]);
 });
 
 test("PR8+23 a denied preload is not reread until limit changes", async () => {
