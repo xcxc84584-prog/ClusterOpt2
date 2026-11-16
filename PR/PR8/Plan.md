@@ -206,3 +206,25 @@ this limit currently applies only to the independent registry.
   renderer remains O(total lines); no large-file acceptance claim.
 - Security: no external plugin execution, no keys, no absolute paths,
   no disk mutation in viewport observer; existing EHU/Log rules apply.
+
+## Patch(+15): sandboxed atomic slice edit transactions
+- Add independent SliceEditTransaction OCDA Object with per-slice
+  immutable Piece Tree roots and revision-based optimistic concurrency.
+- Add shared SliceTransactionPolicy for bounded operation validation,
+  UTF-16 offsets, max 128 operations and max 1 Mi UTF-16 code units.
+- Operations: insert, remove, replace. Each batch publishes only after
+  all edits are validated; mid-batch failures leave root/revision intact.
+- Immutable PieceTreePolicy and lazy BPlusSliceIndex are reused directly
+  through registered EDPMU Properties. No duplicate algorithms.
+- Dirty slices refuse close (409). This prototype is volatile memory,
+  **not durable MVCC** and is deliberately disconnected from FileDocument.
+- Error matrix: 400 bad range/input, 404 absent slice, 409 revision/
+  dirty close, 413 oversized candidate. HubUnit records EHU/Dependency.
+- Performance: expected tree edit O(log pieces) each, B+ lazy build
+  O(pieces), read O(pieces) worst-case; transaction holds only bounded
+  temporary immutable nodes; memory cost proportional to edited pieces.
+- Security: no filesystem write, no external code/key/absolute paths,
+  no user-facing unfinished controls. Dirty revisions cannot be erased
+  via close. Tests required before any integration or merge.
+- Later: durable journal, crash-safe commit, per-slice scheduler keys,
+  recovery, and actual EditorViewport text rendering.
