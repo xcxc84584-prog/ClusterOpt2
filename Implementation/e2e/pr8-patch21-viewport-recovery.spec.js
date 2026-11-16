@@ -22,8 +22,8 @@ test("PR8+21 restores physical viewport after switching and reload",
     await page.locator("#menuBtn").click();
     await page.locator("#newFile").click();
     await page.locator("#tabs .tab").first().click();
-    await expect.poll(() => editor.evaluate(node =>
-      Math.abs(node.scrollTop - first.top) <= 3)).toBe(true);
+    await expect.poll(() => editor.evaluate((node, expectedTop) =>
+      Math.abs(node.scrollTop - expectedTop) <= 3, first.top)).toBe(true);
 
     // IndexedDB and fallback persistence share the same snapshot data.
     await expect.poll(() => page.evaluate(() => {
