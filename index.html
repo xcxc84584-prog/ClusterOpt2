@@ -35,13 +35,13 @@
       <div id="clusterEditorColumn">
         <div id="tabs" class="tabs" aria-label="文件分頁"></div>
         <main id="workspace" class="editor-pane">
-          <div id="emptyState" class="empty-state">
+          <div id="empty" class="empty-state">
             <div class="bigdiamond">◇</div>
             <h1>Cluster</h1>
             <p>選擇「檔案」建立或開啟文件</p>
           </div>
-          <div id="editorSurface" class="editor-surface" hidden>
-            <pre id="lineNumbers" class="line-numbers"
+          <div id="editorPane" class="editor-surface" hidden>
+            <pre id="gutter" class="line-numbers"
               aria-hidden="true">1</pre>
             <textarea id="editor" spellcheck="false"
               aria-label="文字編輯器" wrap="off"></textarea>
@@ -51,13 +51,13 @@
     </div>
     <footer class="statusbar">
       <div class="meter progress-track" aria-hidden="true">
-        <div id="progressFill" class="progress-fill"></div>
+        <div id="meterFill" class="progress-fill"></div>
       </div>
-      <span id="progressText"></span>
+      <span id="meterPercent"></span>
       <span id="statusLamp" class="lamp green"></span>
-      <span id="statusText" aria-live="polite">就緒</span>
+      <span id="status" aria-live="polite">就緒</span>
       <span class="grow"></span>
-      <span id="lineInfo">Ln 1, Col 1</span>
+      <span id="position">Ln 1, Col 1</span>
       <span>UTF-8</span>
       <span>純文字</span>
     </footer>
