@@ -259,14 +259,7 @@ export class FileWorkspace {
    * Only a confirmed dirty virtual file needs asynchronous writeback.
    */
   async saveVirtualBeforeClose(doc, id) {
-    const saved = await this.core.request(this.id, doc.id, "save", {
-      onProgress: () => this.onChange()
-    });
-    if (!saved.ok) {
-      const error = new Error(saved.error);
-      error.status = saved.status;
-      throw error;
-    }
+    await this.writeVirtualDocument(doc);
     // A successful file commit is the only point at which the
     // document may be unregistered from the workspace.
     return this.close(id);
@@ -339,14 +332,7 @@ export class FileWorkspace {
       return false;
     }
     for (const doc of pending) {
-      const saved = await this.core.request(this.id, doc.id, "save", {
-        onProgress: () => this.onChange()
-      });
-      if (!saved.ok) {
-        const error = new Error(saved.error);
-        error.status = saved.status;
-        throw error;
-      }
+      await this.writeVirtualDocument(doc);
     }
     return finish();
   }
@@ -411,19 +397,80 @@ export class FileWorkspace {
     return results;
   }
 
+  /**
+   * Save runs outside Workspace's dispatch lock, so activating another
+   * editor tab never waits for a multi-gigabyte file write.
+   */
+  async writeVirtualDocument(doc, handle = null) {
+    if (doc.saveActive) {
+      const error = new Error("Virtual file save already running");
+      error.status = 409;
+      throw error;
+    }
+    const began = await this.core.request(this.id,
+      "slice-save-task", "begin", {
+        id: doc.id, revision: doc.editRevision
+      });
+    if (!began.ok) {
+      const error = new Error(began.error);
+      error.status = began.status;
+      throw error;
+    }
+    doc.saveActive = true;
+    doc.saveProgress = 0;
+    doc.saveError = "";
+    this.onChange();
+    let visiblePercent = -1;
+    const onProgress = percent => {
+      const clamped = Math.min(99, Math.max(0, Math.floor(percent)));
+      if (clamped === visiblePercent) return;
+      visiblePercent = clamped;
+      doc.saveProgress = clamped;
+      this.onChange();
+    };
+    try {
+      const response = await this.core.request(this.id, doc.id,
+        "save", {
+          handle, signal: began.value.signal, onProgress
+        });
+      if (!response.ok) {
+        const error = new Error(response.error);
+        error.status = response.status;
+        throw error;
+      }
+      doc.saveProgress = 100;
+      return true;
+    } catch (error) {
+      doc.saveError = String(error);
+      // A cancelled writer leaves the prior MVCC journal intact.
+      // The user may retry Save after another durable edit.
+      if (error.status !== 499) {
+        this.core.omu.record("EHU", this.id,
+          "BackgroundSave", error.status ?? 503, doc.id,
+          { error: String(error) });
+      }
+      throw error;
+    } finally {
+      doc.saveActive = false;
+      await this.core.request(this.id, "slice-save-task",
+        "finish", { id: doc.id });
+      this.onChange();
+    }
+  }
+
   async save(handle = null) {
     const doc = this.active;
     if (!doc) return false;
     if (doc.virtualReadOnly) {
-      const result = await this.core.request(this.id, doc.id, "save", {
-        handle, onProgress: () => this.onChange()
-      });
-      this.onChange();
-      if (!result.ok) {
-        const error = new Error(result.error);
-        error.status = result.status;
+      if (handle && handle !== doc.handle) {
+        const error = new Error("Virtual Save As unsupported");
+        error.status = 409;
         throw error;
       }
+      if (doc.saveActive) return false;
+      // Launch and return without holding the workspace scheduler
+      // until file-copy + readback completes.
+      void this.writeVirtualDocument(doc, handle).catch(() => {});
       return true;
     }
     const priority = this.core.readProperty(this.id, "StoragePriority").value;
