@@ -8,7 +8,7 @@ export const ExplorerEntryPolicy = Object.freeze({
         name !== name.trim() || name.length > 255 ||
         /[\\/:*?"<>|\x00-\x1f]/u.test(name) ||
         name === "." || name === ".." || /[. ]$/u.test(name) ||
-        /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\.|$)/iu
+        /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/iu
           .test(name)) {
       const error = new RangeError("Invalid Explorer entry name");
       error.status = 400;
