@@ -88,3 +88,20 @@ Object: existing FileWorkspace; property: existing Language.
 Relation: UI -> Workspace request 10; Workspace -> UI response 01;
 combined pair 11. Invalid indices produce EHU 400 from Workspace.
 No new shared Property in this patch.
+
+## Patch(+3) StoragePriority
+New Property: `StoragePriority` (`external` / `internal`), Public.
+Existing Object FileWorkspace: Request/Response setPriority, syncExternal;
+FileDocument: Request/Response reconcile. New algorithm file:
+Implementation/property/StoragePriority.js.
+Event Chain: UI -> HubUnit -> FileWorkspace.setPriority ->
+HubUnit.publishProperty -> EDPMU -> UI.
+Event Chain: timer/focus -> HubUnit -> FileWorkspace.syncExternal ->
+parallel FileDocument.reconcile -> getFile metadata -> either load
+(ExternalFirst) or retain local dirty text (InternalFirst) -> UI.
+Event Chain: save -> HubUnit -> workspace -> Document.reconcile ->
+Document.save only if external policy did not replace local draft.
+Failure/status: 400 invalid priority, 403 API denial, 404 missing
+registration/handle, 500 read/write error, 503 preference storage.
+No independent manager object created for storage since FileWorkspace already
+owns file coordination. HubUnit remains the inter-object route.
