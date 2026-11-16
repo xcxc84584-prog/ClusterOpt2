@@ -21,3 +21,7 @@
 ## 驗收
 實際 PASS/FAIL 以最新 GitHub Actions 執行結果為準。
 瀏覽器真實 UI 視覺仍需手動比對（不可用單元測試宣稱完成）。
+
+## 補充：儲存權限受限制的瀏覽器
+- `main.js` 存取 localStorage 受阻時不阻斷編輯器啟動；
+  記錄 EHU 503，改採記憶體內 UI_COLOR。
