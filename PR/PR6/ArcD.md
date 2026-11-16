@@ -30,3 +30,7 @@ UI -> Explorer: 10
 Explorer -> Workspace: 10
 Workspace -> Explorer: 01
 Explorer <-> FileManagement: shared immutable property
+
+## Browser relation checks
+Create -> Explorer.list -> row; query filters rows; click row ->
+Explorer.activate -> Workspace.activate; browser asserts no duplicates.

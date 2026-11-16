@@ -28,3 +28,7 @@ single serialized owner of tab changes.
 2. Directory import and hierarchy with lifecycle cleanup.
 3. Restore tab order, scroll viewport and search/tree state.
 4. Cross-browser tests, failure injection, UI color/i18n and CI.
+
+## CI extension
+PR6 feature branches now trigger the OCDA CI workflow on push.
+Patch(+2) adds browser smoke checks for the Explorer sidebar.
