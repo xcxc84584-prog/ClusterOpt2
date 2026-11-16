@@ -8,6 +8,39 @@ const ui = Object.fromEntries([
 ].map(id => [id, document.getElementById(id)]));
 
 const workspace = new FileWorkspace(linkCore, render);
+document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
+const menu = document.getElementById("menu");
+const menuButton = document.getElementById("menuBtn");
+function closeMenu() {
+  menu.hidden = true;
+  menuButton.setAttribute("aria-expanded", "false");
+}
+menuButton.addEventListener("click", () => {
+  menu.hidden = !menu.hidden;
+  menuButton.setAttribute("aria-expanded", String(!menu.hidden));
+});
+document.addEventListener("click", event => {
+  if (!event.target.closest(".menu-wrap")) closeMenu();
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") closeMenu();
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+  const key = event.key.toLowerCase();
+  if (key === "s") {
+    event.preventDefault();
+    closeMenu();
+    void perform("save", { saveAs: event.shiftKey });
+  } else if (key === "o") {
+    event.preventDefault();
+    closeMenu();
+    void perform("open");
+  } else if (key === "n") {
+    event.preventDefault();
+    closeMenu();
+    void perform("new");
+  }
+});
+
 linkCore.register({ id: "ui", receive: async () => {
   throw new Error("UI does not accept external actions");
 } });
@@ -126,6 +159,7 @@ ui.editor.addEventListener("keydown", event => {
   }
 });
 async function perform(action, payload = {}) {
+  closeMenu();
   const result = await linkCore.request("ui", "workspace", action, payload);
   if (!result.ok) notify(result.error);
 }
