@@ -144,6 +144,7 @@ test("Patch19 reload restores durable text with source fingerprint",
       id: first.doc.editSliceId,
       revision: first.doc.editRevision,
       fingerprint: first.doc.fileFingerprint,
+      sourceHash: first.doc.sourceHash,
       index: first.doc.virtualPageIndex,
       start: first.doc.pageStart, end: first.doc.pageEnd
     };
@@ -168,6 +169,7 @@ test("Patch19 rejects recovered edit on externally changed source",
       id: first.doc.editSliceId,
       revision: first.doc.editRevision,
       fingerprint: first.doc.fileFingerprint,
+      sourceHash: first.doc.sourceHash,
       index: 0, start: first.doc.pageStart, end: first.doc.pageEnd
     };
     // Synthetic mismatched fingerprint: no journal is discarded.
