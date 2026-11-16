@@ -6,9 +6,13 @@
   "scripts": {
     "test": "node --test Implementation/tests/*.test.js",
     "check": "npm run lint && node --check Implementation/LinkCore/LinkCore.js && node --check Implementation/main/main.js && npm test",
-    "lint": "node Implementation/tests/code-conventions.mjs"
+    "lint": "node Implementation/tests/code-conventions.mjs",
+    "test:e2e": "playwright test --config Implementation/e2e/playwright.config.js"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.0"
   }
 }
