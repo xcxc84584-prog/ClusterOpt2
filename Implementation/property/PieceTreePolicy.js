@@ -47,9 +47,9 @@ export const PieceTreePolicy = Object.freeze({
       return [this.node(root.text, root.priority, root.left), root.right];
     }
     const a = this.node(root.text.slice(0, within),
-      nextPriority(), root.left);
+      root.priority, root.left);
     const b = this.node(root.text.slice(within),
-      nextPriority(), null, root.right);
+      root.priority, null, root.right);
     return [a, b];
   },
   insert(root, offset, text, nextPriority) {
