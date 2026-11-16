@@ -224,3 +224,31 @@ Highlighter entry disabled until plugin processor Object is installed.
   conservative). Per-slice resource-key parallelism requires redesign
   and tests; no unsupported performance claims.
 - No connections to FileDocument, persistence, disk or Plugin hooks.
+
+## Patch(+16): new Object, shared Property and EventChains
+- Object: SliceRecoveryJournal (storage ownership, EHU/Log).
+- Storage adapter: IndexedDBSliceJournalStore, independently testable.
+- Shared Property: SliceJournalPolicy; registered exactly once through
+  LinkCore EDPMU and listed in 全域屬性清單.md.
+- UI/VTE -> Hub -> SliceEditTransaction.transactDurable ->
+  SliceTransactionPolicy + PieceTreePolicy candidate ->
+  Hub -> SliceRecoveryJournal.persist ->
+  SliceJournalPolicy.seal(SHA-256) ->
+  IndexedDBSliceJournalStore.put (transaction complete) ->
+  Hub Response -> publish immutable Piece Tree root/revision ->
+  OMU Log + directed Dependency (Req=10, Rep=01).
+- UI/VTE -> Hub -> SliceEditTransaction.restoreDurable ->
+  Hub -> SliceRecoveryJournal.restore -> IndexedDB.get ->
+  SliceJournalPolicy.verify -> rebuild Piece Tree ->
+  preserve journal revision/dirty flag -> OMU Log.
+- UI/VTE -> Hub -> SliceRecoveryJournal.discard/persist
+  -> EHU 403 (not UserAPI); privileged internal policy needed
+  before future writeback paths may discard.
+- Failure EHU: 400 validation, 403 unauthorized, 404 missing,
+  409 stale checkpoint/dirty close, 422 hash/schema mismatch,
+  503 unavailable IndexedDB/crypto.
+- Parallelization: one SliceEditTransaction resource currently FIFO
+  under HubUnit; independent-object operations may proceed in parallel.
+  Cross-tab revision-atomic CAS is pending; do NOT claim it implemented.
+- Slice journal and actual FileSystemHandle are separate; Patch17
+  must coordinate atomic writeback before any checkpoint discard.
