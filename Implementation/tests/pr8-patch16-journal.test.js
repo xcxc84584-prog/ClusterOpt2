@@ -13,10 +13,16 @@ function memoryStore() {
       const item = entries.get(id);
       return item && structuredClone(item);
     },
-    async put(entry) {
+    async putIfNewer(entry) {
       if (this.failWrite) {
         const error = new Error("Simulated quota failure");
         error.status = 503;
+        throw error;
+      }
+      const prior = entries.get(entry.id);
+      if (prior && entry.revision <= prior.revision) {
+        const error = new Error("Stale journal revision");
+        error.status = 409;
         throw error;
       }
       entries.set(entry.id, structuredClone(entry));
@@ -121,4 +127,27 @@ test("Patch16 journal rejects stale revision and unauthorized mutation",
     )).status, 403);
     assert.equal((await call("slice-recovery-journal",
       "restore", { id: "missing" })).status, 404);
+  });
+
+test("Patch16 competing runtimes cannot overwrite a higher revision",
+  async () => {
+    const store = memoryStore();
+    const first = setup(store);
+    const second = setup(store);
+    await first.edit("open", { id: "shared", text: "a" });
+    await second.edit("open", { id: "shared", text: "a" });
+    const edit = {
+      id: "shared", revision: 0,
+      operations: [{ type: "insert", start: 1, text: "!" }]
+    };
+    const results = await Promise.all([
+      first.edit("transactDurable", edit),
+      second.edit("transactDurable", edit)
+    ]);
+    assert.deepEqual(results.map(result => result.status).sort(),
+      [200, 409]);
+    const recovered = setup(store);
+    assert.equal((await recovered.edit("restoreDurable", {
+      id: "shared"
+    })).value.revision, 1);
   });
