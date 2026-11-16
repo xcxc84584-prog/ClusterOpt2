@@ -153,23 +153,25 @@ export class ViewportSliceController {
       });
     }
     const preloaded = [];
+    const missing = [];
     for (const index of plan.preloaded) {
       const previous = byId.get(sliceId(index));
       if (previous?.dirty) continue;
-      if (previous?.state === "preloaded") {
+      if (previous?.state === "preloaded" ||
+          previous?.state === "full") {
         preloaded.push(index);
-        continue;
+      } else {
+        missing.push(index);
       }
-      try {
-        await this.call("slice-loader", "load", {
-          id: document.id, index, mode: "preloaded"
-        });
-        preloaded.push(index);
-      } catch (error) {
-        // A low memory budget may omit speculative preloads; never
-        // omit visible slices or swallow non-budget load failures.
-        if (error.status !== 413) throw error;
-      }
+    }
+    // Read adjacent chunks concurrently, but apply registry writes in
+    // deterministic order. The existing resident budget remains final.
+    for (let start = 0; start < missing.length; start += 4) {
+      const batch = await this.call("slice-loader", "loadBatch", {
+        id: document.id, indices: missing.slice(start, start + 4),
+        mode: "preloaded"
+      });
+      preloaded.push(...batch.loaded);
     }
     const snapshot = await this.call("slice-registry", "list", {});
     const keep = new Set([...plan.full, ...preloaded].map(sliceId));
