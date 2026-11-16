@@ -14,7 +14,8 @@ export class SliceRegistry {
     const actions = ["registerVirtual", "release", "load", "demote",
       "markDirty", "setViewport", "setLimit", "read", "list"];
     this.ocda = Object.freeze({
-      Request: actions, Response: actions, UserAPI: actions,
+      Request: actions, Response: actions,
+      UserAPI: actions.filter(name => name !== "release"),
       AgentAPI: [], Property: ["SliceBudgetPolicy"],
       Program: "SliceRegistry", EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
