@@ -117,7 +117,7 @@ test("PR8 Plugin tool window supports narrow viewport and language", async ({ pa
   await openPlugin(page);
   await expect(page.locator("#pluginDialogTitle")).toHaveText(
     "Plugin Manager");
-  await expect(page.locator("#pluginCategoryLabel")).toHaveText("效能化");
+  await expect(page.locator("#pluginCategoryLabel")).toHaveText("Performance");
   const box = await page.locator("#pluginWindow").boundingBox();
   expect(box).not.toBeNull();
   expect(box.x).toBeGreaterThanOrEqual(0);
