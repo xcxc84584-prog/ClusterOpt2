@@ -259,7 +259,8 @@ export class FileWorkspace {
    * Only a confirmed dirty virtual file needs asynchronous writeback.
    */
   async saveVirtualBeforeClose(doc, id) {
-    await this.writeVirtualDocument(doc);
+    if (doc.savePromise) await doc.savePromise;
+    else await this.writeVirtualDocument(doc);
     // A successful file commit is the only point at which the
     // document may be unregistered from the workspace.
     return this.close(id);
@@ -332,7 +333,8 @@ export class FileWorkspace {
       return false;
     }
     for (const doc of pending) {
-      await this.writeVirtualDocument(doc);
+      if (doc.savePromise) await doc.savePromise;
+      else await this.writeVirtualDocument(doc);
     }
     return finish();
   }
@@ -474,7 +476,11 @@ export class FileWorkspace {
       if (doc.saveActive) return false;
       // Launch and return without holding the workspace scheduler
       // until file-copy + readback completes.
-      void this.writeVirtualDocument(doc, handle).catch(() => {});
+      const pending = this.writeVirtualDocument(doc, handle);
+      doc.savePromise = pending;
+      void pending.catch(() => {}).finally(() => {
+        if (doc.savePromise === pending) doc.savePromise = null;
+      });
       return true;
     }
     const priority = this.core.readProperty(this.id, "StoragePriority").value;
