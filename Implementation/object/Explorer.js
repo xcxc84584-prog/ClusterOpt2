@@ -12,16 +12,19 @@ export class Explorer {
     this.roots = [];
     this.nextRootId = 1;
     this.orderByParent = new Map();
+    this.clipboard = null;
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["list", "create", "open", "activate", "openEntry",
       "importFolder", "expand", "refreshTree",
       "snapshotRoots", "restoreRoots", "syncExternal",
-      "closeRoot", "reorder"];
+      "closeRoot", "reorder", "createFile", "createFolder",
+      "renameEntry", "deleteEntry", "copyEntry", "cutEntry",
+      "pasteEntry"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["FileManagement", "FileTypePolicy", "BlockedFileTypes",
-        "ExplorerOrderPolicy"],
+        "ExplorerOrderPolicy", "ExplorerEntryPolicy"],
       Program: "Explorer", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
     });
     if (!core.register(this)) {
@@ -210,7 +213,187 @@ export class Explorer {
     await visit(root, "", 0);
   }
 
+
+  entryPolicy() {
+    return this.core.readProperty(this.id, "ExplorerEntryPolicy").value;
+  }
+
+  failure(message, status = 400) {
+    const error = new Error(message);
+    error.status = status;
+    throw error;
+  }
+
+  /**
+   * Disk mutation is allowed only for discovered, parented entries.
+   * Detached editor tabs and imported roots are not filesystem children.
+   */
+  resolveEntry(id) {
+    const node = this.findNode(id);
+    const location = this.locateCollection(id);
+    const parent = location?.parentId ?
+      this.findNode(location.parentId) : null;
+    if (!node || !parent || parent.kind !== "directory") {
+      this.failure("Explorer entry requires a writable parent", 400);
+    }
+    return { node, parent };
+  }
+
+  async assertNoOpenDocuments(node) {
+    const documents = await this.requestWorkspace("entries");
+    for (const document of documents) {
+      if (!document.handle) continue;
+      if (await this.sameEntry(node.handle, document.handle)) {
+        this.failure("Close the open document before changing it", 409);
+      }
+      if (node.kind === "directory" &&
+          typeof node.handle.resolve === "function" &&
+          Array.isArray(await node.handle.resolve(document.handle))) {
+        this.failure("Close child documents before changing a folder", 409);
+      }
+    }
+  }
+
+  async createEntry(kind, payload) {
+    const selected = this.findNode(payload.id);
+    const folder = selected?.kind === "directory" ? selected :
+      this.findNode(this.locateCollection(payload.id)?.parentId);
+    if (!folder || folder.kind !== "directory") {
+      this.failure("Target folder not found", 404);
+    }
+    const name = this.entryPolicy().validateName(payload.name);
+    await this.entryPolicy().ensureAbsent(folder.handle, name);
+    if (kind === "directory") {
+      await folder.handle.getDirectoryHandle(name, { create: true });
+    } else {
+      await folder.handle.getFileHandle(name, { create: true });
+    }
+    await this.readChildren(folder);
+    return true;
+  }
+
+  async mutateEntry(action, payload) {
+    const { node, parent } = this.resolveEntry(payload.id);
+    if (action === "copyEntry" || action === "cutEntry") {
+      if (action === "cutEntry") await this.assertNoOpenDocuments(node);
+      this.clipboard = {
+        sourceId: node.id, handle: node.handle, parentHandle: parent.handle,
+        name: node.name, kind: node.kind, cut: action === "cutEntry"
+      };
+      return true;
+    }
+    await this.assertNoOpenDocuments(node);
+    if (action === "deleteEntry") {
+      // Destructive operations always require explicit UI confirmation.
+      if (!payload.confirmed) this.failure("Deletion not confirmed", 400);
+      await parent.handle.removeEntry(node.name, {
+        recursive: node.kind === "directory"
+      });
+    } else if (action === "renameEntry") {
+      const name = this.entryPolicy().validateName(payload.name);
+      if (name === node.name) return true;
+      await this.entryPolicy().ensureAbsent(parent.handle, name);
+      // Legacy local-file fallback: only retire old bytes after a
+      // bounded, byte-for-byte readback of the newly committed file.
+      if (node.kind !== "file") {
+        this.failure("Folder rename is not supported", 501);
+      }
+      if (typeof node.handle.move === "function") {
+        try {
+          await node.handle.move(parent.handle, name);
+          await this.readChildren(parent);
+          return true;
+        } catch (error) {
+          if (error.name !== "NotSupportedError") throw error;
+        }
+      }
+      const original = await node.handle.getFile();
+      const target = await parent.handle.getFileHandle(name, {
+        create: true
+      });
+      try {
+        const writer = await target.createWritable();
+        try {
+          await writer.write(original);
+          await writer.close();
+        } catch (error) {
+          await writer.abort?.();
+          throw error;
+        }
+        const policy = this.entryPolicy();
+        const verified = await policy.verifyCopy(
+          original, await target.getFile());
+        const unchanged = await policy.verifyCopy(
+          original, await node.handle.getFile());
+        if (!verified || !unchanged) {
+          this.failure("Rename source or destination changed", 409);
+        }
+        await parent.handle.removeEntry(node.name);
+      } catch (error) {
+        // Never delete the original if copy/verification/retirement fails.
+        await parent.handle.removeEntry(name).catch(() => {});
+        throw error;
+      }
+    }
+    await this.readChildren(parent);
+    return true;
+  }
+
+  async pasteEntry(payload) {
+    const destination = this.findNode(payload.id);
+    const folder = destination?.kind === "directory" ?
+      destination : this.findNode(this.locateCollection(payload.id)?.parentId);
+    const source = this.clipboard;
+    if (!source || !folder || folder.kind !== "directory") {
+      this.failure("Clipboard or destination unavailable", 400);
+    }
+    if (source.kind !== "file") {
+      this.failure("Folder paste requires a separate safe tree transaction", 501);
+    }
+    if (source.cut) {
+      const current = this.findNode(source.sourceId);
+      if (!current || !await this.sameEntry(current.handle, source.handle)) {
+        this.failure("Clipboard source has changed", 409);
+      }
+      await this.assertNoOpenDocuments(current);
+    }
+    if (await this.sameEntry(folder.handle, source.parentHandle)) {
+      this.failure("Select a different destination folder", 409);
+    }
+    await this.entryPolicy().ensureAbsent(folder.handle, source.name);
+    const target = await folder.handle.getFileHandle(
+      source.name, { create: true });
+    try {
+      const writable = await target.createWritable();
+      try {
+        await writable.write(await source.handle.getFile());
+        await writable.close();
+      } catch (error) {
+        await writable.abort?.();
+        throw error;
+      }
+      if (source.cut) {
+        await source.parentHandle.removeEntry(source.name);
+        this.clipboard = null;
+        const origin = this.findNode(
+          this.locateCollection(source.sourceId)?.parentId);
+        if (origin) await this.readChildren(origin);
+      }
+    } catch (error) {
+      this.core.omu.record("EHU", this.id, "Entry.Paste",
+        503, folder.id, { error: String(error) });
+      throw error;
+    }
+    await this.readChildren(folder);
+    return true;
+  }
+
   async receive(action, payload = {}) {
+    if (action === "createFile") return this.createEntry("file", payload);
+    if (action === "createFolder") return this.createEntry("directory", payload);
+    if (action === "pasteEntry") return this.pasteEntry(payload);
+    if (["renameEntry", "deleteEntry", "copyEntry",
+      "cutEntry"].includes(action)) return this.mutateEntry(action, payload);
     if (action === "snapshotRoots") {
       return this.roots.map(root => ({
         name: root.name, handle: root.handle,

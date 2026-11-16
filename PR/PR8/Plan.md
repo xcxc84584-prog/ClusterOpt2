@@ -542,3 +542,24 @@ this limit currently applies only to the independent registry.
   change cannot be proven from collapsed log entries alone.
   Must keep source checksum and disk revision observations for
   any future conflict analysis.
+
+## Patch(+20): Explorer filesystem operations
+- Bring back Explorer context CRUD using Hub Request/Response.
+- Reuse ExplorerEntryPolicy for validation, disallow traversal and collisions.
+- Block mutations of open files/subtrees; explicit confirmation for delete.
+- File rename fallback only deletes original after byte-for-byte
+  readback and source revalidation, using bounded 1 MiB slices.
+- O(directory entries) preflight, O(file bytes) file copy.
+- Pending: real filesystem authorization, directory paste and native move QA.
+
+## Patch(+21): preserve physical viewport positions
+- Save actual scrollTop and scrollLeft, independent of editor caret.
+- Restore virtual page index plus pixel coordinates after asynchronous load.
+- Retain scroll coordinates across virtual save and document switching.
+- Browser clamping after zoom/wrapping changes requires anchored-line QA.
+- No new secret storage or network traffic; snapshot payload +8 bytes per doc.
+
+### Patch(+21) viewport line-height extension
+- Record last rendered line height, validate <=512 CSS pixels.
+- On different zoom, preserve visible row by line-height ratio.
+- Wrapped lines and font-width changes still need browser QA.

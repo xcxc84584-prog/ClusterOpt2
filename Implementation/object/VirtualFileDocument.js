@@ -364,7 +364,12 @@ export class VirtualFileDocument extends FileDocument {
     this.fileFingerprint = null;
     this.lineCheckpoints = [{ byte: 0, lines: 0 }];
     this.virtualEditable = false; // force a fresh byte-aligned load
+    const viewport = {
+      top: this.scrollTop, left: this.scrollLeft ?? 0
+    };
     await this.loadPage(this.virtualPageIndex);
+    this.scrollTop = viewport.top;
+    this.scrollLeft = viewport.left;
     onProgress(100);
     return { ...response.value, saved: true };
   }

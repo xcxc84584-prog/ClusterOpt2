@@ -43,6 +43,8 @@ export class FileWorkspace {
         text: doc.virtualReadOnly ? "" : doc.text,
         handle: doc.handle, status: doc.status,
         cursor: doc.cursor, scrollTop: doc.scrollTop,
+        scrollLeft: doc.scrollLeft ?? 0,
+        viewportLineHeight: doc.viewportLineHeight ?? null,
         revision: doc.revision, diskRevision: doc.diskRevision,
         lineEnding: doc.lineEnding, hasUtf8Bom: doc.hasUtf8Bom,
         virtual: Boolean(doc.virtualReadOnly),
@@ -103,6 +105,8 @@ export class FileWorkspace {
         }
         doc.cursor = Math.min(state.cursor, doc.text.length);
         doc.scrollTop = state.scrollTop;
+        doc.scrollLeft = state.scrollLeft ?? 0;
+        doc.viewportLineHeight = state.viewportLineHeight ?? null;
         doc.revision = state.revision ?? 0;
         doc.diskRevision = state.diskRevision ?? null;
         doc.lineEnding = state.lineEnding === "\\r\\n" ?
@@ -121,10 +125,21 @@ export class FileWorkspace {
     // Page restoration is asynchronous and never trusts cached text
     // from the last session as authoritative file contents.
     for (const doc of restored.filter(item => item.virtualReadOnly)) {
+      // Loading a page resets its viewport to the page beginning.
+      // Apply recovered pixel coordinates AFTER the promised load.
+      const viewport = {
+        top: doc.scrollTop, left: doc.scrollLeft
+      };
       void this.core.request(this.id, doc.id, "load", {
         index: doc.virtualPageIndex,
         onProgress: () => this.onChange()
-      }).then(() => this.onChange());
+      }).then(result => {
+        if (result.ok) {
+          doc.scrollTop = viewport.top;
+          doc.scrollLeft = viewport.left;
+        }
+        this.onChange();
+      });
     }
     this.documents = restored;
     this.activeId = ids.get(snapshot.activeId) ??

@@ -22,6 +22,7 @@ import { FileManagement } from "../property/FileManagement.js";
 import { RecoveryPolicy } from "../property/RecoveryPolicy.js";
 import { FileTypePolicy } from "../property/FileTypePolicy.js";
 import { ExplorerOrderPolicy } from "../property/ExplorerOrderPolicy.js";
+import { ExplorerEntryPolicy } from "../property/ExplorerEntryPolicy.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
 import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
 import { ObjectManagementUnit } from "./ObjectManagementUnit.js";
@@ -35,7 +36,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.8-pr8.patch19.fix5";
+    this.version = "0.0.8-pr8.patch21";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -99,6 +100,8 @@ export class LinkCore {
       EditorInteractionPolicy, {
         owners: ["LinkCore"], visibility: "Public"
       });
+    this.hub.registerProperty("ExplorerEntryPolicy",
+      ExplorerEntryPolicy, { owners: ["LinkCore"], visibility: "Public" });
     this.hub.registerProperty("ExplorerOrderPolicy",
       ExplorerOrderPolicy, {
         owners: ["LinkCore"], visibility: "Public"

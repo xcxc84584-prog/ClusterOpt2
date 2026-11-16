@@ -217,10 +217,11 @@ function appendExplorerActions(row, node) {
     symbol.className = "explorer-action-symbol";
     symbol.textContent = glyph;
     button.append(symbol);
-    // File CRUD, clipboard, and rename are separately scheduled to
-    // avoid unsafe partial writes; never present a nonworking action.
-    button.disabled = ["rename", "folder", "cut",
-      "copy", "paste", "delete"].includes(key) ||
+    const parented = !node.id.startsWith("tab:") &&
+      node.id.includes("/");
+    button.disabled = (["rename", "cut", "copy", "delete"]
+      .includes(key) && !parented) ||
+      (key === "paste" && node.id.startsWith("tab:")) ||
       (key === "close" && node.kind === "directory" &&
       (!node.id.startsWith("root-") || node.id.includes("/")));
     button.addEventListener("click", async event => {
@@ -251,6 +252,30 @@ function appendExplorerActions(row, node) {
         const response = await linkCore.request("ui", "explorer",
           action, { id: node.id }, { origin: "user" });
         if (!response.ok) notify(response.error);
+      } else {
+        const actions = {
+          rename: "renameEntry", folder: "createFolder",
+          file: "createFile", cut: "cutEntry", copy: "copyEntry",
+          paste: "pasteEntry", delete: "deleteEntry"
+        };
+        const action = actions[key];
+        const payload = { id: node.id };
+        if (["rename", "folder", "file"].includes(key)) {
+          const promptLabel = localized(label);
+          const name = window.prompt(promptLabel,
+            key === "rename" ? node.name : "");
+          if (name === null) return;
+          payload.name = name;
+        }
+        if (key === "delete") {
+          const message = localized("explorerDelete") + ": " + node.name;
+          if (!window.confirm(message)) return;
+          payload.confirmed = true;
+        }
+        const response = await linkCore.request(
+          "ui", "explorer", action, payload, { origin: "user" });
+        if (!response.ok) notify(response.error);
+        if (response.ok) queueRecovery();
       }
       await renderExplorer();
     });
@@ -500,11 +525,18 @@ function render() {
       Math.min(active.cursor, ui.editor.value.length);
   }
   if (switchedTab || switchedPage) {
+    const lineHeight = parseFloat(
+      window.getComputedStyle(ui.editor).lineHeight) || 22;
+    const savedLineHeight = active.viewportLineHeight || lineHeight;
+    const restoredTop = active.scrollTop *
+      (lineHeight / savedLineHeight);
     ui.editor.scrollTop = active.virtualReadOnly &&
       active.pageEntryEdge === "end" ?
-      ui.editor.scrollHeight : active.scrollTop;
+      ui.editor.scrollHeight : restoredTop;
+    ui.editor.scrollLeft = Math.max(0, active.scrollLeft ?? 0);
     ui.lineNumbers.scrollTop = ui.editor.scrollTop;
     active.scrollTop = ui.editor.scrollTop;
+    active.viewportLineHeight = lineHeight;
   }
   renderLines();
   scheduleGuides();
@@ -857,7 +889,12 @@ ui.editor.addEventListener("input", async () => {
 });
 ui.editor.addEventListener("scroll", () => {
   const doc = workspace.active;
-  if (doc) doc.scrollTop = ui.editor.scrollTop;
+  if (doc) {
+    doc.scrollTop = ui.editor.scrollTop;
+    doc.scrollLeft = ui.editor.scrollLeft;
+    doc.viewportLineHeight = parseFloat(
+      window.getComputedStyle(ui.editor).lineHeight) || 22;
+  }
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
   scheduleGuides();
   queueRecovery();
