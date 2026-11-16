@@ -69,3 +69,7 @@ Browser file permissions cannot be granted silently on reload.
 Expanded paths stored per root (max 500); restored by lazy enumeration,
 maximum recursion depth 24. Explorer visible/query/scrollTop saved to
 sessionStorage. Expanded directory polling every 2.5s while visible.
+
+## Patch(+8): browser acceptance
+Playwright real Chromium reload checks editor scrollTop and IndexedDB
+recovery, without confusing the caret offset with the viewport.

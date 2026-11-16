@@ -68,3 +68,7 @@ UI timer -> Hub -> Explorer.syncExternal -> expanded handle.values()
 -> compare children -> UI redraw only when different.
 SessionRecovery.restore -> Explorer.restoreExpansion(paths).
 Explorer panel/search/tree scrollbar use sessionStorage (no handles).
+
+## Patch(+8) regression event
+UI.edit/scroll -> Recovery.persist -> IndexedDB -> reload ->
+Recovery.restore -> UI render -> scrollTop restored, one tab.

@@ -25,3 +25,6 @@ permissions, quota, and large-file failure injection still need E2E.
 
 Patch(+7): nested expansion, panel/search/tree-scroll restore,
 and expanded-only external CRUD polling. Pending browser permission tests.
+
+Patch(+8): Chromium automated reload regression added. Browser
+permissions and large quota failures remain separate acceptance gates.
