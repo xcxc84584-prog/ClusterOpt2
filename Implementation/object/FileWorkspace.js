@@ -51,6 +51,7 @@ export class FileWorkspace {
           doc.status === DocumentStatus.DIRTY ? {
             id: doc.editSliceId, revision: doc.editRevision,
             fingerprint: doc.fileFingerprint,
+            sourceHash: doc.sourceHash,
             index: doc.virtualPageIndex,
             start: doc.pageStart, end: doc.pageEnd
           } : null
