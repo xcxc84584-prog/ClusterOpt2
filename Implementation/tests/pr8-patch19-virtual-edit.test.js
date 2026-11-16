@@ -189,3 +189,36 @@ test("Patch19 UTF-16 minimal edit accepts Chinese and emoji",
     assert.equal(doc.pieceIndex.length, "A😀中改B".length);
     assert.equal(doc.text, "A😀中改B");
   });
+
+test("Patch19 CRLF/Chinese page index continues exact global LF",
+  async () => {
+    const source = "中\r\n".repeat(14000) + "TAIL";
+    const { doc, call, internal } = harness(handleOf(source));
+    assert.equal((await internal("load")).ok, true);
+    assert.equal((await call("page", { index: 1 })).ok, true);
+    const prefix = new TextEncoder().encode(source)
+      .subarray(0, doc.pageStart);
+    let lineFeeds = 0;
+    for (const byte of prefix) if (byte === 10) lineFeeds++;
+    assert.equal(doc.pageFirstLine, lineFeeds + 1);
+  });
+
+test("Patch19 same-size and same-time modified source hash is rejected",
+  async () => {
+    const handle = handleOf("unchanged");
+    const store = storage();
+    const first = harness(handle, store);
+    await first.internal("load");
+    await first.call("edit", { text: "revision" });
+    const second = harness(handle, store);
+    second.doc.pendingRecovery = {
+      id: first.doc.editSliceId,
+      revision: first.doc.editRevision,
+      fingerprint: first.doc.fileFingerprint,
+      sourceHash: "0".repeat(64),
+      index: 0, start: first.doc.pageStart, end: first.doc.pageEnd
+    };
+    const response = await second.internal("load");
+    assert.equal(response.status, 409);
+    assert.equal(store.entries.size, 1);
+  });
