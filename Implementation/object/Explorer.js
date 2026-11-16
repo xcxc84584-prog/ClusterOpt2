@@ -293,12 +293,47 @@ export class Explorer {
       const name = this.entryPolicy().validateName(payload.name);
       if (name === node.name) return true;
       await this.entryPolicy().ensureAbsent(parent.handle, name);
-      // Native file move is not portable for local directory handles.
-      // Refuse unsupported moves instead of copy-delete data loss.
-      if (typeof node.handle.move !== "function") {
-        this.failure("Native rename is unsupported by this browser", 501);
+      // Legacy local-file fallback: only retire old bytes after a
+      // bounded, byte-for-byte readback of the newly committed file.
+      if (node.kind !== "file") {
+        this.failure("Folder rename is not supported", 501);
       }
-      await node.handle.move(parent.handle, name);
+      if (typeof node.handle.move === "function") {
+        try {
+          await node.handle.move(parent.handle, name);
+          await this.readChildren(parent);
+          return true;
+        } catch (error) {
+          if (error.name !== "NotSupportedError") throw error;
+        }
+      }
+      const original = await node.handle.getFile();
+      const target = await parent.handle.getFileHandle(name, {
+        create: true
+      });
+      try {
+        const writer = await target.createWritable();
+        try {
+          await writer.write(original);
+          await writer.close();
+        } catch (error) {
+          await writer.abort?.();
+          throw error;
+        }
+        const policy = this.entryPolicy();
+        const verified = await policy.verifyCopy(
+          original, await target.getFile());
+        const unchanged = await policy.verifyCopy(
+          original, await node.handle.getFile());
+        if (!verified || !unchanged) {
+          this.failure("Rename source or destination changed", 409);
+        }
+        await parent.handle.removeEntry(node.name);
+      } catch (error) {
+        // Never delete the original if copy/verification/retirement fails.
+        await parent.handle.removeEntry(name).catch(() => {});
+        throw error;
+      }
     }
     await this.readChildren(parent);
     return true;
