@@ -426,6 +426,9 @@ export class FileWorkspace {
       if (clamped === visiblePercent) return;
       visiblePercent = clamped;
       doc.saveProgress = clamped;
+      void this.core.request(this.id, "slice-save-task", "progress", {
+        id: doc.id, percent: clamped, phase: "writing"
+      });
       // Progress paint must not rebuild tabs, Explorer or the editor.
       this.onSaveProgress?.(doc);
     };
