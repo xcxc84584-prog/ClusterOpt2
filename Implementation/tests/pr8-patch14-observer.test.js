@@ -10,6 +10,10 @@ import { ViewportLinePolicy } from "../property/ViewportLinePolicy.js";
 
 function setup() {
   const core = new LinkCore();
+  // A real OCDA sender must exist before HubUnit accepts user requests.
+  if (!core.register({ id: "ui", receive: async () => true })) {
+    throw new Error("Test UI registration failed");
+  }
   new SliceRegistry(core);
   new SliceLoader(core);
   new VirtualLineIndex(core);
