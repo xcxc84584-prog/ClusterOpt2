@@ -28,7 +28,6 @@ export class InterfacePalette {
 			Log: "LinkCore.OMU"
 		});
 		this.rgb = [...UI_COLOR.defaultRGB];
-		this.subscribers = new Set();
 		if (!this.core.register(this)) throw new Error("Palette registration failed");
 		this.load();
 	}
@@ -62,7 +61,6 @@ export class InterfacePalette {
 			}
 			this.target.style.colorScheme = derived.mode;
 		}
-		for (const subscriber of [...this.subscribers]) subscriber(this.snapshot());
 	}
 
 	snapshot() {
@@ -71,12 +69,6 @@ export class InterfacePalette {
 			hex: UI_COLOR.toHex(this.rgb),
 			mode: UI_COLOR.derive(this.rgb).mode
 		});
-	}
-
-	subscribe(callback) {
-		this.subscribers.add(callback);
-		callback(this.snapshot());
-		return () => this.subscribers.delete(callback);
 	}
 
 	async receive(action, payload = {}) {
