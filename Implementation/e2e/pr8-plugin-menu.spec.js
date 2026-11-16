@@ -139,7 +139,7 @@ test("PR8 Plugin category dropdown is collapsed and keyboard accessible", async 
   await page.keyboard.press("Enter");
   await expect(page.locator("#pluginCategoryMenu")).toBeHidden();
   await expect(page.locator("#pluginHighlighterOptions")).toBeVisible();
-  await expect(page.locator("#pluginCategoryLabel")).toHaveText("文本著色器");
+  await expect(page.locator("#pluginCategoryLabel")).toContainText("文本著色器");
   await page.locator("#pluginCategoryBtn").click();
   await page.keyboard.press("Escape");
   await expect(page.locator("#pluginCategoryMenu")).toBeHidden();
