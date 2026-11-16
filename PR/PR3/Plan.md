@@ -49,3 +49,8 @@ Accessibility labels are part of the shared locale projection: File menu,
 Tools group and Palette dialog close are translated with Language,
 not hard-coded per Object. Validate them in Chromium in addition to
 visible text. Runtime cost O(3) extra attribute assignments per change.
+
+## Patch(+2) verified acceptance
+Source commit c1e2a98b: 43/43 Node tests, 9/9 Chromium tests,
+30 source files scanned, both CI jobs SUCCESS. Native OS-level
+visual and file-permission checks remain manual review items.
