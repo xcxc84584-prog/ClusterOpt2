@@ -49,3 +49,40 @@ test("PR8+23 two document viewports do not clear one another", async () => {
   assert.ok(core.getSnapshot().dependencies.some(item =>
     item.link === "viewport-slices->slice-registry"));
 });
+
+test("PR8+23 repeated identical viewport avoids duplicate Blob reads",
+  async () => {
+    const core = new LinkCore();
+    new SliceRegistry(core, null);
+    new SliceLoader(core);
+    new VirtualLineIndex(core);
+    new ViewportSliceController(core);
+    core.register({
+      id: "actor", authorization: { default: "Public" },
+      receive: async () => null
+    });
+    let reads = 0;
+    class CountingBlob extends Blob {
+      slice(start, end) {
+        reads++;
+        return super.slice(start, end);
+      }
+    }
+    const call = (target, action, payload = {}) =>
+      core.request("actor", target, action, payload);
+    const id = "repeated";
+    assert.equal((await call("viewport-slices", "open", {
+      id, blob: new CountingBlob(["A".repeat(8192)]),
+      chunkBytes: 1024
+    })).status, 200);
+    const parameters = {
+      id, first: 2, last: 2, adjacent: 1
+    };
+    assert.equal((await call("viewport-slices", "navigate",
+      parameters)).status, 200);
+    const before = reads;
+    assert.ok(before > 0);
+    assert.equal((await call("viewport-slices", "navigate",
+      parameters)).status, 200);
+    assert.equal(reads, before);
+  });
