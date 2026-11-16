@@ -262,4 +262,5 @@ this limit currently applies only to the independent registry.
   Treat this as a **foundation**, not proven crash-safe full MVCC.
 - Tests: simulated persistent storage across runtime recreation,
   disk-like quota failure rollback, checksum tampering, 403/404/409,
-  EHU and Relation/Dependency, plus full CI/Playwright regression.
+  EHU and Relation/Dependency, plus real Playwright IndexedDB reload
+  and same-origin two-tab CAS regression.
