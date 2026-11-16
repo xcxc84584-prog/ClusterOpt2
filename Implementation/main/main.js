@@ -360,7 +360,14 @@ function render() {
     ui.tabs.append(tab);
   }
   pluginWindow.hidden = !toolActive;
-  if (!toolActive) closePluginCategoryMenu();
+  if (!toolActive) {
+    // LanguageManager invokes render() before Plugin controls bind.
+    // Access the actual DOM here to avoid a TDZ on initial startup.
+    const menu = document.getElementById("pluginCategoryMenu");
+    const trigger = document.getElementById("pluginCategoryBtn");
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+  }
   document.getElementById("fileType").textContent = toolActive ?
     localized("plugin") : localized("plainText");
   ui.editorSurface.hidden = !active || toolActive;
