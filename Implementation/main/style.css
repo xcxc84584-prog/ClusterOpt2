@@ -112,3 +112,55 @@
     left: 43px;
   }
 }
+
+/* PR6: narrow Explorer layout using existing shared color tokens. */
+#explorerPanel {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  flex: 0 0 220px;
+  min-width: 120px;
+  border-right: 1px solid var(--ui-border, #404858);
+  background: var(--ui-panel, #171c24);
+  color: var(--ui-text, inherit);
+  overflow: hidden;
+}
+.explorer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.explorer-actions { display: flex; gap: 4px; }
+.explorer-actions button, .explorer-entry {
+  color: inherit;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+#explorerSearch {
+  width: calc(100% - 16px);
+  margin: 0 8px 8px;
+  padding: 6px;
+  color: inherit;
+  background: var(--ui-input, transparent);
+  border: 1px solid var(--ui-border, #404858);
+}
+#explorerFiles { overflow: auto; flex: 1; }
+.explorer-entry {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.explorer-entry:hover, .explorer-entry.active {
+  background: var(--ui-accent-soft, #354052);
+}
+@media (max-width: 650px) {
+  #explorerPanel { width: 145px; flex-basis: 145px; }
+}

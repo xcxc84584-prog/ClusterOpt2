@@ -63,6 +63,18 @@
       </div>
     </header>
     <div id="clusterWorkspaceShell">
+      <aside id="explorerPanel" aria-label="Explorer">
+        <div class="explorer-heading">EXPLORER
+          <span class="explorer-actions">
+            <button id="explorerNew" type="button" title="New">＋</button>
+            <button id="explorerOpen" type="button" title="Open">↥</button>
+          </span>
+        </div>
+        <input id="explorerSearch" type="search"
+          placeholder="搜尋文件" aria-label="搜尋文件">
+        <div id="explorerFiles" role="group"
+          aria-label="Explorer files"></div>
+      </aside>
       <div id="clusterEditorColumn">
         <div id="tabs" class="tabs" aria-label="文件分頁"></div>
         <main id="workspace" class="editor-pane">

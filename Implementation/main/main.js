@@ -4,6 +4,7 @@ import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
+import { Explorer } from "../object/Explorer.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
 
 const uiIds = {
@@ -19,6 +20,8 @@ const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
 let guideFrame = 0;
 let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
+const explorer = new Explorer(linkCore);
+let explorerRequestId = 0;
 exposeVTE(window);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
 const menu = document.getElementById("menu");
@@ -95,6 +98,7 @@ const notify = message => { ui.statusText.textContent = message; };
 function render() {
   const active = workspace.active;
   renderPriority();
+  void renderExplorer();
   ui.tabs.replaceChildren();
   for (const [index, doc] of workspace.documents.entries()) {
     const tab = document.createElement("button");
@@ -174,6 +178,41 @@ function render() {
   renderLines();
   scheduleGuides();
   updateStatus();
+}
+
+/**
+ * Render only the latest Explorer result; old async responses cannot
+ * replace a newer search result after a fast query change.
+ */
+async function renderExplorer() {
+  const container = document.getElementById("explorerFiles");
+  const query = document.getElementById("explorerSearch").value;
+  const requestId = ++explorerRequestId;
+  const result = await linkCore.request("ui", "explorer", "list", {
+    query
+  }, { origin: "user" });
+  if (requestId !== explorerRequestId) return;
+  if (!result.ok) {
+    linkCore.omu.record("EHU", "ui", "Explorer.Render",
+      result.status, "explorer", { error: result.error });
+    return;
+  }
+  const fragment = document.createDocumentFragment();
+  for (const entry of result.value) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "explorer-entry";
+    if (entry.id === workspace.activeId) button.classList.add("active");
+    button.textContent = entry.name;
+    button.title = entry.name;
+    button.addEventListener("click", () => {
+      void linkCore.request("ui", "explorer", "activate", {
+        id: entry.id
+      }, { origin: "user" });
+    });
+    fragment.append(button);
+  }
+  container.replaceChildren(fragment);
 }
 
 function renderPriority() {
@@ -321,6 +360,12 @@ async function perform(action, payload = {}) {
     }
   }
 }
+document.getElementById("explorerSearch").addEventListener(
+  "input", () => { void renderExplorer(); });
+document.getElementById("explorerNew").addEventListener(
+  "click", () => { void perform("new"); });
+document.getElementById("explorerOpen").addEventListener(
+  "click", () => { void perform("open"); });
 document.getElementById("newFile").onclick = () => perform("new");
 document.getElementById("openFile").onclick = () => perform("open");
 document.getElementById("saveFile").onclick = () => perform("save");

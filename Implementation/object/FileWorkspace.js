@@ -2,6 +2,7 @@ import { Language } from "../property/Language.js";
 import { FileDocument } from "./FileDocument.js";
 import { DocumentStatus } from "../property/DocumentStatus.js";
 import { StoragePriority } from "../property/StoragePriority.js";
+import { FileManagement } from "../property/FileManagement.js";
 
 /** Workspace object owns the document collection and active tab. */
 export class FileWorkspace {
@@ -15,13 +16,13 @@ export class FileWorkspace {
     this.strictOCDA = true;
     this.ocda = Object.freeze({
       Request: ["new", "open", "activate", "close", "closeAll",
-        "reorder", "save", "setPriority", "syncExternal"],
+        "reorder", "save", "setPriority", "syncExternal", "list"],
       Response: ["new", "open", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       UserAPI: ["new", "open", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       AgentAPI: [],
-      Property: ["DocumentStatus", "StoragePriority"],
+      Property: ["DocumentStatus", "StoragePriority", "FileManagement"],
       Program: "FileWorkspace",
       EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
@@ -35,6 +36,7 @@ export class FileWorkspace {
   }
 
   async receive(action, payload = {}) {
+    if (action === "list") return FileManagement.summarize(this.documents);
     if (action === "new") return this.create();
     if (action === "open") return this.open(payload.handles);
     if (action === "activate") return this.activate(payload.id);
