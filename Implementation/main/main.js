@@ -736,8 +736,10 @@ function updateStatus() {
   if (!doc) return;
   ui.statusLamp.className = "lamp " + doc.status;
   ui.statusText.textContent = doc.error && doc.status === DocumentStatus.ERROR ?
-    doc.error : statusLabel(doc.status,
-      linkCore.readProperty("ui", "Language").value);
+    doc.error : doc.virtualReadOnly &&
+    doc.status === DocumentStatus.SYNCED ?
+      localized("virtualReadOnly") : statusLabel(doc.status,
+        linkCore.readProperty("ui", "Language").value);
   const progress = viewportPolicy.progress(doc.status, doc.progress);
   ui.progressFill.dataset.status = progress.status;
   ui.progressFill.style.width = progress.percent + "%";
