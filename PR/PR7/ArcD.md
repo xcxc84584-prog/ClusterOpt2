@@ -19,3 +19,10 @@ UI.contextmenu -> Hub -> Explorer.closeRoot -> root.resolve(file handle)
 ## Patch(+2) source integration
 PR6 SessionRecovery and fallback remain unchanged; PR7 adds only
 UI/context actions, close-root handling and zoom CSS.
+
+## Patch(+3) Object / Property / Event Chain
+Object: FileTypeManager (add/remove/reset/list).
+Properties: FileTypePolicy, BlockedFileTypes.
+UI -> Hub -> FileTypeManager.add -> Hub.Property.BlockedFileTypes
+-> Explorer.list -> FileTypePolicy.blocked -> UI projection.
+EHU 400 invalid extension, 503 storage unavailable. No deletion.

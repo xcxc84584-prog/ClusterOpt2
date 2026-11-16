@@ -6,6 +6,7 @@ import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { Explorer } from "../object/Explorer.js";
 import { SessionRecovery } from "../object/SessionRecovery.js";
+import { FileTypeManager } from "../object/FileTypeManager.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
 
 const uiIds = {
@@ -23,6 +24,7 @@ let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
 const explorer = new Explorer(linkCore);
 const recovery = new SessionRecovery(linkCore);
+const fileTypes = new FileTypeManager(linkCore);
 let recoveryReady = false;
 let recoveryTimer = 0;
 let recoveryWrites = Promise.resolve();
@@ -182,7 +184,10 @@ try {
     "UI_COLOR", { reason: "Color preference storage is unavailable" });
 }
 mountPaletteUI(linkCore, document, paletteStorage);
-mountLanguageUI(linkCore, document, paletteStorage, () => render());
+mountLanguageUI(linkCore, document, paletteStorage, () => {
+  render();
+  renderBlockedTypes();
+});
 
 function localized(key, args = {}) {
   const locale = linkCore.readProperty("ui", "Language").value;
@@ -523,6 +528,70 @@ async function importExplorerFolder() {
     }
   }
 }
+function renderBlockedTypes() {
+  const values = linkCore.readProperty("ui", "BlockedFileTypes").value;
+  const container = document.getElementById("blockedTypesList");
+  container.replaceChildren();
+  document.getElementById("blockedTypesCount").textContent =
+    String(values.length);
+  const labels = {
+    blockedTypesTitle: "blockedTypes",
+    blockedTypesDescription: "blockedTypesDescription",
+    blockedTypesInputLabel: "blockedTypesInputLabel",
+    blockedTypesAdd: "blockedTypesAdd",
+    blockedTypesListLabel: "blockedTypesListLabel",
+    blockedTypesReset: "blockedTypesReset",
+    blockedTypesFooter: "blockedTypesFooter",
+    blockedTypesDone: "blockedTypesDone"
+  };
+  for (const [id, key] of Object.entries(labels)) {
+    document.getElementById(id).textContent = localized(key);
+  }
+  for (const extension of values) {
+    const row = document.createElement("div");
+    row.className = "file-tool-type-row";
+    row.setAttribute("role", "listitem");
+    const name = document.createElement("code");
+    name.textContent = extension;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = localized("blockedTypesRemove");
+    remove.addEventListener("click", () => {
+      void changeBlockedTypes("remove", extension);
+    });
+    row.append(name, remove);
+    container.append(row);
+  }
+}
+async function changeBlockedTypes(action, extension = "") {
+  const result = await linkCore.request("ui", "file-types",
+    action, { extension }, { origin: "user" });
+  document.getElementById("blockedTypesError").textContent =
+    result.ok ? "" : result.error;
+  if (result.ok) {
+    renderBlockedTypes();
+    await renderExplorer();
+  }
+}
+const blockedDialog = document.getElementById("blockedTypesDialog");
+document.getElementById("blockedTypesBtn").addEventListener("click", () => {
+  closeMenu();
+  renderBlockedTypes();
+  blockedDialog.showModal();
+});
+for (const id of ["blockedTypesClose", "blockedTypesDone"]) {
+  document.getElementById(id).addEventListener("click", () =>
+    blockedDialog.close());
+}
+document.getElementById("blockedTypesForm").addEventListener(
+  "submit", event => {
+    event.preventDefault();
+    const input = document.getElementById("blockedTypesInput");
+    void changeBlockedTypes("add", input.value);
+    input.value = "";
+  });
+document.getElementById("blockedTypesReset").addEventListener(
+  "click", () => { void changeBlockedTypes("reset"); });
 document.getElementById("newFile").onclick = () => perform("new");
 document.getElementById("openFile").onclick = () => perform("open");
 document.getElementById("saveFile").onclick = () => perform("save");

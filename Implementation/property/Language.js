@@ -4,6 +4,14 @@
  */
 const CATALOG = Object.freeze({
 	"zh-Hant": Object.freeze({
+		blockedTypesDescription: "隱藏 Explorer 中的指定副檔名，不會刪除原始檔案。",
+		blockedTypesInputLabel: "新增副檔名",
+		blockedTypesAdd: "＋ 新增",
+		blockedTypesListLabel: "已屏蔽類型",
+		blockedTypesReset: "還原預設",
+		blockedTypesFooter: "變更自動儲存並立即套用 Explorer",
+		blockedTypesDone: "完成",
+		blockedTypesRemove: "移除",
 		explorerOpenDocuments: "已開啟文件",
 		explorerCloseRoot: "關閉根目錄",
 		explorerOpenFile: "開啟文件",
@@ -39,6 +47,14 @@ const CATALOG = Object.freeze({
 		plainText: "純文字", palettePreview: "UI PREVIEW"
 	}),
 	"en": Object.freeze({
+		blockedTypesDescription: "Hide extensions in Explorer without deleting files.",
+		blockedTypesInputLabel: "Add extension",
+		blockedTypesAdd: "+ Add",
+		blockedTypesListLabel: "Blocked types",
+		blockedTypesReset: "Restore defaults",
+		blockedTypesFooter: "Changes saved and applied automatically",
+		blockedTypesDone: "Done",
+		blockedTypesRemove: "Remove",
 		explorerOpenDocuments: "Open documents",
 		explorerCloseRoot: "Close Root",
 		explorerOpenFile: "Open File",

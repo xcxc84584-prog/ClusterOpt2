@@ -18,7 +18,7 @@ export class Explorer {
       "snapshotRoots", "restoreRoots", "syncExternal", "closeRoot"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
-      AgentAPI: [], Property: ["FileManagement"],
+      AgentAPI: [], Property: ["FileManagement", "FileTypePolicy", "BlockedFileTypes"],
       Program: "Explorer", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
     });
     if (!core.register(this)) {
@@ -78,6 +78,9 @@ export class Explorer {
   async project(documents, query = "") {
     const claimed = new Set();
     const needle = FileManagement.normalizeQuery(query);
+    const policy = this.core.readProperty(this.id, "FileTypePolicy").value;
+    const blocked = this.core.readProperty(
+      this.id, "BlockedFileTypes").value;
     const visit = async node => {
       const matching = node.kind === "file" ?
         await this.findDocument(node.handle, documents) : null;
@@ -106,6 +109,8 @@ export class Explorer {
     }
     const filter = node => {
       const children = node.children.map(filter).filter(Boolean);
+      if (node.kind === "file" &&
+          policy.blocked(node.name, blocked)) return null;
       if (needle && !node.name.toLocaleLowerCase().includes(needle) &&
           children.length === 0) return null;
       return { ...node, children };

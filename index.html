@@ -53,8 +53,7 @@
               title="PR5：尚未實作">◇ 文本著色器</button>
             <button id="paletteBtn" type="button"
               aria-expanded="false">介面調色盤 ›</button>
-            <button id="blockedTypesBtn" type="button" disabled
-              title="PR7：尚未實作">▧ 屏蔽檔案類型 ›</button>
+            <button id="blockedTypesBtn" type="button">▧ 屏蔽檔案類型 ›</button>
             <div class="menu-divider"></div>
             <label class="priority-heading" id="priorityHeading"
               for="priority">儲存優先級</label>
@@ -117,6 +116,44 @@
       <span id="fileType">純文字</span>
     </footer>
   </div>
+    <dialog id="blockedTypesDialog" class="file-tool-dialog"
+      aria-labelledby="blockedTypesTitle">
+      <div class="file-tool-dialog-head">
+        <div>
+          <span class="file-tool-eyebrow">CLUSTER / FILE TOOL</span>
+          <h2 id="blockedTypesTitle">屏蔽檔案類型</h2>
+          <p id="blockedTypesDescription">
+            隱藏 Explorer 中的指定副檔名，不會刪除原始檔案。
+          </p>
+        </div>
+        <button type="button" id="blockedTypesClose"
+          aria-label="關閉">×</button>
+      </div>
+      <div class="file-tool-dialog-body">
+        <form id="blockedTypesForm" class="file-tool-add-form">
+          <label id="blockedTypesInputLabel"
+            for="blockedTypesInput">新增副檔名</label>
+          <div class="file-tool-input-row">
+            <input id="blockedTypesInput" placeholder=".mp4"
+              maxlength="21" autocomplete="off" required>
+            <button type="submit" id="blockedTypesAdd">＋ 新增</button>
+          </div>
+        </form>
+        <div class="file-tool-list-head">
+          <span><span id="blockedTypesListLabel">已屏蔽類型</span>
+            <strong id="blockedTypesCount">0</strong></span>
+          <button type="button" id="blockedTypesReset">還原預設</button>
+        </div>
+        <div id="blockedTypesList" class="file-tool-list"
+          role="list"></div>
+        <p id="blockedTypesError" class="file-tool-error"
+          role="status" aria-live="polite"></p>
+      </div>
+      <div class="file-tool-dialog-footer">
+        <span id="blockedTypesFooter">變更自動儲存並立即套用 Explorer</span>
+        <button type="button" id="blockedTypesDone">完成</button>
+      </div>
+    </dialog>
     <!-- Reused from ClusterOpt's original palette dialog markup. -->
     <dialog id="paletteDialog" aria-labelledby="paletteTitle">
       <div class="palette-modal-header">

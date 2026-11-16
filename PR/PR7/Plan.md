@@ -12,3 +12,9 @@ Pending: durable ordering, type blocklist and additional context actions.
 ## Patch(+2): safe integration
 Rebased onto main PR6 Patch(+10) with its successful Chromium
 reload regression. CI tracks pr7/** branch and gates new actions.
+
+## Patch(+3): shared file-type filter
+Original ClusterOpt File Tool dialog and default extension set.
+FileTypeManager publishes global BlockedFileTypes via HubUnit;
+Explorer filters only its view, no data removal. O(N*B) for N
+visible file entries, B up to 100. localStorage persists settings.
