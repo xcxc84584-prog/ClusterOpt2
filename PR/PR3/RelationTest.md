@@ -16,3 +16,5 @@
 
 CI PASS/FAIL must be confirmed on latest PR head, not assumed from
 source code or earlier runs.
+
+| RT12 | Locale → File/Tool/Palette ARIA labels | English/Chinese PASS | editor.spec.js |
