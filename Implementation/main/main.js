@@ -3,10 +3,14 @@ import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
 
-const ui = Object.fromEntries([
-  "tabs", "editor", "editorSurface", "emptyState", "lineNumbers",
-  "statusLamp", "statusText", "lineInfo", "progressFill", "progressText"
-].map(id => [id, document.getElementById(id)]));
+const uiIds = {
+  tabs: "tabs", editor: "editor", editorSurface: "editorPane",
+  emptyState: "empty", lineNumbers: "gutter", statusLamp: "statusLamp",
+  statusText: "status", lineInfo: "position",
+  progressFill: "meterFill", progressText: "meterPercent"
+};
+const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
+  [key, document.getElementById(id)]));
 
 const workspace = new FileWorkspace(linkCore, render);
 exposeVTE(window);
@@ -66,13 +70,13 @@ function render() {
     tab.type = "button";
     tab.title = doc.name;
     const label = document.createElement("span");
-    label.className = "tab-label";
+    label.className = "name";
     label.textContent = doc.name;
     const dirty = document.createElement("span");
     dirty.className = "dirty";
     dirty.textContent = doc.status === DocumentStatus.SYNCED ? "" : "●";
     const close = document.createElement("span");
-    close.className = "tab-close";
+    close.className = "close";
     close.textContent = "×";
     close.setAttribute("aria-label", "關閉 " + doc.name);
     close.addEventListener("click", event => {
