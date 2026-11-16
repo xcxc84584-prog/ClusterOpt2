@@ -11,7 +11,7 @@ All entries OPEN until verified. PR8 remains NOT PASS.
 | 17.5 | P0 | Readback error / truncated file -> EHU 422 and dirty |
 | 17.6 | P0 | Atomic journal retirement version/checksum CAS |
 | 17.7 | P0 | Hub Request/Response, EHU, OMU/Dependency 10/01 |
-| 17.8 | P0 | Real FileSystemFileHandle browser permission tests |
+| 17.8 | P0 | Chromium OPFS E2E added; external selected-file permission tests pending |
 | 17.9 | P0 | OS/external file race and browser interruption |
 | 17.10 | P1 | Full-file write amplification/large-file performance |
 | 18.1 | P0 | Piece Tree/B+ and UTF-16/UTF-8 editor integration |
