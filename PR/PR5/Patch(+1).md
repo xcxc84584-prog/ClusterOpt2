@@ -45,3 +45,15 @@ precise undo transaction handling, and broader keyboard support.
   starting from line zero on each adjacent scroll event.
 - Native undo, large-document benchmark, Chrome/Edge visual acceptance:
   PENDING. No declaration of PR5 PASS.
+
+## CI environment + Undo refinement
+- First OCDA CI failed in Playwright install on Ubuntu 26.04
+  (runner/platform compatibility, not test assertion). Pin OCDA CI
+  to ubuntu-24.04 and Node 22, consistent with PR1 verifier.
+- Prior source's PR1 verification: 57/57 Node tests and 15/15
+  Chromium tests PASS (workflow run 43852850185).
+- Fixed synthetic edit undo path by preferring native
+  document.execCommand("insertText") on Chromium, falling back
+  to setRangeText. The native command is deprecated and must be tested.
+- Added browser Ctrl+Z / Redo regression. Latest PR5 head still
+  needs clean CI verification before acceptance.
