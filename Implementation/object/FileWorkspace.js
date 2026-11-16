@@ -226,14 +226,24 @@ export class FileWorkspace {
     return true;
   }
 
-  close(id = this.activeId) {
+  async close(id = this.activeId) {
     const index = this.documents.findIndex(doc => doc.id === id);
     if (index < 0) return false;
     const doc = this.documents[index];
     if (doc.virtualReadOnly && doc.status === DocumentStatus.DIRTY) {
-      const error = new Error("Save virtual page before closing");
-      error.status = 409;
-      throw error;
+      // Closing an edited large file offers Save rather than an
+      // unconditional 409. Cancel leaves the journal and tab intact.
+      const locale = this.core.readProperty(this.id, "Language").value;
+      if (!window.confirm(Language.translate(locale,
+        "virtualSaveBeforeClose", { name: doc.name }))) return false;
+      const saved = await this.core.request(this.id, doc.id, "save", {
+        onProgress: () => this.onChange()
+      });
+      if (!saved.ok) {
+        const error = new Error(saved.error);
+        error.status = saved.status;
+        throw error;
+      }
     }
     if (doc.status !== DocumentStatus.SYNCED &&
         !window.confirm(Language.translate(
