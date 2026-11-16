@@ -55,9 +55,10 @@ test("OMU cools ordinary pass for one second, never failure/EHU", () => {
 
 test("Global property updates are shared", () => {
   const core = new LinkCore();
-  assert.equal(core.edpmu.register("UI_COLOR", "#ffffff").status, 201);
-  assert.equal(core.hub.publishProperty("UI_COLOR", "#111111").status, 200);
-  assert.equal(core.edpmu.get("UI_COLOR"), "#111111");
+  // PR2 registers UI_COLOR globally at LinkCore startup.
+  assert.deepEqual(core.edpmu.get("UI_COLOR"), [0, 0, 0]);
+  assert.equal(core.hub.publishProperty("UI_COLOR", [17, 17, 17]).status, 200);
+  assert.deepEqual(core.edpmu.get("UI_COLOR"), [17, 17, 17]);
 });
 
 test("SubObject addresses use explicit full paths", () => {
