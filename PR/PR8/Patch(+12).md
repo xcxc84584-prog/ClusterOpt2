@@ -71,3 +71,11 @@
   failed dirty close and preserved dirty residency.
 - No markClean shortcut added: dirty data can only be released
   after a future durable writeback protocol is implemented.
+
+### Cleanup authorization boundary
+- SliceRegistry.release, SliceLoader.close and
+  VirtualLineIndex.close are internal Request/Response endpoints.
+- They are intentionally absent from direct UserAPI exposure;
+  browser user-origin calls return 403 and an OMU EHU.
+- Only ViewportSliceController.close is user-accessible, and it
+  enforces the coordinated preflight and dirty-slice guard.
