@@ -64,11 +64,20 @@ export class ViewportSliceController {
     const sliceId = index => document.id + "-slice-" + index;
     // Drop stale visibility so offscreen clean slices can be evicted.
     await this.call("slice-registry", "setViewport", { ids: [] });
+    const prior = await this.call("slice-registry", "list", {});
+    const byId = new Map(prior.entries.map(item => [item.id, item]));
     const visible = [];
     for (const index of plan.full) {
-      await this.call("slice-loader", "load", {
-        id: document.id, index, mode: "full"
-      });
+      const previous = byId.get(sliceId(index));
+      if (!previous?.dirty) {
+        await this.call("slice-loader", "load", {
+          id: document.id, index, mode: "full"
+        });
+      } else if (previous.state !== "full") {
+        const error = new Error("Dirty slice must remain fully loaded");
+        error.status = 409;
+        throw error;
+      }
       visible.push(sliceId(index));
       await this.call("slice-registry", "setViewport", {
         ids: [...visible]
@@ -76,6 +85,7 @@ export class ViewportSliceController {
     }
     const preloaded = [];
     for (const index of plan.preloaded) {
+      if (byId.get(sliceId(index))?.dirty) continue;
       try {
         await this.call("slice-loader", "load", {
           id: document.id, index, mode: "preloaded"
