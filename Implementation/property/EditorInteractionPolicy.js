@@ -78,18 +78,32 @@ export const EditorInteractionPolicy = Object.freeze({
   },
 
   /** Compute indentation guides for just the viewport and guard rows. */
-  guideWindow(text, scrollTop, lineHeight, viewportHeight) {
+  guideWindow(text, scrollTop, lineHeight, viewportHeight,
+    hint = null) {
     const firstLine = Math.max(0, Math.floor(scrollTop / lineHeight));
     const count = Math.min(160,
       Math.ceil(viewportHeight / lineHeight) + 3);
-    let cursor = 0;
-    let line = 0;
+    // Reuse a verified viewport anchor while scrolling. Edits invalidate
+    // the anchor in the UI and avoid offset drift.
+    let cursor = Number.isInteger(hint?.offset) ? hint.offset : 0;
+    let line = Number.isInteger(hint?.firstLine) ? hint.firstLine : 0;
+    if (cursor < 0 || cursor > text.length || line < 0) {
+      cursor = 0;
+      line = 0;
+    }
     while (line < firstLine && cursor < text.length) {
-      const next = text.indexOf("\n", cursor);
-      if (next < 0) return { firstLine, lines: [] };
+      const next = text.indexOf("\\n", cursor);
+      if (next < 0) {
+        return { firstLine, lines: [], offset: text.length };
+      }
       cursor = next + 1;
       line++;
     }
+    while (line > firstLine) {
+      cursor = text.lastIndexOf("\\n", Math.max(0, cursor - 2)) + 1;
+      line--;
+    }
+    const offset = cursor;
     const lines = [];
     for (let i = 0; i < count && cursor <= text.length; i++) {
       const next = text.indexOf("\n", cursor);
@@ -101,6 +115,6 @@ export const EditorInteractionPolicy = Object.freeze({
       if (next < 0) break;
       cursor = next + 1;
     }
-    return { firstLine, lines };
+    return { firstLine, lines, offset };
   }
 });
