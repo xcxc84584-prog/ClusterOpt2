@@ -1,4 +1,5 @@
 import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
+import { UI_COLOR } from "../property/UI_COLOR.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
 import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
 import { ObjectManagementUnit } from "./ObjectManagementUnit.js";
@@ -12,7 +13,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.1-pr1.patch6";
+    this.version = "0.0.2-pr2.patch1";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -20,6 +21,9 @@ export class LinkCore {
       ParallelExecutionPolicy, { owners: ["LinkCore"] });
     this.hub.registerProperty("AccessPolicy", AccessPolicy, {
       owners: ["LinkCore"]
+    });
+    this.hub.registerProperty("UI_COLOR", [...UI_COLOR.defaultRGB], {
+      owners: ["LinkCore", "InterfacePalette"], visibility: "Public"
     });
     this.hub.registerProperty("DocumentStatus", Object.freeze({
       SYNCED: "green", DIRTY: "yellow",
