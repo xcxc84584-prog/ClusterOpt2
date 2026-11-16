@@ -16,7 +16,14 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 				saveFile: "saveFile", saveAsFile: "saveAsFile",
 				closeFile: "closeFile",
 				closeAllMain: "closeAllMain", toolBtn: "tool",
-				highlighterBtn: "highlighter", blockedTypesBtn: "blockedTypes",
+				pluginBtn: "plugin",
+				pluginPerformanceBtn: "pluginPerformance",
+				pluginMaxLabel: "pluginMaxLabel",
+				pluginOffLabel: "pluginOffLabel",
+				pluginApply: "pluginApply",
+				pluginLimitNote: "pluginLimitNote",
+				pluginHighlighterBtn: "pluginHighlighter",
+				blockedTypesBtn: "blockedTypes",
 				priorityHeading: "priorityHeading",
 				paletteBtn: "palette", languageBtn: "language",
 				paletteTitle: "paletteTitle", paletteLabel: "paletteRGB",
@@ -31,8 +38,9 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 				if (!node) continue;
 				const arrow = id === "menuBtn" ? "⌄" :
 					["toolBtn", "paletteBtn", "languageBtn",
-					"blockedTypesBtn"].includes(id) ? " ›" : "";
-				const symbol = id === "highlighterBtn" ? "◇ " :
+					"blockedTypesBtn", "pluginBtn",
+					"pluginPerformanceBtn"].includes(id) ? " ›" : "";
+				const symbol = id === "pluginBtn" ? "◇ " :
                   id === "blockedTypesBtn" ? "▧ " : "";
                 node.textContent = symbol + t(key) + arrow;
 			}

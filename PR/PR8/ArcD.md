@@ -45,3 +45,9 @@ Loader -> Hub -> SliceRegistry.load -> SliceBudgetPolicy.evictions
 -> evict clean nonvisible -> materialize slice.
 EHU: 400 invalid descriptor/limit, 404 missing ID, 409 dirty conflict,
 413 insufficient cache budget. No disk writes or data loss.
+
+## Patch(+5) EventChain
+File.Tool.Plugin.Performance -> UI -> Hub -> SliceRegistry.setLimit
+-> SliceBudgetPolicy.evictions -> localStorage preferences.
+On reload SliceRegistry initializes from localStorage after registration.
+Highlighter entry disabled until plugin processor Object is installed.

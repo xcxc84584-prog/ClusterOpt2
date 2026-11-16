@@ -188,6 +188,10 @@ function closeMenu() {
   if (tools) tools.hidden = true;
   const languages = document.getElementById("languageOptions");
   if (languages) languages.hidden = true;
+  const plugins = document.getElementById("pluginOptions");
+  if (plugins) plugins.hidden = true;
+  const perf = document.getElementById("pluginPerformanceOptions");
+  if (perf) perf.hidden = true;
 }
 menuButton.addEventListener("click", () => {
   menu.hidden = !menu.hidden;
@@ -743,6 +747,55 @@ document.getElementById("blockedTypesForm").addEventListener(
   });
 document.getElementById("blockedTypesReset").addEventListener(
   "click", () => { void changeBlockedTypes("reset"); });
+/**
+ * PR8 configuration only: modifies the SliceRegistry memory admission
+ * policy. This does not claim the main editor is slice-based yet.
+ */
+async function renderPluginBudget() {
+  const result = await linkCore.request("ui", "slice-registry",
+    "list", {}, { origin: "user" });
+  if (!result.ok) return notify(result.error);
+  const unlimited = result.value.limitBytes === null;
+  document.getElementById("pluginUnlimited").checked = unlimited;
+  document.getElementById("pluginMaxMiB").disabled = unlimited;
+  if (!unlimited) {
+    document.getElementById("pluginMaxMiB").value =
+      String(result.value.limitBytes / (1024 * 1024));
+  }
+}
+const pluginBtn = document.getElementById("pluginBtn");
+const pluginOptions = document.getElementById("pluginOptions");
+const pluginPerfBtn = document.getElementById("pluginPerformanceBtn");
+const pluginPerfOptions = document.getElementById("pluginPerformanceOptions");
+pluginBtn.addEventListener("click", event => {
+  event.stopPropagation();
+  pluginOptions.hidden = !pluginOptions.hidden;
+  pluginBtn.setAttribute("aria-expanded", String(!pluginOptions.hidden));
+});
+pluginPerfBtn.addEventListener("click", event => {
+  event.stopPropagation();
+  pluginPerfOptions.hidden = !pluginPerfOptions.hidden;
+  pluginPerfBtn.setAttribute("aria-expanded",
+    String(!pluginPerfOptions.hidden));
+  if (!pluginPerfOptions.hidden) void renderPluginBudget();
+});
+document.getElementById("pluginUnlimited").addEventListener(
+  "change", event => {
+    document.getElementById("pluginMaxMiB").disabled =
+      event.target.checked;
+  });
+document.getElementById("pluginApply").addEventListener("click", async () => {
+  const unlimited = document.getElementById("pluginUnlimited").checked;
+  const mib = Number(document.getElementById("pluginMaxMiB").value);
+  const bytes = unlimited ? null : mib * 1024 * 1024;
+  const result = await linkCore.request("ui", "slice-registry",
+    "setLimit", { bytes }, { origin: "user" });
+  const note = document.getElementById("pluginLimitNote");
+  note.textContent = result.ok ?
+    localized("pluginLimitNote") :
+    localized("pluginLimitError") + ": " + result.error;
+  if (result.ok) await renderPluginBudget();
+});
 document.getElementById("newFile").onclick = () => perform("new");
 document.getElementById("openFile").onclick = () => perform("open");
 document.getElementById("saveFile").onclick = () => perform("save");

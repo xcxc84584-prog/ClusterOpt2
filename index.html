@@ -49,8 +49,35 @@
                 English <span class="locale-check"></span>
               </button>
             </div>
-            <button id="highlighterBtn" type="button" disabled
-              title="PR5：尚未實作">◇ 文本著色器</button>
+            <button id="pluginBtn" type="button"
+              aria-expanded="false" aria-controls="pluginOptions">
+              ◇ 插件 ›
+            </button>
+            <div id="pluginOptions" hidden role="group">
+              <button id="pluginPerformanceBtn" type="button"
+                aria-expanded="false"
+                aria-controls="pluginPerformanceOptions">
+                效能化 ›
+              </button>
+              <div id="pluginPerformanceOptions" hidden>
+                <label id="pluginMaxLabel" for="pluginMaxMiB">
+                  最大文本載入量（MiB）
+                </label>
+                <input id="pluginMaxMiB" type="number"
+                  min="1" max="1024" step="1" value="8">
+                <label for="pluginUnlimited">
+                  <input id="pluginUnlimited" type="checkbox">
+                  <span id="pluginOffLabel">Off（不限制）</span>
+                </label>
+                <button id="pluginApply" type="button">套用</button>
+                <p id="pluginLimitNote" role="status" aria-live="polite">
+                  目前僅對切片註冊單元生效，編輯器切片化尚未完成。
+                </p>
+              </div>
+              <button id="pluginHighlighterBtn" type="button" disabled>
+                文本著色器（開發中）
+              </button>
+            </div>
             <button id="paletteBtn" type="button"
               aria-expanded="false">介面調色盤 ›</button>
             <button id="blockedTypesBtn" type="button">▧ 屏蔽檔案類型 ›</button>

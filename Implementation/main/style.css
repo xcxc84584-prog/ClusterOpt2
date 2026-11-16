@@ -389,3 +389,31 @@ header .menu-wrap { margin-left:auto; }
   border-left: 1px dashed var(--ui-muted, #8793a6);
   opacity: .7;
 }
+
+/* PR8 Plugin entry reuses existing File Tool palette and spacing. */
+#pluginOptions, #pluginPerformanceOptions {
+  padding: 4px 10px;
+  border-left: 2px solid var(--ui-border);
+  margin-left: 8px;
+}
+#pluginOptions[hidden], #pluginPerformanceOptions[hidden] {
+  display: none !important;
+}
+#pluginPerformanceOptions {
+  display: grid;
+  gap: 7px;
+}
+#pluginMaxMiB {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-control);
+  color: var(--ui-text-on-control);
+  border-radius: 6px;
+}
+#pluginLimitNote {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ui-text-on-panel);
+  margin: 2px 0;
+}

@@ -46,3 +46,11 @@ real browser grants, OS updates and UI visual parity still require QA.
 - O(N log N) eviction planning at each admission; memory O(resident text).
 - Future integration: P-tree primary, B+ index, filesystem range reads,
   per-slice parallel Object scheduling and Plugin processor stages.
+
+## Patch(+5): File Tool Plugin > Performance
+Replace legacy disabled highlighter menu item with Plugin submenu.
+Performance controls SliceRegistry cache budget with MiB input/Off;
+setting persists in localStorage and passes via HubUnit Request.
+Custom highlighter remains disabled until safe CSS plugin pipeline
+and actual editor slice loader are built. The UI explicitly states
+this limit currently applies only to the independent registry.

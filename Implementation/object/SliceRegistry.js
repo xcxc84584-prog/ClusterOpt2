@@ -3,7 +3,7 @@
  * perform disk I/O. Slice content is supplied by a future loader.
  */
 export class SliceRegistry {
-  constructor(core) {
+  constructor(core, storage = undefined) {
     this.id = "slice-registry";
     this.core = core;
     this.entries = new Map();
@@ -23,6 +23,17 @@ export class SliceRegistry {
       throw new Error("SliceRegistry registration failed");
     }
     this.limitBytes = this.policy().defaultBytes;
+    this.storage = null;
+    try {
+      this.storage = storage === undefined ? globalThis.localStorage : storage;
+      const raw = this.storage?.getItem("clusteropt2.slice.limit.v1");
+      if (raw !== null && raw !== undefined) {
+        this.limitBytes = this.policy().validateLimit(JSON.parse(raw));
+      }
+    } catch (error) {
+      this.core.omu.record("EHU", this.id, "SliceLimit.Restore",
+        503, "storage", { error: String(error) });
+    }
   }
 
   policy() {
@@ -82,6 +93,13 @@ export class SliceRegistry {
         [...this.entries.values()], "", 0, limit, this.visibleIds);
       for (const id of evictions) this.clear(this.find(id));
       this.limitBytes = limit;
+      try {
+        this.storage?.setItem("clusteropt2.slice.limit.v1",
+          JSON.stringify(limit));
+      } catch (error) {
+        this.core.omu.record("EHU", this.id, "SliceLimit.Persist",
+          503, "storage", { error: String(error) });
+      }
       return { bytes: limit };
     }
     if (action === "load") {
