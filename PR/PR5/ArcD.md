@@ -63,3 +63,10 @@ flowchart LR
 MainUI retains a non-persistent, view-only {firstLine,offset} anchor.
 A text edit or tab switch invalidates it; only guideWindow() uses it
 and it has no effect on text or file state. No new Object is needed.
+
+## Native undo event path
+MainUI transforms key -> native insertText (Chromium, if supported) ->
+browser Input -> HubUnit Request.edit -> FileDocument; fallback uses
+setRangeText + synthetic Input. No internal history manager or new Object.
+The browser maintains native edit history on the preferred path.
+The fallback has weaker undo guarantees; test browsers before PR5 PASS.
