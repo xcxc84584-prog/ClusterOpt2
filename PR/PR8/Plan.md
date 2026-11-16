@@ -118,3 +118,8 @@ this limit currently applies only to the independent registry.
 - Per-tab memory and runtime cost are bounded; no full-file processing
   is introduced by this UI patch.
 - Full PR8 six-layer sliced editor and Plugin runtime remain pending.
+
+### Patch(+10) recovery extension
+- Restore tool-tab state/category after document recovery, clamping
+  positions if documents become unavailable; closing the tab persists.
+- Never put tool tabs into FileWorkspace or editable document snapshots.
