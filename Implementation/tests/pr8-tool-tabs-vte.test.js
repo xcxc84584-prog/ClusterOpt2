@@ -27,6 +27,16 @@ test("PR8 Patch10 tool tab EventChain and FIFO lifecycle", async () => {
   })).value.position, 0);
   assert.equal((await call("deactivate")).value.active, false);
   assert.equal((await call("activate")).value.active, true);
+  const restored = await call("restore", {
+    documentCount: 1,
+    state: { open: true, active: true, position: 2 }
+  });
+  assert.equal(restored.status, 200);
+  assert.equal(restored.value.position, 1);
+  assert.equal((await call("restore", {
+    documentCount: 1,
+    state: { open: false, active: true, position: 0 }
+  })).status, 400);
   assert.equal((await call("close")).value.open, false);
   assert.equal((await call("activate")).status, 404);
   assert.equal((await call("move", {
