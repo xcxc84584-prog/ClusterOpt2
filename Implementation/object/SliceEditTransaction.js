@@ -64,6 +64,11 @@ export class SliceEditTransaction {
         error.status = 409;
         throw error;
       }
+      if (this.slices.size >= policy.maxOpenSlices) {
+        const error = new RangeError("Too many open edit slices");
+        error.status = 413;
+        throw error;
+      }
       const root = text ? tree.insert(null, 0, text, () => 1) : null;
       const item = { id, root, revision: 0, dirty: false,
         index: null, seed: 0 };
