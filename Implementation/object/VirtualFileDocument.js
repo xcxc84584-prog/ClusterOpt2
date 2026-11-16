@@ -116,16 +116,33 @@ export class VirtualFileDocument extends FileDocument {
       }
     }
     if (action === "page") {
-      const page = await this.loadPage(payload.index);
-      payload.onProgress?.(100);
-      return page;
+      const oldStatus = this.status;
+      this.status = DocumentStatus.LOADING;
+      this.progress = 0;
+      payload.onProgress?.(0);
+      try {
+        const page = await this.loadPage(payload.index);
+        payload.onProgress?.(100);
+        return page;
+      } catch (error) {
+        // Failed navigation must not destroy a prior readable page.
+        this.status = oldStatus;
+        this.progress = 100;
+        throw error;
+      }
     }
     if (action === "describePage") return this.describePage();
     if (action === "reconcile") {
       const file = await this.handle.getFile();
       if (this.fingerprint(file) === this.fileFingerprint) return false;
       if (payload.priority === "external") {
-        await this.loadPage(this.virtualPageIndex);
+        this.fileFingerprint = null;
+        const policy = this.property("UTF8SlicePolicy");
+        const count = Math.max(1, policy.count(
+          file.size, policy.defaultChunkBytes));
+        await this.loadPage(Math.min(
+          this.virtualPageIndex, count - 1));
+        return true;
       }
       const error = new Error("External virtual file changed");
       error.status = 409;
