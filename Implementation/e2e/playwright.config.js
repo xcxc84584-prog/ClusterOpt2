@@ -10,7 +10,7 @@ export default defineConfig({
     headless: true
   },
   webServer: {
-    command: "node Implementation/e2e/server.mjs",
+    command: "node server.mjs",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 30000
