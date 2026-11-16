@@ -33,6 +33,16 @@
             aria-controls="toolOptions">工具 ›</button>
           <div id="toolOptions" hidden role="group" aria-label="工具">
             <div class="file-tool-heading">FILE TOOL <span>WORKSPACE</span></div>
+            <button id="languageBtn" type="button" aria-expanded="false"
+              aria-controls="languageOptions">語言 ›</button>
+            <div id="languageOptions" hidden>
+              <button type="button" data-locale="zh-Hant">
+                繁體中文 <span class="locale-check"></span>
+              </button>
+              <button type="button" data-locale="en">
+                English <span class="locale-check"></span>
+              </button>
+            </div>
             <button id="paletteBtn" type="button">介面調色盤 ›</button>
           </div>
         </nav>
