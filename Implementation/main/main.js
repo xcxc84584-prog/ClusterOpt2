@@ -89,7 +89,8 @@ function scheduleViewportObservation() {
       const active = workspace.active;
       const eligible = active && active.handle &&
         active.status === DocumentStatus.SYNCED &&
-        !toolState.active && !active.externalChanged;
+        !toolState.active && !active.externalChanged &&
+        !active.virtualReadOnly;
       const request = (action, payload = {}) => linkCore.request(
         "ui", "editor-viewport-observer", action, payload,
         { origin: "user" });
@@ -461,7 +462,11 @@ function render() {
   // Never replace text the user is currently typing with a stale
   // queued Request/Response value while asynchronous saves are running.
   const switchedTab = ui.editor.dataset.documentId !== active.id;
-  if (switchedTab || active.externalReloaded || (ui.editor.readOnly &&
+  const switchedPage = active.virtualReadOnly &&
+    ui.editor.dataset.virtualPageIndex !==
+    String(active.virtualPageIndex);
+  if (switchedTab || switchedPage || active.externalReloaded ||
+      (ui.editor.readOnly &&
       active.status !== DocumentStatus.LOADING) ||
       (ui.editor !== document.activeElement &&
       ui.editor.value !== active.text)) {
@@ -472,14 +477,19 @@ function render() {
       active.externalReloaded = false;
     }
   }
-  ui.editor.readOnly = active.status === DocumentStatus.LOADING;
+  ui.editor.readOnly = active.virtualReadOnly ||
+    active.status === DocumentStatus.LOADING;
+  ui.editor.dataset.virtualPageIndex = active.virtualReadOnly ?
+    String(active.virtualPageIndex) : "";
   ui.editor.dataset.documentId = active.id;
-  if (switchedTab) {
+  if (switchedTab || switchedPage) {
     guideAnchor = null;
     ui.editor.selectionStart = ui.editor.selectionEnd =
       Math.min(active.cursor, ui.editor.value.length);
   }
-  if (switchedTab) ui.editor.scrollTop = active.scrollTop;
+  if (switchedTab || switchedPage) {
+    ui.editor.scrollTop = active.scrollTop;
+  }
   renderLines();
   scheduleGuides();
   updateStatus();
@@ -725,6 +735,41 @@ function updateStatus() {
     progress.percent + "%" : "";
 }
 
+let virtualPageBusy = false;
+
+/** Page-bounded navigation preserves the old editor DOM and theme. */
+async function turnVirtualPage(direction) {
+  const doc = workspace.active;
+  if (!doc?.virtualReadOnly || virtualPageBusy) return;
+  const next = doc.virtualPageIndex + direction;
+  if (next < 0 || next >= doc.virtualPageCount) return;
+  virtualPageBusy = true;
+  try {
+    const result = await linkCore.request("ui", "workspace", "page", {
+      id: doc.id, index: next
+    }, { origin: "user" });
+    if (!result.ok) notify(result.error);
+  } finally {
+    virtualPageBusy = false;
+  }
+}
+
+ui.editor.addEventListener("wheel", event => {
+  const doc = workspace.active;
+  if (!doc?.virtualReadOnly || virtualPageBusy) return;
+  const down = event.deltaY > 0;
+  const editor = ui.editor;
+  const bottom = editor.scrollTop + editor.clientHeight >=
+    editor.scrollHeight - 2;
+  const top = editor.scrollTop <= 1;
+  if ((down && bottom) || (!down && top)) {
+    const next = doc.virtualPageIndex + (down ? 1 : -1);
+    if (next < 0 || next >= doc.virtualPageCount) return;
+    event.preventDefault();
+    void turnVirtualPage(down ? 1 : -1);
+  }
+}, { passive: false });
+
 ui.editor.addEventListener("input", async () => {
   guideAnchor = null;
   scheduleGuides();
@@ -764,6 +809,12 @@ ui.editor.addEventListener("keyup", () => {
   renderLines();
 });
 ui.editor.addEventListener("keydown", event => {
+  if (workspace.active?.virtualReadOnly && event.altKey &&
+      ["PageDown", "PageUp"].includes(event.key)) {
+    event.preventDefault();
+    void turnVirtualPage(event.key === "PageDown" ? 1 : -1);
+    return;
+  }
   if (event.ctrlKey || event.altKey || event.metaKey ||
       event.isComposing || ui.editor.readOnly) return;
   const transform = editorPolicy.transform(
