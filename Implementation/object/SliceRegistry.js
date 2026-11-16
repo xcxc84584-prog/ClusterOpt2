@@ -141,6 +141,12 @@ export class SliceRegistry {
         error.status = 409;
         throw error;
       }
+      // Speculative prefetch must not replace a fully resident slice.
+      if (entry.state === policy.states.FULL &&
+          payload.mode === "preloaded") {
+        entry.lastUsed = ++this.generation;
+        return this.state(entry);
+      }
       const bytes = policy.measure(payload.text);
       const evictions = policy.evictions(
         [...this.entries.values()], entry.id, bytes,
