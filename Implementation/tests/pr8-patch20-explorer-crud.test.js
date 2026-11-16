@@ -63,14 +63,20 @@ test("PR8+20 Explorer CRUD follows Hub EventChain and rejects collisions",
       "createFolder", { id, name: "../escape" });
     assert.equal(invalid.status, 400);
     const fileId = explorer.findNode(id).children[0].id;
-    const denied = await core.request("test-ui", "explorer",
-      "deleteEntry", { id: fileId });
-    assert.equal(denied.ok, false);
-    assert.equal(root.entries.has("notes.md"), true);
-    const deleted = await core.request("test-ui", "explorer",
-      "deleteEntry", { id: fileId, confirmed: true });
-    assert.equal(deleted.ok, true);
+    const renamed = await core.request("test-ui", "explorer",
+      "renameEntry", { id: fileId, name: "renamed.md" });
+    assert.equal(renamed.ok, true);
     assert.equal(root.entries.has("notes.md"), false);
+    assert.equal(root.entries.has("renamed.md"), true);
+    const renamedId = explorer.findNode(id).children[0].id;
+    const denied = await core.request("test-ui", "explorer",
+      "deleteEntry", { id: renamedId });
+    assert.equal(denied.ok, false);
+    assert.equal(root.entries.has("renamed.md"), true);
+    const deleted = await core.request("test-ui", "explorer",
+      "deleteEntry", { id: renamedId, confirmed: true });
+    assert.equal(deleted.ok, true);
+    assert.equal(root.entries.has("renamed.md"), false);
     assert.equal(core.getSnapshot().logs.some(log =>
       log.kind === "EHU" || log.status >= 400), true);
   });
