@@ -99,3 +99,34 @@ test("PR8+23 full batch fails closed on memory exhaustion", async () => {
   const resident = entries.filter(entry => entry.residentBytes > 0);
   assert.equal(resident.length, 1);
 });
+
+test("PR8+23 a denied preload is not reread until limit changes", async () => {
+  let reads = 0;
+  class CountingBlob extends Blob {
+    slice(start, end) {
+      reads++;
+      return super.slice(start, end);
+    }
+  }
+  const { call, open } = fixture(
+    new CountingBlob(["x".repeat(8192)]));
+  assert.equal((await open()).status, 200);
+  assert.equal((await call("slice-registry", "setLimit", {
+    bytes: 1024
+  })).status, 200);
+  const query = { id: "parallel", first: 2, last: 2, adjacent: 1 };
+  const first = await call("viewport-slices", "navigate", query);
+  assert.equal(first.status, 200);
+  assert.deepEqual(first.value.preloaded, []);
+  const readsBefore = reads;
+  assert.equal((await call("viewport-slices", "navigate",
+    query)).status, 200);
+  assert.equal(reads, readsBefore);
+  assert.equal((await call("slice-registry", "setLimit", {
+    bytes: 4096
+  })).status, 200);
+  const retry = await call("viewport-slices", "navigate", query);
+  assert.equal(retry.status, 200);
+  assert.deepEqual(retry.value.preloaded, [1, 3]);
+  assert.ok(reads > readsBefore);
+});
