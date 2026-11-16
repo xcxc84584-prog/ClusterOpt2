@@ -1,3 +1,5 @@
+import { validateObjectContract } from "./ObjectContract.js";
+
 /**
  * Volatile runtime registry. No localStorage: registrations expire on reload.
  * Unknown object IDs can only be materialized from explicitly supplied factories.
@@ -10,9 +12,11 @@ export class UnifiedRegistrationUnit {
   }
 
   register(object) {
-    if (!object || !object.id || typeof object.id !== "string" ||
-        typeof object.receive !== "function") {
-      return { ok: false, status: 400, error: "Invalid object" };
+    const validation = validateObjectContract(object,
+      object?.strictOCDA === true);
+    if (!validation.ok) {
+      return { ok: false, status: 400,
+        error: "Invalid object contract: " + validation.failures.join(", ") };
     }
     const previous = this.objects.get(object.id);
     if (previous && previous !== object) {
