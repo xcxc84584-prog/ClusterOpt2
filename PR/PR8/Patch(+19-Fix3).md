@@ -61,3 +61,17 @@ Errors: 403 permissions, 409 revision conflict, 422 hash mismatch,
   restore correct percentage; start edit to abort incomplete
   writeback, preserve disk and journal.
 - Full PR1–PR7 regression and CI mandatory; verified backup first.
+
+## Verified merge and rollback — 2026-11-17
+- PR #24 final HEAD `21d0338be48896b921e05d72edbcc85f0fe71407`
+  passed OCDA CI and PR1 OCDA Verification, including both
+  Chromium browser jobs, unit and verify jobs.
+- Merge SHA: `255f8c954624f46160d735dec25efc059220aa62`.
+- Verified rollback branch
+  `backup/pre-pr8-patch19-fix3-main-20261117`
+  identical to old main
+  `36fcb332c7fb2562b6162926da2e714d6ab5e398`.
+- Background Save reuses an active per-document savePromise when
+  a user closes that file, preventing concurrent duplicate writes.
+- PR8 remains NOT PASS; 1/5 GiB and selected Windows disk
+  permissions/crash tests are not covered by OPFS automation.
