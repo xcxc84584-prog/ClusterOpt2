@@ -36,7 +36,10 @@ test("Patch19 large OPFS editor can edit and shows global page lines",
     await editor.fill("CHANGED\n" + before.slice(7));
     await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
     await editor.press("Alt+PageUp");
+    await expect(editor).toHaveAttribute("data-virtual-page-index", "0");
+    await editor.press("Alt+PageDown");
     await expect(editor).toHaveAttribute("data-virtual-page-index", "1");
+    await expect(editor).toHaveValue(/^CHANGED/);
 
     const file = await page.evaluate(async () => {
       const root = await navigator.storage.getDirectory();
@@ -66,12 +69,15 @@ test("Patch19 OPFS durable page edit/writeback retires checkpoint",
         "/Implementation/object/SliceRecoveryJournal.js");
       const { SliceWritebackUnit } = await import(
         "/Implementation/object/SliceWritebackUnit.js");
+      const { SliceBatchWritebackUnit } = await import(
+        "/Implementation/object/SliceBatchWritebackUnit.js");
       const core = new LinkCore();
       core.register({ id: "ui", receive: async () => true });
       core.register({ id: "workspace", receive: async () => true });
       new SliceRecoveryJournal(core);
       new SliceEditTransaction(core);
       new SliceWritebackUnit(core);
+      new SliceBatchWritebackUnit(core);
       const folder = await navigator.storage.getDirectory();
       const handle = await folder.getFileHandle(
         "pr8-patch19-commit.txt", { create: true });
