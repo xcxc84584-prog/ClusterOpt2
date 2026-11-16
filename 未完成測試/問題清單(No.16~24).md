@@ -6,9 +6,9 @@ Status: OPEN — do not interpret implementation as accepted PASS.
 | --- | --- | --- |
 | 16.1 | P0 | PR16 node tests and npm run check (CI) |
 | 16.2 | P0 | HubUnit/VTE EHU and dependency EventChains |
-| 16.3 | P0 | Real IndexedDB refresh/reopen restores revision + text |
+| 16.3 | P0 | Real IndexedDB refresh/reopen E2E added; latest CI pending |
 | 16.4 | P0 | Failed write/quota does not publish candidate root |
-| 16.5 | P0 | Cross-tab atomic revision CAS implemented; real multi-tab browser verification pending |
+| 16.5 | P0 | Cross-tab atomic CAS and E2E test added; latest CI pending |
 | 16.6 | P0 | Broken/corrupt snapshot returns EHU 422 |
 | 16.7 | P1 | Unicode and maximum-size snapshot memory profiling |
 | 16.8 | P0 | Full browser E2E baseline and unsupported API 403 |
