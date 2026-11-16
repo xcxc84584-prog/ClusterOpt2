@@ -188,10 +188,7 @@ function closeMenu() {
   if (tools) tools.hidden = true;
   const languages = document.getElementById("languageOptions");
   if (languages) languages.hidden = true;
-  const plugins = document.getElementById("pluginOptions");
-  if (plugins) plugins.hidden = true;
-  const perf = document.getElementById("pluginPerformanceOptions");
-  if (perf) perf.hidden = true;
+
 }
 menuButton.addEventListener("click", () => {
   menu.hidden = !menu.hidden;
@@ -764,21 +761,17 @@ async function renderPluginBudget() {
   }
 }
 const pluginBtn = document.getElementById("pluginBtn");
-const pluginOptions = document.getElementById("pluginOptions");
-const pluginPerfBtn = document.getElementById("pluginPerformanceBtn");
-const pluginPerfOptions = document.getElementById("pluginPerformanceOptions");
-pluginBtn.addEventListener("click", event => {
-  event.stopPropagation();
-  pluginOptions.hidden = !pluginOptions.hidden;
-  pluginBtn.setAttribute("aria-expanded", String(!pluginOptions.hidden));
+const pluginDialog = document.getElementById("pluginDialog");
+pluginBtn.addEventListener("click", () => {
+  closeMenu();
+  pluginDialog.showModal();
+  void renderPluginBudget();
 });
-pluginPerfBtn.addEventListener("click", event => {
-  event.stopPropagation();
-  pluginPerfOptions.hidden = !pluginPerfOptions.hidden;
-  pluginPerfBtn.setAttribute("aria-expanded",
-    String(!pluginPerfOptions.hidden));
-  if (!pluginPerfOptions.hidden) void renderPluginBudget();
-});
+for (const id of ["pluginClose", "pluginDone"]) {
+  document.getElementById(id).addEventListener("click", () => {
+    pluginDialog.close();
+  });
+}
 document.getElementById("pluginUnlimited").addEventListener(
   "change", event => {
     document.getElementById("pluginMaxMiB").disabled =
