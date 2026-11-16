@@ -74,3 +74,12 @@ npm run test:e2e
 - Browser: smoke existing editor, inspect source file preservation,
   permission errors and large file performance before production use.
 - Backup main and verify commit checksum before merging.
+
+## CI and merge record (2026-11-16)
+- PR #19 merged after both PR1 OCDA Verification and OCDA CI
+  passed on head e0dca80950a0dda4184d0b1c6605034646de6c33.
+- Merge commit: 06958da516b1bf39b8e50eac79283f4c5d7ad506.
+- Verified previous-main backup:
+  backup/pre-pr8-patch17-main-20261116.
+- Manual externally selected-file test and complete PR8 acceptance
+  are not implied by automated Chromium OPFS tests.
