@@ -154,6 +154,10 @@ test("Patch12 rejects invalid line indices and duplicates with EHU",
     assert.equal((await request("virtual-line-index", "range", {
       id: "dupe", firstLine: 2, lastLine: 1
     })).status, 400);
+    assert.equal((await request("virtual-line-index", "range", {
+      id: "dupe", firstLine: Number.MAX_SAFE_INTEGER,
+      lastLine: Number.MAX_SAFE_INTEGER
+    })).status, 400);
     assert.equal((await request("virtual-line-index", "locate", {
       id: "unknown", line: 1
     })).status, 404);
