@@ -121,6 +121,7 @@ export class FileDocument {
       if (fingerprint === this.diskRevision) return false;
       if (priority === "external") {
         await this.load(onProgress);
+        this.externalReloaded = true;
       } else {
         this.diskRevision = fingerprint;
         this.externalChanged = true;
