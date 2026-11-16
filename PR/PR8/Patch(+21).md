@@ -27,3 +27,8 @@ No caret coordinate is used to reconstruct physical scroll location.
 
 ## Status
 IMPLEMENTED ON FEATURE BRANCH — BROWSER ACCEPTANCE OPEN.
+
+## Zoom-aware anchoring extension
+- Recover viewportLineHeight beside raw pixel scrollTop; restore scales
+  scrollTop by current/saved line height to preserve visual row.
+- Same zoom retains exact pixel coordinate; caret remains independent.
