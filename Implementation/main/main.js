@@ -1,6 +1,5 @@
 import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
-import { EditorInteractionPolicy } from "../property/EditorInteractionPolicy.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
@@ -65,7 +64,8 @@ linkCore.register({
       "activate", "setPriority", "syncExternal"],
     Response: [], UserAPI: ["new", "open", "save", "close", "closeAll",
       "reorder", "setPriority", "syncExternal"],
-    AgentAPI: [], Property: ["DocumentStatus", "SystemVersion", "Language"],
+    AgentAPI: [], Property: ["DocumentStatus", "SystemVersion",
+      "Language", "EditorInteractionPolicy"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
   receive: async () => {
@@ -73,6 +73,8 @@ linkCore.register({
   }
 });
 
+const editorPolicy =
+  linkCore.readProperty("ui", "EditorInteractionPolicy").value;
 let paletteStorage = null;
 try {
   paletteStorage = window.localStorage;
@@ -188,7 +190,7 @@ function scheduleGuides() {
     }
     const computed = window.getComputedStyle(ui.editor);
     const lineHeight = parseFloat(computed.lineHeight) || 22;
-    const bounds = EditorInteractionPolicy.guideWindow(
+    const bounds = editorPolicy.guideWindow(
       ui.editor.value, ui.editor.scrollTop, lineHeight,
       ui.editor.clientHeight);
     ui.tabGuide.textContent = bounds.lines.join("\\n");
@@ -258,7 +260,7 @@ ui.editor.addEventListener("keyup", () => {
 ui.editor.addEventListener("keydown", event => {
   if (event.ctrlKey || event.altKey || event.metaKey ||
       event.isComposing || ui.editor.readOnly) return;
-  const transform = EditorInteractionPolicy.transform(
+  const transform = editorPolicy.transform(
     ui.editor.value, ui.editor.selectionStart,
     ui.editor.selectionEnd, event.key, {
       shiftKey: event.shiftKey, composing: event.isComposing
