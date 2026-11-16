@@ -43,7 +43,16 @@ document.addEventListener("keydown", event => {
   }
 });
 
-linkCore.register({ id: "ui", receive: async () => {
+linkCore.register({
+  id: "ui",
+  strictOCDA: true,
+  ocda: Object.freeze({
+    Request: ["new", "open", "save", "close", "activate"],
+    Response: [], UserAPI: ["new", "open", "save", "close"],
+    AgentAPI: [], Property: ["DocumentStatus", "SystemVersion"],
+    Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
+  }),
+  receive: async () => {
   throw new Error("UI does not accept external actions");
 } });
 const notify = message => { ui.statusText.textContent = message; };
