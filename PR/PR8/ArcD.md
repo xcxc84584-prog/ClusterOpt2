@@ -249,6 +249,8 @@ Highlighter entry disabled until plugin processor Object is installed.
   503 unavailable IndexedDB/crypto.
 - Parallelization: one SliceEditTransaction resource currently FIFO
   under HubUnit; independent-object operations may proceed in parallel.
-  Cross-tab revision-atomic CAS is pending; do NOT claim it implemented.
+  IndexedDBSliceJournalStore.putIfNewer checks expected revision and
+  writes in one readwrite IndexedDB transaction across browser tabs.
+  Future end-to-end file writeback still needs crash/recovery tests.
 - Slice journal and actual FileSystemHandle are separate; Patch17
   must coordinate atomic writeback before any checkpoint discard.
