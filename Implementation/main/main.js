@@ -493,7 +493,11 @@ function render() {
       Math.min(active.cursor, ui.editor.value.length);
   }
   if (switchedTab || switchedPage) {
-    ui.editor.scrollTop = active.scrollTop;
+    ui.editor.scrollTop = active.virtualReadOnly &&
+      active.pageEntryEdge === "end" ?
+      ui.editor.scrollHeight : active.scrollTop;
+    ui.lineNumbers.scrollTop = ui.editor.scrollTop;
+    active.scrollTop = ui.editor.scrollTop;
   }
   renderLines();
   scheduleGuides();
