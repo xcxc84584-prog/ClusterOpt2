@@ -3,7 +3,8 @@
  * Unknown object IDs can only be materialized from explicitly supplied factories.
  */
 export class UnifiedRegistrationUnit {
-  constructor() {
+  constructor(propertyRegistry = null) {
+    this.propertyRegistry = propertyRegistry;
     this.objects = new Map();
     this.factories = new Map();
   }
@@ -39,6 +40,17 @@ export class UnifiedRegistrationUnit {
     } catch (error) {
       return { ok: false, status: 500, error: String(error) };
     }
+  }
+
+  registerProperty(name, value, options = {}) {
+    if (!this.propertyRegistry) {
+      return { ok: false, status: 503, error: "No property registry" };
+    }
+    return this.propertyRegistry.register(name, value, options);
+  }
+
+  unregisterProperty(name) {
+    return this.propertyRegistry?.unregister(name) ?? false;
   }
 
   unregister(id) {
