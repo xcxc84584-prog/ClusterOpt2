@@ -50,7 +50,8 @@ export class ViewportSliceController {
         throw error;
       }
       this.documents.set(data.id, {
-        ...data, full: [], preloaded: []
+        ...data, full: [], preloaded: [], requestedPreload: [],
+        skippedPreload: [], lastLimitBytes: undefined
       });
       return { ...data };
     }
@@ -110,17 +111,20 @@ export class ViewportSliceController {
     // a budget change may have evicted any preloaded slice.
     const stable = document.full.length === plan.full.length &&
       document.full.every((item, index) => item === plan.full[index]) &&
-      document.preloaded.length === plan.preloaded.length &&
-      document.preloaded.every((item, index) =>
+      document.requestedPreload.length === plan.preloaded.length &&
+      document.requestedPreload.every((item, index) =>
         item === plan.preloaded[index]);
     if (stable) {
       const existing = await this.call("slice-registry", "list", {});
       const byId = new Map(existing.entries.map(item => [item.id, item]));
+      const sameLimit = document.lastLimitBytes === existing.limitBytes;
       const allReady = plan.full.every(index =>
         byId.get(sliceId(index))?.state === "full") &&
         plan.preloaded.every(index => {
           const state = byId.get(sliceId(index))?.state;
-          return state === "preloaded" || state === "full";
+          return state === "preloaded" || state === "full" ||
+            (sameLimit && document.skippedPreload.includes(index) &&
+            (!state || state === "virtual"));
         });
       if (allReady) {
         return { id: document.id, full: [...document.full],
@@ -188,6 +192,10 @@ export class ViewportSliceController {
     }
     document.full = [...plan.full];
     document.preloaded = [...orderedPreloads];
+    document.requestedPreload = [...plan.preloaded];
+    document.skippedPreload = plan.preloaded.filter(index =>
+      !orderedPreloads.includes(index));
+    document.lastLimitBytes = snapshot.limitBytes;
     return { id: document.id, full: [...document.full],
       preloaded: [...document.preloaded], ...(lines ? { lines } : {}) };
   }
