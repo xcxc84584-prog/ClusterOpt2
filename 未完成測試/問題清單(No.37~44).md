@@ -9,3 +9,6 @@
 | 42 | Pending | Directory identity after external CRUD/renames |
 | 43 | Pending | Cross-browser permission/quota fault injection |
 | 44 | Pending | Full original ClusterOpt parity and PR7 sign-off |
+
+Patch(+5): PR4 legacy test updated only for the now-enabled
+Blocked File Types action; other PR4 regression checks retained.

@@ -33,3 +33,8 @@ UI.drag -> Hub -> Explorer.reorder -> ExplorerOrderPolicy.move
 -> ExplorerOrderPolicy.ordered. Unattached tab: Explorer ->
 Hub -> Workspace.reorder -> SessionRecovery.persist.
 EHU 400 cross-root or invalid sibling; 503 storage failure.
+
+## Patch(+5) test compatibility
+PR4 -> PR7 capability evolution: blockedTypesBtn disabled in PR4,
+enabled with FileTypeManager in PR7. CI acceptance must verify both
+the unchanged PR4 menu flow and new PR7 dialog interactions.

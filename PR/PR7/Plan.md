@@ -25,3 +25,8 @@ order during refresh, and records ordering in the existing IndexedDB
 root session snapshot. Standalone tabs delegate to Workspace.reorder.
 O(N) sibling reorder; O(N log N) visible tree ordering on reload.
 Cross-root moves are rejected rather than changing disk file paths.
+
+## Patch(+5) compatibility regression update
+PR4 File menu test now expects the blocked types action enabled,
+because PR7 intentionally completes it. All PR4 File menu ordering,
+storage priority and language assertions remain unchanged.
