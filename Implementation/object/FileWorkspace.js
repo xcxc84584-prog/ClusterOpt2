@@ -50,6 +50,7 @@ export class FileWorkspace {
     if (!Array.isArray(handles) || !handles.length) {
       throw new TypeError("Authorized file handles required");
     }
+    const created = [];
     for (const handle of handles) {
       let existing = null;
       for (const doc of this.documents) {
@@ -66,15 +67,19 @@ export class FileWorkspace {
       const doc = new FileDocument(handle.name, handle);
       if (!this.core.register(doc)) throw new Error("Registration failed");
       this.documents.push(doc);
+      created.push(doc);
       this.activeId = doc.id;
       this.onChange();
-      const result = await this.core.request(this.id, doc.id, "load", {
-        onProgress: () => this.onChange()
-      });
-      this.onChange();
-      if (!result.ok) throw new Error(result.error);
     }
+    // I/O of independent files can overlap; HubUnit enforces per-file FIFO.
+    const results = await Promise.all(created.map(doc =>
+      this.core.request(this.id, doc.id, "load", {
+        onProgress: () => this.onChange()
+      })
+    ));
     this.onChange();
+    const failure = results.find(result => !result.ok);
+    if (failure) throw new Error(failure.error);
     return this.activeId;
   }
 
