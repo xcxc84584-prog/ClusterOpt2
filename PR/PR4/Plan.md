@@ -1,0 +1,46 @@
+# PR4 Plan — Patch(+1): OCDA SOP foundation
+
+Status: IN PROGRESS / NOT PASS. PR1–PR3 PASS are user-reported acceptance, not a claim that PR4 has passed.
+Baseline: ClusterOpt2 main at the start of PR4; original UI and reference behavior: https://xcxc84584-prog.github.io/ClusterOpt/ .
+
+## Scope and order
+1. Establish the mandatory extensible development environment and PRD → Plan → ArcD → Implementation + Relation Test → Project pipeline.
+2. Fix PR3 browser/version consistency before accepting PR4. Diagnose Pages deployment, HTTP cache, service worker, URL parameters, and LinkCore SystemVersion.
+3. File > Tool > Close All; unsaved documents need a safe confirmation policy.
+4. Tab long-press and left-drag reordering; click must still activate and close button must still close.
+5. Shared StoragePriority policy: ExternalFirst / InternalFirst, with disk change detection and explicit conflict behavior.
+6. Add tests, amend Plan/ArcD/Patch/handoff after every implementation patch.
+
+## Reuse requirement
+Do not redesign the UI. Reuse ClusterOpt's existing markup, CSS, event names, and behavior wherever possible.
+Port/adapt narrowly where the legacy code conflicts with OCDA; never copy opaque dependencies, secrets, or unreviewed executable code.
+No new framework or independently styled replacements without recorded justification.
+
+## PR4 acceptance examples
+- With three tabs A/B/C, move C to front; document identity, content, active selection and order stay correct.
+- Close All with no dirty tabs closes everything; dirty tabs require confirmation and cancel preserves data.
+- ExternalFirst: external overwrite triggers refresh and discards internal edits *only as specified*; warn of data loss before enabling.
+- InternalFirst: external overwrite preserves in-memory edits, marks dirty/conflicted and allows a deliberate save overwriting external data.
+- Missing permissions / deleted source / concurrent edits produce an EHU FAIL and red progress status; no silent loss.
+- Chrome and Edge load the same deployed SystemVersion after normal update checks. Verify separately from browser-local preferences.
+
+## Architecture and knowledge
+Read global property registry first. Inspect FileWorkspace, FileDocument, HubUnit, URU, EDPMU, OMU, Language, UI_COLOR.
+Review existing ClusterOpt implementations before changing each feature; cite upstream commit/file in each implementation patch.
+External references: MDN File System Access API, browser Service Worker lifecycle, GitHub Pages deployment/caching, pointer event behavior.
+
+## Security and data integrity
+No hard-coded credentials or absolute machine paths. Browser file access must originate from explicit user gestures.
+Never overwrite an external change without an explicit selected policy and suitable permission.
+Loss-sensitive actions must support cancel, and must not silently erase dirty data.
+Do not turn VTE simulation into real filesystem writes.
+
+## Load and parallelization
+Tab reorder is in-memory O(n) UI update; no file I/O.
+Close All is a bounded sequential operation for confirmations, with separate independently scheduled unregistration.
+External file checks must be throttled and cancelable; do not poll each editor tab every animation frame.
+Parallel file operations are permitted across independent document IDs, but each file's load/edit/save must preserve per-file FIFO through HubUnit.
+
+## Test gate
+npm run check; npm run test:e2e; test UI in Chrome/Edge; inspect VTE and OMU log/error paths.
+Record exact commit SHA, commands, PASS/FAIL counts in Patch; a document-only patch is never a functional PASS.
