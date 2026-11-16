@@ -83,3 +83,50 @@ test("Patch19 fix: actual 65 MiB document can save and close safely",
     await page.locator(".tab.active .close").click();
     await expect(page.locator(".tab.active")).toHaveCount(0);
   });
+
+test("Patch19 fix: closing dirty large file saves only on confirmation",
+  async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto("/");
+    await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const handle = await root.getFileHandle(
+        "patch19-dirty-close.txt", { create: true });
+      const writer = await handle.createWritable();
+      await writer.truncate(65 * 1024 * 1024);
+      await writer.write("INITIAL!");
+      await writer.close();
+      Object.defineProperty(window, "showOpenFilePicker", {
+        configurable: true, value: async () => [handle]
+      });
+    });
+    await page.keyboard.press("Control+o");
+    const editor = page.locator("#editor");
+    await expect.poll(async () => (await editor.inputValue()).length)
+      .toBe(65536);
+    const original = await editor.inputValue();
+    await editor.fill("MODIFIED" + original.slice(8));
+    await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
+
+    // Cancel must keep the editor and journal intact.
+    page.once("dialog", dialog => dialog.dismiss());
+    await page.locator(".tab.active .close").click();
+    await expect(page.locator(".tab.active")).toHaveCount(1);
+    await expect(editor).toHaveValue(/^MODIFIED/);
+
+    // Confirm must perform a verified writeback before removing tab.
+    page.once("dialog", dialog => dialog.accept());
+    await page.locator(".tab.active .close").click();
+    await expect(page.locator(".tab.active"))
+      .toHaveCount(0, { timeout: 90000 });
+    const disk = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const handle = await root.getFileHandle(
+        "patch19-dirty-close.txt");
+      const file = await handle.getFile();
+      return { size: file.size, prefix: await file.slice(0, 8).text() };
+    });
+    expect(disk).toEqual({
+      size: 65 * 1024 * 1024, prefix: "MODIFIED"
+    });
+  });
