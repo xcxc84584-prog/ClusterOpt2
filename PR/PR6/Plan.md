@@ -49,3 +49,10 @@ Patch(+2) adds browser smoke checks for the Explorer sidebar.
 - O(number of children) per directory expansion, no network traffic.
 - Native handle permissions, directory traversal errors -> Hub EHU.
 - Still pending: IndexedDB restore, file click/open, external CRUD sync.
+
+## Patch(+5): one Explorer workspace
+Unify imported roots and opened tabs in one tree, no separate headings.
+Match FileSystemHandles via isSameEntry to avoid duplicate entries.
+Folder files open through Explorer -> Hub -> FileWorkspace.open.
+Unattached tabs become top-level entries. Identity matching is O(D*F)
+for visible folder files and open documents; no remote network traffic.

@@ -211,30 +211,16 @@ async function renderExplorer() {
     return;
   }
   const fragment = document.createDocumentFragment();
-  const needle = query.trim().toLocaleLowerCase();
-  const makeSection = title => {
-    const heading = document.createElement("div");
-    heading.className = "explorer-section";
-    heading.textContent = title;
-    fragment.append(heading);
-  };
-  makeSection(localized("explorerTitle"));
   const appendNode = (node, depth = 0) => {
-    const matching = !needle || node.name.toLocaleLowerCase().includes(needle);
-    const children = node.children ?? [];
-    const descendantMatch = children.some(child => {
-      const matches = item =>
-        item.name.toLocaleLowerCase().includes(needle) ||
-        (item.children ?? []).some(matches);
-      return matches(child);
-    });
-    if (!matching && !descendantMatch) return;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "explorer-entry";
     button.setAttribute("role", "treeitem");
     button.setAttribute("aria-level", String(depth + 1));
     button.style.paddingLeft = (8 + depth * 14) + "px";
+    if (node.documentId === workspace.activeId) {
+      button.classList.add("active");
+    }
     const arrow = document.createElement("span");
     arrow.className = "explorer-arrow";
     arrow.textContent = node.kind === "directory" ?
@@ -247,41 +233,19 @@ async function renderExplorer() {
     name.textContent = node.name;
     button.title = node.name;
     button.append(arrow, icon, name);
-    if (node.kind === "directory") {
-      button.setAttribute("aria-expanded", String(node.expanded));
-      button.addEventListener("click", async () => {
-        const response = await linkCore.request("ui", "explorer", "expand",
-          { id: node.id }, { origin: "user" });
-        if (!response.ok) notify(response.error);
-        await renderExplorer();
-      });
-    }
-    fragment.append(button);
-    if (node.expanded) children.forEach(child => appendNode(child, depth + 1));
-  };
-  result.value.roots.forEach(root => appendNode(root));
-  makeSection(localized("explorerOpenDocuments"));
-  for (const entry of result.value.documents) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "explorer-entry";
-    button.setAttribute("role", "treeitem");
-    if (entry.id === workspace.activeId) button.classList.add("active");
-    const icon = document.createElement("span");
-    icon.className = "explorer-file-icon";
-    icon.textContent = "◇";
-    const name = document.createElement("span");
-    name.className = "explorer-name";
-    name.textContent = entry.name;
-    button.title = entry.name;
-    button.append(icon, name);
-    button.addEventListener("click", () => {
-      void linkCore.request("ui", "explorer", "activate", {
-        id: entry.id
-      }, { origin: "user" });
+    button.addEventListener("click", async () => {
+      const action = node.kind === "directory" ? "expand" : "openEntry";
+      const response = await linkCore.request("ui", "explorer", action,
+        { id: node.id }, { origin: "user" });
+      if (!response.ok) notify(response.error);
+      if (node.kind === "directory") await renderExplorer();
     });
     fragment.append(button);
-  }
+    if (node.expanded) {
+      node.children.forEach(child => appendNode(child, depth + 1));
+    }
+  };
+  result.value.forEach(node => appendNode(node));
   container.replaceChildren(fragment);
 }
 

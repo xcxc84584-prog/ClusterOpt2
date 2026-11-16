@@ -16,7 +16,8 @@ export class FileWorkspace {
     this.strictOCDA = true;
     this.ocda = Object.freeze({
       Request: ["new", "open", "activate", "close", "closeAll",
-        "reorder", "save", "setPriority", "syncExternal", "list"],
+        "reorder", "save", "setPriority", "syncExternal", "list",
+        "entries"],
       Response: ["new", "open", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       UserAPI: ["new", "open", "activate", "close", "closeAll",
@@ -37,6 +38,10 @@ export class FileWorkspace {
 
   async receive(action, payload = {}) {
     if (action === "list") return FileManagement.summarize(this.documents);
+    if (action === "entries") return this.documents.map(doc => ({
+      id: doc.id, name: doc.name, status: doc.status,
+      handle: doc.handle
+    }));
     if (action === "new") return this.create();
     if (action === "open") return this.open(payload.handles);
     if (action === "activate") return this.activate(payload.id);

@@ -26,19 +26,19 @@ test("PR6 directory imports and expands through HubUnit", async () => {
     "importFolder", { handle: root });
   assert.equal(imported.ok, true);
   let listed = await core.request("test-client", "explorer", "list");
-  assert.equal(listed.value.roots.length, 1);
-  assert.equal(listed.value.roots[0].children.length, 2);
-  const childId = listed.value.roots[0].children[0].id;
+  assert.equal(listed.value.length, 1);
+  assert.equal(listed.value[0].children.length, 2);
+  const childId = listed.value[0].children[0].id;
   const expanded = await core.request("test-client", "explorer",
     "expand", { id: childId });
   assert.equal(expanded.ok, true);
   listed = await core.request("test-client", "explorer", "list");
-  assert.equal(listed.value.roots[0].children[0].children[0].name, "main.js");
+  assert.equal(listed.value[0].children[0].children[0].name, "main.js");
   const collapsed = await core.request("test-client", "explorer",
     "refreshTree");
   assert.equal(collapsed.ok, true);
   listed = await core.request("test-client", "explorer", "list");
-  assert.equal(listed.value.roots[0].expanded, false);
+  assert.equal(listed.value[0].expanded, false);
 });
 
 test("PR6 invalid handle fails with EHU", async () => {

@@ -16,3 +16,6 @@ picker is wired but folder tree traversal/persistence is still pending.
 Patch(+4): directory hierarchy and collapse implemented in memory.
 Pending: IndexedDB root restoration, file activation from folder tree,
 external CRUD refresh and browsing scroll recovery.
+
+Patch(+5): one Explorer tree with file-handle identity deduplication,
+and folder-file activation. Pending durable recovery and PR7 features.

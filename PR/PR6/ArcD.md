@@ -48,3 +48,9 @@ UI -> Hub -> Explorer.expand -> FileSystemHandle.values -> tree
 UI -> Hub -> Explorer.refreshTree -> collapse tree
 UI -> Hub -> Explorer.list -> Hub -> Workspace.list -> UI
 All failures are observed by OMU; no direct workspace mutation in Explorer.
+
+## Patch(+5) Event chain
+Explorer.list -> Hub -> Workspace.entries -> Explorer.project -> one tree
+Explorer.openEntry -> Hub -> Workspace.open / activate -> Document.load
+Folder and editor identity joined by FileSystemHandle.isSameEntry.
+EHU failures: invalid file 404; handle access/loading failures 500/413.

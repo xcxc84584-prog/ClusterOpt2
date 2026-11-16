@@ -1,9 +1,9 @@
 import { FileManagement } from "../property/FileManagement.js";
 
 /**
- * Explorer owns a view of granted directory handles, never file text.
- * Folder traversal is lazy and bounded to one level per expansion.
- * All public operations are routed by HubUnit.
+ * One Explorer tree: imported directories and open documents share identity.
+ * A file attached to a folder is represented once, not in a second section.
+ * All cross-object operations use HubUnit.
  */
 export class Explorer {
   constructor(core) {
@@ -13,7 +13,7 @@ export class Explorer {
     this.nextRootId = 1;
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["list", "create", "open", "activate",
+    const actions = ["list", "create", "open", "activate", "openEntry",
       "importFolder", "expand", "refreshTree"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
@@ -25,16 +25,6 @@ export class Explorer {
     }
   }
 
-  // Avoid exposing FileSystemHandles through the UI metadata response.
-  summarizeNode(node) {
-    return {
-      id: node.id, name: node.name, kind: node.kind,
-      expanded: node.expanded,
-      children: node.expanded ?
-        (node.children ?? []).map(child => this.summarizeNode(child)) : []
-    };
-  }
-
   findNode(id, nodes = this.roots) {
     for (const node of nodes) {
       if (node.id === id) return node;
@@ -42,6 +32,13 @@ export class Explorer {
       if (nested) return nested;
     }
     return null;
+  }
+
+  async sameEntry(left, right) {
+    if (!left || !right) return false;
+    if (left === right) return true;
+    return typeof left.isSameEntry === "function" &&
+      await left.isSameEntry(right);
   }
 
   async readChildren(node) {
@@ -55,8 +52,7 @@ export class Explorer {
       [child.name + ":" + child.kind, child]));
     const next = [];
     for await (const handle of node.handle.values()) {
-      const key = handle.name + ":" + handle.kind;
-      const prior = previous.get(key);
+      const prior = previous.get(handle.name + ":" + handle.kind);
       if (prior) {
         prior.handle = handle;
         next.push(prior);
@@ -74,6 +70,66 @@ export class Explorer {
         (a.kind === "directory" ? -1 : 1));
   }
 
+  /**
+   * Compose a single tree. Identity matching works across separately
+   * granted handles and prevents duplicates for opened folder files.
+   */
+  async project(documents, query = "") {
+    const claimed = new Set();
+    const needle = FileManagement.normalizeQuery(query);
+    const visit = async node => {
+      const matching = node.kind === "file" ?
+        await this.findDocument(node.handle, documents) : null;
+      if (matching) claimed.add(matching.id);
+      const children = [];
+      if (node.expanded) {
+        for (const child of node.children ?? []) {
+          children.push(await visit(child));
+        }
+      }
+      return {
+        id: node.id, name: node.name, kind: node.kind,
+        expanded: node.expanded, documentId: matching?.id ?? null,
+        children
+      };
+    };
+    const tree = [];
+    for (const root of this.roots) tree.push(await visit(root));
+    for (const doc of documents) {
+      if (claimed.has(doc.id)) continue;
+      tree.push({
+        id: "tab:" + doc.id, name: doc.name,
+        kind: "file", documentId: doc.id,
+        expanded: false, children: []
+      });
+    }
+    const filter = node => {
+      const children = node.children.map(filter).filter(Boolean);
+      if (needle && !node.name.toLocaleLowerCase().includes(needle) &&
+          children.length === 0) return null;
+      return { ...node, children };
+    };
+    return tree.map(filter).filter(Boolean);
+  }
+
+  async findDocument(handle, documents) {
+    for (const document of documents) {
+      if (await this.sameEntry(handle, document.handle)) return document;
+    }
+    return null;
+  }
+
+  async requestWorkspace(action, payload = {}) {
+    const result = await this.core.request(
+      this.id, "workspace", action, payload);
+    if (!result.ok) {
+      const error = new Error(result.error);
+      error.status = result.status;
+      throw error;
+    }
+    return result.value;
+  }
+
   async receive(action, payload = {}) {
     if (action === "importFolder") {
       if (payload.handle?.kind !== "directory") {
@@ -82,9 +138,7 @@ export class Explorer {
         throw error;
       }
       for (const root of this.roots) {
-        if (root.handle === payload.handle ||
-            (typeof root.handle.isSameEntry === "function" &&
-            await root.handle.isSameEntry(payload.handle))) {
+        if (await this.sameEntry(root.handle, payload.handle)) {
           return root.id;
         }
       }
@@ -93,7 +147,6 @@ export class Explorer {
         name: payload.handle.name, kind: "directory",
         handle: payload.handle, expanded: true, children: null
       };
-      // Directory read failure must not pollute the root registry.
       await this.readChildren(root);
       this.roots.push(root);
       return root.id;
@@ -110,7 +163,6 @@ export class Explorer {
       return node.expanded;
     }
     if (action === "refreshTree") {
-      // Legacy refresh collapses all folders without closing editors.
       const collapse = nodes => {
         for (const node of nodes) {
           node.expanded = false;
@@ -121,16 +173,23 @@ export class Explorer {
       return true;
     }
     if (action === "list") {
-      const result = await this.core.request(this.id, "workspace", "list");
-      if (!result.ok) {
-        const error = new Error(result.error);
-        error.status = result.status;
+      const documents = await this.requestWorkspace("entries");
+      return this.project(documents, payload.query);
+    }
+    if (action === "openEntry") {
+      if (typeof payload.id === "string" &&
+          payload.id.startsWith("tab:")) {
+        return this.requestWorkspace("activate", {
+          id: payload.id.slice(4)
+        });
+      }
+      const node = this.findNode(payload.id);
+      if (!node || node.kind !== "file") {
+        const error = new Error("File entry not found");
+        error.status = 404;
         throw error;
       }
-      return {
-        documents: FileManagement.filter(result.value, payload.query),
-        roots: this.roots.map(root => this.summarizeNode(root))
-      };
+      return this.requestWorkspace("open", { handles: [node.handle] });
     }
     const forwarded = {
       create: "new", open: "open", activate: "activate"
@@ -140,13 +199,6 @@ export class Explorer {
       error.status = 400;
       throw error;
     }
-    const result = await this.core.request(
-      this.id, "workspace", forwarded, payload);
-    if (!result.ok) {
-      const error = new Error(result.error);
-      error.status = result.status;
-      throw error;
-    }
-    return result.value;
+    return this.requestWorkspace(forwarded, payload);
   }
 }

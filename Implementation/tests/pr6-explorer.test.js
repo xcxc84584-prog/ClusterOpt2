@@ -26,7 +26,7 @@ test("PR6 Explorer lists and searches through HubUnit", async () => {
     query: "HELLO"
   });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.value.documents.map(entry => entry.name), ["Hello.cpp"]);
+  assert.deepEqual(result.value.map(entry => entry.name), ["Hello.cpp"]);
   assert.equal(core.getSnapshot().dependencies.length > 0, true);
 });
 
