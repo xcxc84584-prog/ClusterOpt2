@@ -94,3 +94,11 @@ test("Invalid stored RGB triggers EHU and falls back safely", () => {
 	assert.ok(core.getSnapshot().logs.some(item =>
 		item.kind === "EHU" && item.action === "Restore"));
 });
+
+test("Default black endpoint retains the legacy ClusterOpt color tokens", () => {
+	const tokens = UI_COLOR.derive([0, 0, 0]);
+	assert.equal(tokens.surface, "rgb(32, 33, 39)");
+	assert.equal(tokens.panel, "rgb(17, 18, 22)");
+	assert.equal(tokens.control, "rgb(52, 54, 64)");
+	assert.equal(tokens.gutter, "rgb(8, 9, 11)");
+});
