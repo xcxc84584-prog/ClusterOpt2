@@ -1,3 +1,4 @@
+import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
@@ -20,6 +21,8 @@ const menuButton = document.getElementById("menuBtn");
 function closeMenu() {
   menu.hidden = true;
   menuButton.setAttribute("aria-expanded", "false");
+  const tools = document.getElementById("toolOptions");
+  if (tools) tools.hidden = true;
 }
 menuButton.addEventListener("click", () => {
   menu.hidden = !menu.hidden;
@@ -57,8 +60,11 @@ linkCore.register({
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
   receive: async () => {
-  throw new Error("UI does not accept external actions");
-} });
+    throw new Error("UI does not accept external actions");
+  }
+});
+
+mountPaletteUI(linkCore, document, window.localStorage);
 const notify = message => { ui.statusText.textContent = message; };
 
 function render() {
