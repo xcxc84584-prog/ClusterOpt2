@@ -255,7 +255,9 @@ export class Explorer {
   }
 
   async createEntry(kind, payload) {
-    const folder = this.findNode(payload.id);
+    const selected = this.findNode(payload.id);
+    const folder = selected?.kind === "directory" ? selected :
+      this.findNode(this.locateCollection(payload.id)?.parentId);
     if (!folder || folder.kind !== "directory") {
       this.failure("Target folder not found", 404);
     }
