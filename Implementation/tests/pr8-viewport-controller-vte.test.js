@@ -97,3 +97,26 @@ test("PR8 viewport policy rejects unbounded visible ranges", async () => {
   });
   assert.equal(exceeded.status, 400);
 });
+
+test("PR8 viewport honors budget and skips optional preloads", async () => {
+  const { request } = fixture();
+  assert.equal((await request("slice-registry", "setLimit", {
+    bytes: 1024
+  })).status, 200);
+  assert.equal((await request("viewport-slices", "open", {
+    id: "budget", blob: new Blob(["a".repeat(3072)]),
+    chunkBytes: 1024
+  })).status, 200);
+  const visible = await request("viewport-slices", "navigate", {
+    id: "budget", first: 1, last: 1
+  });
+  assert.equal(visible.status, 200);
+  assert.deepEqual(visible.value.full, [1]);
+  assert.deepEqual(visible.value.preloaded, []);
+  const state = (await request("slice-registry", "list")).value;
+  assert.ok(state.entries.reduce((sum, item) =>
+    sum + item.residentBytes, 0) <= 1024);
+  assert.equal((await request("slice-registry", "read", {
+    id: "budget-slice-1"
+  })).status, 200);
+});
