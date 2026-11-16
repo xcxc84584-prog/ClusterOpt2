@@ -69,14 +69,15 @@ export class ViewportSliceController {
     const visible = [];
     for (const index of plan.full) {
       const previous = byId.get(sliceId(index));
-      if (!previous?.dirty) {
-        await this.call("slice-loader", "load", {
-          id: document.id, index, mode: "full"
-        });
-      } else if (previous.state !== "full") {
+      if (previous?.dirty && previous.state !== "full") {
         const error = new Error("Dirty slice must remain fully loaded");
         error.status = 409;
         throw error;
+      }
+      if (previous?.state !== "full") {
+        await this.call("slice-loader", "load", {
+          id: document.id, index, mode: "full"
+        });
       }
       visible.push(sliceId(index));
       await this.call("slice-registry", "setViewport", {
@@ -85,7 +86,12 @@ export class ViewportSliceController {
     }
     const preloaded = [];
     for (const index of plan.preloaded) {
-      if (byId.get(sliceId(index))?.dirty) continue;
+      const previous = byId.get(sliceId(index));
+      if (previous?.dirty) continue;
+      if (previous?.state === "preloaded") {
+        preloaded.push(index);
+        continue;
+      }
       try {
         await this.call("slice-loader", "load", {
           id: document.id, index, mode: "preloaded"
