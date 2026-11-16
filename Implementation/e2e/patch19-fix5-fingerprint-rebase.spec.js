@@ -75,9 +75,10 @@ test("PR8 Fix5: dirty OPFS page retains edits on external conflict",
       "data-virtual-page-index", "0");
     await expect(editor).toHaveValue(/^EDITED!!/);
     await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
-    const conflicts = await page.evaluate(() =>
+    await expect.poll(async () => page.evaluate(() =>
       window.Cluster.log().filter(item => item.kind === "EHU" &&
         item.status === 409 &&
-        item.action === "Response.page").length);
-    expect(conflicts).toBeGreaterThan(0);
+        item.action === "Response.page").length), {
+      timeout: 10000
+    }).toBeGreaterThan(0);
   });
