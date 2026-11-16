@@ -116,7 +116,6 @@ export class SliceLoader {
     const decoded = await Promise.all(indices.map(index =>
       this.policy().read(document.blob, index, document.chunkBytes)));
     const loaded = [];
-    const skipped = [];
     for (let i = 0; i < indices.length; i++) {
       if (payload.signal?.aborted) {
         const error = new Error("Slice batch aborted");
@@ -129,10 +128,27 @@ export class SliceLoader {
         loaded.push(indices[i]);
       } catch (error) {
         if (mode !== "preloaded" || error.status !== 413) throw error;
-        skipped.push(indices[i]);
+        // A speculative preload may be dropped without failing navigation.
       }
     }
-    return { id: document.id, loaded, skipped };
+    // Earlier preloads may be evicted by later preloads. Return only
+    // chunks that are still resident when the batch completes.
+    const state = await this.core.request(this.id,
+      "slice-registry", "list", {});
+    if (!state.ok) {
+      const error = new Error(state.error);
+      error.status = state.status;
+      throw error;
+    }
+    const resident = new Set(state.value.entries.filter(item =>
+      item.state === "preloaded" || item.state === "full"
+    ).map(item => item.id));
+    const actual = loaded.filter(index =>
+      resident.has(document.id + "-slice-" + index));
+    return {
+      id: document.id, loaded: actual,
+      skipped: indices.filter(index => !actual.includes(index))
+    };
   }
 
   async receive(action, payload = {}) {
