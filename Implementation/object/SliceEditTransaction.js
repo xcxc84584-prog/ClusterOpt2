@@ -11,7 +11,8 @@ export class SliceEditTransaction {
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["open", "transact", "transactDurable",
-      "restoreDurable", "read", "locate", "info", "close"];
+      "restoreDurable", "commitWriteback", "read", "locate",
+      "info", "close"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["SliceTransactionPolicy",
@@ -113,6 +114,30 @@ export class SliceEditTransaction {
 
     const item = this.slice(payload.id);
     if (action === "info") return this.describe(item);
+
+    if (action === "commitWriteback") {
+      if (!item.dirty || !item.durable ||
+          !Number.isSafeInteger(payload.revision) ||
+          payload.revision !== item.revision) {
+        const error = new Error("No matching durable dirty revision");
+        error.status = 409;
+        throw error;
+      }
+      // The on-disk stream and readback are performed by a separate
+      // Hub-owned Object. No data is released before verification.
+      const response = await this.core.request(this.id,
+        "slice-writeback-unit", "commit", {
+          ...payload, id: item.id, revision: item.revision
+        });
+      if (!response.ok) {
+        const error = new Error(response.error);
+        error.status = response.status;
+        throw error;
+      }
+      item.dirty = false;
+      item.durable = false;
+      return { ...this.describe(item), receipt: response.value };
+    }
 
     if (action === "close") {
       if (item.dirty) {
