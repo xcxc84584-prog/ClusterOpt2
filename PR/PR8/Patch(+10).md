@@ -41,7 +41,7 @@ VTE compares directed dependencies Request=10, Response=01.
 All ToolTabManager operations remain resource-key serialized.
 
 ## Resource and security assessment
-- Tab projection O(number of open documents), existing pattern.
+- Tab projection O(number of open documents), using an indexed Map\n  instead of O(N²) per-tab document searches.
 - Tool window has constant panel count and does not decode file data.
 - No extra FileDocument, filesystem handles or untrusted JavaScript.
 - Plugin view never enters file recovery snapshots as a document.
