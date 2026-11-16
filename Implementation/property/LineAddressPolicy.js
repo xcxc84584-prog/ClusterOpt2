@@ -21,6 +21,7 @@ export const LineAddressPolicy = Object.freeze({
     this.checkLine(firstLine);
     this.checkLine(lastLine);
     if (lastLine < firstLine ||
+        lastLine === Number.MAX_SAFE_INTEGER ||
         lastLine - firstLine >= this.maxRequestedLines) {
       const error = new RangeError("Line range exceeds safe limit");
       error.status = 400;
