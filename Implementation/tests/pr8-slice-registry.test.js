@@ -72,3 +72,18 @@ test("PR8 protects dirty slices and fails without partial eviction", async () =>
     id: "other", mode: "preloaded", text: "o".repeat(800)
   })).ok, true);
 });
+
+test("PR8+23 speculative preload never downgrades a full slice", async () => {
+  const call = fixture();
+  await call("registerVirtual", { id: "resident", start: 0, end: 1024 });
+  assert.equal((await call("load", {
+    id: "resident", mode: "full", text: "unchanged"
+  })).status, 200);
+  assert.equal((await call("load", {
+    id: "resident", mode: "preloaded", text: "stale"
+  })).status, 200);
+  const state = (await call("list")).value.entries[0];
+  assert.equal(state.state, "full");
+  assert.equal((await call("read", { id: "resident" })).value,
+    "unchanged");
+});
