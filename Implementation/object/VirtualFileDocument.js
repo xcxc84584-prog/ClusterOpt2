@@ -217,7 +217,7 @@ export class VirtualFileDocument extends FileDocument {
     return this.describePage();
   }
 
-  async savePage(handle, onProgress = () => {}) {
+  async savePage(handle, onProgress = () => {}, signal = null) {
     if (handle && handle !== this.handle) {
       this.failure("Virtual page Save As is not supported", 409);
     }
@@ -237,7 +237,8 @@ export class VirtualFileDocument extends FileDocument {
       handle: this.handle, start: this.pageStart, end: this.pageEnd,
       expectedSize: this.virtualByteLength,
       expectedLastModified: file.lastModified,
-      expectedSliceHash: this.sourceHash
+      expectedSliceHash: this.sourceHash,
+      signal, onProgress
     });
     this.status = DocumentStatus.SYNCED;
     this.fileFingerprint = null;
@@ -282,7 +283,8 @@ export class VirtualFileDocument extends FileDocument {
     if (action === "describePage") return this.describePage();
     if (action === "edit") return this.editPage(payload.text);
     if (action === "save") {
-      return this.savePage(payload.handle, payload.onProgress);
+      return this.savePage(payload.handle, payload.onProgress,
+        payload.signal);
     }
     if (action === "reconcile") {
       if (this.status === DocumentStatus.DIRTY) return false;

@@ -13,6 +13,20 @@ export const SliceFileWritePolicy = Object.freeze({
     throw error;
   },
 
+  abortIfRequested(signal) {
+    if (signal?.aborted) {
+      const error = new Error("Writeback interrupted by a new edit");
+      error.status = 499;
+      throw error;
+    }
+  },
+
+  async yieldToBrowser(iteration) {
+    if (iteration % 8 === 0) {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+  },
+
   async digest(bytes) {
     if (!globalThis.crypto?.subtle) {
       this.fail("SHA-256 unavailable", 503);
@@ -42,10 +56,13 @@ export const SliceFileWritePolicy = Object.freeze({
     }
   },
 
-  async writeBlob(writer, blob, start, end, outputStart) {
+  async writeBlob(writer, blob, start, end, outputStart,
+    { signal, onProgress = () => {}, advance = () => {} } = {}) {
     const hashes = [];
+    let blocks = 0;
     for (let offset = start; offset < end;
       offset += this.blockBytes) {
+      this.abortIfRequested(signal);
       const stop = Math.min(end, offset + this.blockBytes);
       const bytes = await blob.slice(offset, stop).arrayBuffer();
       // Hash the source BEFORE replacing the file. Old File blobs may
@@ -55,11 +72,15 @@ export const SliceFileWritePolicy = Object.freeze({
         size: stop - offset, checksum: await this.digest(bytes)
       });
       await writer.write(new Uint8Array(bytes));
+      advance(stop - offset);
+      onProgress();
+      await this.yieldToBrowser(++blocks);
     }
     return hashes;
   },
 
-  async verifyRegion(file, offset, expected) {
+  async verifyRegion(file, offset, expected,
+    advance = () => {}) {
     for (let cursor = 0; cursor < expected.length;
       cursor += this.blockBytes) {
       const end = Math.min(cursor + this.blockBytes, expected.length);
@@ -70,10 +91,13 @@ export const SliceFileWritePolicy = Object.freeze({
           chunk.some((byte, index) => byte !== actual[index])) {
         this.fail("Readback byte mismatch", 422);
       }
+      advance(chunk.length);
+      await this.yieldToBrowser(Math.floor(cursor / this.blockBytes) + 1);
     }
   },
 
-  async verifyCopied(file, hashes) {
+  async verifyCopied(file, hashes, advance = () => {}) {
+    let checked = 0;
     for (const item of hashes) {
       const bytes = await file.slice(
         item.offset, item.offset + item.size).arrayBuffer();
@@ -81,6 +105,8 @@ export const SliceFileWritePolicy = Object.freeze({
           await this.digest(bytes) !== item.checksum) {
         this.fail("Unmodified file bytes differ after writeback", 422);
       }
+      advance(item.size);
+      await this.yieldToBrowser(++checked);
     }
   },
 
@@ -92,7 +118,20 @@ export const SliceFileWritePolicy = Object.freeze({
     const encoded = new TextEncoder().encode(text);
     const original = await handle.getFile();
     this.validate(payload, original, encoded);
-    const { start, end, expectedSliceHash } = payload;
+    const { start, end, expectedSliceHash, signal } = payload;
+    const workTotal = Math.max(1,
+      original.size * 2 + encoded.length);
+    let completed = 0;
+    const report = () => {
+      payload.onProgress?.(Math.min(99,
+        Math.floor(completed * 100 / workTotal)));
+    };
+    const advance = bytes => {
+      completed += bytes;
+      report();
+    };
+    report();
+    this.abortIfRequested(signal);
     const oldRegion = await original.slice(start, end).arrayBuffer();
     if (await this.digest(oldRegion) !== expectedSliceHash) {
       this.fail("Edited source slice changed externally", 409);
@@ -111,11 +150,16 @@ export const SliceFileWritePolicy = Object.freeze({
       writer = await handle.createWritable({
         keepExistingData: false, mode: "exclusive"
       });
+      const options = { signal, onProgress: report, advance };
       copiedHashes = await this.writeBlob(
-        writer, original, 0, start, 0);
+        writer, original, 0, start, 0, options);
+      this.abortIfRequested(signal);
       await writer.write(encoded);
+      advance(encoded.length);
       const suffixHashes = await this.writeBlob(
-        writer, original, end, original.size, start + encoded.length);
+        writer, original, end, original.size,
+        start + encoded.length, options);
+      this.abortIfRequested(signal);
       for (const item of suffixHashes) copiedHashes.push(item);
       await writer.close();
       closed = true;
@@ -137,8 +181,12 @@ export const SliceFileWritePolicy = Object.freeze({
     if (saved.size !== expectedSize) {
       this.fail("Writeback size mismatch", 422);
     }
-    await this.verifyRegion(saved, start, encoded);
-    await this.verifyCopied(saved, copiedHashes);
+    // Once writer.close() succeeds we MUST finish verification,
+    // even if the user has requested cancellation meanwhile.
+    // The edit queues after this immutable save revision.
+    await this.verifyRegion(saved, start, encoded, advance);
+    await this.verifyCopied(saved, copiedHashes, advance);
+    payload.onProgress?.(100);
     return { bytes: saved.size, insertedBytes: encoded.length,
       verified: true, retainedJournal: true };
   }

@@ -142,3 +142,16 @@ No unbounded cache when a configured byte budget is active.
   unregister, while completed verified saves may be clean.
 - Regression must cover 65 MiB OPFS, existing PR1 synchronous Close,
   status EHU and final source byte-size.
+
+## PR8 Patch(+19-Fix3) — progress and edit-interrupt
+- Large file storage must not block tab switching or other UI.
+- The original progress bar must track the current save operation's
+  actual completed bytes, including copy and verification stages.
+- Progress belongs to each document. Returning to a background
+  saving document must show its true current percentage.
+- User editing a saving document interrupts the uncommitted write,
+  retains MVCC journal and then records the new edit.
+- After the disk commit point, complete verification before
+  processing the next edit: prevent false cancellation claims.
+- No developer messages visible; preserve existing ClusterOpt UI.
+- End-to-end slow I/O and cancellation tests are mandatory.

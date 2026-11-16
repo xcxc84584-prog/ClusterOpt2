@@ -14,6 +14,7 @@ import { EditorViewportObserver } from "../object/EditorViewportObserver.js";
 import { SliceRecoveryJournal } from "../object/SliceRecoveryJournal.js";
 import { SliceEditTransaction } from "../object/SliceEditTransaction.js";
 import { SliceWritebackUnit } from "../object/SliceWritebackUnit.js";
+import { SliceSaveTask } from "../object/SliceSaveTask.js";
 import { ToolTabManager } from "../object/ToolTabManager.js";
 import { FileTypeManager } from "../object/FileTypeManager.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
@@ -31,6 +32,9 @@ const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
 let guideFrame = 0;
 let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
+workspace.onSaveProgress = doc => {
+  if (workspace.activeId === doc.id) updateStatus();
+};
 new ToolTabManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
 let toolState = { open: false, active: false, position: 0 };
@@ -70,6 +74,7 @@ new SliceRecoveryJournal(linkCore);
 new SliceEditTransaction(linkCore);
 // Trusted sandbox only; the production FileDocument save stays unchanged.
 new SliceWritebackUnit(linkCore);
+new SliceSaveTask(linkCore);
 const fileTypes = new FileTypeManager(linkCore);
 // Read-only viewport observation: never mutates editor text or disk.
 let viewportTimer = 0;
@@ -749,7 +754,14 @@ function updateStatus() {
     doc.status === DocumentStatus.SYNCED ?
       localized("virtualEditable") : statusLabel(doc.status,
         linkCore.readProperty("ui", "Language").value);
-  const progress = viewportPolicy.progress(doc.status, doc.progress);
+  const saving = Boolean(doc.virtualReadOnly && doc.saveActive);
+  const visibleStatus = saving ? DocumentStatus.LOADING : doc.status;
+  if (saving) {
+    ui.statusLamp.className = "lamp " + DocumentStatus.LOADING;
+    ui.statusText.textContent = localized("virtualSaving");
+  }
+  const progress = viewportPolicy.progress(
+    visibleStatus, saving ? doc.saveProgress : doc.progress);
   ui.progressFill.dataset.status = progress.status;
   ui.progressFill.style.width = progress.percent + "%";
   ui.progressText.textContent = progress.label ?
@@ -804,6 +816,13 @@ ui.editor.addEventListener("input", async () => {
   doc.cursor = ui.editor.selectionStart;
   doc.scrollTop = ui.editor.scrollTop;
   const requestedText = ui.editor.value;
+  if (doc.virtualReadOnly && doc.saveActive) {
+    // Abort via another Object key: the document's Hub queue is
+    // occupied by Save, but the save-task Object can accept cancel.
+    await linkCore.request("ui", "slice-save-task", "cancel", {
+      id: doc.id
+    }, { origin: "user" });
+  }
   const result = await linkCore.request("ui", doc.id, "edit", {
     text: requestedText
   }, { origin: "user" });
