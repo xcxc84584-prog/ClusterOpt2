@@ -27,9 +27,10 @@
   checkpoint, marks page green and reloads its aligned byte window.
 - `Save As` for virtual page is intentionally unsupported until
   full-file cloning is safe; a partial page cannot overwrite file.
-- Recovery snapshots include virtual source fingerprint, page index,
-  byte range, journal ID and revision, NOT page text; restoring only
-  proceeds if the same authorized file fingerprint matches.
+- Recovery snapshots include virtual source fingerprint, SHA-256
+  source byte-region hash, page index, byte range, journal ID and
+  revision, NOT page text; restore requires both source identity
+  and exact byte hash to match.
   Failed restoration retains the checkpoint and sets an error.
 - Progress is based on current page operation; no full-file loaded%
   deception. Per-page text bounded by SliceTransactionPolicy 1 Mi
