@@ -21,7 +21,7 @@ export class FileDocument {
     this.scrollTop = 0;
     this.revision = 0;
     this.hasUtf8Bom = false;
-    this.lineEnding = "\\n";
+    this.lineEnding = "\n";
     this.strictOCDA = true;
     this.ocda = Object.freeze({
       Request: ["edit", "load", "save"],
@@ -81,10 +81,10 @@ export class FileDocument {
       }
       parts.push(decoder.decode());
       const rawText = parts.join("");
-      this.hasUtf8Bom = rawText.startsWith("\\uFEFF");
+      this.hasUtf8Bom = rawText.startsWith("\uFEFF");
       const text = this.hasUtf8Bom ? rawText.slice(1) : rawText;
-      this.lineEnding = text.includes("\\r\\n") ? "\\r\\n" : "\\n";
-      this.text = text.replace(/\\r\\n/g, "\\n");
+      this.lineEnding = text.includes("\r\n") ? "\r\n" : "\n";
+      this.text = text.replace(/\r\n/g, "\n");
       this.revision++;
       this.progress = 100;
       this.status = DocumentStatus.SYNCED;
@@ -102,9 +102,9 @@ export class FileDocument {
     const handle = selectedHandle ?? this.handle;
     if (!handle) throw new Error("Save needs an authorized file handle");
 
-    const lineNormalized = this.lineEnding === "\\r\\n" ?
-      this.text.replace(/\\n/g, "\\r\\n") : this.text;
-    const snapshot = (this.hasUtf8Bom ? "\\uFEFF" : "") + lineNormalized;
+    const lineNormalized = this.lineEnding === "\r\n" ?
+      this.text.replace(/\n/g, "\r\n") : this.text;
+    const snapshot = (this.hasUtf8Bom ? "\uFEFF" : "") + lineNormalized;
     const snapshotRevision = this.revision;
     this.status = DocumentStatus.LOADING;
     this.progress = 0;
