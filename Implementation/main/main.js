@@ -462,9 +462,11 @@ function render() {
   // Never replace text the user is currently typing with a stale
   // queued Request/Response value while asynchronous saves are running.
   const switchedTab = ui.editor.dataset.documentId !== active.id;
-  const switchedPage = active.virtualReadOnly &&
+  const switchedPage = active.virtualReadOnly && (
     ui.editor.dataset.virtualPageIndex !==
-    String(active.virtualPageIndex);
+      String(active.virtualPageIndex) ||
+    ui.editor.dataset.virtualPageRevision !==
+      String(active.revision));
   if (switchedTab || switchedPage || active.externalReloaded ||
       (ui.editor.readOnly &&
       active.status !== DocumentStatus.LOADING) ||
@@ -481,6 +483,8 @@ function render() {
     active.status === DocumentStatus.LOADING;
   ui.editor.dataset.virtualPageIndex = active.virtualReadOnly ?
     String(active.virtualPageIndex) : "";
+  ui.editor.dataset.virtualPageRevision = active.virtualReadOnly ?
+    String(active.revision) : "";
   ui.editor.dataset.documentId = active.id;
   if (switchedTab || switchedPage) {
     guideAnchor = null;
