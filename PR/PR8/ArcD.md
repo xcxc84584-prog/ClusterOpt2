@@ -119,3 +119,20 @@ Highlighter entry disabled until plugin processor Object is installed.
   sessionStorage.tool-view -> Hub -> ToolTabManager.restore ->
   ToolTabPolicy.validatePosition -> UI.render -> OMU.
 - 400 invalid saved state, 503 blocked sessionStorage. No file mutation.
+
+## Patch(+11): new Object, Property and EventChain
+- New Object: ViewportSliceController, Implementation/object/
+  ViewportSliceController.js; Public API open/describe/navigate.
+- New shared Property: ViewportSlicePolicy (EDPMU via LinkCore).
+- UI/Agent -> Hub -> viewport-slices.open -> Hub -> slice-loader.open
+  -> Blob metadata only -> OMU Log/Response.
+- viewport-slices.navigate -> ViewportSlicePolicy.plan -> Hub ->
+  slice-registry.setViewport -> Hub -> slice-loader.load(full)
+  -> Hub -> slice-registry.setViewport(visible IDs) -> Hub ->
+  slice-loader.load(preloaded) -> Hub -> slice-registry.demote(clean)
+  -> OMU Logs/EHU and dependency Request 10, Response 01.
+- EHU: 200 success, 400 invalid viewport, 404 absent file,
+  409 dirty-state conflict, 413 resident budget, 422 UTF-8 decode.
+- Plugin category dropdown is local UI state; no cross-Object call.
+- Main editor remains full-buffer. Future: viewport pixel mapping,
+  cancellation/generation protection and true slice editor.
