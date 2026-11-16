@@ -25,18 +25,13 @@ test("PR8+21 restores physical viewport after switching and reload",
     await expect.poll(() => editor.evaluate(node =>
       Math.abs(node.scrollTop - first.top) <= 3)).toBe(true);
 
-    // Recovery writes are debounced; wait for persisted snapshot.
-    await expect.poll(() => page.evaluate(async () => {
-      const open = indexedDB.open("clusteropt2-recovery");
-      return new Promise(resolve => {
-        open.onerror = () => resolve(false);
-        open.onsuccess = () => {
-          open.result.close();
-          resolve(true);
-        };
-      });
+    // IndexedDB and fallback persistence share the same snapshot data.
+    await expect.poll(() => page.evaluate(() => {
+      const raw = sessionStorage.getItem("clusteropt2.recovery.fallback");
+      if (!raw) return false;
+      const state = JSON.parse(raw);
+      return state.documents?.some(doc => doc.scrollTop >= 700);
     })).toBe(true);
-    await page.waitForTimeout(650);
     await page.reload();
     await expect(editor).toHaveValue(body);
     await expect.poll(() => editor.evaluate(node =>
