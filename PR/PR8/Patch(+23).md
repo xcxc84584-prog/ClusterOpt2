@@ -30,3 +30,9 @@ resident plan -> cached result (no SliceLoader.load).
 ## Status
 PARTIAL — browser rapid-scroll / stress test and true parallel Worker
 processing remain open.
+
+## CI-discovered cross-document demotion fix
+- First Node run exposed a second ownership bug: Controller's final
+  demotion loop still traversed slices belonging to other documents.
+- Restrict demotion to IDs beginning with this document's slice prefix.
+- Re-run multi-document budget/visibility and full regression CI.
