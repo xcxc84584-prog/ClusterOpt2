@@ -120,3 +120,16 @@ test("PR2 RGB channels and endpoints share the same global property", async ({ p
   await page.locator("#paletteDark").click();
   await expect(page.locator("#paletteHex")).toHaveText("#000000");
 });
+
+test("PR2 invalid RGB is rejected and original controls are restored", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
+  await page.locator("#paletteBtn").click();
+
+  await page.locator('[data-rgb="0"]').fill("-8");
+  await page.locator('[data-rgb="0"]').dispatchEvent("change");
+  await expect(page.locator("#paletteHint")).toContainText("RGB");
+  await expect(page.locator('[data-rgb="0"]')).toHaveValue("0");
+  await expect(page.locator("#paletteHex")).toHaveText("#000000");
+});
