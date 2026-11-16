@@ -12,17 +12,18 @@ export const ViewportSlicePolicy = Object.freeze({
    * The range is half-open [start, end); zero-byte carets are allowed.
    */
   bytePlan(size, chunkBytes, start, end, adjacent = 1) {
-    if (!Number.isSafeInteger(size) || size < 1 ||
+    if (!Number.isSafeInteger(size) || size < 0 ||
         !Number.isSafeInteger(chunkBytes) || chunkBytes < 1 ||
         !Number.isSafeInteger(start) || !Number.isSafeInteger(end) ||
-        start < 0 || start >= size || end < start || end > size) {
+        start < 0 || start > size || end < start || end > size) {
       const error = new RangeError("Invalid viewport byte range");
       error.status = 400;
       throw error;
     }
-    const first = Math.floor(start / chunkBytes);
+    if (size === 0) return { full: [], preloaded: [] };
+    const first = Math.floor(Math.min(start, size - 1) / chunkBytes);
     const last = Math.floor(
-      Math.max(start, end - 1) / chunkBytes);
+      Math.min(size - 1, Math.max(start, end - 1)) / chunkBytes);
     const count = Math.ceil(size / chunkBytes);
     return this.plan(count, first, last, adjacent);
   },
