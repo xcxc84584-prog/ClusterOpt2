@@ -44,3 +44,31 @@ Parallel file operations are permitted across independent document IDs, but each
 ## Test gate
 npm run check; npm run test:e2e; test UI in Chrome/Edge; inspect VTE and OMU log/error paths.
 Record exact commit SHA, commands, PASS/FAIL counts in Patch; a document-only patch is never a functional PASS.
+
+## Patch(+2) implementation
+- Reused the existing File menu and Tools submenu. Added only Close All button.
+- FileWorkspace owns Close All and tab reordering; no unnecessary new Object.
+- Close All prompts once if ANY document is non-SYNCED. Cancel is atomic.
+- Native HTML drag/drop transports original index; HubUnit routes reorder.
+- Tests added for cancellation, unregister, ordering and Chrome UI behavior.
+- StoragePriority and external-change detection remain TODO, not accepted.
+- Revised roadmap: PR5 edit experience, PR6 Explorer, PR7 Explorer polish,
+  PR8 sliced large files, PR9 go-to-line, PR10 PowerShell.
+- CI + browser results must be captured before merging to main.
+
+## Patch(+3) implementation (pending validation)
+StoragePriority is the centrally registered Public Property:
+`internal` (default) or `external`, from StoragePriority.js.
+FileWorkspace owns setPriority/syncExternal and restores browser preference;
+FileDocument owns per-file metadata fingerprint and reconcile Request/Response.
+A bounded 3000ms active-tab poll and focus/visibility refresh probe external
+changes. Saves perform preflight reconciliation before creating a writer.
+ExternalFirst reloads source bytes; InternalFirst preserves local text and
+marks the document dirty. File revision fingerprint uses size + lastModified;
+known residual risk: changes preserving both fields are not detected.
+No duplicate custom window layout; two existing Tool-menu style buttons used.
+Security: avoid silent overwrites outside selected mode, preserve permissions;
+invalid priority is 400; read errors propagate to EHU and red status.
+Parallelism: per-file operations are serialized in HubUnit; independent
+reconciles overlap across files. Each focus poll has one active guard.
+Tests were authored but execution and Chrome/Edge acceptance are pending.

@@ -1,5 +1,6 @@
 import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
 import { Language } from "../property/Language.js";
+import { StoragePriority } from "../property/StoragePriority.js";
 import { UI_COLOR } from "../property/UI_COLOR.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
 import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
@@ -14,7 +15,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.3-pr3.patch2";
+    this.version = "0.0.4-pr4.patch3";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -28,6 +29,9 @@ export class LinkCore {
     });
     this.hub.registerProperty("Language", Language.defaultLocale, {
       owners: ["LinkCore", "LanguageManager"], visibility: "Public"
+    });
+    this.hub.registerProperty("StoragePriority", StoragePriority.defaultValue, {
+      owners: ["LinkCore", "workspace"], visibility: "Public"
     });
     this.hub.registerProperty("DocumentStatus", Object.freeze({
       SYNCED: "green", DIRTY: "yellow",

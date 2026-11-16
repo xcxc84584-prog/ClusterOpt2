@@ -4,11 +4,14 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const makeHandle = (name, initial = "") => {
       let content = initial;
+      let diskRevision = 1000;
       return {
         name,
         async isSameEntry(other) { return this === other; },
         async getFile() {
-          return new File([content], name, { type: "text/plain" });
+          return new File([content], name, {
+            type: "text/plain", lastModified: diskRevision
+          });
         },
         async createWritable() {
           const chunks = [];
@@ -16,6 +19,7 @@ test.beforeEach(async ({ page }) => {
             async write(chunk) { chunks.push(chunk); },
             async close() {
               content = await new Blob(chunks).text();
+              diskRevision++;
               window.__savedText = content;
             },
             async abort() { chunks.length = 0; }
