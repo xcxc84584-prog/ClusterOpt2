@@ -393,3 +393,29 @@ UI Save/Close/CloseAll (transient user activation)
   422 readback integrity mismatch; 503 file/system failure.
 - Relation Object Request=10, Response=01. No direct sibling
   Request path or SendTo; same-workspace close must remain serialized.
+
+## Patch(+19-Fix3) Object and Event Chains
+- New Object SliceSaveTask: Request/Response begin/progress/cancel/
+  finish/state, UserAPI cancel/state; ownership of AbortController.
+  No new EDPMU Property (reuse SliceFileWritePolicy, DocumentStatus,
+  Language and existing workspace state).
+- UI Save -> HubUnit -> FileWorkspace.save (returns immediately)
+  -> SliceSaveTask.begin -> background HubUnit ->
+  VirtualFileDocument.save -> SliceEditTransaction.commitWriteback ->
+  SliceWritebackUnit.commit -> SliceFileWritePolicy.commit.
+- Writeback copies bounded UTF-8 byte blocks, reports actual
+  completed bytes, yields to browser every eight blocks,
+  verifies saved changed bytes + original-prefix/suffix hashes,
+  retires journal and completes with progress100.
+- UI Tab Activate -> HubUnit -> FileWorkspace.activate runs while
+  document save remains active. UI status reads doc.saveProgress
+  for the active tab, not a single global save indicator.
+- UI Input while saving -> HubUnit -> SliceSaveTask.cancel
+  -> AbortSignal aborts uncommitted writer and preserves checkpoint
+  -> HubUnit -> VirtualFileDocument.edit -> new durable revision.
+- After writer.close: cancellation no longer aborts; complete
+  disk integrity verification and journal retirement, THEN accept
+  queued editor modification.
+- OMU logs EHU499 aborted stream, EHU409 stale revision,
+  EHU422 readback mismatch, EHU503 file errors.
+- Request/Response edges remain Hub-routed (10/01); no SendTo.
