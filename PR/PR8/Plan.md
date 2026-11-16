@@ -416,3 +416,20 @@ this limit currently applies only to the independent registry.
 - Race: one document's HubUnit serializes save/close; unsuccessful
   save throws EHU, retaining dirty tab and journal. Cross-tab file
   writes remain a separate P0 requirement.
+
+## Patch(+19-Fix2): unblock real large-file Save and Close
+- Existing FileWorkspace.closeMany and closeAll returned EHU409 for
+  any dirty virtual document. Instead call saveVirtualGroupBeforeClose,
+  preserving synchronous clean-file lifecycle and the original UI.
+- Before removing a tab, sequential Hub-routed file saves must
+  finish with successful byte readback and journal retirement.
+  A cancelled request leaves all tabs; a mid-batch failure leaves
+  all tabs and any uncommitted journal, even if an earlier file saved.
+- Real local file write permission is requested from direct UI
+  activation for Save/Close/CloseAll, before queued Hub work; denial
+  preserves dirty text. Never insert await in front of Open/SaveAs
+  pickers. Permission errors are logged with EHU 403.
+- Verification: 65 MiB OPFS CloseAll exact-size readback,
+  cancel and denied permission; existing PR1 synchronous Close.
+- Security: no direct Object calls; limits on external OS locks,
+  platform support and 1/5GiB latency remain open.
