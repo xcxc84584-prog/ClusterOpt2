@@ -53,3 +53,36 @@ required OCDA contract checks pass and outstanding blockers are resolved.
 - Test suite expanded for independent overlap, FIFO, max concurrency,
   queue overflow, cancellation and failure cleanup.
 - Validation is submitted but not marked PASS.
+
+## Patch(+4) accepted implementation scope
+- The first PR focuses on small UTF-8 text files (up to 64 MiB).
+- The visual interface uses the original ClusterOpt CSS and file-menu shell.
+- File picker capability grants occur in the direct user event, before Hub.
+- File content is edited through FileDocument.receive; saved as UTF-8.
+- UTF-8 BOM and Windows CRLF are preserved across an unchanged round-trip.
+- Concurrent opening of distinct files uses HubUnit scheduling.
+- Request/Response for a target object remains FIFO serialized.
+- Nested request cycles return EHU 423 instead of indefinite blocking.
+- A bounded nested request pool avoids starvation under regular saturation.
+- External file mutations and giant-file virtualization are deferred to PR4/7.
+
+## Performance model
+- One object can run a single active operation at any instant.
+- Four normal operations can overlap, plus eight bounded nested slots.
+- FIFO ordering applies independently to each object ID.
+- PR1 file reader accumulates text in memory; above 64 MiB rejects with 413.
+- Progress is the completion of the current file operation.
+- Saved output is written in 256-KiB chunks after UTF-8 encoding.
+
+## Security and reliability
+- Only a direct user gesture obtains File System Access handles.
+- No stored access tokens or absolute file paths.
+- VTE creates a separate LinkCore in memory, with no shared files.
+- Strict project Object descriptors require OCDA standard fields.
+- HubUnit logs successful/failing registrations, requests and responses.
+
+## Remaining release checks
+- Browser-based DOM workflow / screenshot comparison to ClusterOpt UI.
+- Multi-tab unsaved changes, permissions, reopening and keyboard shortcuts.
+- User-agent identity spoof protection is not enforced at untrusted API boundaries.
+- Browser single-page async scheduling is not cross-tab locking.
