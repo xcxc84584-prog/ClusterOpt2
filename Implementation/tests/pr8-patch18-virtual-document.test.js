@@ -28,7 +28,29 @@ function fakeHandle(size = SIZE) {
 function setup() {
   const core = new LinkCore();
   core.register({ id: "ui", receive: async () => true });
-  new SliceRecoveryJournal(core);
+  const checkpoints = new Map();
+  new SliceRecoveryJournal(core, {
+    async get(id) { return structuredClone(checkpoints.get(id)); },
+    async putIfNewer(entry) {
+      const current = checkpoints.get(entry.id);
+      if (current && current.revision >= entry.revision) {
+        const error = new Error("Stale checkpoint");
+        error.status = 409;
+        throw error;
+      }
+      checkpoints.set(entry.id, structuredClone(entry));
+    },
+    async deleteIfMatch(id, revision, checksum) {
+      const current = checkpoints.get(id);
+      if (!current || current.revision !== revision ||
+          current.checksum !== checksum) {
+        const error = new Error("Checkpoint changed");
+        error.status = 409;
+        throw error;
+      }
+      checkpoints.delete(id);
+    }
+  });
   new SliceEditTransaction(core);
   new SliceWritebackUnit(core);
   const workspace = new FileWorkspace(core, () => {});
