@@ -31,6 +31,10 @@ export function mountPaletteUI(core, doc = document, storage = null) {
 		else {
 			const message = "介面調色盤：" + (result.error ?? "請求失敗");
 			byId("paletteHint").textContent = message;
+			// Keep controls consistent with the last accepted global Property.
+			const previous = await core.request("ui", "InterfacePalette",
+				"get", {}, { origin: "user" });
+			if (previous.ok) render(previous.value);
 		}
 		return result;
 	}
