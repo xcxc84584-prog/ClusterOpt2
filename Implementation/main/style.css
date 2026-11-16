@@ -38,7 +38,7 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent);
 .empty-state { display: grid; height: 100%; place-items: center;
   color: var(--muted); }
 .editor-surface { display: flex; height: 100%; overflow: hidden; }
-.editor-surface[hidden] { display: none; }
+.editor-surface[hidden], .empty-state[hidden] { display: none; }
 .line-numbers { margin: 0; padding: 16px 12px; flex: 0 0 auto; min-width: 56px;
   overflow: hidden; text-align: right; color: var(--muted);
   background: #0d1118; border-right: 1px solid var(--edge); user-select: none;
