@@ -10,7 +10,7 @@ export class VirtualLineIndex {
     this.documents = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "locate", "range", "describe"];
+    const actions = ["open", "close", "locate", "range", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["LineAddressPolicy"],
@@ -88,6 +88,10 @@ export class VirtualLineIndex {
       return this.describe(document);
     }
     const doc = this.document(payload.id);
+    if (action === "close") {
+      this.documents.delete(doc.id);
+      return true;
+    }
     if (action === "describe") return this.describe(doc);
     if (action === "locate") {
       return { line: payload.line,
