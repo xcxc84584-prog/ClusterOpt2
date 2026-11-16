@@ -52,6 +52,18 @@ export class SliceWritebackUnit {
     }
     const policy = this.property("SliceFileWritePolicy");
     const receipt = await policy.commit(payload.handle, payload, entry.text);
-    return { ...receipt, id: entry.id, revision: entry.revision };
+    const retired = await this.core.request(this.id,
+      "slice-recovery-journal", "retire", {
+        id: entry.id, revision: entry.revision,
+        checksum: entry.checksum
+      });
+    if (!retired.ok) {
+      const error = new Error("Saved file; checkpoint retirement failed: " +
+        retired.error);
+      error.status = retired.status;
+      throw error;
+    }
+    return { ...receipt, id: entry.id, revision: entry.revision,
+      retainedJournal: false };
   }
 }
