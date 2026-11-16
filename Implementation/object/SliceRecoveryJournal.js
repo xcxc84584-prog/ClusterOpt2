@@ -44,7 +44,7 @@ export class SliceRecoveryJournal {
         }
       }
       // IndexedDB transaction completion is the durability boundary.
-      await this.store.put(entry);
+      await this.store.putIfNewer(entry);
       return { id, revision, checksum: entry.checksum };
     }
     if (action === "restore") {
