@@ -479,7 +479,8 @@ function render() {
       active.externalReloaded = false;
     }
   }
-  ui.editor.readOnly = active.virtualReadOnly ||
+  ui.editor.readOnly = (active.virtualReadOnly &&
+    !active.virtualEditable) ||
     active.status === DocumentStatus.LOADING;
   ui.editor.dataset.virtualPageIndex = active.virtualReadOnly ?
     String(active.virtualPageIndex) : "";
@@ -714,8 +715,11 @@ function renderLines() {
   const text = ui.editor.value;
   const count = text.split("\n").length;
   renderedLineCount = count;
+  const active = workspace.active;
+  const firstLine = active?.virtualReadOnly ?
+    active.pageFirstLine : 1;
   ui.lineNumbers.textContent = Array.from(
-    { length: count }, (_, i) => String(i + 1)
+    { length: count }, (_, i) => String(firstLine + i)
   ).join("\n");
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
   const position = ui.editor.selectionStart;
@@ -728,7 +732,8 @@ function renderLines() {
       current: current.virtualPageIndex + 1,
       count: current.virtualPageCount
     }) + " · " : "";
-  ui.lineInfo.textContent = page + "Ln " + line + ", Col " + col;
+  ui.lineInfo.textContent = page + "Ln " +
+    (firstLine + line - 1) + ", Col " + col;
 }
 
 function updateStatus() {
@@ -738,7 +743,7 @@ function updateStatus() {
   ui.statusText.textContent = doc.error && doc.status === DocumentStatus.ERROR ?
     doc.error : doc.virtualReadOnly &&
     doc.status === DocumentStatus.SYNCED ?
-      localized("virtualReadOnly") : statusLabel(doc.status,
+      localized("virtualEditable") : statusLabel(doc.status,
         linkCore.readProperty("ui", "Language").value);
   const progress = viewportPolicy.progress(doc.status, doc.progress);
   ui.progressFill.dataset.status = progress.status;
@@ -753,6 +758,10 @@ let virtualPageBusy = false;
 async function turnVirtualPage(direction) {
   const doc = workspace.active;
   if (!doc?.virtualReadOnly || virtualPageBusy) return;
+  if (doc.status === DocumentStatus.DIRTY) {
+    notify(localized("virtualSaveFirst"));
+    return;
+  }
   const next = doc.virtualPageIndex + direction;
   if (next < 0 || next >= doc.virtualPageCount) return;
   virtualPageBusy = true;
@@ -768,7 +777,8 @@ async function turnVirtualPage(direction) {
 
 ui.editor.addEventListener("wheel", event => {
   const doc = workspace.active;
-  if (!doc?.virtualReadOnly || virtualPageBusy) return;
+  if (!doc?.virtualReadOnly || virtualPageBusy ||
+      doc.status === DocumentStatus.DIRTY) return;
   const down = event.deltaY > 0;
   const editor = ui.editor;
   const bottom = editor.scrollTop + editor.clientHeight >=
@@ -789,10 +799,21 @@ ui.editor.addEventListener("input", async () => {
   if (!doc) return;
   doc.cursor = ui.editor.selectionStart;
   doc.scrollTop = ui.editor.scrollTop;
+  const requestedText = ui.editor.value;
   const result = await linkCore.request("ui", doc.id, "edit", {
-    text: ui.editor.value
+    text: requestedText
   }, { origin: "user" });
-  if (!result.ok) notify(result.error);
+  if (!result.ok) {
+    notify(result.error);
+    // Never revert text typed after this request was queued.
+    if (doc.virtualReadOnly && workspace.active === doc &&
+        ui.editor.value === requestedText) {
+      ui.editor.value = doc.text;
+      ui.editor.setSelectionRange(
+        Math.min(doc.cursor, doc.text.length),
+        Math.min(doc.cursor, doc.text.length));
+    }
+  }
   renderLines();
   updateStatus();
   queueRecovery();
