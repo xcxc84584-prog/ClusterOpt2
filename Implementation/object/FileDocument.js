@@ -22,10 +22,12 @@ export class FileDocument {
     this.revision = 0;
     this.hasUtf8Bom = false;
     this.lineEnding = "\n";
+    this.diskRevision = null;
+    this.externalChanged = false;
     this.strictOCDA = true;
     this.ocda = Object.freeze({
-      Request: ["edit", "load", "save"],
-      Response: ["edit", "load", "save"],
+      Request: ["edit", "load", "save", "reconcile"],
+      Response: ["edit", "load", "save", "reconcile"],
       UserAPI: ["edit", "save"],
       AgentAPI: [],
       Property: ["DocumentStatus"],
@@ -48,6 +50,9 @@ export class FileDocument {
       return { revision: this.revision };
     }
     if (action === "load") return this.load(payload.onProgress);
+    if (action === "reconcile") {
+      return this.reconcile(payload.priority, payload.onProgress);
+    }
     if (action === "save") {
       return this.save(payload.handle, payload.onProgress);
     }
@@ -89,8 +94,40 @@ export class FileDocument {
       this.progress = 100;
       this.status = DocumentStatus.SYNCED;
       this.name = file.name;
+      this.diskRevision = this.fingerprint(file);
+      this.externalChanged = false;
       onProgress(100);
       return { bytes: loaded };
+    } catch (error) {
+      this.status = DocumentStatus.ERROR;
+      this.error = String(error);
+      throw error;
+    }
+  }
+
+  fingerprint(file) {
+    return String(file.lastModified) + ":" + String(file.size);
+  }
+
+  /**
+   * Inspect external file changes without losing local text under
+   * InternalFirst. ExternalFirst reloads only when the fingerprint moves.
+   */
+  async reconcile(priority, onProgress = () => {}) {
+    if (!this.handle || !this.diskRevision) return false;
+    try {
+      const file = await this.handle.getFile();
+      const fingerprint = this.fingerprint(file);
+      if (fingerprint === this.diskRevision) return false;
+      if (priority === "external") {
+        await this.load(onProgress);
+      } else {
+        this.diskRevision = fingerprint;
+        this.externalChanged = true;
+        this.status = DocumentStatus.DIRTY;
+        onProgress(this.progress);
+      }
+      return true;
     } catch (error) {
       this.status = DocumentStatus.ERROR;
       this.error = String(error);
@@ -130,6 +167,9 @@ export class FileDocument {
       }
       this.handle = handle;
       this.name = handle.name;
+      const writtenFile = await handle.getFile();
+      this.diskRevision = this.fingerprint(writtenFile);
+      this.externalChanged = false;
       this.progress = 100;
       // Preserve newer edits if the editor changed during the save operation.
       this.status = snapshotRevision === this.revision ?
