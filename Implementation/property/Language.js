@@ -4,7 +4,8 @@
  */
 const CATALOG = Object.freeze({
 	"zh-Hant": Object.freeze({
-		file: "檔案", newFile: "建立新檔", openFile: "開啟檔案",
+		file: "檔案", fileMenu: "檔案選單",
+		toolsGroup: "工具", closeDialog: "關閉對話框", newFile: "建立新檔", openFile: "開啟檔案",
 		saveFile: "儲存", saveAsFile: "另存新檔", closeFile: "關閉分頁",
 		tool: "工具", language: "語言", palette: "介面調色盤",
 		emptyHint: "選擇「檔案」建立或開啟文件",
@@ -25,7 +26,8 @@ const CATALOG = Object.freeze({
 		plainText: "純文字", palettePreview: "UI PREVIEW"
 	}),
 	"en": Object.freeze({
-		file: "File", newFile: "New File", openFile: "Open File",
+		file: "File", fileMenu: "File menu",
+		toolsGroup: "Tools", closeDialog: "Close dialog", newFile: "New File", openFile: "Open File",
 		saveFile: "Save", saveAsFile: "Save As",
 		closeFile: "Close Tab", tool: "Tools", language: "Language",
 		palette: "Interface Palette",
