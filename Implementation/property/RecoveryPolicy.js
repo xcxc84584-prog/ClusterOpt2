@@ -14,6 +14,10 @@ export const RecoveryPolicy = Object.freeze({
       Number.isFinite(value.scrollTop) && value.scrollTop >= 0 &&
       (value.scrollLeft === undefined ||
         (Number.isFinite(value.scrollLeft) && value.scrollLeft >= 0)) &&
+      (value.viewportLineHeight == null ||
+        (Number.isFinite(value.viewportLineHeight) &&
+        value.viewportLineHeight > 0 &&
+        value.viewportLineHeight <= 512)) &&
       Number.isFinite(value.cursor) && value.cursor >= 0;
   },
   isSnapshot(value) {
