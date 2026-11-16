@@ -909,9 +909,18 @@ async function perform(action, payload = {}) {
     targets.some(doc => doc?.virtualReadOnly &&
       doc.status === DocumentStatus.DIRTY &&
       typeof doc.handle?.requestPermission === "function");
-  if (needsGrant && !await grantVirtualWriteAccess(action, payload)) {
-    notify(localized("virtualWritePermissionDenied"));
-    return;
+  if (needsGrant) {
+    try {
+      if (!await grantVirtualWriteAccess(action, payload)) {
+        notify(localized("virtualWritePermissionDenied"));
+        return;
+      }
+    } catch (error) {
+      linkCore.omu.record("EHU", "ui", "Permission." + action,
+        403, "workspace", { error: String(error) });
+      notify(localized("virtualWritePermissionDenied"));
+      return;
+    }
   }
   if (action === "close" && !payload.id && toolState.active) {
     await requestTool("close");
