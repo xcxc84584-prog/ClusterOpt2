@@ -55,3 +55,19 @@
   byte-range boundary, empty file, invalid range, directed relations.
 - Playwright existing editor/Plugin/File Tool regression remains
   mandatory. All CI checks must be green before merge.
+
+## Patch12 virtual close safety extension
+- Added explicit close Request/Response to ViewportSliceController,
+  SliceLoader and VirtualLineIndex.
+- Added SliceRegistry.release: removes clean resident/virtual
+  descriptors and visible references, but rejects dirty with EHU 409.
+- Full close EventChain: UI/VTE -> Hub -> viewport-slices.close ->
+  Hub -> slice-loader.close -> Hub -> slice-registry.release for
+  every registered clean slice -> Hub -> virtual-line-index.close.
+- Loader checks all owned slices for dirtiness BEFORE cleanup;
+  partial successful clean releases are retryable.
+- Failed open index-registration rolls back loader-only state.
+- VTE covers clean release, Blob ID reuse, 404 after close,
+  failed dirty close and preserved dirty residency.
+- No markClean shortcut added: dirty data can only be released
+  after a future durable writeback protocol is implemented.
