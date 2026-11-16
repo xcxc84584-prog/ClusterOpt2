@@ -111,7 +111,8 @@ No unbounded cache when a configured byte budget is active.
 - The UI must preserve original palette/language/Explorer/tabs and
   show operation completion in the existing status/progress controls.
 - Recovery snapshot stores only bounded metadata (edit ID/revision,
-  original disk fingerprint, page address), never full-file text;
+  original disk fingerprint, SHA-256 source bytes, page address),
+  never full-file text;
   reapply a checkpoint only after source identity verification.
 - Real large 65 MiB browser edit and separate verified OPFS save
   test, plus O(page) UTF-16/UTF-8 and EventChain failures required.
