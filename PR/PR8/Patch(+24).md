@@ -25,3 +25,9 @@ editor, MVCC and durable verified writeback, and recovery lifecycle.
 
 ## Status
 NOT ACCEPTED. Remaining requirements tracked in issue list.
+
+## Synthetic sparse file gate
+- Added pr8-patch24-sparse-large-metadata.test.js.
+- Simulates 1/5 GiB Blob size and throws if any eager slice read occurs.
+- Metadata-only open/close must succeed with no Blob body reads.
+- This does not replace true Windows 1/5 GiB I/O or crash QA.
