@@ -12,3 +12,20 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+# OCDA modules created from PR2 onward use Tab-aligned indentation.
+[Implementation/property/UI_COLOR.js]
+indent_style = tab
+tab_width = 2
+
+[Implementation/object/InterfacePalette.js]
+indent_style = tab
+tab_width = 2
+
+[Implementation/main/palette-ui.js]
+indent_style = tab
+tab_width = 2
+
+[Implementation/tests/palette.test.js]
+indent_style = tab
+tab_width = 2

@@ -55,3 +55,14 @@ npm run test:e2e
 
 PR1 documentation, event flow, relation tests and issues are under
 `PR/PR1/`. No API keys or hard-coded machine paths are required.
+
+## PR2 — RGB palette development
+PR2 draft: https://github.com/xcxc84584-prog/ClusterOpt2/pull/2
+
+File > Tool > Interface Palette uses the original ClusterOpt dialog.
+Adjust RGB (0–255), hexadecimal color, or black/white presets.
+All UI elements consume the shared `UI_COLOR` property via CSS tokens.
+Settings are persisted locally when browser storage permits.
+
+PR2 details and the versioned handoff are under `PR/PR2/` and
+`總工作交接提示詞(v0.0.2-PR2).md`.
