@@ -139,3 +139,31 @@ this limit currently applies only to the independent registry.
 - No pixel/line->byte mapping or virtual editor integration yet.
 - VTE should confirm 200/400/404/409/413 EventChain and Req/Rep.
 - CI covers accessible dropdown and legacy workbench TAB behavior.
+
+## Patch(+12): exact line / byte address mapping
+- Introduce VirtualLineIndex as a separate OCDA Object storing
+  virtual Blob references and sparse checkpoints, not document text.
+- LineAddressPolicy scans at most 64 KiB per Blob.slice operation,
+  yields every eight windows, stores one checkpoint per 4096 lines.
+- Add accurate bytePlan mapping in ViewportSlicePolicy and expose
+  navigateBytes/navigateLines in ViewportSliceController.
+- BOM/UTF-8 continuation bytes do not alter LF byte counting;
+  CRLF counts as one line ending. Bare CR is not yet supported.
+- Performance: cold far-ahead seek O(bytes traversed) and bounded
+  transient memory, indexed backward seek from sparse checkpoint.
+- Memory: O(checkpoints + resident slices); no whole-file decoder.
+- Risks: unindexed high-line jump requires scanning; UI line mapping,
+  PieceTree/B+ and writeback not integrated yet.
+- Tests: UTF-8/Chinese/emoji/CRLF, sparse checkpoint jump/backseek,
+  byte boundaries, EOF, empty blob, VTE EHU and Relation 10/01;
+  preserve existing editor + Plugin TAB browser tests.
+
+### Patch(+12): cleanup lifecycle and risk containment
+- On closing a virtual document, preflight the owned
+  SliceRegistry entries for dirty content.
+- If dirty, return 409 before freeing Blob or index resources.
+- For clean slices, release registry descriptors, loader-owned Blob
+  and sparse line-index checkpoints via HubUnit EventChain.
+- Allow virtual ID reuse only after complete close.
+- Tests: EHU 409 on dirty close, no loss of resident dirty data,
+  successful cleanup and subsequent open with same ID.

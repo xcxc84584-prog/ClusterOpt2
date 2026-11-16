@@ -9,7 +9,8 @@ export class ViewportSliceController {
     this.documents = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "navigate", "describe"];
+    const actions = ["open", "close", "navigate", "navigateBytes",
+      "navigateLines", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["ViewportSlicePolicy"],
@@ -39,6 +40,15 @@ export class ViewportSliceController {
   async receive(action, payload = {}) {
     if (action === "open") {
       const data = await this.call("slice-loader", "open", payload);
+      const indexed = await this.core.request(this.id,
+        "virtual-line-index", "open", payload);
+      if (!indexed.ok) {
+        // Roll back a loader-only open; the document is not usable.
+        await this.call("slice-loader", "close", { id: data.id });
+        const error = new Error(indexed.error);
+        error.status = indexed.status;
+        throw error;
+      }
       this.documents.set(data.id, {
         ...data, full: [], preloaded: []
       });
@@ -50,17 +60,42 @@ export class ViewportSliceController {
       error.status = 404;
       throw error;
     }
+    if (action === "close") {
+      // Loader refuses to discard any unsaved dirty slice (409).
+      await this.call("slice-loader", "close", { id: document.id });
+      await this.call("virtual-line-index", "close", {
+        id: document.id
+      });
+      this.documents.delete(document.id);
+      return true;
+    }
     if (action === "describe") {
       return { ...document, full: [...document.full],
         preloaded: [...document.preloaded] };
     }
-    if (action !== "navigate") {
+    if (!["navigate", "navigateBytes", "navigateLines"]
+      .includes(action)) {
       const error = new Error("Unknown viewport operation");
       error.status = 400;
       throw error;
     }
-    const plan = this.policy().plan(document.count,
-      payload.first, payload.last, payload.adjacent ?? 1);
+    let plan;
+    if (action === "navigateLines") {
+      const address = await this.call("virtual-line-index", "range", {
+        id: document.id, firstLine: payload.firstLine,
+        lastLine: payload.lastLine
+      });
+      plan = this.policy().bytePlan(document.byteLength,
+        document.chunkBytes, address.start, address.end,
+        payload.adjacent ?? 1);
+    } else if (action === "navigateBytes") {
+      plan = this.policy().bytePlan(document.byteLength,
+        document.chunkBytes, payload.start, payload.end,
+        payload.adjacent ?? 1);
+    } else {
+      plan = this.policy().plan(document.count,
+        payload.first, payload.last, payload.adjacent ?? 1);
+    }
     const sliceId = index => document.id + "-slice-" + index;
     // Drop stale visibility so offscreen clean slices can be evicted.
     await this.call("slice-registry", "setViewport", { ids: [] });
@@ -106,8 +141,7 @@ export class ViewportSliceController {
     const snapshot = await this.call("slice-registry", "list", {});
     const keep = new Set([...plan.full, ...preloaded].map(sliceId));
     for (const entry of snapshot.entries) {
-      if (!entry.id.startsWith(document.id + "-slice-") ||
-          keep.has(entry.id) || entry.dirty ||
+      if (keep.has(entry.id) || entry.dirty ||
           entry.state === "virtual") continue;
       await this.call("slice-registry", "demote", { id: entry.id });
     }

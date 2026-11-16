@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { VirtualTestEnvironment } from
   "../LinkCore/VirtualTestEnvironment.js";
 import { SliceLoader } from "../object/SliceLoader.js";
+import { VirtualLineIndex } from "../object/VirtualLineIndex.js";
 import { SliceRegistry } from "../object/SliceRegistry.js";
 import { ViewportSliceController } from
   "../object/ViewportSliceController.js";
@@ -12,6 +13,7 @@ function fixture() {
   vte.create("actor");
   new SliceRegistry(vte.core, null);
   new SliceLoader(vte.core);
+  new VirtualLineIndex(vte.core);
   new ViewportSliceController(vte.core);
   const request = (target, action, payload = {}) =>
     vte.core.request("VTE.actor", target, action, payload);
