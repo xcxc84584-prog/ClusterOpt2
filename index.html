@@ -110,29 +110,37 @@
                 <h2 id="pluginDialogTitle">插件管理</h2>
                 <p id="pluginDialogIntro">管理編輯器擴充功能與效能設定。</p>
               </div>
-              <nav class="plugin-window-categories" aria-label="插件類別">
-          <div class="plugin-nav-caption" id="pluginNavCaption">類別 / CATEGORIES</div>
-          <button id="pluginPerformanceBtn" type="button" class="selected"
-            data-plugin-tab="performance" aria-current="page">
-            <span class="plugin-nav-symbol">◈</span>
-            <span id="pluginPerformanceNavLabel">效能化</span>
-          </button>
-          <button id="pluginHighlighterBtn" type="button"
-            data-plugin-tab="highlighter">
-            <span class="plugin-nav-symbol">◉</span>
-            <span id="pluginHighlighterNavLabel">文本著色器</span>
-          </button>
-          <button id="pluginProcessorBtn" type="button"
-            data-plugin-tab="processor">
-            <span class="plugin-nav-symbol">▦</span>
-            <span id="pluginProcessorNavLabel">切片處理器</span>
-          </button>
-          <button id="pluginCommitterBtn" type="button"
-            data-plugin-tab="committer">
-            <span class="plugin-nav-symbol">⇥</span>
-            <span id="pluginCommitterNavLabel">編輯提交單元</span>
-          </button>
-        </nav>
+              <div class="plugin-category-control">
+                <button id="pluginCategoryBtn" type="button"
+                  aria-haspopup="menu" aria-expanded="false"
+                  aria-controls="pluginCategoryMenu">
+                  <span id="pluginCategoryLabel">效能化</span>
+                  <span aria-hidden="true">⌄</span>
+                </button>
+                <div id="pluginCategoryMenu" class="plugin-category-menu"
+                  role="menu" aria-label="插件類別" hidden>
+                  <button id="pluginPerformanceBtn" type="button"
+                    role="menuitemradio" aria-checked="true"
+                    data-plugin-tab="performance">
+                    <span id="pluginPerformanceNavLabel">效能化</span>
+                  </button>
+                  <button id="pluginHighlighterBtn" type="button"
+                    role="menuitemradio" aria-checked="false"
+                    data-plugin-tab="highlighter">
+                    <span id="pluginHighlighterNavLabel">文本著色器</span>
+                  </button>
+                  <button id="pluginProcessorBtn" type="button"
+                    role="menuitemradio" aria-checked="false"
+                    data-plugin-tab="processor">
+                    <span id="pluginProcessorNavLabel">切片處理器</span>
+                  </button>
+                  <button id="pluginCommitterBtn" type="button"
+                    role="menuitemradio" aria-checked="false"
+                    data-plugin-tab="committer">
+                    <span id="pluginCommitterNavLabel">編輯提交單元</span>
+                  </button>
+                </div>
+              </div>
             </div>
             <div class="plugin-workbench-body">
         <div class="plugin-dialog-content">
