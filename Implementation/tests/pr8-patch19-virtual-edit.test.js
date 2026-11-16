@@ -5,6 +5,7 @@ import { VirtualFileDocument } from "../object/VirtualFileDocument.js";
 import { SliceRecoveryJournal } from "../object/SliceRecoveryJournal.js";
 import { SliceEditTransaction } from "../object/SliceEditTransaction.js";
 import { SliceWritebackUnit } from "../object/SliceWritebackUnit.js";
+import { SliceBatchWritebackUnit } from "../object/SliceBatchWritebackUnit.js";
 
 function storage() {
   const entries = new Map();
@@ -50,14 +51,28 @@ function handleOf(source) {
       });
       return file;
     },
-    async createWritable() {
-      const chunks = [];
+    async createWritable({ keepExistingData = false } = {}) {
+      let target = keepExistingData ? bytes.slice() : new Uint8Array();
       return {
         async write(chunk) {
-          chunks.push(new Uint8Array(chunk));
+          let data, offset;
+          if (chunk?.type === "write") {
+            offset = chunk.position;
+            data = new Uint8Array(chunk.data);
+          } else {
+            offset = target.length;
+            data = chunk instanceof Blob ?
+              new Uint8Array(await chunk.arrayBuffer()) :
+              new Uint8Array(chunk);
+          }
+          const expanded = new Uint8Array(
+            Math.max(target.length, offset + data.length));
+          expanded.set(target);
+          expanded.set(data, offset);
+          target = expanded;
         },
         async close() {
-          bytes = Uint8Array.from(chunks.flatMap(chunk => [...chunk]));
+          bytes = target;
           timestamp++;
         },
         async abort() {}
@@ -72,6 +87,7 @@ function harness(handle, store = storage()) {
   core.register({ id: "workspace", receive: async () => true });
   new SliceRecoveryJournal(core, store);
   new SliceWritebackUnit(core);
+  new SliceBatchWritebackUnit(core);
   new SliceEditTransaction(core);
   const doc = new VirtualFileDocument(handle.name, handle, core);
   assert.ok(core.register(doc));
@@ -94,7 +110,7 @@ test("Patch19 global numbers continue over physical byte pages",
     assert.equal(doc.pieceIndex.length, doc.text.length);
   });
 
-test("Patch19 durable edit, dirty-page block and verified save",
+test("Patch19 durable edit, same-page navigation and verified save",
   async () => {
     const handle = handleOf("第一行\n第二行\n");
     const { doc, store, call, internal, core } = harness(handle);
@@ -106,7 +122,7 @@ test("Patch19 durable edit, dirty-page block and verified save",
     assert.equal(doc.status, "yellow");
     assert.equal(doc.editRevision, 1);
     assert.ok(store.entries.has(doc.editSliceId));
-    assert.equal((await call("page", { index: 0 })).status, 409);
+    assert.equal((await call("page", { index: 0 })).ok, true);
     const saved = await call("save");
     assert.equal(saved.ok, true, saved.error);
     assert.equal(doc.status, "green");
