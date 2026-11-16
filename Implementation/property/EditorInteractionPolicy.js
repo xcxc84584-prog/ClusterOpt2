@@ -94,7 +94,7 @@ export const EditorInteractionPolicy = Object.freeze({
     while (line < firstLine && cursor < text.length) {
       const next = text.indexOf("\n", cursor);
       if (next < 0) {
-        return { firstLine, lines: [], offset: text.length };
+        return { firstLine, lines: [], rawIndents: [], offset: text.length };
       }
       cursor = next + 1;
       line++;
@@ -105,16 +105,18 @@ export const EditorInteractionPolicy = Object.freeze({
     }
     const offset = cursor;
     const lines = [];
+    const rawIndents = [];
     for (let i = 0; i < count && cursor <= text.length; i++) {
       const next = text.indexOf("\n", cursor);
       const ending = next < 0 ? text.length : next;
       const raw = text.slice(cursor, ending);
       const indent = (raw.match(/^[\t ]*/) ?? [""])[0];
+      rawIndents.push(indent);
       lines.push(indent.replace(/[^\t]/g, " ")
         .replace(/\t/g, "┊   "));
       if (next < 0) break;
       cursor = next + 1;
     }
-    return { firstLine, lines, offset };
+    return { firstLine, lines, rawIndents, offset };
   }
 });

@@ -364,5 +364,28 @@ header .menu-wrap { margin-left:auto; }
   tab-size: 4;
   height: 100%;
   color: transparent;
-  text-shadow: 0 0 0 var(--ui-muted, #8793a6);
+  text-shadow: none;
+}
+
+/* Original ClusterOpt DFOM: viewport mirror with dashed Tab spans. */
+#tabGuide { padding: 0; overflow: hidden; }
+#tabGuide .tab-guide-content {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  white-space: pre;
+  font: inherit;
+  line-height: inherit;
+  tab-size: 4;
+  will-change: transform;
+}
+#tabGuide .dfom-tab { position: relative; }
+#tabGuide .dfom-tab::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  border-left: 1px dashed var(--ui-muted, #8793a6);
+  opacity: .7;
 }

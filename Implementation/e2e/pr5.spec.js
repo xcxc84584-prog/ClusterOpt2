@@ -26,7 +26,7 @@ test("PR5 tab deletion and viewport guides", async ({ page }) => {
   await editor.press("Backspace");
   await expect(editor).toHaveValue("");
   await editor.press("Tab");
-  await expect(page.locator("#tabGuide")).toContainText("┊");
+  await expect(page.locator("#tabGuide .dfom-tab")).toHaveCount(1);
 });
 
 test("PR4 keeps only File menu Close All", async ({ page }) => {

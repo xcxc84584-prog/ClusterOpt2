@@ -30,3 +30,8 @@ VTE.actor -> Hub -> Explorer.importFolder/list/reorder/closeRoot.
 VTE.actor -> Hub -> FileTypeManager.add -> EDPMU shared property.
 Responses: explorer/file-types -> VTE.actor; code 10 / 01.
 Invalid extension -> EHU 400; closeRoot must not modify disk.
+
+## Patch(+3) EventChain
+UI scroll -> EditorInteractionPolicy.guideWindow(rawIndents)
+-> DFOM-style text/Tab spans -> EditorViewportPolicy.guidePosition
+-> mirror translateX and pseudo-element dashed line. No disk mutation.

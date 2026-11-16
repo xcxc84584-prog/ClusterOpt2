@@ -10,7 +10,7 @@ test("PR8 guides use real line breaks and follow scroll position", async ({ page
   await editor.fill(lines);
   await expect(page.locator("#meterFill"))
     .toHaveAttribute("data-status", "yellow");
-  await expect(page.locator("#tabGuide")).toContainText("┊");
+  await expect(page.locator("#tabGuide .dfom-tab").first()).toBeVisible();
   await editor.evaluate(node => {
     node.scrollTop = 800;
     node.dispatchEvent(new Event("scroll"));

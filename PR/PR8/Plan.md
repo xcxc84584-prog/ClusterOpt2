@@ -28,3 +28,10 @@ a detached VTE LinkCore with synthetic FileSystemHandles. Exercise
 import, list, reorder, file-type blocking and close-root Request/Response.
 Check EHU 400 and two directed relation codes. Test only logic:
 real browser grants, OS updates and UI visual parity still require QA.
+
+## Patch(+3): exact legacy DFOM visual semantics
+- Original ClusterOpt Program/src/dfom.js mirrors whitespace via
+  literal Tab spans with dashed pseudo-elements, no replacement glyph.
+- Render a viewport-bounded mirror and translate inner content on
+  horizontal scroll; negative CSS padding is invalid.
+- Retain original text bytes. Memory scales with visible rows.

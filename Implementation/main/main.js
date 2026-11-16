@@ -481,9 +481,26 @@ function scheduleGuides() {
       ui.editor.clientHeight, guideAnchor);
     guideAnchor = { firstLine: bounds.firstLine, offset: bounds.offset };
 
-    // Use actual line breaks; literal backslash-n makes multiple rows
-    // occupy one rendered line and drifts badly during scrolling.
-    ui.tabGuide.textContent = bounds.lines.join("\n");
+    // ClusterOpt DFOM: mirror literal whitespace with a dashed marker
+    // only at Tab positions, preserving the stored document bytes.
+    const mirror = document.createElement("span");
+    mirror.className = "tab-guide-content";
+    bounds.rawIndents.forEach((indent, index) => {
+      const parts = indent.split("\t");
+      for (let part = 0; part < parts.length; part++) {
+        mirror.append(document.createTextNode(parts[part]));
+        if (part < parts.length - 1) {
+          const tab = document.createElement("span");
+          tab.className = "dfom-tab";
+          tab.textContent = "\t";
+          mirror.append(tab);
+        }
+      }
+      if (index < bounds.rawIndents.length - 1) {
+        mirror.append(document.createTextNode("\n"));
+      }
+    });
+    ui.tabGuide.replaceChildren(mirror);
     const position = viewportPolicy.guidePosition({
       scrollTop: ui.editor.scrollTop,
       scrollLeft: ui.editor.scrollLeft,
@@ -492,7 +509,8 @@ function scheduleGuides() {
       paddingLeft: parseFloat(computed.paddingLeft)
     });
     ui.tabGuide.style.top = position.top + "px";
-    ui.tabGuide.style.paddingLeft = position.paddingLeft + "px";
+    mirror.style.transform =
+      "translateX(" + position.paddingLeft + "px)";
     ui.tabGuide.style.font = computed.font;
     ui.tabGuide.style.lineHeight = computed.lineHeight;
     ui.tabGuide.style.tabSize = computed.tabSize;
