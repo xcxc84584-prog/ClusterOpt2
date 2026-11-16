@@ -34,14 +34,22 @@ export class InterfacePalette {
   }
 
   load() {
-    if (!this.storage) return;
-    try {
-      const parsed = JSON.parse(this.storage.getItem(UI_COLOR.storageKey));
-      if (UI_COLOR.valid(parsed)) this.rgb = parsed;
-    } catch {
-      this.core.omu.record("EHU", this.id, "Restore", 400,
-        "UI_COLOR", { reason: "Invalid or unavailable stored preference" });
+    if (this.storage) {
+      try {
+        const saved = this.storage.getItem(UI_COLOR.storageKey);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (!UI_COLOR.valid(parsed)) {
+            throw new RangeError("Stored RGB channels are invalid");
+          }
+          this.rgb = [...parsed];
+        }
+      } catch {
+        this.core.omu.record("EHU", this.id, "Restore", 400,
+          "UI_COLOR", { reason: "Invalid or unavailable stored preference" });
+      }
     }
+    this.core.hub.publishProperty("UI_COLOR", [...this.rgb]);
     this.apply();
   }
 
