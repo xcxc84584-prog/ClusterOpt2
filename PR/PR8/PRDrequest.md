@@ -55,3 +55,12 @@ No unbounded cache when a configured byte budget is active.
 - Drop-down supports keyboard navigation, Escape, outside click and
   auto-collapse on selection/tab switch. Never reserve permanent
   horizontal space for all four category buttons.
+
+## Patch(+12): exact location acceptance and incremental indexing
+- A Go-to-Line request must map to an exact file byte range, not
+  proportional scroll ratio. Byte offsets are half-open.
+- Virtual line indexing must not decode or hold the complete Blob.
+- Maintain sparse checkpoints and bounded buffered scanning.
+- Multi-byte UTF-8/Chinese/emoji and CRLF must round-trip line
+  start addresses correctly; strict range and EOF validation.
+- Actual editor viewport and PieceTree/B+ integration still pending.
