@@ -11,6 +11,7 @@ test("legacy File menu keeps order and original priority selector", async ({ pag
   await expect(page.locator("#priority")).toHaveValue("internal");
   await expect(page.locator("#pluginBtn")).toBeEnabled();
   await page.locator("#pluginBtn").click();
+  await page.locator("#pluginCategoryBtn").click();
   await page.locator("#pluginHighlighterBtn").click();
   await expect(page.locator("#pluginHighlighterState")).toBeVisible();
   await expect(page.locator("#pluginHighlighterDescription")).toBeVisible();
