@@ -46,8 +46,8 @@
   reconciliation. Original disk atomicity cannot be guaranteed.
 - Dirty resident transactions have current 64-slice cap. Never
   evict an unsaved page to stay under resource budget; reject 413.
-- Previously restored but never visited dirty pages block Save
-  until validated; do not silently omit them.
+- Previously restored but unvisited dirty pages are hydrated during
+  Save by SHA-256 and fingerprint validation; no hidden edit is omitted.
 - 1 GiB/5 GiB latency, manual OS permission and crash tests OPEN.
 
 ## EventChains, relation and EHU
