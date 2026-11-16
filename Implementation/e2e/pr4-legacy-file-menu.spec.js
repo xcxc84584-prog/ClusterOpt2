@@ -25,6 +25,9 @@ test("legacy File menu keeps order and original priority selector", async ({ pag
     Cluster.propertylist().find(item => item.name === "StoragePriority"));
   expect(priority).toBeTruthy();
 
+  // Changing priority closes the File menu via perform().
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
   await page.locator("#languageBtn").click();
   await page.locator('[data-locale="en"]').click();
   await page.locator("#menuBtn").click();
