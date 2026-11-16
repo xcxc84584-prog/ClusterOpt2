@@ -67,6 +67,9 @@ export class ViewportSliceController {
         id: document.id
       });
       this.documents.delete(document.id);
+      await this.call("slice-registry", "setViewport", {
+        owner: document.id, ids: []
+      });
       return true;
     }
     if (action === "describe") {
@@ -104,7 +107,9 @@ export class ViewportSliceController {
     }
     const sliceId = index => document.id + "-slice-" + index;
     // Drop stale visibility so offscreen clean slices can be evicted.
-    await this.call("slice-registry", "setViewport", { ids: [] });
+    await this.call("slice-registry", "setViewport", {
+      owner: document.id, ids: []
+    });
     const prior = await this.call("slice-registry", "list", {});
     const byId = new Map(prior.entries.map(item => [item.id, item]));
     const visible = [];
@@ -122,7 +127,7 @@ export class ViewportSliceController {
       }
       visible.push(sliceId(index));
       await this.call("slice-registry", "setViewport", {
-        ids: [...visible]
+        owner: document.id, ids: [...visible]
       });
     }
     const preloaded = [];
