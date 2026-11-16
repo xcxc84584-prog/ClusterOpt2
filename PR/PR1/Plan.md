@@ -96,3 +96,10 @@ required OCDA contract checks pass and outstanding blockers are resolved.
   filesystem permissions in Chrome before claiming complete acceptance.
 - Browser regression checks focus on file operations and tab state,
   not deferred Explorer, syntax highlighting or PowerShell features.
+
+## Patch(+6) release gate
+- Lint must reject machine-specific paths and embedded credentials
+  without false-positive matches on HTTP URLs.
+- New UI and Agent entrypoints must declare their OCDA API allowlist.
+- Browser test runner is pinned to an OS-supported environment.
+- Do not merge until the final PR head passes both CI jobs.
