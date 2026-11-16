@@ -9,7 +9,8 @@ export class ViewportSliceController {
     this.documents = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "navigate", "navigateBytes", "describe"];
+    const actions = ["open", "navigate", "navigateBytes",
+      "navigateLines", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["ViewportSlicePolicy"],
@@ -39,6 +40,13 @@ export class ViewportSliceController {
   async receive(action, payload = {}) {
     if (action === "open") {
       const data = await this.call("slice-loader", "open", payload);
+      const indexed = await this.core.request(this.id,
+        "virtual-line-index", "open", payload);
+      if (!indexed.ok) {
+        const error = new Error(indexed.error);
+        error.status = indexed.status;
+        throw error;
+      }
       this.documents.set(data.id, {
         ...data, full: [], preloaded: []
       });
@@ -54,17 +62,29 @@ export class ViewportSliceController {
       return { ...document, full: [...document.full],
         preloaded: [...document.preloaded] };
     }
-    if (action !== "navigate" && action !== "navigateBytes") {
+    if (!["navigate", "navigateBytes", "navigateLines"]
+      .includes(action)) {
       const error = new Error("Unknown viewport operation");
       error.status = 400;
       throw error;
     }
-    const plan = action === "navigateBytes" ?
-      this.policy().bytePlan(document.byteLength,
+    let plan;
+    if (action === "navigateLines") {
+      const address = await this.call("virtual-line-index", "range", {
+        id: document.id, firstLine: payload.firstLine,
+        lastLine: payload.lastLine
+      });
+      plan = this.policy().bytePlan(document.byteLength,
+        document.chunkBytes, address.start, address.end,
+        payload.adjacent ?? 1);
+    } else if (action === "navigateBytes") {
+      plan = this.policy().bytePlan(document.byteLength,
         document.chunkBytes, payload.start, payload.end,
-        payload.adjacent ?? 1) :
-      this.policy().plan(document.count,
+        payload.adjacent ?? 1);
+    } else {
+      plan = this.policy().plan(document.count,
         payload.first, payload.last, payload.adjacent ?? 1);
+    }
     const sliceId = index => document.id + "-slice-" + index;
     // Drop stale visibility so offscreen clean slices can be evicted.
     await this.call("slice-registry", "setViewport", { ids: [] });
