@@ -7,6 +7,7 @@ import { FileWorkspace } from "../object/FileWorkspace.js";
 import { Explorer } from "../object/Explorer.js";
 import { SessionRecovery } from "../object/SessionRecovery.js";
 import { SliceRegistry } from "../object/SliceRegistry.js";
+import { ToolTabManager } from "../object/ToolTabManager.js";
 import { FileTypeManager } from "../object/FileTypeManager.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
 
@@ -23,6 +24,20 @@ const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
 let guideFrame = 0;
 let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
+const toolTabs = new ToolTabManager(linkCore);
+const pluginWindow = document.getElementById("pluginWindow");
+let toolState = { open: false, active: false, position: 0 };
+let observedWorkspaceActiveId = null;
+
+async function requestTool(action, payload = {}) {
+  const result = await linkCore.request("ui", "tool-tab-manager",
+    action, payload, { origin: "user" });
+  if (!result.ok) return notify(result.error);
+  toolState = result.value;
+  render();
+  return result.value;
+}
+
 const explorer = new Explorer(linkCore);
 const recovery = new SessionRecovery(linkCore);
 const sliceRegistry = new SliceRegistry(linkCore);
@@ -262,12 +277,28 @@ function render() {
   renderPriority();
   void renderExplorer();
   queueRecovery();
+  if (workspace.activeId !== observedWorkspaceActiveId) {
+    observedWorkspaceActiveId = workspace.activeId;
+    if (toolState.active) {
+      void requestTool("deactivate");
+    }
+  }
+  const toolActive = toolState.open && toolState.active;
+  const tabPolicy = linkCore.readProperty("ui", "ToolTabPolicy").value;
+  const entries = tabPolicy.entries(workspace.documents, toolState);
   ui.tabs.replaceChildren();
-  for (const [index, doc] of workspace.documents.entries()) {
+  for (const [index, entry] of entries.entries()) {
+    const isTool = entry.kind === "tool";
+    const doc = isTool ? null : workspace.documents.find(
+      item => item.id === entry.id);
+    const selected = isTool ? toolActive :
+      !toolActive && active?.id === entry.id;
     const tab = document.createElement("button");
-    tab.className = "tab" + (active?.id === doc.id ? " active" : "");
     tab.type = "button";
-    tab.title = doc.name;
+    tab.className = "tab" + (selected ? " active" : "");
+    tab.dataset.tabId = entry.id;
+    tab.dataset.tabKind = entry.kind;
+    tab.title = isTool ? localized("pluginManager") : doc.name;
     tab.draggable = true;
     tab.addEventListener("dragstart", event => {
       if (event.target.closest(".close")) {
@@ -285,36 +316,43 @@ function render() {
       event.preventDefault();
       const from = Number(event.dataTransfer.getData("text/plain"));
       if (!Number.isInteger(from) || from < 0) return;
-      void perform("reorder", { from, to: index });
+      void reorderWorkbenchTabs(from, index);
     });
     const label = document.createElement("span");
     label.className = "name";
-    label.textContent = doc.name;
+    label.textContent = isTool ? localized("pluginManager") : doc.name;
     const dirty = document.createElement("span");
     dirty.className = "dirty";
-    dirty.textContent = doc.status === DocumentStatus.SYNCED ? "" : "●";
+    dirty.textContent = !isTool && doc.status !== DocumentStatus.SYNCED ?
+      "●" : "";
     const close = document.createElement("span");
     close.className = "close";
     close.textContent = "×";
-    close.setAttribute("aria-label", localized("closeFile") + " " + doc.name);
+    close.setAttribute("aria-label", localized("closeFile") + " " +
+      label.textContent);
     close.addEventListener("click", event => {
       event.stopPropagation();
-      void perform("close", { id: doc.id });
+      if (isTool) void requestTool("close");
+      else void perform("close", { id: doc.id });
     });
     tab.addEventListener("click", () => {
-      void perform("activate", { id: doc.id });
+      if (isTool) void requestTool("activate");
+      else void focusDocumentTab(doc.id);
     });
     tab.append(label, dirty, close);
     ui.tabs.append(tab);
   }
-  ui.editorSurface.hidden = !active;
-  ui.emptyState.hidden = !!active;
-  if (!active) {
+  pluginWindow.hidden = !toolActive;
+  ui.editorSurface.hidden = !active || toolActive;
+  ui.emptyState.hidden = !!active || toolActive;
+  if (toolActive || !active) {
     ui.statusLamp.className = "lamp green";
     ui.statusText.textContent = localized("ready");
     ui.progressFill.dataset.status = DocumentStatus.SYNCED;
     ui.progressFill.style.width = "0%";
     ui.progressText.textContent = "";
+    ui.lineInfo.textContent = toolActive ? localized("pluginManager") :
+      "Ln 1, Col 1";
     return;
   }
   // Never replace text the user is currently typing with a stale
@@ -342,6 +380,40 @@ function render() {
   renderLines();
   scheduleGuides();
   updateStatus();
+}
+
+/**
+ * Tool and file tabs use the same DOM strip but retain isolated
+ * file ownership. HubUnit observes all tool lifecycle actions.
+ */
+async function focusDocumentTab(id) {
+  if (toolState.active) await requestTool("deactivate");
+  await perform("activate", { id });
+}
+
+async function reorderWorkbenchTabs(from, to) {
+  const policy = linkCore.readProperty("ui", "ToolTabPolicy").value;
+  const entries = policy.entries(workspace.documents, toolState);
+  if (from < 0 || to < 0 ||
+      from >= entries.length || to >= entries.length) return;
+  if (entries[from].kind === "tool") {
+    await requestTool("move", {
+      index: to, documentCount: workspace.documents.length
+    });
+    return;
+  }
+  const docFrom = workspace.documents.findIndex(doc =>
+    doc.id === entries[from].id);
+  const docTo = workspace.documents.findIndex(doc =>
+    doc.id === entries[to].id);
+  if (docTo < 0) {
+    // Dropping a file on the tool tab moves the tool instead.
+    await requestTool("move", {
+      index: docFrom, documentCount: workspace.documents.length
+    });
+    return;
+  }
+  await perform("reorder", { from: docFrom, to: docTo });
 }
 
 /**
@@ -609,6 +681,13 @@ ui.editor.addEventListener("keydown", event => {
 });
 async function perform(action, payload = {}) {
   closeMenu();
+  if (action === "close" && !payload.id && toolState.active) {
+    await requestTool("close");
+    return;
+  }
+  if (action === "save" && toolState.active) return;
+  if (["new", "open", "activate"].includes(action) &&
+      toolState.active) await requestTool("deactivate");
   try {
     // Browser pickers must run synchronously inside a user gesture,
     // BEFORE asynchronous HubUnit scheduling starts.
@@ -635,6 +714,9 @@ async function perform(action, payload = {}) {
     const result = await linkCore.request("ui", "workspace", action, payload,
       { origin: "user" });
     if (!result.ok) notify(result.error);
+    if (result.ok && action === "closeAll" && result.value) {
+      await requestTool("close");
+    }
   } catch (error) {
     if (error.name !== "AbortError") {
       linkCore.omu.record("EHU", "ui", "Picker." + action,
@@ -781,9 +863,8 @@ async function renderPluginBudget() {
   }
 }
 const pluginBtn = document.getElementById("pluginBtn");
-const pluginDialog = document.getElementById("pluginDialog");
-const pluginTabs = [...pluginDialog.querySelectorAll("[data-plugin-tab]")];
-const pluginPanels = [...pluginDialog.querySelectorAll("[data-plugin-panel]")];
+const pluginTabs = [...pluginWindow.querySelectorAll("[data-plugin-tab]")];
+const pluginPanels = [...pluginWindow.querySelectorAll("[data-plugin-panel]")];
 
 function selectPluginTab(tab) {
   for (const button of pluginTabs) {
@@ -804,15 +885,16 @@ for (const button of pluginTabs) {
 }
 pluginBtn.addEventListener("click", () => {
   closeMenu();
-  selectPluginTab("performance");
-  pluginDialog.showModal();
-  void renderPluginBudget();
-});
-for (const id of ["pluginClose", "pluginDone"]) {
-  document.getElementById(id).addEventListener("click", () => {
-    pluginDialog.close();
+  void requestTool("open", {
+    index: workspace.documents.length,
+    documentCount: workspace.documents.length
+  }).then(() => {
+    void renderPluginBudget();
   });
-}
+});
+document.getElementById("pluginDone").addEventListener("click", () => {
+  void requestTool("close");
+});
 document.getElementById("pluginUnlimited").addEventListener(
   "change", event => {
     document.getElementById("pluginMaxMiB").disabled =
