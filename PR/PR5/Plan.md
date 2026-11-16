@@ -66,3 +66,11 @@ invalidates the anchor on document changes and on switching tabs.
 Consecutive scroll operations typically scan only changed visible
 lines rather than all lines above the viewport.
 Use the PR8 tree index for initial random jumping at large offsets.
+
+## Patch(+1) undo compatibility refinement
+Native `document.execCommand("insertText")` is preferred in supported
+Chromium editors, with setRangeText fallback. The native path preserves
+the browser undo buffer. This API is deprecated, so keep the fallback
+and a mandatory future browser regression test.
+Reference: https://developer.mozilla.org/en-US/docs/Web/API/Document/execCommand
+Added browser test asserting Ctrl+Z and Ctrl+Shift+Z after auto-pair.
