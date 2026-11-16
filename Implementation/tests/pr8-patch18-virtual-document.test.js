@@ -126,3 +126,41 @@ test("Patch18 keeps small FileDocument behavior intact", async () => {
   assert.equal(result.ok, false);
   assert.equal(workspace.active.virtualReadOnly, undefined);
 });
+
+test("Patch18 Hub records page EventChain and directed dependencies",
+  async () => {
+    const { core, workspace, request } = setup();
+    const handle = fakeHandle();
+    assert.equal((await request("workspace", "open", {
+      handles: [handle]
+    })).ok, true);
+    const doc = workspace.active;
+    assert.equal((await request("workspace", "page", {
+      id: doc.id, index: 1
+    })).ok, true);
+    assert.equal((await request("workspace", "page", {
+      id: doc.id, index: -1
+    })).status, 400);
+    const snapshot = core.getSnapshot();
+    assert.ok(snapshot.dependencies.some(item =>
+      item.link === "workspace->" + doc.id && item.code === "10"));
+    assert.ok(snapshot.dependencies.some(item =>
+      item.link === doc.id + "->workspace" && item.code === "01"));
+    assert.ok(snapshot.logs.some(item =>
+      item.kind === "EHU" && item.status === 400));
+  });
+
+test("Patch18 legacy file save guard blocks oversized source", async () => {
+  const { FileDocument } = await import("../object/FileDocument.js");
+  const handle = fakeHandle();
+  let openedWriter = false;
+  handle.createWritable = async () => {
+    openedWriter = true;
+    throw new Error("Writer should never open");
+  };
+  const doc = new FileDocument("unsafe.txt", handle);
+  doc.text = "partial";
+  await assert.rejects(() => doc.save(), error =>
+    error.status === 409);
+  assert.equal(openedWriter, false);
+});
