@@ -77,3 +77,46 @@ test("Different tabs preserve individual unsaved text", async ({ page }) => {
   await page.locator("#tabs .tab").last().click();
   await expect(page.locator("#editor")).toHaveValue("hello\nline two");
 });
+
+test("PR2 palette updates global tokens and survives reload", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
+  await page.locator("#paletteBtn").click();
+
+  await expect(page.locator("#paletteDialog")).toBeVisible();
+  await page.locator("#palettePicker").fill("#123456");
+  await expect(page.locator("#paletteHex")).toHaveText("#123456");
+  await expect.poll(async () => page.evaluate(() =>
+    document.documentElement.style.getPropertyValue("--ui-background")
+  )).toBe("rgb(18, 52, 86)");
+
+  await page.locator("#paletteDone").click();
+  await page.reload();
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
+  await page.locator("#paletteBtn").click();
+
+  await expect(page.locator("#palettePicker")).toHaveValue("#123456");
+  await expect(page.locator("#paletteMode")).toHaveText("DARK");
+});
+
+test("PR2 RGB channels and endpoints share the same global property", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
+  await page.locator("#paletteBtn").click();
+
+  await page.locator("#paletteLight").click();
+  await expect(page.locator("#paletteHex")).toHaveText("#FFFFFF");
+  await expect(page.locator("#paletteMode")).toHaveText("LIGHT");
+
+  await page.locator('[data-rgb="0"]').fill("12");
+  await page.locator('[data-rgb="0"]').dispatchEvent("change");
+  await expect(page.locator("#paletteHex")).toHaveText("#0CFFFF");
+
+  const props = await page.evaluate(() => window.Cluster.propertylist());
+  expect(props.some(item => item.name === "UI_COLOR")).toBe(true);
+  await page.locator("#paletteDark").click();
+  await expect(page.locator("#paletteHex")).toHaveText("#000000");
+});
