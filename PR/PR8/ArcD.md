@@ -357,3 +357,23 @@ Highlighter entry disabled until plugin processor Object is installed.
   low-level writeback remains internal (no direct user API).
 - No independent new visual UI, no direct invocation of other
   Objects outside the Hub.
+
+## Patch(+19-Fix1) EventChain and relation
+UI wheel/Alt+PageUp -> HubUnit -> FileWorkspace.page ->
+  VirtualFileDocument.page -> oldIndex comparison ->
+  pageEntryEdge=end / cursor=text.length -> original textarea
+  scrollHeight & gutter synchronization -> OMU Response200.
+UI wheel/Alt+PageDown follows the same chain but
+  pageEntryEdge=start / cursor=0 / scrollTop=0.
+UI Close(dirty) -> HubUnit -> FileWorkspace.close ->
+  EDPMU Language.translate -> native confirm -> (cancel: false)
+  -> FileWorkspace.saveVirtualBeforeClose ->
+  HubUnit -> VirtualFileDocument.save -> SliceEditTransaction
+  -> SliceWritebackUnit -> verified byte stream and checkpoint
+  retire -> FileWorkspace.close(clean synchronous path) ->
+  URU unregister -> OMU Response200.
+- Negative: denied confirmation leaves tab+checkpoint untouched;
+  failed writeback returns EHU with 409/422/503 and leaves dirty.
+- Clean small-file close remains synchronous unchanged, preventing
+  regression in PR1's application and testing contracts.
+- Relation Request=10, Response=01 across routed Object pairs.
