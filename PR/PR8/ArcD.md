@@ -342,7 +342,7 @@ Highlighter entry disabled until plugin processor Object is installed.
    global gutter, current operation progress.
 4. SessionRecovery -> FileWorkspace.restoreSnapshot ->
    VirtualFileDocument.pendingRecovery (id, revision, fingerprint,
-   page byte addresses) -> HubUnit -> SliceEditTransaction.restoreDurable
+   page byte addresses, source hash) -> HubUnit -> SliceEditTransaction.restoreDurable
    -> SHA-256 verify -> source fingerprint match -> publish dirty Tree
    or error without discarding journal.
 ### EHU
