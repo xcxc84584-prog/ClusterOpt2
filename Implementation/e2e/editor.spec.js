@@ -146,6 +146,10 @@ test("PR3 switches file menu, status, tabs and palette to English", async ({ pag
 	await expect(page.locator("#emptyHint")).toContainText("Choose File");
 	await expect(page.locator("#editor")).toHaveAttribute("aria-label", "Text editor");
 	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await expect(page.locator("#menu"))
+		.toHaveAttribute("aria-label", "File menu");
+	await expect(page.locator("#toolOptions"))
+		.toHaveAttribute("aria-label", "Tools");
 
 	await page.locator("#menuBtn").click();
 	await expect(page.locator("#newFile")).toHaveText("New File");
