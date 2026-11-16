@@ -43,7 +43,7 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
                 pluginCommitterApi: "pluginCommitterApi",
                 pluginHighlighterApi: "pluginHighlighterApi",
                 pluginFooter: "pluginFooter",
-                pluginDone: "blockedTypesDone",
+                pluginDone: "pluginCloseWindow",
 				blockedTypesBtn: "blockedTypes",
 				priorityHeading: "priorityHeading",
 				paletteBtn: "palette", languageBtn: "language",
