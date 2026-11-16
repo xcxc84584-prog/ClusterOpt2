@@ -25,3 +25,10 @@ The original ClusterOpt UI styles and geometry are preserved.
 ## Verification
 Final Node and browser CI jobs must pass at latest head.
 Native Windows Chrome visual comparison remains for manual acceptance.
+
+## Automated verification — source commit c1e2a98b
+- GitHub Actions verify: SUCCESS; 43 / 43 Node tests passed;
+  conventions scan passed on 30 source files.
+- GitHub Actions browser: SUCCESS; 9 / 9 Chromium tests passed.
+- Manual native Windows UI/permissions acceptance remains a separate review.
+- PR3 is implemented, CI-green, and stays a Draft PR until merger requested.
