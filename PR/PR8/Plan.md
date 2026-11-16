@@ -167,3 +167,20 @@ this limit currently applies only to the independent registry.
 - Allow virtual ID reuse only after complete close.
 - Tests: EHU 409 on dirty close, no loss of resident dirty data,
   successful cleanup and subsequent open with same ID.
+
+## Patch(+13): pixel-to-line viewport bridge
+- Shared pure ViewportLinePolicy derives visible 1-based lines from
+  scrollTop, clientHeight and computed lineHeight (zoom-aware pixels).
+- ViewportSliceController.navigateViewport maps geometry through the
+  existing VirtualLineIndex.range and exact bytePlan path via HubUnit.
+- Guard non-finite/invalid geometry and >8192 visible lines with EHU 400.
+- No proportional byte guesses, full-document scans or unsafe edits.
+- Main textarea still owns full text; wiring actual slice rendering,
+  MVCC and recovery remains pending. Never claim PR8 acceptance here.
+- Tests: geometry at zoom-equivalent heights, invalid inputs, Hub
+  EventChain with Blob and close. CI and browser QA required before merge.
+- Performance: O(1) geometry, then existing indexed range lookup and
+  bounded resident slice cache; worst unindexed line seeks scan forward
+  in 64 KiB windows without decoding the entire document into memory.
+- Security: no user plugin execution, no key/absolute path, and
+  privileged slice cleanup remains gated by trusted controller.
