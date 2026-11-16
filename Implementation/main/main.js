@@ -86,7 +86,9 @@ function render() {
   // Never replace text the user is currently typing with a stale
   // queued Request/Response value while asynchronous saves are running.
   const switchedTab = ui.editor.dataset.documentId !== active.id;
-  if (switchedTab || (ui.editor !== document.activeElement &&
+  if (switchedTab || (ui.editor.readOnly &&
+      active.status !== DocumentStatus.LOADING) ||
+      (ui.editor !== document.activeElement &&
       ui.editor.value !== active.text)) {
     ui.editor.value = active.text;
   }
