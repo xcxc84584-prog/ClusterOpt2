@@ -15,6 +15,8 @@ test("legacy File menu keeps order and original priority selector", async ({ pag
   await expect(page.locator("#pluginHighlighterState")).toBeVisible();
   await expect(page.locator("#pluginHighlighterDescription")).toBeVisible();
   await page.locator("#pluginDone").click();
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
   await expect(page.locator("#blockedTypesBtn")).toBeEnabled();
 
   await page.locator("#priority").selectOption("external");
@@ -23,8 +25,6 @@ test("legacy File menu keeps order and original priority selector", async ({ pag
     Cluster.propertylist().find(item => item.name === "StoragePriority"));
   expect(priority).toBeTruthy();
 
-  await page.locator("#menuBtn").click();
-  await page.locator("#toolBtn").click();
   await page.locator("#languageBtn").click();
   await page.locator('[data-locale="en"]').click();
   await page.locator("#menuBtn").click();
