@@ -14,6 +14,7 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
 				menuBtn: "file", newFile: "newFile", openFile: "openFile",
 				saveFile: "saveFile", saveAsFile: "saveAsFile",
 				closeFile: "closeFile", closeAll: "closeAll", toolBtn: "tool",
+				externalFirst: "externalFirst", internalFirst: "internalFirst",
 				paletteBtn: "palette", languageBtn: "language",
 				paletteTitle: "paletteTitle", paletteLabel: "paletteRGB",
 				paletteHint: "paletteHint", palettePresetLabel: "palettePreset",
