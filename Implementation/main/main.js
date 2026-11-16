@@ -771,6 +771,7 @@ function updateStatus() {
 }
 
 let virtualPageBusy = false;
+let virtualWheelConflictId = null;
 
 /** Page-bounded navigation preserves the old editor DOM and theme. */
 async function turnVirtualPage(direction) {
@@ -783,7 +784,14 @@ async function turnVirtualPage(direction) {
     const result = await linkCore.request("ui", "workspace", "page", {
       id: doc.id, index: next
     }, { origin: "user" });
-    if (!result.ok) notify(result.error);
+    if (!result.ok) {
+      // A conflict must remain visible, but high-rate wheel events
+      // must not flood the EHU log with the same 409 indefinitely.
+      if (result.status === 409) virtualWheelConflictId = doc.id;
+      notify(result.error);
+    } else {
+      virtualWheelConflictId = null;
+    }
   } finally {
     virtualPageBusy = false;
   }
@@ -791,7 +799,8 @@ async function turnVirtualPage(direction) {
 
 ui.editor.addEventListener("wheel", event => {
   const doc = workspace.active;
-  if (!doc?.virtualReadOnly || virtualPageBusy) return;
+  if (!doc?.virtualReadOnly || virtualPageBusy ||
+      virtualWheelConflictId === doc.id) return;
   const down = event.deltaY > 0;
   const editor = ui.editor;
   const bottom = editor.scrollTop + editor.clientHeight >=
@@ -806,6 +815,7 @@ ui.editor.addEventListener("wheel", event => {
 }, { passive: false });
 
 ui.editor.addEventListener("input", async () => {
+  virtualWheelConflictId = null;
   guideAnchor = null;
   scheduleGuides();
   const doc = workspace.active;
