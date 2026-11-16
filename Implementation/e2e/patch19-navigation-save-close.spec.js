@@ -1,0 +1,80 @@
+import { test, expect } from "@playwright/test";
+
+test("Patch19 fix: backward page enters at last line; forward at first",
+  async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const handle = await root.getFileHandle(
+        "patch19-navigation.txt", { create: true });
+      const writer = await handle.createWritable();
+      await writer.truncate(65 * 1024 * 1024);
+      await writer.write({
+        type: "write", position: 0, data: "PAGE ONE\n"
+      });
+      await writer.write({
+        type: "write", position: 65536,
+        data: "SECOND\nTHIRD\nFOURTH"
+      });
+      await writer.close();
+      Object.defineProperty(window, "showOpenFilePicker", {
+        configurable: true, value: async () => [handle]
+      });
+    });
+    await page.keyboard.press("Control+o");
+    const editor = page.locator("#editor");
+    await expect(editor).toHaveAttribute("data-virtual-page-index", "0");
+    await editor.focus();
+    await editor.press("Alt+PageDown");
+    await expect(editor).toHaveAttribute("data-virtual-page-index", "1");
+    expect(await editor.evaluate(element => element.selectionStart))
+      .toBe(0);
+    await editor.press("Alt+PageUp");
+    await expect(editor).toHaveAttribute("data-virtual-page-index", "0");
+    expect(await editor.evaluate(element => element.selectionStart))
+      .toBe((await editor.inputValue()).length);
+    await editor.press("Alt+PageDown");
+    await expect(editor).toHaveAttribute("data-virtual-page-index", "1");
+    expect(await editor.evaluate(element => element.selectionStart))
+      .toBe(0);
+  });
+
+test("Patch19 fix: actual 65 MiB document can save and close safely",
+  async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto("/");
+    await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const handle = await root.getFileHandle(
+        "patch19-write-close.txt", { create: true });
+      const writer = await handle.createWritable();
+      await writer.truncate(65 * 1024 * 1024);
+      await writer.write({
+        type: "write", position: 0, data: "ORIGINAL"
+      });
+      await writer.close();
+      Object.defineProperty(window, "showOpenFilePicker", {
+        configurable: true, value: async () => [handle]
+      });
+    });
+    await page.keyboard.press("Control+o");
+    const editor = page.locator("#editor");
+    await expect(editor).toHaveAttribute("data-virtual-page-index", "0");
+    await editor.fill("REPLACED" +
+      (await editor.inputValue()).slice("ORIGINAL".length));
+    await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
+    await page.keyboard.press("Control+s");
+    await expect(page.locator("#statusLamp"), "verified large save")
+      .toHaveClass(/green/, { timeout: 90000 });
+    const disk = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const handle = await root.getFileHandle("patch19-write-close.txt");
+      const file = await handle.getFile();
+      return { size: file.size, prefix: await file.slice(0, 8).text() };
+    });
+    expect(disk).toEqual({
+      size: 65 * 1024 * 1024, prefix: "REPLACED"
+    });
+    await page.locator(".tab.active .close").click();
+    await expect(page.locator(".tab.active")).toHaveCount(0);
+  });
