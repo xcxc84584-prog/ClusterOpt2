@@ -42,3 +42,8 @@ HubUnit handles rapid changes using per-object FIFO asynchronous queue.
 ## Acceptance Gate
 Do not mark PASS until node tests and Playwright tests run successfully.
 Native light/dark visual review and accessibility follow as review items.
+
+## Patch(+2) 更新
+- 介面黑色端點精確沿用舊版 14 個 CSS tokens。
+- UI 無效 RGB 會發 EHU 400，隨後以 Hub Request.get 恢復合法值。
+- 由 PR1 延續的測試需配合全域 Property 預註冊更新測試假設。
