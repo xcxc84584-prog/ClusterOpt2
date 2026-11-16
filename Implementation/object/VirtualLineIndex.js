@@ -102,6 +102,7 @@ export class VirtualLineIndex {
         end = await this.locate(doc, lastLine + 1);
       } catch (error) {
         if (error.status !== 416) throw error;
+        if (doc.high.line < lastLine) throw error;
         end = doc.blob.size;
       }
       return { start, end, firstLine, lastLine,
