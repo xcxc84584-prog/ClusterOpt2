@@ -47,3 +47,7 @@ Native light/dark visual review and accessibility follow as review items.
 - 介面黑色端點精確沿用舊版 14 個 CSS tokens。
 - UI 無效 RGB 會發 EHU 400，隨後以 Hub Request.get 恢復合法值。
 - 由 PR1 延續的測試需配合全域 Property 預註冊更新測試假設。
+
+## Storage degradation
+Storage not available: record EHU 503 and continue with an in-memory
+palette. Browser UI remains functional; color may not persist across reload.
