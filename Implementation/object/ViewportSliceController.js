@@ -9,7 +9,7 @@ export class ViewportSliceController {
     this.documents = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "navigate", "navigateBytes",
+    const actions = ["open", "close", "navigate", "navigateBytes",
       "navigateLines", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
@@ -43,6 +43,8 @@ export class ViewportSliceController {
       const indexed = await this.core.request(this.id,
         "virtual-line-index", "open", payload);
       if (!indexed.ok) {
+        // Roll back a loader-only open; the document is not usable.
+        await this.call("slice-loader", "close", { id: data.id });
         const error = new Error(indexed.error);
         error.status = indexed.status;
         throw error;
@@ -57,6 +59,15 @@ export class ViewportSliceController {
       const error = new Error("Unknown viewport document");
       error.status = 404;
       throw error;
+    }
+    if (action === "close") {
+      // Loader refuses to discard any unsaved dirty slice (409).
+      await this.call("slice-loader", "close", { id: document.id });
+      await this.call("virtual-line-index", "close", {
+        id: document.id
+      });
+      this.documents.delete(document.id);
+      return true;
     }
     if (action === "describe") {
       return { ...document, full: [...document.full],
