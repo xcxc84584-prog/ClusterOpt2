@@ -10,6 +10,7 @@ function memoryStore() {
   const entries = new Map();
   return {
     entries,
+    failRetire: false,
     async get(id) { return structuredClone(entries.get(id)); },
     async putIfNewer(entry) {
       const last = entries.get(entry.id);
@@ -21,6 +22,11 @@ function memoryStore() {
       entries.set(entry.id, structuredClone(entry));
     },
     async deleteIfMatch(id, revision, checksum) {
+      if (this.failRetire) {
+        const error = new Error("Simulated retirement failure");
+        error.status = 503;
+        throw error;
+      }
       const existing = entries.get(id);
       if (!existing || existing.revision !== revision ||
           existing.checksum !== checksum) {
@@ -201,4 +207,35 @@ test("Patch17 refuses non-durable edits and unmatched revision",
       revision: 0
     });
     assert.equal(response.status, 409);
+  });
+
+test("Patch17 preserves recovery after confirmed file write but failed retire",
+  async () => {
+    const store = memoryStore();
+    const { edit } = setup(store);
+    await saveCandidate(edit);
+    const handle = fakeHandle("hello\nworld\nEND");
+    store.failRetire = true;
+    const response = await edit("commitWriteback",
+      await filePayload(handle));
+    assert.equal(response.status, 503);
+    assert.equal(handle.currentText, "hello\nWORLD!\nEND");
+    assert.equal(store.entries.has("patch17"), true);
+    assert.equal((await edit("info", {
+      id: "patch17"
+    })).value.dirty, true);
+  });
+
+test("Patch17 rejects original-slice checksum mismatch before opening stream",
+  async () => {
+    const store = memoryStore();
+    const { edit } = setup(store);
+    await saveCandidate(edit);
+    const handle = fakeHandle("hello\nworld\nEND");
+    const payload = await filePayload(handle);
+    payload.expectedSliceHash = "0".repeat(64);
+    const response = await edit("commitWriteback", payload);
+    assert.equal(response.status, 409);
+    assert.equal(handle.currentText, "hello\nworld\nEND");
+    assert.equal(store.entries.has("patch17"), true);
   });
