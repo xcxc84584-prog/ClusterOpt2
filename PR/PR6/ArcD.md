@@ -62,3 +62,9 @@ Startup -> Hub -> Recovery.restore -> IndexedDB -> Hub ->
 Workspace.restore -> Hub -> Explorer.restoreRoots -> UI render.
 EHU: 400 bad schema, 409 duplicate restore, 413 too large,
 503 IndexedDB unavailable; no snapshot overwrites on errors.
+
+## Patch(+7) Event Chain
+UI timer -> Hub -> Explorer.syncExternal -> expanded handle.values()
+-> compare children -> UI redraw only when different.
+SessionRecovery.restore -> Explorer.restoreExpansion(paths).
+Explorer panel/search/tree scrollbar use sessionStorage (no handles).

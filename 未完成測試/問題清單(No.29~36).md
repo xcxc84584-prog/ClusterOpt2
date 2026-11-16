@@ -22,3 +22,6 @@ and folder-file activation. Pending durable recovery and PR7 features.
 
 Patch(+6): IndexedDB session restore implemented; browser reload,
 permissions, quota, and large-file failure injection still need E2E.
+
+Patch(+7): nested expansion, panel/search/tree-scroll restore,
+and expanded-only external CRUD polling. Pending browser permission tests.

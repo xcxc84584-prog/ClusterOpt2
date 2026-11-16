@@ -48,10 +48,24 @@ let explorerRequestId = 0;
 let explorerExpanded = false;
 const explorerPanel = document.getElementById("explorerPanel");
 const explorerToggle = document.getElementById("explorerToggle");
+function saveExplorerView() {
+  try {
+    window.sessionStorage.setItem("clusteropt2.explorer.view",
+      JSON.stringify({
+        visible: explorerExpanded,
+        query: document.getElementById("explorerSearch").value,
+        scrollTop: document.getElementById("explorerTree").scrollTop
+      }));
+  } catch {
+    linkCore.omu.record("EHU", "ui", "Explorer.ViewPersist",
+      503, "sessionStorage");
+  }
+}
 function toggleExplorer(visible = explorerPanel.hidden) {
   explorerExpanded = visible;
   explorerPanel.hidden = !visible;
   explorerToggle.setAttribute("aria-expanded", String(visible));
+  saveExplorerView();
   if (visible) void renderExplorer();
 }
 explorerToggle.addEventListener("click", () => toggleExplorer());
@@ -270,7 +284,9 @@ async function renderExplorer() {
     }
   };
   result.value.forEach(node => appendNode(node));
+  const priorScroll = container.scrollTop;
   container.replaceChildren(fragment);
+  container.scrollTop = priorScroll;
 }
 
 function renderPriority() {
@@ -421,7 +437,12 @@ async function perform(action, payload = {}) {
   }
 }
 document.getElementById("explorerSearch").addEventListener(
-  "input", () => { void renderExplorer(); });
+  "input", () => {
+    saveExplorerView();
+    void renderExplorer();
+  });
+document.getElementById("explorerTree").addEventListener(
+  "scroll", () => saveExplorerView());
 document.getElementById("explorerAddFile").addEventListener(
   "click", () => { void perform("open"); });
 document.getElementById("explorerAddFolder").addEventListener(
@@ -481,6 +502,20 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden) void checkExternal();
 });
 window.setInterval(() => { void checkExternal(); }, 3000);
+// File System Access API does not expose portable directory watch events.
+let explorerSyncing = false;
+window.setInterval(async () => {
+  if (!explorerExpanded || explorerSyncing || document.hidden) return;
+  explorerSyncing = true;
+  try {
+    const result = await linkCore.request("ui", "explorer",
+      "syncExternal");
+    if (result.ok && result.value) await renderExplorer();
+    if (!result.ok) notify(result.error);
+  } finally {
+    explorerSyncing = false;
+  }
+}, 2500);
 window.addEventListener("pagehide", () => {
   window.clearTimeout(recoveryTimer);
   if (recoveryReady) {
@@ -495,11 +530,26 @@ window.addEventListener("beforeunload", event => {
   event.returnValue = "";
 });
 render();
-void linkCore.request("ui", "session-recovery", "restore").then(result => {
-  recoveryReady = true;
-  if (!result.ok) {
-    linkCore.omu.record("EHU", "ui", "Recovery.Restore",
-      result.status, "session-recovery", { error: result.error });
-  }
-  queueRecovery();
-});
+void linkCore.request("ui", "session-recovery", "restore").then(
+  async result => {
+    recoveryReady = true;
+    if (!result.ok) {
+      linkCore.omu.record("EHU", "ui", "Recovery.Restore",
+        result.status, "session-recovery", { error: result.error });
+    }
+    try {
+      const view = JSON.parse(window.sessionStorage.getItem(
+        "clusteropt2.explorer.view") ?? "null");
+      if (view && typeof view.query === "string") {
+        document.getElementById("explorerSearch").value = view.query;
+        toggleExplorer(Boolean(view.visible));
+        await renderExplorer();
+        document.getElementById("explorerTree").scrollTop =
+          Math.max(0, Number(view.scrollTop) || 0);
+      }
+    } catch {
+      linkCore.omu.record("EHU", "ui", "Explorer.ViewRestore",
+        503, "sessionStorage");
+    }
+    queueRecovery();
+  });

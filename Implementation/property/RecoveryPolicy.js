@@ -23,6 +23,9 @@ export const RecoveryPolicy = Object.freeze({
       value.roots.length <= this.maxRoots &&
       value.roots.every(item =>
         item?.handle?.kind === "directory" &&
-        typeof item.name === "string");
+        typeof item.name === "string" &&
+        (!item.expandedPaths || (Array.isArray(item.expandedPaths) &&
+        item.expandedPaths.length <= 500 &&
+        item.expandedPaths.every(path => typeof path === "string"))));
   }
 });

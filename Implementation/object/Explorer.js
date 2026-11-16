@@ -15,7 +15,7 @@ export class Explorer {
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["list", "create", "open", "activate", "openEntry",
       "importFolder", "expand", "refreshTree",
-      "snapshotRoots", "restoreRoots"];
+      "snapshotRoots", "restoreRoots", "syncExternal"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["FileManagement"],
@@ -131,11 +131,56 @@ export class Explorer {
     return result.value;
   }
 
+  // Poll expanded directories, preserving stable node identities.
+  async syncExternal() {
+    let changed = false;
+    const visit = async node => {
+      if (node.kind !== "directory" || !node.expanded) return;
+      const before = (node.children ?? []).map(child =>
+        child.name + ":" + child.kind).join("|");
+      await this.readChildren(node);
+      const after = (node.children ?? []).map(child =>
+        child.name + ":" + child.kind).join("|");
+      if (before !== after) changed = true;
+      for (const child of node.children ?? []) await visit(child);
+    };
+    for (const root of this.roots) await visit(root);
+    return changed;
+  }
+
+  // Root-relative paths retain nested disclosure state between reloads.
+  expandedPaths(node, path = "", output = []) {
+    if (node.kind !== "directory" || !node.expanded) return output;
+    output.push(path);
+    for (const child of node.children ?? []) {
+      const next = path ? path + "/" + encodeURIComponent(child.name) :
+        encodeURIComponent(child.name);
+      this.expandedPaths(child, next, output);
+    }
+    return output;
+  }
+
+  async restoreExpansion(root, paths) {
+    const selected = new Set(paths);
+    const visit = async (node, path, depth) => {
+      if (depth > 24 || !selected.has(path)) return;
+      await this.readChildren(node);
+      node.expanded = true;
+      for (const child of node.children ?? []) {
+        const next = path ? path + "/" + encodeURIComponent(child.name) :
+          encodeURIComponent(child.name);
+        await visit(child, next, depth + 1);
+      }
+    };
+    await visit(root, "", 0);
+  }
+
   async receive(action, payload = {}) {
     if (action === "snapshotRoots") {
       return this.roots.map(root => ({
         name: root.name, handle: root.handle,
-        expanded: root.expanded
+        expanded: root.expanded,
+        expandedPaths: this.expandedPaths(root)
       }));
     }
     if (action === "restoreRoots") {
@@ -156,8 +201,8 @@ export class Explorer {
         this.roots.push(root);
         if (record.expanded) {
           try {
-            await this.readChildren(root);
-            root.expanded = true;
+            await this.restoreExpansion(root,
+              record.expandedPaths ?? [""]);
           } catch (error) {
             this.core.omu.record("EHU", this.id, "Root.Restore",
               503, root.id, { error: String(error) });
@@ -166,6 +211,7 @@ export class Explorer {
       }
       return true;
     }
+    if (action === "syncExternal") return this.syncExternal();
     if (action === "importFolder") {
       if (payload.handle?.kind !== "directory") {
         const error = new TypeError("Directory handle required");

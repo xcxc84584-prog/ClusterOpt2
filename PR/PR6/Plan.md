@@ -64,3 +64,8 @@ Save is debounced at 350ms after user operations; writes serialized.
 Invalid schemas and IndexedDB failures produce EHU without erasing
 previous good snapshots. Each text <=8 MiB, <=100 docs, <=40 roots.
 Browser file permissions cannot be granted silently on reload.
+
+## Patch(+7): root expansion and visible tree persistence
+Expanded paths stored per root (max 500); restored by lazy enumeration,
+maximum recursion depth 24. Explorer visible/query/scrollTop saved to
+sessionStorage. Expanded directory polling every 2.5s while visible.
