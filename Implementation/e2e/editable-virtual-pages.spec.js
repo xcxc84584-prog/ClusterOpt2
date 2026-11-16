@@ -86,14 +86,14 @@ test("Patch19 OPFS durable page edit/writeback retires checkpoint",
         text: "new 😀\n"
       }, { origin: "user" });
       if (!edit.ok) return { fail: edit };
+      const savedEditId = doc.editSliceId;
       const save = await core.request("ui", doc.id, "save", {},
         { origin: "user" });
       if (!save.ok) return { fail: save };
       const text = await (await handle.getFile()).text();
       const old = await core.request("ui",
         "slice-recovery-journal", "restore", {
-          id: edit.value.id === doc.id ?
-            doc.editSliceId : edit.value.id
+          id: savedEditId
         }, { origin: "user" });
       return {
         text, status: doc.status, retired: old.status === 404
