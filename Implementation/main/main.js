@@ -147,11 +147,16 @@ function render() {
   // Never replace text the user is currently typing with a stale
   // queued Request/Response value while asynchronous saves are running.
   const switchedTab = ui.editor.dataset.documentId !== active.id;
-  if (switchedTab || (ui.editor.readOnly &&
+  if (switchedTab || active.externalReloaded || (ui.editor.readOnly &&
       active.status !== DocumentStatus.LOADING) ||
       (ui.editor !== document.activeElement &&
       ui.editor.value !== active.text)) {
     ui.editor.value = active.text;
+    if (active.externalReloaded) {
+      ui.editor.selectionStart = ui.editor.selectionEnd =
+        Math.min(active.cursor, active.text.length);
+      active.externalReloaded = false;
+    }
   }
   ui.editor.readOnly = active.status === DocumentStatus.LOADING;
   ui.editor.dataset.documentId = active.id;
