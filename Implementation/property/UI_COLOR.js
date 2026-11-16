@@ -35,6 +35,26 @@ export const UI_COLOR = Object.freeze({
 
 	derive(rgb) {
 		if (!this.valid(rgb)) throw new RangeError("Invalid RGB channels");
+		// Match ClusterOpt's original dark palette exactly at RGB(0,0,0).
+		if (rgb.every(channel => channel === 0)) {
+			return Object.freeze({
+				mode: "dark",
+				background: "rgb(0, 0, 0)",
+				surface: "rgb(32, 33, 39)",
+				panel: "rgb(17, 18, 22)",
+				control: "rgb(52, 54, 64)",
+				hover: "rgb(71, 74, 88)",
+				border: "rgb(60, 62, 73)",
+				text: "rgb(241, 242, 245)",
+				muted: "rgb(165, 168, 181)",
+				editor: "rgb(0, 0, 0)",
+				gutter: "rgb(8, 9, 11)",
+				accent: "rgb(122, 175, 255)",
+				"text-on-surface": "rgb(241, 242, 245)",
+				"text-on-panel": "rgb(241, 242, 245)",
+				"text-on-control": "rgb(241, 242, 245)"
+			});
+		}
 		const dark = (rgb[0] * 0.2126 + rgb[1] * 0.7152 +
 			rgb[2] * 0.0722) < 145;
 		const clamp = value => Math.min(255, Math.max(0, Math.round(value)));
