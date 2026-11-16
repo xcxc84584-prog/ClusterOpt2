@@ -32,6 +32,9 @@ const ui = Object.fromEntries(Object.entries(uiIds).map(([key, id]) =>
 let guideFrame = 0;
 let guideAnchor = null;
 const workspace = new FileWorkspace(linkCore, render);
+workspace.onSaveProgress = doc => {
+  if (workspace.activeId === doc.id) updateStatus();
+};
 new ToolTabManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
 let toolState = { open: false, active: false, position: 0 };
