@@ -171,11 +171,8 @@ function render() {
 
 function renderPriority() {
   const priority = linkCore.readProperty("ui", "StoragePriority").value;
-  for (const button of document.querySelectorAll("[data-priority]")) {
-    const selected = button.dataset.priority === priority;
-    button.setAttribute("aria-pressed", String(selected));
-    button.style.fontWeight = selected ? "bold" : "";
-  }
+  const control = document.getElementById("priority");
+  if (control && control.value !== priority) control.value = priority;
 }
 
 function renderLines() {
@@ -287,11 +284,11 @@ document.getElementById("saveAsFile").onclick = () =>
   perform("save", { saveAs: true });
 document.getElementById("closeFile").onclick = () => perform("close");
 document.getElementById("closeAll").onclick = () => perform("closeAll");
-for (const button of document.querySelectorAll("[data-priority]")) {
-  button.onclick = () => perform("setPriority", {
-    priority: button.dataset.priority
-  });
-}
+document.getElementById("closeAllMain").onclick = () =>
+  perform("closeAll");
+document.getElementById("priority").addEventListener("change", event => {
+  void perform("setPriority", { priority: event.target.value });
+});
 // Focus checks and a bounded poll observe external disk changes without
 // blocking typing or continuously probing hidden browser tabs.
 let syncing = false;

@@ -105,3 +105,13 @@ Failure/status: 400 invalid priority, 403 API denial, 404 missing
 registration/handle, 500 read/write error, 503 preference storage.
 No independent manager object created for storage since FileWorkspace already
 owns file coordination. HubUnit remains the inter-object route.
+
+## Patch(+4) UI adapter update
+No new Object or shared Property: MainUI binds legacy DOM and
+LanguageManager translates the original menu and priority selector.
+Event: User selects #priority -> MainUI -> HubUnit.Request.setPriority ->
+FileWorkspace.Response.setPriority -> EDPMU.StoragePriority -> render.
+Event: User selects either Close All entry -> HubUnit -> FileWorkspace
+closeAll -> OMU/EHU -> render. Both buttons are the SAME action.
+Disabled future entries perform no Request and modify no Property.
+All legacy style rules remain in clusteropt-legacy.css.

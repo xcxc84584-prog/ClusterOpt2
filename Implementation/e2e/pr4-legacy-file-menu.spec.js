@@ -1,0 +1,31 @@
+import { test, expect } from "@playwright/test";
+
+test("legacy File menu keeps order and original priority selector", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#menuBtn").click();
+
+  await expect(page.locator("#closeFile")).toBeVisible();
+  await expect(page.locator("#closeAllMain")).toBeVisible();
+  await page.locator("#toolBtn").click();
+  await expect(page.locator("#closeAll")).toBeVisible();
+  await expect(page.locator("#priority")).toHaveValue("internal");
+  await expect(page.locator("#highlighterBtn")).toBeDisabled();
+  await expect(page.locator("#blockedTypesBtn")).toBeDisabled();
+
+  await page.locator("#priority").selectOption("external");
+  await expect(page.locator("#priority")).toHaveValue("external");
+  const priority = await page.evaluate(() =>
+    Cluster.propertylist().find(item => item.name === "StoragePriority"));
+  expect(priority).toBeTruthy();
+
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
+  await page.locator("#languageBtn").click();
+  await page.locator('[data-locale="en"]').click();
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
+  await expect(page.locator("#priorityHeading")).toHaveText("Storage Priority");
+  await expect(page.locator('#priority option[value="internal"]'))
+    .toHaveText("Internal First");
+  await expect(page.locator("#priority")).toHaveValue("external");
+});

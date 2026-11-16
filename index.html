@@ -28,16 +28,13 @@
           <button id="saveAsFile" type="button">另存新檔</button>
           <div class="menu-divider"></div>
           <button id="closeFile" type="button">關閉分頁</button>
+          <button id="closeAllMain" type="button">關閉全部</button>
           <div class="menu-divider"></div>
           <button id="toolBtn" type="button" aria-expanded="false"
             aria-controls="toolOptions">工具 ›</button>
           <div id="toolOptions" hidden role="group" aria-label="工具">
             <div class="file-tool-heading">FILE TOOL <span>WORKSPACE</span></div>
             <button id="closeAll" type="button">關閉所有視窗</button>
-            <button id="externalFirst" type="button"
-              data-priority="external">外部文件優先</button>
-            <button id="internalFirst" type="button"
-              data-priority="internal">內部編輯優先</button>
             <button id="languageBtn" type="button" aria-expanded="false"
               aria-controls="languageOptions">語言 ›</button>
             <div id="languageOptions" hidden>
@@ -48,7 +45,20 @@
                 English <span class="locale-check"></span>
               </button>
             </div>
-            <button id="paletteBtn" type="button">介面調色盤 ›</button>
+            <button id="highlighterBtn" type="button" disabled
+              title="PR5：尚未實作">◇ 文本著色器</button>
+            <button id="paletteBtn" type="button"
+              aria-expanded="false">介面調色盤 ›</button>
+            <button id="blockedTypesBtn" type="button" disabled
+              title="PR7：尚未實作">▧ 屏蔽檔案類型 ›</button>
+            <div class="menu-divider"></div>
+            <label class="priority-heading" id="priorityHeading"
+              for="priority">儲存優先級</label>
+            <select id="priority" title="存儲優先級"
+              aria-label="儲存優先級">
+              <option value="internal">內部優先</option>
+              <option value="external">外部優先</option>
+            </select>
           </div>
         </nav>
       </div>
