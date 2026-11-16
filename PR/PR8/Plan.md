@@ -254,9 +254,11 @@ this limit currently applies only to the independent registry.
 - Load: at most 1 Mi UTF-16 units per checkpoint; sealing uses
   O(slice bytes) time and memory. No whole-document allocation by
   this journal. Write amplification is a full bounded slice snapshot.
-- Remaining: cross-tab IndexedDB CAS (get/put are currently separate
-  transactions), actual file writeback, crash fault injection with
-  real browser IndexedDB and durable recovery of cursor/viewport.
+- Cross-tab CAS is now enforced inside one IndexedDB readwrite
+  transaction (get revision and put checkpoint are atomic). A second
+  preflight SHA-256 validation handles already-corrupt data.
+- Remaining: actual file writeback, real-browser IndexedDB crash
+  fault injection and durable recovery of cursor/viewport.
   Treat this as a **foundation**, not proven crash-safe full MVCC.
 - Tests: simulated persistent storage across runtime recreation,
   disk-like quota failure rollback, checksum tampering, 403/404/409,
