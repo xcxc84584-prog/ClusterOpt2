@@ -6,6 +6,7 @@ import { UI_COLOR } from "../property/UI_COLOR.js";
 import { FileManagement } from "../property/FileManagement.js";
 import { RecoveryPolicy } from "../property/RecoveryPolicy.js";
 import { FileTypePolicy } from "../property/FileTypePolicy.js";
+import { ExplorerOrderPolicy } from "../property/ExplorerOrderPolicy.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
 import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
 import { ObjectManagementUnit } from "./ObjectManagementUnit.js";
@@ -19,7 +20,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.7-pr7.patch3";
+    this.version = "0.0.7-pr7.patch4";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -39,6 +40,10 @@ export class LinkCore {
     });
     this.hub.registerProperty("EditorInteractionPolicy",
       EditorInteractionPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
+    this.hub.registerProperty("ExplorerOrderPolicy",
+      ExplorerOrderPolicy, {
         owners: ["LinkCore"], visibility: "Public"
       });
     this.hub.registerProperty("FileTypePolicy", FileTypePolicy, {

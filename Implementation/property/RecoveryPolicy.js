@@ -26,6 +26,8 @@ export const RecoveryPolicy = Object.freeze({
         typeof item.name === "string" &&
         (!item.expandedPaths || (Array.isArray(item.expandedPaths) &&
         item.expandedPaths.length <= 500 &&
-        item.expandedPaths.every(path => typeof path === "string"))));
+        item.expandedPaths.every(path => typeof path === "string"))) &&
+        (!item.orders || (typeof item.orders === "object" &&
+        Object.keys(item.orders).length <= 500)));
   }
 });

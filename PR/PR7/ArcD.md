@@ -26,3 +26,10 @@ Properties: FileTypePolicy, BlockedFileTypes.
 UI -> Hub -> FileTypeManager.add -> Hub.Property.BlockedFileTypes
 -> Explorer.list -> FileTypePolicy.blocked -> UI projection.
 EHU 400 invalid extension, 503 storage unavailable. No deletion.
+
+## Patch(+4) event chain
+UI.drag -> Hub -> Explorer.reorder -> ExplorerOrderPolicy.move
+-> SessionRecovery.persist -> IndexedDB -> Explorer.restoreRoots
+-> ExplorerOrderPolicy.ordered. Unattached tab: Explorer ->
+Hub -> Workspace.reorder -> SessionRecovery.persist.
+EHU 400 cross-root or invalid sibling; 503 storage failure.

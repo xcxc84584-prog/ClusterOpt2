@@ -11,14 +11,17 @@ export class Explorer {
     this.core = core;
     this.roots = [];
     this.nextRootId = 1;
+    this.orderByParent = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["list", "create", "open", "activate", "openEntry",
       "importFolder", "expand", "refreshTree",
-      "snapshotRoots", "restoreRoots", "syncExternal", "closeRoot"];
+      "snapshotRoots", "restoreRoots", "syncExternal",
+      "closeRoot", "reorder"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
-      AgentAPI: [], Property: ["FileManagement", "FileTypePolicy", "BlockedFileTypes"],
+      AgentAPI: [], Property: ["FileManagement", "FileTypePolicy", "BlockedFileTypes",
+        "ExplorerOrderPolicy"],
       Program: "Explorer", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
     });
     if (!core.register(this)) {
@@ -33,6 +36,33 @@ export class Explorer {
       if (nested) return nested;
     }
     return null;
+  }
+
+  locateCollection(id, nodes = this.roots, parentId = null) {
+    if (nodes.some(node => node.id === id)) {
+      return { nodes, parentId };
+    }
+    for (const node of nodes) {
+      const result = this.locateCollection(id,
+        node.children ?? [], node.id);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  snapshotOrders(root) {
+    const policy = this.core.readProperty(
+      this.id, "ExplorerOrderPolicy").value;
+    const result = {};
+    const visit = node => {
+      if (node.kind !== "directory") return;
+      const suffix = node.id.slice(root.id.length);
+      result[suffix] = this.orderByParent.get(node.id) ??
+        (node.children ?? []).map(item => policy.key(item));
+      for (const child of node.children ?? []) visit(child);
+    };
+    visit(root);
+    return result;
   }
 
   async sameEntry(left, right) {
@@ -65,10 +95,10 @@ export class Explorer {
         });
       }
     }
-    node.children = next.sort((a, b) =>
-      a.kind === b.kind ?
-        a.name.localeCompare(b.name) :
-        (a.kind === "directory" ? -1 : 1));
+    const policy = this.core.readProperty(
+      this.id, "ExplorerOrderPolicy").value;
+    node.children = policy.ordered(next,
+      this.orderByParent.get(node.id));
   }
 
   /**
@@ -185,7 +215,8 @@ export class Explorer {
       return this.roots.map(root => ({
         name: root.name, handle: root.handle,
         expanded: root.expanded,
-        expandedPaths: this.expandedPaths(root)
+        expandedPaths: this.expandedPaths(root),
+        orders: this.snapshotOrders(root)
       }));
     }
     if (action === "restoreRoots") {
@@ -204,6 +235,11 @@ export class Explorer {
           children: null
         };
         this.roots.push(root);
+        for (const [suffix, saved] of Object.entries(record.orders ?? {})) {
+          if (Array.isArray(saved) && saved.length <= 2000) {
+            this.orderByParent.set(root.id + suffix, saved);
+          }
+        }
         if (record.expanded) {
           try {
             await this.restoreExpansion(root,
@@ -215,6 +251,34 @@ export class Explorer {
         }
       }
       return true;
+    }
+    if (action === "reorder") {
+      if (payload.sourceId?.startsWith("tab:") &&
+          payload.targetId?.startsWith("tab:")) {
+        const documents = await this.requestWorkspace("entries");
+        const from = documents.findIndex(item =>
+          "tab:" + item.id === payload.sourceId);
+        const to = documents.findIndex(item =>
+          "tab:" + item.id === payload.targetId);
+        return this.requestWorkspace("reorder", { from, to });
+      }
+      const located = this.locateCollection(payload.sourceId);
+      const target = this.locateCollection(payload.targetId);
+      if (!located || !target ||
+          located.nodes !== target.nodes) {
+        const error = new RangeError("Only sibling entries may move");
+        error.status = 400;
+        throw error;
+      }
+      const policy = this.core.readProperty(
+        this.id, "ExplorerOrderPolicy").value;
+      const moved = policy.move(located.nodes,
+        payload.sourceId, payload.targetId);
+      if (moved && located.parentId) {
+        this.orderByParent.set(located.parentId,
+          located.nodes.map(item => policy.key(item)));
+      }
+      return moved;
     }
     if (action === "closeRoot") {
       const index = this.roots.findIndex(root =>

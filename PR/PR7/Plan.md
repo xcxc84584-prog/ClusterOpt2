@@ -18,3 +18,10 @@ Original ClusterOpt File Tool dialog and default extension set.
 FileTypeManager publishes global BlockedFileTypes via HubUnit;
 Explorer filters only its view, no data removal. O(N*B) for N
 visible file entries, B up to 100. localStorage persists settings.
+
+## Patch(+4) durable drag order
+ExplorerOrderPolicy performs sibling-only in-memory moves, preserves
+order during refresh, and records ordering in the existing IndexedDB
+root session snapshot. Standalone tabs delegate to Workspace.reorder.
+O(N) sibling reorder; O(N log N) visible tree ordering on reload.
+Cross-root moves are rejected rather than changing disk file paths.

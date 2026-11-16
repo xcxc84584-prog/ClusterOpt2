@@ -321,7 +321,32 @@ async function renderExplorer() {
     name.className = "explorer-name";
     name.textContent = node.name;
     button.title = node.name;
+    button.dataset.entryId = node.id;
+    button.draggable = true;
     button.append(arrow, icon, name);
+    button.addEventListener("dragstart", event => {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData(
+        "application/x-cluster-explorer-entry", node.id);
+    });
+    button.addEventListener("dragover", event => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    });
+    button.addEventListener("drop", async event => {
+      event.preventDefault();
+      const sourceId = event.dataTransfer.getData(
+        "application/x-cluster-explorer-entry");
+      if (!sourceId) return;
+      const result = await linkCore.request("ui", "explorer", "reorder", {
+        sourceId, targetId: node.id
+      }, { origin: "user" });
+      if (!result.ok) notify(result.error);
+      if (result.ok) {
+        queueRecovery();
+        await renderExplorer();
+      }
+    });
     button.addEventListener("contextmenu", event => {
       event.preventDefault();
       openExplorerMenu(node, event);
