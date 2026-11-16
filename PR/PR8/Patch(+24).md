@@ -31,3 +31,9 @@ NOT ACCEPTED. Remaining requirements tracked in issue list.
 - Simulates 1/5 GiB Blob size and throws if any eager slice read occurs.
 - Metadata-only open/close must succeed with no Blob body reads.
 - This does not replace true Windows 1/5 GiB I/O or crash QA.
+
+## Patch(+24-Fix1) acceptance evidence
+- Added sparse 5 GiB random byte-index navigation test with bounded reads.
+- Not a real file I/O benchmark; disk crash and 1/5 GiB writeback OPEN.
+- Loader has concurrent Blob read batches, NOT Worker CPU execution.
+- Full legacy FileDocument replacement remains OPEN and PR8 NOT PASS.
