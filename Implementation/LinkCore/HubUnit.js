@@ -16,24 +16,31 @@ export class HubUnit {
 
   register(object) {
     const result = this.registry.register(object);
-    if (!result.ok) {
-      this.omu.record("EHU", object?.id ?? "unknown",
-        "register", result.status);
-    }
+    this.omu.record(result.ok ? "Log" : "EHU",
+      object?.id ?? "unknown", "Register", result.ok ? 201 : result.status);
     return result.ok;
   }
 
   unregister(id) {
-    return this.registry.unregister(id);
+    const removed = this.registry.unregister(id);
+    this.omu.record(removed ? "Log" : "EHU", id, "Unregister",
+      removed ? 200 : 404);
+    return removed;
   }
 
   async request(source, target, action, payload = {}, options = {}) {
+    if (!this.registry.objects.has(source)) {
+      this.omu.record("Log", source, "Registration.Lookup", 404, source);
+    }
     const sender = this.registry.resolve(source);
     if (!sender.ok) {
       this.omu.record("EHU", source, action, sender.status, target, {
         error: "Sender not registered"
       });
       return { ok: false, status: sender.status, error: sender.error };
+    }
+    if (!this.registry.objects.has(target)) {
+      this.omu.record("Log", source, "Registration.Lookup", 404, target);
     }
     const receiver = this.registry.resolve(target);
     if (!receiver.ok) {
