@@ -1,6 +1,7 @@
 import { Language } from "../property/Language.js";
 import { FileDocument } from "./FileDocument.js";
 import { DocumentStatus } from "../property/DocumentStatus.js";
+import { StoragePriority } from "../property/StoragePriority.js";
 
 /** Workspace object owns the document collection and active tab. */
 export class FileWorkspace {
@@ -13,16 +14,20 @@ export class FileWorkspace {
     this.authorization = Object.freeze({ default: "Public" });
     this.strictOCDA = true;
     this.ocda = Object.freeze({
-      Request: ["new", "open", "activate", "close", "closeAll", "reorder", "save"],
-      Response: ["new", "open", "activate", "close", "closeAll", "reorder", "save"],
-      UserAPI: ["new", "open", "activate", "close", "closeAll", "reorder", "save"],
+      Request: ["new", "open", "activate", "close", "closeAll",
+        "reorder", "save", "setPriority", "syncExternal"],
+      Response: ["new", "open", "activate", "close", "closeAll",
+        "reorder", "save", "setPriority", "syncExternal"],
+      UserAPI: ["new", "open", "activate", "close", "closeAll",
+        "reorder", "save", "setPriority", "syncExternal"],
       AgentAPI: [],
-      Property: ["DocumentStatus"],
+      Property: ["DocumentStatus", "StoragePriority"],
       Program: "FileWorkspace",
       EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
     });
     if (!core.register(this)) throw new Error("Workspace registration failed");
+    this.restorePriority();
   }
 
   get active() {
@@ -36,6 +41,8 @@ export class FileWorkspace {
     if (action === "close") return this.close(payload.id);
     if (action === "closeAll") return this.closeAll();
     if (action === "reorder") return this.reorder(payload.from, payload.to);
+    if (action === "setPriority") return this.setPriority(payload.priority);
+    if (action === "syncExternal") return this.syncExternal();
     if (action === "save") return this.save(payload.handle);
     throw new Error("Unknown workspace action: " + action);
   }
@@ -145,9 +152,64 @@ export class FileWorkspace {
     return true;
   }
 
+  restorePriority() {
+    try {
+      const saved = globalThis.window?.localStorage?.getItem(
+        StoragePriority.storageKey);
+      if (StoragePriority.valid(saved)) {
+        this.core.hub.publishProperty("StoragePriority", saved);
+      }
+    } catch {
+      this.core.omu.record("EHU", this.id, "Priority.Restore",
+        503, "StoragePriority");
+    }
+  }
+
+  setPriority(priority) {
+    if (!StoragePriority.valid(priority)) {
+      const error = new TypeError("Unknown StoragePriority");
+      error.status = 400;
+      throw error;
+    }
+    const result = this.core.hub.publishProperty("StoragePriority", priority);
+    if (!result.ok) throw new Error("Cannot publish StoragePriority");
+    try {
+      globalThis.window?.localStorage?.setItem(
+        StoragePriority.storageKey, priority);
+    } catch {
+      this.core.omu.record("EHU", this.id, "Priority.Persist",
+        503, "StoragePriority");
+    }
+    this.onChange();
+    return priority;
+  }
+
+  async syncExternal() {
+    const priority = this.core.readProperty(this.id, "StoragePriority").value;
+    const results = await Promise.all(this.documents.map(async doc => {
+      if (!doc.handle || doc.status === DocumentStatus.LOADING) return null;
+      return this.core.request(this.id, doc.id, "reconcile", {
+        priority, onProgress: () => this.onChange()
+      });
+    }));
+    this.onChange();
+    return results;
+  }
+
   async save(handle = null) {
     const doc = this.active;
     if (!doc) return false;
+    const priority = this.core.readProperty(this.id, "StoragePriority").value;
+    if (!handle && doc.handle) {
+      const check = await this.core.request(this.id, doc.id, "reconcile", {
+        priority, onProgress: () => this.onChange()
+      });
+      if (!check.ok) throw new Error(check.error);
+      if (check.value && priority === StoragePriority.EXTERNAL) {
+        this.onChange();
+        return false;
+      }
+    }
     const result = await this.core.request(this.id, doc.id, "save", {
       handle,
       onProgress: () => this.onChange()
