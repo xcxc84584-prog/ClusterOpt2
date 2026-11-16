@@ -5,6 +5,10 @@ import { SliceEditTransaction } from "../object/SliceEditTransaction.js";
 
 function setup() {
   const core = new LinkCore();
+  // A real OCDA sender must exist before HubUnit accepts user requests.
+  if (!core.register({ id: "ui", receive: async () => true })) {
+    throw new Error("Test UI registration failed");
+  }
   new SliceEditTransaction(core);
   const act = (action, payload = {}) =>
     core.request("ui", "slice-edit-transaction",
