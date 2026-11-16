@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
-const root = new URL("../../", import.meta.url);
 const excluded = new Set([
   "clusteropt-legacy.css", // Copied unchanged from ClusterOpt.
   "code-conventions.mjs" // Checker scans other project sources.
@@ -19,7 +19,7 @@ function collect(directory) {
   }
 }
 
-collect(new URL("../../Implementation/", import.meta.url).pathname);
+collect(fileURLToPath(new URL("../", import.meta.url)));
 const findings = [];
 for (const path of paths) {
   const content = readFileSync(path, "utf8");
