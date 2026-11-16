@@ -37,7 +37,7 @@ test("PR4 Close All cancellation never discards dirty files", () => {
     assert.equal(confirms, 1);
     assert.equal(workspace.documents.length, 2);
     assert.equal(core.getSnapshot().objects.filter(item =>
-      item.id?.startsWith("document-")).length, 2);
+      item.startsWith("document-")).length, 2);
   } finally {
     globalThis.window = previousWindow;
   }
