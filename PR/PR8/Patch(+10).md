@@ -47,7 +47,7 @@ All ToolTabManager operations remain resource-key serialized.
 - Plugin view never enters file recovery snapshots as a document.
 - Main editor still reads whole documents; universal piece-tree backed
   virtual editor is NOT integrated in this patch.
-- Recovery of Plugin tool-tab state across reload is not yet enabled.
+- Tool tab open/active/position/category persists in sessionStorage and\n  is validated through HubUnit.restore after document recovery.\n- Full six-layer document slice recovery remains unfinished.
 - UI does not expose test instructions or fictional plugin activation.
 
 ## Validation
