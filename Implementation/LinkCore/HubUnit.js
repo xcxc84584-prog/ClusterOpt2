@@ -90,6 +90,12 @@ export class HubUnit {
       });
       return { ok: false, status: 423, error: "Circular wait detected" };
     }
+    if (nested && this.waitEdges.size >= this.scheduler.maxNested) {
+      this.omu.record("EHU", source, "Request." + action, 429, target, {
+        error: "Nested request depth limit reached"
+      });
+      return { ok: false, status: 429, error: "Nested limit reached" };
+    }
     if (nested) this.addWaitEdge(source, target);
     try {
       return await this.scheduler.schedule(ParallelExecutionPolicy.resourceKey(target), async () => {
