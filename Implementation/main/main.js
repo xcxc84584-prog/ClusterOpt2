@@ -10,6 +10,7 @@ import { SliceRegistry } from "../object/SliceRegistry.js";
 import { SliceLoader } from "../object/SliceLoader.js";
 import { ViewportSliceController } from "../object/ViewportSliceController.js";
 import { VirtualLineIndex } from "../object/VirtualLineIndex.js";
+import { EditorViewportObserver } from "../object/EditorViewportObserver.js";
 import { ToolTabManager } from "../object/ToolTabManager.js";
 import { FileTypeManager } from "../object/FileTypeManager.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
@@ -60,7 +61,71 @@ const sliceRegistry = new SliceRegistry(linkCore);
 new SliceLoader(linkCore);
 new VirtualLineIndex(linkCore);
 new ViewportSliceController(linkCore);
+new EditorViewportObserver(linkCore);
 const fileTypes = new FileTypeManager(linkCore);
+// Read-only viewport observation: never mutates editor text or disk.
+let viewportTimer = 0;
+let viewportGeneration = 0;
+let viewportObservedId = null;
+let viewportObservedRevision = null;
+let viewportQueue = Promise.resolve();
+let renderedLineCount = 1;
+
+function scheduleViewportObservation() {
+  window.clearTimeout(viewportTimer);
+  const generation = ++viewportGeneration;
+  viewportTimer = window.setTimeout(() => {
+    // Queue operations: an old tab must detach before a new one attaches.
+    viewportQueue = viewportQueue.then(async () => {
+      if (generation !== viewportGeneration) return;
+      const active = workspace.active;
+      const eligible = active && active.handle &&
+        active.status === DocumentStatus.SYNCED &&
+        !toolState.active && !active.externalChanged;
+      const request = (action, payload = {}) => linkCore.request(
+        "ui", "editor-viewport-observer", action, payload,
+        { origin: "user" });
+      if (!eligible) {
+        if (viewportObservedId) await request("detach");
+        viewportObservedId = null;
+        viewportObservedRevision = null;
+        return;
+      }
+      const needsAttach = viewportObservedId !== active.id ||
+        viewportObservedRevision !== active.revision;
+      if (needsAttach) {
+        if (viewportObservedId) {
+          await request("detach");
+          viewportObservedId = null;
+        }
+        const file = await active.handle.getFile();
+        if (generation !== viewportGeneration ||
+            active !== workspace.active ||
+            active.status !== DocumentStatus.SYNCED) return;
+        const attached = await request("attach", {
+          id: active.id, blob: file
+        });
+        if (!attached.ok) return;
+        viewportObservedId = active.id;
+        viewportObservedRevision = active.revision;
+      }
+      if (generation !== viewportGeneration) return;
+      const lineHeight = parseFloat(
+        window.getComputedStyle(ui.editor).lineHeight) || 22;
+      await request("navigate", {
+        id: active.id, dirty: false,
+        scrollTop: ui.editor.scrollTop,
+        clientHeight: ui.editor.clientHeight,
+        lineHeight, maxLine: renderedLineCount
+      });
+    }).catch(error => {
+      // Observability must never block the real editor's data path.
+      linkCore.omu.record("EHU", "ui", "ViewportObserver",
+        503, "editor-viewport-observer", { error: String(error) });
+    });
+  }, 80);
+}
+
 let recoveryReady = false;
 let recoveryTimer = 0;
 let recoveryWrites = Promise.resolve();
@@ -382,6 +447,7 @@ function render() {
     ui.progressText.textContent = "";
     ui.lineInfo.textContent = toolActive ? localized("pluginManager") :
       "Ln 1, Col 1";
+    scheduleViewportObservation();
     return;
   }
   // Never replace text the user is currently typing with a stale
@@ -409,6 +475,7 @@ function render() {
   renderLines();
   scheduleGuides();
   updateStatus();
+  scheduleViewportObservation();
 }
 
 /**
@@ -624,6 +691,7 @@ function scheduleGuides() {
 function renderLines() {
   const text = ui.editor.value;
   const count = text.split("\n").length;
+  renderedLineCount = count;
   ui.lineNumbers.textContent = Array.from(
     { length: count }, (_, i) => String(i + 1)
   ).join("\n");
@@ -663,6 +731,7 @@ ui.editor.addEventListener("input", async () => {
   renderLines();
   updateStatus();
   queueRecovery();
+  scheduleViewportObservation();
   // Avoid regenerating all tabs on every keystroke in a large document.
   for (const tab of ui.tabs.children) {
     if (tab.classList.contains("active")) {
@@ -676,6 +745,7 @@ ui.editor.addEventListener("scroll", () => {
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
   scheduleGuides();
   queueRecovery();
+  scheduleViewportObservation();
 });
 ui.editor.addEventListener("click", () => {
   if (workspace.active) workspace.active.cursor = ui.editor.selectionStart;

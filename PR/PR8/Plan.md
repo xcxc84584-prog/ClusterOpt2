@@ -184,3 +184,25 @@ this limit currently applies only to the independent registry.
   in 64 KiB windows without decoding the entire document into memory.
 - Security: no user plugin execution, no key/absolute path, and
   privileged slice cleanup remains gated by trusted controller.
+
+## Patch(+14): passive editor viewport integration
+- Added EditorViewportObserver Object as an OCDA read-only bridge to the
+  existing ViewportSliceController. It never replaces textarea text.
+- Real editor scroll/zoom geometry is read from DOM via computed lineHeight,
+  scrollTop, clientHeight, and lineCount from existing line render.
+- Main UI schedules/debounces observations (80ms) and serializes attach,
+  detach and navigate to prevent stale asynchronous file read races.
+- Only clean, handle-backed, active documents may be observed.
+  Dirty, external-conflict, tool and closed tabs detach immediately.
+- Virtual slices remain independent Blob-backed caches and may be demoted.
+  Existing FileDocument owns all real editing, save and reload recovery.
+- The safe bridge is an incremental integration, NOT a complete
+  slice-editable editor. Continue Piecetree/MVCC/writeback work in Patch15.
+- Tests cover geometry clamp, clean attach/navigate/detach, dirty and
+  stale document rejection; browser E2E and GitHub CI are not yet verified.
+- Load: O(1) pixels-to-lines per event plus indexed line seeks; 80ms
+  coalescing avoids issuing a request for each scroll event. The current
+  legacy textarea remains full-buffer and the existing line-number
+  renderer remains O(total lines); no large-file acceptance claim.
+- Security: no external plugin execution, no keys, no absolute paths,
+  no disk mutation in viewport observer; existing EHU/Log rules apply.

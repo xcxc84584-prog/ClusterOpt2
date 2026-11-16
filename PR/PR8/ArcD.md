@@ -185,3 +185,23 @@ Highlighter entry disabled until plugin processor Object is installed.
 - No direct editor UI integration, no unsafe mutation, no writeback.
 - Same document route remains serialized by Hub; clean preloads may
   be evicted, dirty slices remain protected.
+
+## Patch(+14) Object / EventChain / EHU
+- New Object: EditorViewportObserver. Existing shared properties:
+  ViewportLinePolicy and DocumentStatus; no new global property.
+- UI.render/scroll -> debounce and serialize -> HubUnit ->
+  EditorViewportObserver.attach(id, Blob) -> HubUnit ->
+  ViewportSliceController.open -> SliceLoader.open +
+  VirtualLineIndex.open -> OMU Log.
+- UI.scroll/zoom -> HubUnit -> EditorViewportObserver.navigate ->
+  ViewportSliceController.navigateViewport -> ViewportLinePolicy.range ->
+  VirtualLineIndex.range -> SliceLoader.load -> SliceRegistry residency
+  -> Hub Response -> OMU Log/Dependency.
+- UI.input/dirty/tool-tab/switch -> HubUnit ->
+  EditorViewportObserver.detach -> ViewportSliceController.close ->
+  SliceLoader.close (dirty preflight) -> VirtualLineIndex.close.
+- Errors: 400 invalid payload/geometry; 404 missing document;
+  409 stale/dirty observation or protected dirty slice;
+  413 memory admission, 416 line out of range, 422 encoding.
+- All write operations remain with FileDocument; shadow observer has no
+  edit/save API. No User API can directly release protected dirty slices.
