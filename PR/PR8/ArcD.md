@@ -266,7 +266,8 @@ Highlighter entry disabled until plugin processor Object is installed.
 - Write flow: verify file fingerprint and old byte-range checksum ->
   exclusive createWritable -> copy prefix (64 KiB slices) ->
   replacement text UTF-8 -> copy suffix -> close ->
-  reopen and compare expected byte content -> HubUnit ->
+  reopen and verify changed bytes plus pre-close source-chunk hashes
+  (without relying on old Blob snapshot) -> HubUnit ->
   SliceRecoveryJournal.retire -> IndexedDBSliceJournalStore
   deleteIfMatch (revision+checksum same transaction) ->
   SliceEditTransaction.clean -> OMU Log/Dependency.
