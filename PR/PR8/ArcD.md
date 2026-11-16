@@ -156,3 +156,11 @@ Highlighter entry disabled until plugin processor Object is installed.
 - Multi-object dependency chain is observable in real VTE.
 - Two existing editor limitations remain: no real viewport DOM
   binding and no safe edited-slice writeback or reload recovery.
+
+### Patch(+12) close/release EventChain
+- UI/VTE -> Hub -> viewport-slices.close -> Hub -> slice-loader.close
+  -> Hub -> slice-registry.list (preflight dirty) -> Hub ->
+  slice-registry.release(clean) -> Hub -> virtual-line-index.close.
+- Status 200: close complete; 404: document missing;
+  409: dirty, preserve all Blob and index state for recovery/writeback.
+- OMU records directed dependencies at every hop. No SendTo.
