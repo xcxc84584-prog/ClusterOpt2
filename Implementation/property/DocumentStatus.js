@@ -1,3 +1,4 @@
+import { Language } from "./Language.js";
 /** Shared document-status property: four mutually exclusive states. */
 export const DocumentStatus = Object.freeze({
   SYNCED: "green",
@@ -6,11 +7,10 @@ export const DocumentStatus = Object.freeze({
   LOADING: "blue"
 });
 
-export function statusLabel(state) {
-  return {
-    green: "已與磁碟同步",
-    yellow: "尚未儲存",
-    red: "操作失敗",
-    blue: "操作中"
-  }[state] ?? "未知狀態";
+export function statusLabel(state, locale = Language.defaultLocale) {
+	const key = {
+		green: "synced", yellow: "dirty",
+		red: "failed", blue: "loading"
+	}[state] ?? "unknown";
+	return Language.translate(locale, key);
 }

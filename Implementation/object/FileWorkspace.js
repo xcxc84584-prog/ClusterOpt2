@@ -1,3 +1,4 @@
+import { Language } from "../property/Language.js";
 import { FileDocument } from "./FileDocument.js";
 import { DocumentStatus } from "../property/DocumentStatus.js";
 
@@ -95,7 +96,9 @@ export class FileWorkspace {
     if (index < 0) return false;
     const doc = this.documents[index];
     if (doc.status !== DocumentStatus.SYNCED &&
-        !window.confirm("檔案尚未儲存，確定要關閉「" + doc.name + "」？")) {
+        !window.confirm(Language.translate(
+          this.core.readProperty(this.id, "Language").value,
+          "confirmClose", { name: doc.name }))) {
       return false;
     }
     this.documents.splice(index, 1);

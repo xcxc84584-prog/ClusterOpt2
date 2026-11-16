@@ -29,3 +29,19 @@ tab_width = 2
 [Implementation/tests/palette.test.js]
 indent_style = tab
 tab_width = 2
+
+[Implementation/property/Language.js]
+indent_style = tab
+tab_width = 2
+
+[Implementation/object/LanguageManager.js]
+indent_style = tab
+tab_width = 2
+
+[Implementation/main/language-ui.js]
+indent_style = tab
+tab_width = 2
+
+[Implementation/tests/language.test.js]
+indent_style = tab
+tab_width = 2

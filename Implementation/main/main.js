@@ -1,3 +1,5 @@
+import { mountLanguageUI } from "./language-ui.js";
+import { Language } from "../property/Language.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
@@ -23,6 +25,8 @@ function closeMenu() {
   menuButton.setAttribute("aria-expanded", "false");
   const tools = document.getElementById("toolOptions");
   if (tools) tools.hidden = true;
+  const languages = document.getElementById("languageOptions");
+  if (languages) languages.hidden = true;
 }
 menuButton.addEventListener("click", () => {
   menu.hidden = !menu.hidden;
@@ -56,7 +60,7 @@ linkCore.register({
   ocda: Object.freeze({
     Request: ["new", "open", "save", "close", "activate"],
     Response: [], UserAPI: ["new", "open", "save", "close"],
-    AgentAPI: [], Property: ["DocumentStatus", "SystemVersion"],
+    AgentAPI: [], Property: ["DocumentStatus", "SystemVersion", "Language"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
   receive: async () => {
@@ -72,6 +76,12 @@ try {
     "UI_COLOR", { reason: "Color preference storage is unavailable" });
 }
 mountPaletteUI(linkCore, document, paletteStorage);
+mountLanguageUI(linkCore, document, paletteStorage, () => render());
+
+function localized(key, args = {}) {
+  const locale = linkCore.readProperty("ui", "Language").value;
+  return Language.translate(locale, key, args);
+}
 const notify = message => { ui.statusText.textContent = message; };
 
 function render() {
@@ -91,7 +101,7 @@ function render() {
     const close = document.createElement("span");
     close.className = "close";
     close.textContent = "×";
-    close.setAttribute("aria-label", "關閉 " + doc.name);
+    close.setAttribute("aria-label", localized("closeFile") + " " + doc.name);
     close.addEventListener("click", event => {
       event.stopPropagation();
       void perform("close", { id: doc.id });
@@ -106,7 +116,7 @@ function render() {
   ui.emptyState.hidden = !!active;
   if (!active) {
     ui.statusLamp.className = "lamp green";
-    ui.statusText.textContent = "就緒";
+    ui.statusText.textContent = localized("ready");
     ui.progressFill.style.width = "0%";
     ui.progressText.textContent = "";
     return;
@@ -150,7 +160,8 @@ function updateStatus() {
   if (!doc) return;
   ui.statusLamp.className = "lamp " + doc.status;
   ui.statusText.textContent = doc.error && doc.status === DocumentStatus.ERROR ?
-    doc.error : statusLabel(doc.status);
+    doc.error : statusLabel(doc.status,
+      linkCore.readProperty("ui", "Language").value);
   ui.progressFill.style.width = doc.progress + "%";
   ui.progressText.textContent = doc.status === DocumentStatus.LOADING ?
     doc.progress + "%" : "";
@@ -203,7 +214,7 @@ async function perform(action, payload = {}) {
     // BEFORE asynchronous HubUnit scheduling starts.
     if (action === "open") {
       if (!window.showOpenFilePicker) {
-        throw new Error("需要 Chromium HTTPS 或 localhost 才能開啟文件");
+        throw new Error(localized("openUnavailable"));
       }
       payload.handles = await window.showOpenFilePicker({
         multiple: true
@@ -214,7 +225,7 @@ async function perform(action, payload = {}) {
       if (!doc) return;
       if (payload.saveAs || !doc.handle) {
         if (!window.showSaveFilePicker) {
-          throw new Error("需要 Chromium HTTPS 或 localhost 才能儲存文件");
+          throw new Error(localized("saveUnavailable"));
         }
         payload.handle = await window.showSaveFilePicker({
           suggestedName: doc.name

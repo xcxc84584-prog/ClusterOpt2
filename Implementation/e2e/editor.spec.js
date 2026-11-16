@@ -133,3 +133,67 @@ test("PR2 invalid RGB is rejected and original controls are restored", async ({ 
   await expect(page.locator('[data-rgb="0"]')).toHaveValue("0");
   await expect(page.locator("#paletteHex")).toHaveText("#000000");
 });
+
+test("PR3 switches file menu, status, tabs and palette to English", async ({ page }) => {
+	await page.goto("/");
+	await page.locator("#menuBtn").click();
+	await page.locator("#toolBtn").click();
+	await page.locator("#languageBtn").click();
+	await page.locator('[data-locale="en"]').click();
+
+	await expect(page.locator("#menuBtn")).toHaveText("File⌄");
+	await expect(page.locator("#status")).toHaveText("Ready");
+	await expect(page.locator("#emptyHint")).toContainText("Choose File");
+	await expect(page.locator("#editor")).toHaveAttribute("aria-label", "Text editor");
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await expect(page.locator("#menu"))
+		.toHaveAttribute("aria-label", "File menu");
+	await expect(page.locator("#toolOptions"))
+		.toHaveAttribute("aria-label", "Tools");
+
+	await page.locator("#menuBtn").click();
+	await expect(page.locator("#newFile")).toHaveText("New File");
+	await expect(page.locator("#saveAsFile")).toHaveText("Save As");
+	await page.locator("#toolBtn").click();
+	await expect(page.locator("#paletteBtn")).toHaveText("Interface Palette ›");
+	await page.locator("#paletteBtn").click();
+	await expect(page.locator("#paletteTitle")).toHaveText("Interface Palette");
+	await expect(page.locator("#paletteDark")).toHaveText("Black Endpoint");
+});
+
+test("PR3 language persists across reload and can return to Chinese", async ({ page }) => {
+	await page.goto("/");
+	await page.locator("#menuBtn").click();
+	await page.locator("#toolBtn").click();
+	await page.locator("#languageBtn").click();
+	await page.locator('[data-locale="en"]').click();
+	await page.reload();
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await expect(page.locator("#status")).toHaveText("Ready");
+	await page.locator("#menuBtn").click();
+	await page.locator("#toolBtn").click();
+	await page.locator("#languageBtn").click();
+	await expect(page.locator('[data-locale="en"]'))
+		.toHaveAttribute("aria-pressed", "true");
+	await page.locator('[data-locale="zh-Hant"]').click();
+	await expect(page.locator("#status")).toHaveText("就緒");
+	await expect(page.locator("#menuBtn")).toHaveText("檔案⌄");
+	await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
+});
+
+test("PR3 changing locale does not lose unsaved editor contents", async ({ page }) => {
+	await page.goto("/");
+	await page.locator("#menuBtn").click();
+	await page.locator("#newFile").click();
+	await page.locator("#editor").fill("draft / 未儲存");
+	await page.locator("#menuBtn").click();
+	await page.locator("#toolBtn").click();
+	await page.locator("#languageBtn").click();
+	await page.locator('[data-locale="en"]').click();
+	await expect(page.locator("#editor")).toHaveValue("draft / 未儲存");
+	await expect(page.locator("#status")).toHaveText("Unsaved changes");
+	await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
+	const language = await page.evaluate(() =>
+		window.Cluster.propertylist().find(item => item.name === "Language"));
+	expect(language).toBeTruthy();
+});
