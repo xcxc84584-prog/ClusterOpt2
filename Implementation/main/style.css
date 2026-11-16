@@ -1,95 +1,85 @@
-:root {
-  color-scheme: dark;
-  --surface: #080b11;
-  --panel: #10151d;
-  --raised: #171e29;
-  --edge: #2a3545;
-  --text: #dce7f2;
-  --muted: #8c9bae;
-  --accent: #75c1ff;
+/*
+ * PR1 compatibility adapter for original ClusterOpt UI.
+ * Color, typography, menu, tabs, editor and footer are owned by the
+ * unmodified clusteropt-legacy.css stylesheet.
+ */
+#clusterWorkspaceShell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--surface); color: var(--text);
-  font: 14px/1.5 "Segoe UI", "Microsoft JhengHei", sans-serif; }
-button { background: var(--raised); border: 1px solid var(--edge);
-  color: var(--text); padding: 7px 12px; border-radius: 5px;
-  cursor: pointer; }
-button:hover { border-color: var(--accent); }
-button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); }
-.shell { display: flex; flex-direction: column; height: 100dvh; min-height: 320px; }
-.toolbar { display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 12px; padding: 10px 16px; background: var(--panel);
-  border-bottom: 1px solid var(--edge); }
-.brand { display: flex; align-items: center; gap: 9px; }
-.diamond { color: var(--accent); font-size: 25px; }
-.brand small { color: var(--muted); }
-.actions { display: flex; flex-wrap: wrap; gap: 7px; }
-.tabs { display: flex; min-height: 42px; overflow-x: auto;
-  background: var(--panel); border-bottom: 1px solid var(--edge); }
-.tab { display: flex; flex-shrink: 0; align-items: center; gap: 7px;
-  border: 0; border-right: 1px solid var(--edge); border-radius: 0;
-  max-width: 220px; padding: 8px 12px; background: transparent; }
-.tab.active { background: var(--surface); box-shadow: inset 0 2px var(--accent); }
-.tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dirty { color: #f4c66b; }
-.tab-close { font-size: 17px; line-height: 1; border-radius: 3px; }
-.tab-close:hover { background: #3b2730; }
-.editor-pane { position: relative; flex: 1; min-height: 0; }
-.empty-state { display: grid; height: 100%; place-items: center;
-  color: var(--muted); }
-.editor-surface { display: flex; height: 100%; overflow: hidden; }
-.editor-surface[hidden], .empty-state[hidden] { display: none; }
-.line-numbers { margin: 0; padding: 16px 12px; flex: 0 0 auto; min-width: 56px;
-  overflow: hidden; text-align: right; color: var(--muted);
-  background: #0d1118; border-right: 1px solid var(--edge); user-select: none;
-  font: 14px/22px Consolas, monospace; }
-#editor { flex: 1; min-width: 0; width: 100%; margin: 0; padding: 16px;
-  border: 0; resize: none; background: transparent; color: var(--text);
-  outline: none; font: 14px/22px Consolas, "Microsoft JhengHei", monospace;
-  tab-size: 4; white-space: pre; overflow: auto; }
-.statusbar { display: flex; gap: 10px; align-items: center; min-height: 31px;
-  padding: 4px 12px; background: var(--panel); border-top: 1px solid var(--edge);
-  color: var(--muted); font-size: 12px; }
-.lamp { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; }
-.green { background: #52cc8a; }
-.yellow { background: #f3c65c; }
-.red { background: #ef7272; }
-.blue { background: #64acff; }
-#lineInfo { margin-left: auto; white-space: nowrap; }
-.progress-track { width: 90px; height: 5px; border-radius: 4px; background: var(--edge); }
-.progress-fill { height: 100%; width: 0%; background: #64acff; transition: width .1s; }
-#progressText { min-width: 35px; text-align: right; }
-
-/* Adapter: keep original ClusterOpt frame while using PR1 object editor. */
-#clusterWorkspaceShell { display: flex; flex: 1; min-height: 0; }
-#clusterEditorColumn { display: flex; flex: 1; flex-direction: column;
-  min-width: 0; min-height: 0; }
-#workspace { display: block; flex: 1; min-height: 0; overflow: hidden; }
-#emptyState { display: flex; flex-direction: column; align-items: center;
-  justify-content: center; width: 100%; height: 100%; }
-#emptyState[hidden], #editorSurface[hidden], #menu[hidden] {
+#clusterEditorColumn {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+#workspace {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+#empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+#empty[hidden], #editorPane[hidden], #menu[hidden] {
   display: none !important;
 }
-#editorSurface { display: flex; position: relative; height: 100%;
-  width: 100%; overflow: hidden; }
-#editor { position: static; display: block; flex: 1; width: 100%;
-  height: 100%; min-width: 0; padding: 16px; resize: none; }
-#lineNumbers { display: block; flex: 0 0 60px; overflow: hidden;
-  min-width: 60px; text-align: right; padding: 16px 12px;
-  margin: 0; white-space: pre; user-select: none;
-  font: 14px/22px Consolas, monospace; }
-#tabs { display: flex; align-items: end; min-height: 48px; }
-#tabs .tab { display: flex; align-items: center; gap: 8px;
-  cursor: pointer; }
-#tabs .tab.active { border-bottom: 2px solid #728cfb; }
-.statusbar { min-height: 36px; display: flex; gap: 12px;
-  align-items: center; }
-.statusbar .progress-track { min-width: 92px; width: 92px;
-  height: 5px; flex-shrink: 0; }
-.statusbar .progress-fill { height: 100%; }
-.statusbar .lamp { flex-shrink: 0; }
-#versionLabel { letter-spacing: 1px; }
-@media (max-width: 520px) {
-  .statusbar { gap: 6px; }
-  #lineInfo { display: none; }
+#editorPane {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+#gutter {
+  margin: 0;
+  flex: 0 0 60px;
+  min-width: 60px;
+  padding: 16px 12px 16px 0;
+}
+#editor {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  resize: none;
+}
+#tabs .tab .name {
+  min-width: 0;
+}
+#tabs .tab .close {
+  flex-shrink: 0;
+  font-size: 16px;
+}
+#tabs .tab .dirty {
+  color: #efc96f;
+}
+#versionLabel {
+  letter-spacing: 1px;
+}
+#statusLamp {
+  display: inline-block;
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+#statusLamp.green { background: #4ac78f; }
+#statusLamp.yellow { background: #efc96f; }
+#statusLamp.red { background: #f07575; }
+#statusLamp.blue { background: #69aafa; }
+#meterFill {
+  height: 100%;
+  background: #6d86f7;
+  transition: width 100ms linear;
+}
+#meterPercent {
+  min-width: 3em;
+  font-variant-numeric: tabular-nums;
 }
