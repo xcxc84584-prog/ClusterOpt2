@@ -299,11 +299,11 @@ function render() {
   const toolActive = toolState.open && toolState.active;
   const tabPolicy = linkCore.readProperty("ui", "ToolTabPolicy").value;
   const entries = tabPolicy.entries(workspace.documents, toolState);
+  const documentById = new Map(workspace.documents.map(doc => [doc.id, doc]));
   ui.tabs.replaceChildren();
   for (const [index, entry] of entries.entries()) {
     const isTool = entry.kind === "tool";
-    const doc = isTool ? null : workspace.documents.find(
-      item => item.id === entry.id);
+    const doc = isTool ? null : documentById.get(entry.id);
     const selected = isTool ? toolActive :
       !toolActive && active?.id === entry.id;
     const tab = document.createElement("button");
