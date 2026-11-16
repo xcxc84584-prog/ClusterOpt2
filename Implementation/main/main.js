@@ -262,8 +262,8 @@ function appendExplorerActions(row, node) {
         const action = actions[key];
         const payload = { id: node.id };
         if (["rename", "folder", "file"].includes(key)) {
-          const label = localized(label);
-          const name = window.prompt(label,
+          const promptLabel = localized(label);
+          const name = window.prompt(promptLabel,
             key === "rename" ? node.name : "");
           if (name === null) return;
           payload.name = name;
