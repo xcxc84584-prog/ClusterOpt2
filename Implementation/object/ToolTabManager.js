@@ -12,7 +12,7 @@ export class ToolTabManager {
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
     const actions = ["open", "activate", "deactivate", "close",
-      "move", "list"];
+      "move", "restore", "list"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["ToolTabPolicy"],
@@ -37,6 +37,21 @@ export class ToolTabManager {
 
   async receive(action, payload = {}) {
     if (action === "list") return this.snapshot();
+    if (action === "restore") {
+      const state = payload.state;
+      if (!state || typeof state.open !== "boolean" ||
+          typeof state.active !== "boolean" ||
+          (state.active && !state.open)) {
+        return this.failure(400, "Invalid tool recovery state");
+      }
+      const count = payload.documentCount;
+      const position = this.policy().validIndex(
+        state.position, count);
+      this.opened = state.open;
+      this.active = state.active;
+      this.position = this.opened ? position : 0;
+      return this.snapshot();
+    }
     if (action === "open") {
       if (!this.opened) {
         this.position = this.policy().validIndex(
