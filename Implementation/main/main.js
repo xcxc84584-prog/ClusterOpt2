@@ -525,12 +525,18 @@ function render() {
       Math.min(active.cursor, ui.editor.value.length);
   }
   if (switchedTab || switchedPage) {
+    const lineHeight = parseFloat(
+      window.getComputedStyle(ui.editor).lineHeight) || 22;
+    const savedLineHeight = active.viewportLineHeight || lineHeight;
+    const restoredTop = active.scrollTop *
+      (lineHeight / savedLineHeight);
     ui.editor.scrollTop = active.virtualReadOnly &&
       active.pageEntryEdge === "end" ?
-      ui.editor.scrollHeight : active.scrollTop;
+      ui.editor.scrollHeight : restoredTop;
     ui.editor.scrollLeft = Math.max(0, active.scrollLeft ?? 0);
     ui.lineNumbers.scrollTop = ui.editor.scrollTop;
     active.scrollTop = ui.editor.scrollTop;
+    active.viewportLineHeight = lineHeight;
   }
   renderLines();
   scheduleGuides();
@@ -886,6 +892,8 @@ ui.editor.addEventListener("scroll", () => {
   if (doc) {
     doc.scrollTop = ui.editor.scrollTop;
     doc.scrollLeft = ui.editor.scrollLeft;
+    doc.viewportLineHeight = parseFloat(
+      window.getComputedStyle(ui.editor).lineHeight) || 22;
   }
   ui.lineNumbers.scrollTop = ui.editor.scrollTop;
   scheduleGuides();
