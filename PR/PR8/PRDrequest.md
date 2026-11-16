@@ -47,3 +47,11 @@ No unbounded cache when a configured byte budget is active.
   integrity guarantees or silently lose unsaved changes.
 - Downloadable versioned API standards exist; they are not an
   executable plugin runtime.
+
+## Patch(+11) category menu requirement
+- Plugin Manager keeps one TAB-based read-only workbench window.
+- Top-right within that window contains ONE File-style button whose
+  category list is hidden by default and expands on demand.
+- Drop-down supports keyboard navigation, Escape, outside click and
+  auto-collapse on selection/tab switch. Never reserve permanent
+  horizontal space for all four category buttons.

@@ -18,14 +18,18 @@ test("PR8 Plugin opens as a single file-style TAB, not a modal", async ({ page }
   await expect(page.locator("#editorPane")).toBeHidden();
   await expect(page.locator("#pluginWindow")).toBeVisible();
   await expect(page.locator("#pluginMaxMiB")).toHaveValue("8");
+  await page.locator("#pluginCategoryBtn").click();
   await page.locator("#pluginHighlighterBtn").click();
   await expect(page.locator("#pluginHighlighterOptions")).toBeVisible();
+  await page.locator("#pluginCategoryBtn").click();
   await page.locator("#pluginProcessorBtn").click();
   await expect(page.locator("#pluginProcessorApi")).toHaveAttribute(
     "download", "");
+  await page.locator("#pluginCategoryBtn").click();
   await page.locator("#pluginCommitterBtn").click();
   await expect(page.locator("#pluginCommitterApi")).toHaveAttribute(
     "download", "");
+  await page.locator("#pluginCategoryBtn").click();
   await page.locator("#pluginPerformanceBtn").click();
   await page.locator("#pluginUnlimited").check();
   await page.locator("#pluginApply").click();
@@ -46,6 +50,7 @@ test("PR8 Plugin opens as a single file-style TAB, not a modal", async ({ page }
 test("PR8 tool TAB and selected category survive reload independently", async ({ page }) => {
   await page.goto("/");
   await openPlugin(page);
+  await page.locator("#pluginCategoryBtn").click();
   await page.locator("#pluginProcessorBtn").click();
   await expect(page.locator("#pluginProcessorOptions")).toBeVisible();
   await page.reload();
@@ -85,7 +90,7 @@ test("PR8 category buttons sit in tool-window top-right, not global header", asy
   const bounds = await page.evaluate(() => {
     const window = document.querySelector("#pluginWindow")
       .getBoundingClientRect();
-    const categories = document.querySelector(".plugin-window-categories")
+    const categories = document.querySelector(".plugin-category-control")
       .getBoundingClientRect();
     const heading = document.querySelector(".plugin-workbench-identity")
       .getBoundingClientRect();
@@ -112,10 +117,36 @@ test("PR8 Plugin tool window supports narrow viewport and language", async ({ pa
   await openPlugin(page);
   await expect(page.locator("#pluginDialogTitle")).toHaveText(
     "Plugin Manager");
+  await expect(page.locator("#pluginCategoryLabel")).toHaveText("Performance");
   const box = await page.locator("#pluginWindow").boundingBox();
   expect(box).not.toBeNull();
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(420);
+});
+
+test("PR8 Plugin category dropdown is collapsed and keyboard accessible", async ({ page }) => {
+  await page.goto("/");
+  await openPlugin(page);
+  await expect(page.locator("#pluginCategoryMenu")).toBeHidden();
+  await expect(page.locator("#pluginCategoryBtn")).toHaveAttribute(
+    "aria-expanded", "false");
+  await page.locator("#pluginCategoryBtn").focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("#pluginCategoryMenu")).toBeVisible();
+  await expect(page.locator("#pluginPerformanceBtn")).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator("#pluginHighlighterBtn")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#pluginCategoryMenu")).toBeHidden();
+  await expect(page.locator("#pluginHighlighterOptions")).toBeVisible();
+  await expect(page.locator("#pluginCategoryLabel")).toContainText("文本著色器");
+  await page.locator("#pluginCategoryBtn").click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pluginCategoryMenu")).toBeHidden();
+  await expect(page.locator("#pluginCategoryBtn")).toBeFocused();
+  await page.locator("#pluginCategoryBtn").click();
+  await page.locator("#pluginDialogTitle").click();
+  await expect(page.locator("#pluginCategoryMenu")).toBeHidden();
 });
 
 test("PR8 blocked file types preserve original compact edit/remove UI", async ({ page }) => {
