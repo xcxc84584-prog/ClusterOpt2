@@ -58,6 +58,26 @@ test("PR8 tool TAB and selected category survive reload independently", async ({
   await expect(page.locator("#tabs .tab[data-tab-kind=tool]")).toHaveCount(0);
 });
 
+test("PR8 tool TAB participates in drag ordering without touching file text", async ({ page }) => {
+  await page.goto("/");
+  for (let i = 0; i < 2; i++) {
+    await page.locator("#menuBtn").click();
+    await page.locator("#newFile").click();
+    await page.locator("#editor").fill("document " + i);
+  }
+  await openPlugin(page);
+  const tool = page.locator("#tabs .tab[data-tab-kind=tool]");
+  const documents = page.locator("#tabs .tab[data-tab-kind=document]");
+  await expect(tool).toHaveCount(1);
+  await tool.dragTo(documents.first());
+  await expect(page.locator("#tabs .tab").first())
+    .toHaveAttribute("data-tab-kind", "tool");
+  await documents.last().click();
+  await expect(page.locator("#editor")).toHaveValue("document 1");
+  await page.locator("#tabs .tab[data-tab-kind=tool]").click();
+  await expect(page.locator("#pluginWindow")).toBeVisible();
+});
+
 test("PR8 category buttons sit in tool-window top-right, not global header", async ({ page }) => {
   await page.setViewportSize({ width: 1050, height: 700 });
   await page.goto("/");
