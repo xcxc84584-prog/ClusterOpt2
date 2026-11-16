@@ -10,6 +10,7 @@ export class FileWorkspace {
     this.documents = [];
     this.activeId = null;
     this.authorization = Object.freeze({ default: "Public" });
+    this.strictOCDA = true;
     this.ocda = Object.freeze({
       Request: ["new", "open", "activate", "close", "save"],
       Response: ["new", "open", "activate", "close", "save"],
