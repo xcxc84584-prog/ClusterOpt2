@@ -1,5 +1,6 @@
 import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
+import { StoragePriority } from "../property/StoragePriority.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
@@ -58,8 +59,10 @@ linkCore.register({
   id: "ui",
   strictOCDA: true,
   ocda: Object.freeze({
-    Request: ["new", "open", "save", "close", "closeAll", "reorder", "activate"],
-    Response: [], UserAPI: ["new", "open", "save", "close", "closeAll", "reorder"],
+    Request: ["new", "open", "save", "close", "closeAll", "reorder",
+      "activate", "setPriority", "syncExternal"],
+    Response: [], UserAPI: ["new", "open", "save", "close", "closeAll",
+      "reorder", "setPriority", "syncExternal"],
     AgentAPI: [], Property: ["DocumentStatus", "SystemVersion", "Language"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
@@ -86,6 +89,7 @@ const notify = message => { ui.statusText.textContent = message; };
 
 function render() {
   const active = workspace.active;
+  renderPriority();
   ui.tabs.replaceChildren();
   for (const [index, doc] of workspace.documents.entries()) {
     const tab = document.createElement("button");
@@ -158,6 +162,15 @@ function render() {
   if (switchedTab) ui.editor.scrollTop = active.scrollTop;
   renderLines();
   updateStatus();
+}
+
+function renderPriority() {
+  const priority = linkCore.readProperty("ui", "StoragePriority").value;
+  for (const button of document.querySelectorAll("[data-priority]")) {
+    const selected = button.dataset.priority === priority;
+    button.setAttribute("aria-pressed", String(selected));
+    button.style.fontWeight = selected ? "bold" : "";
+  }
 }
 
 function renderLines() {
@@ -269,6 +282,29 @@ document.getElementById("saveAsFile").onclick = () =>
   perform("save", { saveAs: true });
 document.getElementById("closeFile").onclick = () => perform("close");
 document.getElementById("closeAll").onclick = () => perform("closeAll");
+for (const button of document.querySelectorAll("[data-priority]")) {
+  button.onclick = () => perform("setPriority", {
+    priority: button.dataset.priority
+  });
+}
+// Focus checks and a bounded poll observe external disk changes without
+// blocking typing or continuously probing hidden browser tabs.
+let syncing = false;
+async function checkExternal() {
+  if (syncing || document.hidden || !workspace.documents.length) return;
+  syncing = true;
+  try {
+    await linkCore.request("ui", "workspace", "syncExternal", {},
+      { origin: "user" });
+  } finally {
+    syncing = false;
+  }
+}
+window.addEventListener("focus", () => { void checkExternal(); });
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) void checkExternal();
+});
+window.setInterval(() => { void checkExternal(); }, 3000);
 window.addEventListener("beforeunload", event => {
   if (!workspace.documents.some(doc =>
     doc.status !== DocumentStatus.SYNCED)) return;
