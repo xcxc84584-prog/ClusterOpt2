@@ -492,3 +492,38 @@ may dispatch concurrently via HubUnit.
 
 - Zoom extension: UI scroll -> viewportLineHeight (CSS pixels) ->
   Workspace.snapshot -> RecoveryPolicy -> UI render CSS line-height ratio.
+
+## Patch(+22): uniform document slice manifest EventChain
+- Caller -> HubUnit -> Workspace.Request.sliceManifest ->
+  EDPMU.DocumentSliceContract -> Workspace.Response.sliceManifest.
+- EHU 404 for nonexistent document; Log 200 and relation 10/01.
+- New Property DocumentSliceContract; existing Workspace Object.
+
+## Patch(+23): document-scoped memory and scroll EventChain
+- ViewportSliceController -> HubUnit -> SliceRegistry.setViewport
+  {owner: documentId, ids: visibleSliceIds} -> OMU.
+- SliceRegistry keeps owner->IDs and union-visible guards for budget.
+- On close/release, owner guard is cleared after successful cleanup.
+- Identical viewport navigations verify registry residency and return
+  without SliceLoader.load if all required chunks remain resident.
+- EHU 400 bad owner, 409 dirty eviction, 413 budget; VTE test added.
+
+## Patch(+24): acceptance graph
+- Documents -> HubUnit -> SliceLoader/Registry -> editor ->
+  MVCC Journal -> batch writeback -> SessionRecovery / OMU.
+- Full graph remains pending and must not be declared PASS.
+
+- Patch23 fix: cross-document demotion guard filters target Object's
+  slice IDs before invoking SliceRegistry.demote through HubUnit.
+
+### Patch(+24-Fix1) bounded prefetch Event Chain
+UI/Observer -> HubUnit -> viewport-slices.navigate -> HubUnit ->
+SliceLoader.Request.loadBatch(indices<=4) -> UTF8SlicePolicy.read concurrently
+-> HubUnit -> SliceRegistry.Request.registerVirtual/load/list sequentially
+-> SliceLoader.Response.loadBatch(final-resident IDs only) -> OMU.
+
+- Owner-scoped visibility remains authoritative across documents.
+- EHU 400 invalid batch; 413 pinned full budget; 422 invalid UTF8.
+- Optional preload budget miss is returned in skipped list, never
+  silently represented as resident. A changed limit triggers retry.
+- No Worker CPU execution yet; batched concurrency is asynchronous I/O.

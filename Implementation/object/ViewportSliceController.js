@@ -50,7 +50,8 @@ export class ViewportSliceController {
         throw error;
       }
       this.documents.set(data.id, {
-        ...data, full: [], preloaded: []
+        ...data, full: [], preloaded: [], requestedPreload: [],
+        skippedPreload: [], lastLimitBytes: undefined
       });
       return { ...data };
     }
@@ -67,6 +68,9 @@ export class ViewportSliceController {
         id: document.id
       });
       this.documents.delete(document.id);
+      await this.call("slice-registry", "setViewport", {
+        owner: document.id, ids: []
+      });
       return true;
     }
     if (action === "describe") {
@@ -103,8 +107,35 @@ export class ViewportSliceController {
         payload.first, payload.last, payload.adjacent ?? 1);
     }
     const sliceId = index => document.id + "-slice-" + index;
+    // Skip redundant navigation without trusting stale residency:
+    // a budget change may have evicted any preloaded slice.
+    const stable = document.full.length === plan.full.length &&
+      document.full.every((item, index) => item === plan.full[index]) &&
+      document.requestedPreload.length === plan.preloaded.length &&
+      document.requestedPreload.every((item, index) =>
+        item === plan.preloaded[index]);
+    if (stable) {
+      const existing = await this.call("slice-registry", "list", {});
+      const byId = new Map(existing.entries.map(item => [item.id, item]));
+      const sameLimit = document.lastLimitBytes === existing.limitBytes;
+      const allReady = plan.full.every(index =>
+        byId.get(sliceId(index))?.state === "full") &&
+        plan.preloaded.every(index => {
+          const state = byId.get(sliceId(index))?.state;
+          return state === "preloaded" || state === "full" ||
+            (sameLimit && document.skippedPreload.includes(index) &&
+            (!state || state === "virtual"));
+        });
+      if (allReady) {
+        return { id: document.id, full: [...document.full],
+          preloaded: [...document.preloaded],
+          ...(lines ? { lines } : {}) };
+      }
+    }
     // Drop stale visibility so offscreen clean slices can be evicted.
-    await this.call("slice-registry", "setViewport", { ids: [] });
+    await this.call("slice-registry", "setViewport", {
+      owner: document.id, ids: []
+    });
     const prior = await this.call("slice-registry", "list", {});
     const byId = new Map(prior.entries.map(item => [item.id, item]));
     const visible = [];
@@ -122,37 +153,49 @@ export class ViewportSliceController {
       }
       visible.push(sliceId(index));
       await this.call("slice-registry", "setViewport", {
-        ids: [...visible]
+        owner: document.id, ids: [...visible]
       });
     }
     const preloaded = [];
+    const missing = [];
     for (const index of plan.preloaded) {
       const previous = byId.get(sliceId(index));
       if (previous?.dirty) continue;
-      if (previous?.state === "preloaded") {
+      if (previous?.state === "preloaded" ||
+          previous?.state === "full") {
         preloaded.push(index);
-        continue;
-      }
-      try {
-        await this.call("slice-loader", "load", {
-          id: document.id, index, mode: "preloaded"
-        });
-        preloaded.push(index);
-      } catch (error) {
-        // A low memory budget may omit speculative preloads; never
-        // omit visible slices or swallow non-budget load failures.
-        if (error.status !== 413) throw error;
+      } else {
+        missing.push(index);
       }
     }
+    // Read adjacent chunks concurrently, but apply registry writes in
+    // deterministic order. The existing resident budget remains final.
+    for (let start = 0; start < missing.length; start += 4) {
+      const batch = await this.call("slice-loader", "loadBatch", {
+        id: document.id, indices: missing.slice(start, start + 4),
+        mode: "preloaded"
+      });
+      preloaded.push(...batch.loaded);
+    }
+    const orderedPreloads = plan.preloaded.filter(index =>
+      preloaded.includes(index));
     const snapshot = await this.call("slice-registry", "list", {});
-    const keep = new Set([...plan.full, ...preloaded].map(sliceId));
+    const keep = new Set([...plan.full, ...orderedPreloads].map(sliceId));
     for (const entry of snapshot.entries) {
-      if (keep.has(entry.id) || entry.dirty ||
+      // Never demote another document's full or preloaded chunks.
+      // Each ViewportSliceController instance may coordinate multiple
+      // documents, but residency ownership remains document-scoped.
+      if (!entry.id.startsWith(document.id + "-slice-") ||
+          keep.has(entry.id) || entry.dirty ||
           entry.state === "virtual") continue;
       await this.call("slice-registry", "demote", { id: entry.id });
     }
     document.full = [...plan.full];
-    document.preloaded = [...preloaded];
+    document.preloaded = [...orderedPreloads];
+    document.requestedPreload = [...plan.preloaded];
+    document.skippedPreload = plan.preloaded.filter(index =>
+      !orderedPreloads.includes(index));
+    document.lastLimitBytes = snapshot.limitBytes;
     return { id: document.id, full: [...document.full],
       preloaded: [...document.preloaded], ...(lines ? { lines } : {}) };
   }

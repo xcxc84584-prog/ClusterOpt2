@@ -8,6 +8,7 @@ export class SliceRegistry {
     this.core = core;
     this.entries = new Map();
     this.visibleIds = new Set();
+    this.viewportOwners = new Map();
     this.generation = 0;
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
@@ -87,17 +88,30 @@ export class SliceRegistry {
       }
       // Explicit close removes both residency and virtual metadata.
       this.visibleIds.delete(entry.id);
+      for (const ids of this.viewportOwners.values()) {
+        ids.delete(entry.id);
+      }
       this.entries.delete(entry.id);
       return true;
     }
     if (action === "setViewport") {
-      if (!Array.isArray(payload.ids) ||
+      const owner = payload.owner ?? "legacy";
+      if (typeof owner !== "string" || !owner || owner.length > 128 ||
+          !Array.isArray(payload.ids) ||
           payload.ids.some(id => !this.entries.has(id))) {
         const error = new TypeError("Invalid viewport slice set");
         error.status = 400;
         throw error;
       }
-      this.visibleIds = new Set(payload.ids);
+      // Each document owns its viewport. Switching one document
+      // must never clear the visible budget guard of another.
+      if (payload.ids.length) {
+        this.viewportOwners.set(owner, new Set(payload.ids));
+      } else {
+        this.viewportOwners.delete(owner);
+      }
+      this.visibleIds = new Set(
+        [...this.viewportOwners.values()].flatMap(ids => [...ids]));
       return true;
     }
     if (action === "setLimit") {
@@ -126,6 +140,12 @@ export class SliceRegistry {
         const error = new Error("Dirty slice requires writeback");
         error.status = 409;
         throw error;
+      }
+      // Speculative prefetch must not replace a fully resident slice.
+      if (entry.state === policy.states.FULL &&
+          payload.mode === "preloaded") {
+        entry.lastUsed = ++this.generation;
+        return this.state(entry);
       }
       const bytes = policy.measure(payload.text);
       const evictions = policy.evictions(

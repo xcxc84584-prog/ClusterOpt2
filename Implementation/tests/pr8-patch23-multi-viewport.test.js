@@ -1,0 +1,88 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { LinkCore } from "../LinkCore/LinkCore.js";
+import { SliceRegistry } from "../object/SliceRegistry.js";
+import { SliceLoader } from "../object/SliceLoader.js";
+import { VirtualLineIndex } from "../object/VirtualLineIndex.js";
+import { ViewportSliceController } from
+  "../object/ViewportSliceController.js";
+
+test("PR8+23 two document viewports do not clear one another", async () => {
+  const core = new LinkCore();
+  new SliceRegistry(core, null);
+  new SliceLoader(core);
+  new VirtualLineIndex(core);
+  new ViewportSliceController(core);
+  core.register({
+    id: "actor", authorization: { default: "Public" },
+    receive: async () => null
+  });
+  const call = (target, action, payload = {}) =>
+    core.request("actor", target, action, payload);
+  for (const id of ["docA", "docB"]) {
+    assert.equal((await call("viewport-slices", "open", {
+      id, blob: new Blob(["a".repeat(8192)]),
+      chunkBytes: 1024
+    })).status, 200);
+    assert.equal((await call("viewport-slices", "navigate", {
+      id, first: 0, last: 0, adjacent: 0
+    })).status, 200);
+  }
+  // Read the public admission contract rather than implementation maps:
+  // both full slices must be protected from eviction at 1 KiB.
+  assert.equal((await call("slice-registry", "setLimit", {
+    bytes: 1024
+  })).status, 413);
+  const state = (await call("slice-registry", "list")).value.entries;
+  for (const id of ["docA", "docB"]) {
+    assert.equal(state.find(entry =>
+      entry.id === id + "-slice-0").state, "full");
+  }
+  const closed = await call("viewport-slices", "close", { id: "docA" });
+  assert.equal(closed.status, 200);
+  assert.equal((await call("slice-registry", "setLimit", {
+    bytes: 1024
+  })).status, 200);
+  const after = (await call("slice-registry", "list")).value.entries;
+  assert.equal(after.find(entry =>
+    entry.id === "docB-slice-0").state, "full");
+  assert.ok(core.getSnapshot().dependencies.some(item =>
+    item.link === "viewport-slices->slice-registry"));
+});
+
+test("PR8+23 repeated identical viewport avoids duplicate Blob reads",
+  async () => {
+    const core = new LinkCore();
+    new SliceRegistry(core, null);
+    new SliceLoader(core);
+    new VirtualLineIndex(core);
+    new ViewportSliceController(core);
+    core.register({
+      id: "actor", authorization: { default: "Public" },
+      receive: async () => null
+    });
+    let reads = 0;
+    class CountingBlob extends Blob {
+      slice(start, end) {
+        reads++;
+        return super.slice(start, end);
+      }
+    }
+    const call = (target, action, payload = {}) =>
+      core.request("actor", target, action, payload);
+    const id = "repeated";
+    assert.equal((await call("viewport-slices", "open", {
+      id, blob: new CountingBlob(["A".repeat(8192)]),
+      chunkBytes: 1024
+    })).status, 200);
+    const parameters = {
+      id, first: 2, last: 2, adjacent: 1
+    };
+    assert.equal((await call("viewport-slices", "navigate",
+      parameters)).status, 200);
+    const before = reads;
+    assert.ok(before > 0);
+    assert.equal((await call("viewport-slices", "navigate",
+      parameters)).status, 200);
+    assert.equal(reads, before);
+  });

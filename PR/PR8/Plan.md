@@ -563,3 +563,35 @@ this limit currently applies only to the independent registry.
 - Record last rendered line height, validate <=512 CSS pixels.
 - On different zoom, preserve visible row by line-height ratio.
 - Wrapped lines and font-width changes still need browser QA.
+
+## Patch(+22): unified slice contract migration boundary
+- Export versioned workspace.sliceManifest across HubUnit and EDPMU.
+- Describe virtual-page and legacy-compatibility transparently.
+- Do not silently drop legacy UX; full-buffer removal is pending.
+- Manifest retrieval via File metadata costs O(1) metadata operations.
+- Security: no untrusted plugin execution or file content exfiltration.
+
+## Patch(+23): viewport owners and repeat-scroll fast path
+- Maintain visible slice budget guards per document, not globally.
+- Reuse exact resident plans on repeated scroll without re-decoding.
+- Bound owner map size by open documents and visible chunk budget.
+- Enforce existing preloaded-first eviction and dirty-protection policy.
+- CPU Worker parallelism and rapid-scroll cancellation remain pending.
+
+## Patch(+24): PR8 acceptance gate and unresolved inventory
+- Test uniform slice contract and cross-document budget protection.
+- Re-run all regression/CI tests and verify previous-main backup.
+- Keep six-stage all-text slicing, 1/5 GiB and Windows file locks OPEN
+  until actual implementation and performance evidence are available.
+
+### Patch(+24-Fix1): bounded parallel preload and source-of-truth cache
+- Add SliceLoader.loadBatch, restricted to 4 unique slices per request.
+- Read Blob chunks concurrently, commit memory through Registry serially.
+- Report only final resident slices; skipped preloads do not claim success.
+- Deduplicate fast wheel requests under stable viewport and failed budget.
+- Protect full resident text from speculative demotion.
+- Tests: parallel reads, 413 pinned-full behavior, 5 GiB sparse byte seek,
+  no repeated unsuccessful preload I/O, EHU/Log relation compliance.
+- CPU Worker offloading remains OPEN; Promise.all overlaps Blob I/O only.
+- This milestone may be BC merged once CI passes, while PR8 overall remains
+  NOT PASS until authoritative all-file slicing and real stress acceptance.

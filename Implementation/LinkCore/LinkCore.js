@@ -13,6 +13,7 @@ import { SliceJournalPolicy } from "../property/SliceJournalPolicy.js";
 import { SliceFileWritePolicy } from "../property/SliceFileWritePolicy.js";
 import { SliceBatchWritePolicy } from "../property/SliceBatchWritePolicy.js";
 import { VirtualDocumentPolicy } from "../property/VirtualDocumentPolicy.js";
+import { DocumentSliceContract } from "../property/DocumentSliceContract.js";
 import { VirtualPageLinePolicy } from "../property/VirtualPageLinePolicy.js";
 import { UTF8SlicePolicy } from "../property/UTF8SlicePolicy.js";
 import { PieceTreePolicy } from "../property/PieceTreePolicy.js";
@@ -36,7 +37,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.8-pr8.patch21";
+    this.version = "0.0.8-pr8.patch24.fix1";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -64,6 +65,8 @@ export class LinkCore {
       VirtualPageLinePolicy, {
         owners: ["LinkCore"], visibility: "Public"
       });
+    this.hub.registerProperty("DocumentSliceContract",
+      DocumentSliceContract, { owners: ["LinkCore"], visibility: "Public" });
     this.hub.registerProperty("VirtualDocumentPolicy",
       VirtualDocumentPolicy, {
         owners: ["LinkCore"], visibility: "Public"
