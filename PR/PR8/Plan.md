@@ -519,3 +519,26 @@ this limit currently applies only to the independent registry.
 - Hidden recovered pages are hydrated from IndexedDB and source
   page ranges automatically on Save, under the same Hub MVCC and
   SHA-256 verification, instead of requiring manual page visits.
+
+## Patch(+19-Fix5): repeated virtual page EHU409
+- User's console reported repeated `document-1 Response.page 409`,
+  `External virtual file changed`, mirrored by Workspace.
+- Source analysis: VirtualFileDocument.loadPage rejected every changed
+  file lastModified/size fingerprint, even if no dirty page remained.
+  Own successful save, external benign replacement, or another
+  authorized writer can create a new clean file generation.
+- Rebase clean virtual pages on a changed generation by invalidating
+  stale line checkpoints and loading the requested page from the
+  current Blob. Never do so when dirty journal or recovery entries
+  exist, or saveActive indicates a live write.
+- Preserve 409 and every source edit when a dirty page sees changed
+  disk revision. Explicit keyboard navigation remains retryable.
+- UI wheel auto-retry is latched after 409 until an explicit page
+  navigation succeeds or another edit occurs. Prevent tens of
+  duplicate EHU pairs on one continuous scroll gesture.
+- Test clean rebase, changed source bytes/line counts, dirty 409
+  without journal loss and no false 409 on next clean page.
+- Still open: origin of this user's particular file generation
+  change cannot be proven from collapsed log entries alone.
+  Must keep source checksum and disk revision observations for
+  any future conflict analysis.

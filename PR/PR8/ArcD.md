@@ -454,3 +454,19 @@ EHU: 400 invalid/overlapping segments, 409 stale revision/source,
 499 cancelled writer, 503 disk/crypto/quota. Relation codes:
 request 10, response 01; same-object FIFO, independent objects
 may dispatch concurrently via HubUnit.
+
+## Patch(+19-Fix5): File generation rebase and EHU
+- UI wheel / keyboard -> HubUnit Request.page ->
+  FileWorkspace.page -> HubUnit VirtualFileDocument.page ->
+  FileSystemFileHandle.getFile -> compare fingerprint.
+- If clean, no active Save, generation changed:
+  invalidate VirtualPageLinePolicy checkpoints, re-read from new
+  Blob, reconstruct page PieceTree/B+ and retain global line
+  addressing -> Response.page 200 (no false EHU).
+- If dirty, recovery pending, or Save active and generation changed:
+  EHU409 -> Workspace propagates EHU409 -> UI displays error.
+  Original MVCC Journal stays intact; no automatic destructive
+  overwrite or discard. Wheel repeated attempts are suppressed
+  until explicit navigation succeeds or user edits.
+- Relation remains Hub-mediated 10 Request / 01 Response.
+- No new shared Property/Object, no visual UI redesign.
