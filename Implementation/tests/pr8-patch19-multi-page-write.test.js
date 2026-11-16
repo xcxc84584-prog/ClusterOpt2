@@ -170,3 +170,43 @@ test("Patch19 Fix4: cancelled multi-page write keeps original bytes",
     assert.equal(store.entries.size, 2);
     assert.equal(await (await handle.getFile()).text(), source);
   });
+
+test("Patch19 Fix4: reloaded hidden dirty page is restored on Save",
+  async () => {
+    const handle = makeHandle(source);
+    const store = memoryStore();
+    const first = setup(source, store, handle);
+    await first.doc.core.request("workspace", first.doc.id, "load");
+    await first.request("edit", {
+      text: "Z" + first.doc.text.slice(1)
+    });
+    await first.request("page", { index: 1 });
+    await first.request("edit", {
+      text: "Q" + first.doc.text.slice(1)
+    });
+    const checkpoints = [...first.doc.dirtyPages.values()].map(
+      entry => ({
+        id: entry.id, revision: entry.revision,
+        fingerprint: first.doc.fileFingerprint,
+        sourceHash: entry.sourceHash,
+        index: entry.index, start: entry.start, end: entry.end,
+        baselineLineBreaks: entry.baselineLineBreaks,
+        editedLineBreaks: entry.editedLineBreaks
+      })
+    );
+    const reopened = setup(source, store, handle);
+    for (const record of checkpoints) {
+      reopened.doc.pendingRecoveries.set(record.index, record);
+    }
+    const loaded = await reopened.doc.core.request("workspace",
+      reopened.doc.id, "load", { index: 1 });
+    assert.equal(loaded.ok, true, loaded.error);
+    assert.equal(reopened.doc.dirtyPages.size, 1);
+    assert.equal(reopened.doc.pendingRecoveries.size, 1);
+    const saved = await reopened.request("save");
+    assert.equal(saved.ok, true, saved.error);
+    assert.equal(store.entries.size, 0);
+    assert.equal(reopened.doc.dirtyPages.size, 0);
+    assert.equal(await (await handle.getFile()).text(),
+      "Z" + source.slice(1, 65536) + "Q\nTAIL");
+  });
