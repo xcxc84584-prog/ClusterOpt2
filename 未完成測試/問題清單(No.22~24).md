@@ -19,3 +19,6 @@
 | 24.6 | P0 | Full six-stage EventChain acceptance | OPEN |
 
 PR8 remains NOT PASS.
+
+Latest test extension: synthetic 1/5GiB Blob metadata test added.
+Real disk benchmarks, Worker parallelism and full slice editor OPEN.
