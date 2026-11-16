@@ -1,3 +1,5 @@
+import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
+
 /**
  * Bounded asynchronous scheduler.
  *
@@ -6,7 +8,8 @@
  * This is asynchronous concurrency, not CPU-level worker parallelism.
  */
 export class ExecutionScheduler {
-  constructor({ maxConcurrency = 4, maxQueue = 1024 } = {}) {
+  constructor({ maxConcurrency = ParallelExecutionPolicy.maxConcurrency,
+    maxQueue = ParallelExecutionPolicy.maxQueue } = {}) {
     if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 1 ||
         !Number.isSafeInteger(maxQueue) || maxQueue < 1) {
       throw new RangeError("Invalid scheduler limits");
@@ -62,8 +65,8 @@ export class ExecutionScheduler {
     while (this.running < this.maxConcurrency) {
       // Preserve FIFO per key: only the oldest queued task for a key
       // can start while that resource is unlocked.
-      const index = this.pending.findIndex(task =>
-        !this.activeKeys.has(task.key));
+      const index = ParallelExecutionPolicy.selectRunnableIndex(
+        this.pending, this.activeKeys);
       if (index < 0) break;
       const [task] = this.pending.splice(index, 1);
       if (task.abortHandler) {
