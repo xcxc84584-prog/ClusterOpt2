@@ -12,7 +12,7 @@ export class SliceRecoveryJournal {
     this.store = store;
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["persist", "restore", "discard"];
+    const actions = ["persist", "restore", "retire", "discard"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions,
       UserAPI: ["restore"], AgentAPI: [],
@@ -56,6 +56,18 @@ export class SliceRecoveryJournal {
         throw error;
       }
       return policy.verify(entry);
+    }
+    if (action === "retire") {
+      policy.validate(payload.id, payload.revision, "");
+      if (typeof payload.checksum !== "string" ||
+          !/^[0-9a-f]{64}$/.test(payload.checksum)) {
+        const error = new TypeError("Invalid journal retirement");
+        error.status = 400;
+        throw error;
+      }
+      await this.store.deleteIfMatch(
+        payload.id, payload.revision, payload.checksum);
+      return true;
     }
     if (action === "discard") {
       policy.validate(payload.id, 0, "");

@@ -264,3 +264,42 @@ this limit currently applies only to the independent registry.
   disk-like quota failure rollback, checksum tampering, 403/404/409,
   EHU and Relation/Dependency, plus real Playwright IndexedDB reload
   and same-origin two-tab CAS regression.
+
+## Patch(+17): slice-level streaming file writeback (sandbox)
+- New Object SliceWritebackUnit accepts only internal HubUnit Request
+  commit and reads an existing verified SHA-256 journal checkpoint.
+- New shared Property SliceFileWritePolicy handles bounded byte-range
+  replacement of authorized FileSystemFileHandle content. It checks
+  initial file size/mtime and SHA-256 hash of the original range.
+- Copy untouched prefix/suffix through 64-KiB Blob chunks around the
+  changed slice, write replacement UTF-8 bytes, then close the writer.
+- Request exclusive stream and keepExistingData=false to avoid hidden
+  full-file copying before streamed assembly. File API behavior still
+  depends on browser/OS: no universal atomic file-replace guarantee.
+- After close, re-open and byte-compare changed range and all untouched
+  portions using source chunk SHA-256 collected before stream close;
+  verify file length. This detects unexpected writeback
+  content, but cannot prevent external writes outside browser locks.
+- SliceEditTransaction.commitWriteback verifies matching dirty durable
+  revision before routing to SliceWritebackUnit via Hub; marks clean
+  only when write/readback and journal retirement have succeeded.
+- SliceRecoveryJournal.retire uses IndexedDBSliceJournalStore
+  deleteIfMatch, comparing revision and checksum atomically.
+  Failed commit/verification/retirement keeps checkpoint recoverable.
+- Limits: <=4 MiB source and replacement slice bytes; 64 KiB read
+  chunks for untouched regions, O(full file bytes) read/write/
+  readback time, O(slice bytes + chunk bytes) client memory.
+- Source files may be large, but overall writeback is not incremental
+  in I/O cost; this is a safe foundation rather than optimized
+  large-file performance. No external plugin execution or new UI.
+- FileDocument remains production save authority; the new writeback
+  sandbox is registered but not connected to live document editing.
+- Risk: OS-external concurrent updates, quota, permission revocation,
+  abrupt browser termination and post-commit crash all need fault
+  injection and manual review. Writeback may be ambiguous after close
+  even if post-write verification fails; retain journal for recovery.
+- Tests: successful size-changing byte splice, original byte
+  preservation, dirty close, stale fingerprint, write abort,
+  corrupted readback, journal CAS and EHU/Dependency relation.
+- Chromium OPFS E2E verifies actual authorized file-handle writing,
+  Unicode byte-range replacement, checkpoint cleanup and readback.

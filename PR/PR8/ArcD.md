@@ -254,3 +254,30 @@ Highlighter entry disabled until plugin processor Object is installed.
   Future end-to-end file writeback still needs crash/recovery tests.
 - Slice journal and actual FileSystemHandle are separate; Patch17
   must coordinate atomic writeback before any checkpoint discard.
+
+## Patch(+17): slice writeback EventChain / EHU / Object graph
+- New Object SliceWritebackUnit, OCDA UserAPI=[], AgentAPI=[].
+  New shared EDPMU Property SliceFileWritePolicy.
+- UI/VTE -> HubUnit -> SliceEditTransaction.commitWriteback
+  -> verify dirty+durable+revision -> HubUnit ->
+  SliceWritebackUnit.commit -> HubUnit ->
+  SliceRecoveryJournal.restore -> SliceJournalPolicy.verify SHA-256
+  -> SliceFileWritePolicy.commit -> authorized FileSystemFileHandle.
+- Write flow: verify file fingerprint and old byte-range checksum ->
+  exclusive createWritable -> copy prefix (64 KiB slices) ->
+  replacement text UTF-8 -> copy suffix -> close ->
+  reopen and verify changed bytes plus pre-close source-chunk hashes
+  (without relying on old Blob snapshot) -> HubUnit ->
+  SliceRecoveryJournal.retire -> IndexedDBSliceJournalStore
+  deleteIfMatch (revision+checksum same transaction) ->
+  SliceEditTransaction.clean -> OMU Log/Dependency.
+- EHU 400 invalid range/handle, 403 direct User/Agent invocation,
+  404 checkpoint missing, 409 revision or source conflict,
+  413 too-large edited byte range, 422 readback/corrupt bytes,
+  503 storage/write failures. Failures must leave dirty edit
+  and recovery journal, unless revision has already advanced
+  elsewhere (in which case the latest journal is retained).
+- Relation: nested Requests 10 / Responses 01 via HubUnit.
+  One shared writeback Object serializes same-origin operations;
+  cross-origin OS writes cannot be made atomic by this API.
+- No changes to FileDocument.save, root UI or existing Plugin menu.

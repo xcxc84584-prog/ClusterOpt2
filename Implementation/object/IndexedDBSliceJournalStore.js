@@ -87,6 +87,42 @@ export class IndexedDBSliceJournalStore {
     }
   }
 
+  /**
+   * Atomic checkpoint retirement; refuse to erase a newer revision.
+   * A failed compare does not delete any data.
+   */
+  async deleteIfMatch(id, revision, checksum) {
+    const db = await this.openDatabase();
+    try {
+      return await new Promise((resolve, reject) => {
+        let failure = null;
+        const tx = db.transaction("entries", "readwrite");
+        const store = tx.objectStore("entries");
+        const read = store.get(id);
+        read.onsuccess = () => {
+          const current = read.result;
+          if (!current || current.revision !== revision ||
+              current.checksum !== checksum) {
+            failure = new Error("Journal checkpoint changed");
+            failure.status = 409;
+            tx.abort();
+            return;
+          }
+          store.delete(id);
+        };
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => { failure ??= tx.error; };
+        tx.onabort = () => {
+          const error = failure ?? new Error("Journal retirement failed");
+          if (!Number.isInteger(error.status)) error.status = 503;
+          reject(error);
+        };
+      });
+    } finally {
+      db.close();
+    }
+  }
+
   delete(id) {
     return this.withStore("readwrite", store => store.delete(id));
   }
