@@ -74,3 +74,17 @@ npm run test:e2e
   next page reflects LF count; dirty page cannot navigate; small
   OPFS virtual document actually commits and retires checkpoint.
 - Full 1GiB/5GiB and real selected-file permission tests pending.
+
+## CI / merge record (2026-11-17)
+- PR #21 merged after final head
+  `2afa8c42d562fad1f305f1be307f95c7121fe942` passed both
+  GitHub Actions workflows: PR1 OCDA Verification and OCDA CI.
+- Verified merge SHA:
+  `caee3c656534eb336a696f602af5dee163daac5b`.
+- Backup `backup/pre-pr8-patch19-main-20261117`
+  verified identical to previous main
+  `99387f8da7f40b8f38d05a0a9b5442a7e1e0fa87`.
+- Patch19 adds checksum-bound recovery and preserves pending metadata
+  during asynchronous reopen; browser and Node regression tests PASS.
+- PR8 remains NOT PASS. Manual 1/5-GiB performance, cross-page edits,
+  continuous multi-gigabyte scrolling and crash injection are pending.
