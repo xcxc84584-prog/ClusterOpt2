@@ -47,3 +47,18 @@ pretend all 409 errors are false.
   journal rather than marking source clean; recovery/reconciliation
   still requires further PR8 work.
 - Preserve exact previous main rollback before merge.
+
+## CI and merge evidence (2026-11-17)
+- Final tested PR #26 HEAD:
+  `5a4d864860db10837c423ffaa6b4638f2f39ec6b`.
+- Both `OCDA CI` and `PR1 OCDA Verification` passed
+  Node/unit, verify and Chromium Playwright browser jobs.
+- Changed-generation browser OPFS regression uses a size
+  change to avoid coarse lastModified timestamp collisions.
+  Clean file rebases, dirty source still EHU409.
+- Merge SHA: `8bd90bcd277c0683982463f946f77d9e5fdea97a`.
+- Rollback `backup/pre-pr8-patch19-fix5-main-20261117`
+  verified identical to previous main
+  `8acf91c210e7ddbdc9469f106ba2daa552595cf4`.
+- PR8 still NOT PASS. Exact cause of user's source generation
+  change is not proven by abbreviated logs alone.
