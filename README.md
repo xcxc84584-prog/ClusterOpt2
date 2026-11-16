@@ -72,3 +72,17 @@ Switch language with File > Tool > Language (繁體中文 / English).
 The chosen locale is shared via LinkCore Language and restored across
 reloads when local browser storage is available. PR3 documentation and
 versioned handoff are in `PR/PR3/`.
+
+## PR4 implementation under review
+User-accepted PR1–PR3 remain the baseline. PR4 is not yet PASS.
+`File > Tool > Close All` closes all tabs after one unsaved-data confirmation.
+Tabs support native drag/drop ordering. Tool also exposes shared
+`External First` / `Internal First` storage priority.
+StoragePriority uses periodic and focus-triggered file metadata checks
+(size + lastModified) and pre-save reconciliation.
+Known limitation: identical size/mtime external edits are not detected.
+PR4 work is reviewed in PR #5; the recovery branch is
+`backup/pre-pr4-20261116`. Browser and CI validation remain pending.
+
+Roadmap: PR5 edit-feel optimizations, PR6 Explorer, PR7 Explorer refinement,
+PR8 sliced loading, PR9 go-to-line, PR10 PowerShell.
