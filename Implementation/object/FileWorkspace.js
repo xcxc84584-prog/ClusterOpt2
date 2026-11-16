@@ -426,7 +426,8 @@ export class FileWorkspace {
       if (clamped === visiblePercent) return;
       visiblePercent = clamped;
       doc.saveProgress = clamped;
-      this.onChange();
+      // Progress paint must not rebuild tabs, Explorer or the editor.
+      this.onSaveProgress?.(doc);
     };
     try {
       const response = await this.core.request(this.id, doc.id,
