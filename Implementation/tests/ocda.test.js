@@ -34,3 +34,38 @@ test("VTE is isolated from production registry", async () => {
   assert.equal(production.getSnapshot().objects.length, 0);
   assert.equal(sandbox.delete("B").status, 200);
 });
+
+test("Strict object contract rejects missing OCDA components", () => {
+  const core = new LinkCore();
+  const registered = core.register({
+    id: "broken", strictOCDA: true,
+    receive: async () => null
+  });
+  assert.equal(registered, false);
+  assert.ok(core.getSnapshot().logs.some(log =>
+    log.kind === "EHU" && log.status === 400));
+});
+
+test("Registered SubObject inherits parent Property definitions", () => {
+  const core = new LinkCore();
+  const desc = Object.freeze({
+    Request: [], Response: [], UserAPI: [], AgentAPI: [],
+    Property: [], Program: "Test", EHU: "LinkCore.OMU",
+    Log: "LinkCore.OMU"
+  });
+  assert.equal(core.register({
+    id: "Parent", strictOCDA: true, ocda: desc,
+    receive: async () => null
+  }), true);
+  assert.equal(core.register({
+    id: "Parent.Child", parentPath: "Parent",
+    strictOCDA: true, ocda: desc,
+    receive: async () => null
+  }), true);
+  core.hub.registerProperty("CommonMethod", () => 123, {
+    owners: ["Parent"], visibility: "Protected"
+  });
+  assert.deepEqual(core.subobjects("Parent"), ["Parent.Child"]);
+  assert.ok(core.inheritedProperties("Parent.Child").includes("CommonMethod"));
+  assert.equal(core.readProperty("Parent.Child", "CommonMethod").status, 200);
+});
