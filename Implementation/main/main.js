@@ -711,13 +711,34 @@ function renderBlockedTypes() {
     remove.addEventListener("click", () => {
       void changeBlockedTypes("remove", extension);
     });
-    row.append(name, remove);
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.textContent = localized("blockedTypesEdit");
+    edit.addEventListener("click", () => {
+      const input = document.createElement("input");
+      input.value = extension;
+      input.maxLength = 21;
+      input.setAttribute("aria-label", localized("blockedTypesEdit"));
+      const save = document.createElement("button");
+      save.type = "button";
+      save.textContent = localized("blockedTypesSave");
+      save.addEventListener("click", () => {
+        void changeBlockedTypes("replace", extension, input.value);
+      });
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = localized("blockedTypesCancel");
+      cancel.addEventListener("click", renderBlockedTypes);
+      row.replaceChildren(input, save, cancel);
+      input.focus();
+    });
+    row.append(name, edit, remove);
     container.append(row);
   }
 }
-async function changeBlockedTypes(action, extension = "") {
+async function changeBlockedTypes(action, extension = "", replacement = "") {
   const result = await linkCore.request("ui", "file-types",
-    action, { extension }, { origin: "user" });
+    action, { extension, replacement }, { origin: "user" });
   document.getElementById("blockedTypesError").textContent =
     result.ok ? "" : result.error;
   if (result.ok) {
