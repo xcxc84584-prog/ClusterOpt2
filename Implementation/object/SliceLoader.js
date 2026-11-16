@@ -10,7 +10,7 @@ export class SliceLoader {
     this.documents = new Map();
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["open", "load", "close", "describe"];
+    const actions = ["open", "load", "loadBatch", "close", "describe"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions,
       UserAPI: actions.filter(name => name !== "close"),
@@ -56,7 +56,87 @@ export class SliceLoader {
     }
   }
 
+
+  async commitRead(document, index, mode, read) {
+    const { start, end, text } = read;
+    if (start >= end) {
+      const error = new TypeError("Empty UTF-8 slice");
+      error.status = 422;
+      throw error;
+    }
+    const sliceId = document.id + "-slice-" + index;
+    if (!document.registered.has(index)) {
+      const registration = await this.core.request(this.id,
+        "slice-registry", "registerVirtual", {
+          id: sliceId, start, end
+        });
+      if (!registration.ok) {
+        const error = new Error(registration.error);
+        error.status = registration.status;
+        throw error;
+      }
+      document.registered.add(index);
+    }
+    const loaded = await this.core.request(this.id,
+      "slice-registry", "load", { id: sliceId, mode, text });
+    if (!loaded.ok) {
+      const error = new Error(loaded.error);
+      error.status = loaded.status;
+      throw error;
+    }
+    return { ...loaded.value, byteStart: start, byteEnd: end };
+  }
+
+  /**
+   * Read at most four independent Blob chunks concurrently. Commit
+   * in input order so the registry's memory budget stays authoritative.
+   * Only speculative preload budget refusals are nonfatal.
+   */
+  async loadBatch(payload) {
+    const document = this.document(payload.id);
+    const indices = payload.indices;
+    const mode = payload.mode;
+    if (!Array.isArray(indices) || indices.length < 1 ||
+        indices.length > 4 || new Set(indices).size !== indices.length ||
+        !["full", "preloaded"].includes(mode)) {
+      const error = new RangeError("Invalid bounded slice batch");
+      error.status = 400;
+      throw error;
+    }
+    for (const index of indices) {
+      this.validate(() => this.policy().range(
+        document.blob.size, index, document.chunkBytes));
+    }
+    if (payload.signal?.aborted) {
+      const error = new Error("Slice batch aborted");
+      error.name = "AbortError";
+      error.status = 409;
+      throw error;
+    }
+    const decoded = await Promise.all(indices.map(index =>
+      this.policy().read(document.blob, index, document.chunkBytes)));
+    const loaded = [];
+    const skipped = [];
+    for (let i = 0; i < indices.length; i++) {
+      if (payload.signal?.aborted) {
+        const error = new Error("Slice batch aborted");
+        error.name = "AbortError";
+        error.status = 409;
+        throw error;
+      }
+      try {
+        await this.commitRead(document, indices[i], mode, decoded[i]);
+        loaded.push(indices[i]);
+      } catch (error) {
+        if (mode !== "preloaded" || error.status !== 413) throw error;
+        skipped.push(indices[i]);
+      }
+    }
+    return { id: document.id, loaded, skipped };
+  }
+
   async receive(action, payload = {}) {
+    if (action === "loadBatch") return this.loadBatch(payload);
     if (action === "open") {
       const { id, blob } = payload;
       if (typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(id) ||
@@ -114,42 +194,16 @@ export class SliceLoader {
     if (action === "load") {
       const document = this.document(payload.id);
       const { index, mode } = payload;
-      if (mode !== "full" && mode !== "preloaded") {
+      if (!["full", "preloaded"].includes(mode)) {
         const error = new TypeError("Invalid loading mode");
         error.status = 400;
         throw error;
       }
-      const range = this.validate(() => this.policy().range(
+      this.validate(() => this.policy().range(
         document.blob.size, index, document.chunkBytes));
-      const sliceId = document.id + "-slice-" + index;
-      const { start, end, text } = await this.policy().read(
+      const decoded = await this.policy().read(
         document.blob, index, document.chunkBytes);
-      // A binary-invalid or zero-length decoded range is not resident.
-      if (start >= end) {
-        const error = new TypeError("Empty UTF-8 slice");
-        error.status = 422;
-        throw error;
-      }
-      if (!document.registered.has(index)) {
-        const registration = await this.core.request(this.id,
-          "slice-registry", "registerVirtual", {
-            id: sliceId, start: range.start, end: range.end
-          });
-        if (!registration.ok) {
-          const error = new Error(registration.error);
-          error.status = registration.status;
-          throw error;
-        }
-        document.registered.add(index);
-      }
-      const loaded = await this.core.request(this.id,
-        "slice-registry", "load", { id: sliceId, mode, text });
-      if (!loaded.ok) {
-        const error = new Error(loaded.error);
-        error.status = loaded.status;
-        throw error;
-      }
-      return { ...loaded.value, byteStart: start, byteEnd: end };
+      return this.commitRead(document, index, mode, decoded);
     }
     const error = new TypeError("Unknown loader operation");
     error.status = 400;
