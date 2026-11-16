@@ -281,3 +281,36 @@ Highlighter entry disabled until plugin processor Object is installed.
   One shared writeback Object serializes same-origin operations;
   cross-origin OS writes cannot be made atomic by this API.
 - No changes to FileDocument.save, root UI or existing Plugin menu.
+
+## Patch(+18): VirtualFileDocument / Property / EventChains / EHU
+- New OCDA Object: VirtualFileDocument (subclass of FileDocument;
+  separate source and published program contract). No new UI.
+- New shared Property: VirtualDocumentPolicy, registered once by
+  LinkCore EDPMU. Reuses existing UTF8SlicePolicy,
+  PieceTreePolicy, BPlusSliceIndex and DocumentStatus.
+- UI -> HubUnit -> FileWorkspace.open -> handle.getFile metadata
+  -> VirtualDocumentPolicy.isVirtual -> new VirtualFileDocument
+  -> URU register -> HubUnit -> VirtualFileDocument.load
+  -> UTF8SlicePolicy.read(byte-slice) -> PieceTreePolicy root
+  -> BPlusSliceIndex.build -> bounded text to existing textarea
+  -> OMU Log / Response / Dependency.
+- UI editor wheel/Alt+PageDown -> HubUnit -> FileWorkspace.page
+  -> HubUnit -> VirtualFileDocument.page
+  -> fresh Blob slice -> immutable tree + B+ swap ->
+  UI render existing textarea + page local lines.
+- User edit/save -> HubUnit -> VirtualFileDocument rejects EHU 409;
+  FileWorkspace.save and FileDocument.save also forbid accidental
+  full-file overwrite of virtual/large source.
+- Reload -> SessionRecovery.restore -> FileWorkspace.restore ->
+  VirtualFileDocument -> HubUnit.load(index) from retained
+  authorized handle. Recovery snapshot never stores preview as
+  a complete document; missing handle skips virtual tab.
+- 200 page read; 400 invalid page; 409 source fingerprint conflict,
+  partial editing or save; 422 invalid UTF-8; 503 stale/missing
+  handle. All failures logged by HubUnit EHU.
+- Relation: workspace -> virtual document Request 10, inverse
+  Response 01; independent open may parallelize, same doc pages
+  serialized. Property lookup always HubUnit/EDPMU.
+- Deferred Patch19: global line-position map, true virtual
+  text render, editable Piece Tree, MVCC journal/writeback
+  binding with UTF-16/UTF-8 offset synchronization.
