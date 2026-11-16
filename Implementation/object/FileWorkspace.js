@@ -25,7 +25,8 @@ export class FileWorkspace {
       UserAPI: ["new", "open", "page", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       AgentAPI: [],
-      Property: ["DocumentStatus", "StoragePriority", "FileManagement"],
+      Property: ["DocumentStatus", "StoragePriority", "FileManagement",
+        "VirtualDocumentPolicy"],
       Program: "FileWorkspace",
       EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
@@ -38,7 +39,8 @@ export class FileWorkspace {
     return {
       activeId: this.activeId,
       documents: this.documents.map(doc => ({
-        id: doc.id, name: doc.name, text: doc.text,
+        id: doc.id, name: doc.name,
+        text: doc.virtualReadOnly ? "" : doc.text,
         handle: doc.handle, status: doc.status,
         cursor: doc.cursor, scrollTop: doc.scrollTop,
         revision: doc.revision, diskRevision: doc.diskRevision,
@@ -162,7 +164,8 @@ export class FileWorkspace {
       const file = await handle.getFile();
       // FileDocument still uses its bounded legacy path for small files.
       // Large files are opened as read-only, page-backed documents.
-      const large = file.size > 64 * 1024 * 1024;
+      const large = this.core.readProperty(this.id,
+        "VirtualDocumentPolicy").value.isVirtual(file.size);
       const doc = large ?
         new VirtualFileDocument(handle.name, handle, this.core) :
         new FileDocument(handle.name, handle);
