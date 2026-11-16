@@ -1,3 +1,4 @@
+import { Language } from "../property/Language.js";
 import { InterfacePalette } from "../object/InterfacePalette.js";
 import { UI_COLOR } from "../property/UI_COLOR.js";
 
@@ -29,7 +30,10 @@ export function mountPaletteUI(core, doc = document, storage = null) {
 			action, payload, { origin: "user" });
 		if (result.ok) render(result.value);
 		else {
-			const message = "介面調色盤：" + (result.error ?? "請求失敗");
+			const locale = core.readProperty("ui", "Language").value;
+			const message = Language.translate(locale, "paletteError", {
+				message: result.error ?? "Request failed"
+			});
 			byId("paletteHint").textContent = message;
 			// Keep controls consistent with the last accepted global Property.
 			const previous = await core.request("ui", "InterfacePalette",
