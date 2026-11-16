@@ -19,6 +19,7 @@ export class FileDocument {
     this.cursor = 0;
     this.scrollTop = 0;
     this.revision = 0;
+    this.strictOCDA = true;
     this.ocda = Object.freeze({
       Request: ["edit", "load", "save"],
       Response: ["edit", "load", "save"],
