@@ -512,3 +512,6 @@ may dispatch concurrently via HubUnit.
 - Documents -> HubUnit -> SliceLoader/Registry -> editor ->
   MVCC Journal -> batch writeback -> SessionRecovery / OMU.
 - Full graph remains pending and must not be declared PASS.
+
+- Patch23 fix: cross-document demotion guard filters target Object's
+  slice IDs before invoking SliceRegistry.demote through HubUnit.
