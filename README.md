@@ -86,3 +86,12 @@ PR4 work is reviewed in PR #5; the recovery branch is
 
 Roadmap: PR5 edit-feel optimizations, PR6 Explorer, PR7 Explorer refinement,
 PR8 sliced loading, PR9 go-to-line, PR10 PowerShell.
+
+## PR5 editing feel (under review)
+PR1–PR4 are user-accepted. PR5 introduces an immutable global
+EditorInteractionPolicy shared through LinkCore. The original editor
+adds bracket/quote pairing, selected-text wrapping, paired deletion,
+Tab/space-group removal, Enter autoindent and viewport tab guides.
+The duplicate File > Tool > Close All was removed; File > Close All
+remains. CI/Chrome/Edge, IME, undo/redo and long-text performance
+acceptance are still pending. Recovery: backup/pre-pr5-20261116.
