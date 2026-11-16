@@ -350,3 +350,46 @@ this limit currently applies only to the independent registry.
 - Limitations: this begins large-file opening and read-only page
   traversal, NOT a full slice-editable editor, not 1/5-GiB
   validated performance, and not PR8 PASS.
+
+## Patch(+19): editable bounded virtual text and continuous global lines
+- Reuses Patch18 VirtualFileDocument and unchanged ClusterOpt textarea UI.
+- Edits apply a minimal UTF-16 replace delta to immutable PieceTreePolicy.
+  Before publishing a candidate tree, call SliceEditTransaction's
+  transactDurable via HubUnit; persist its versioned SHA-256 checkpoint
+  through SliceRecoveryJournal. On failure retain the old page.
+- A verified Save routes through the existing SliceWritebackUnit by
+  SliceEditTransaction.commitWriteback: use original file byte
+  [pageStart,pageEnd) and SHA-256 original segment, check file
+  fingerprint, stream replacement, verify disk readback, retire
+  checkpoint by revision/checksum, then reload the saved page.
+- Dirty virtual pages block navigation and closing; Save As remains
+  blocked to prevent accidental full-file truncation.
+- New shared VirtualPageLinePolicy scans bounded 64-KiB Blob ranges
+  to count LF before the page's aligned byte start. The gutter
+  displays pageFirstLine + local line offset; the current-position
+  indicator uses the same global index.
+- Cache completed byte-prefix checkpoints for sequential pages;
+  invalidate them after writeback or external file change.
+  No full-file text buffers or whole-file DOM line-number lists.
+- Recovery snapshots hold only edit checkpoint identifier,
+  original file fingerprint, page index and byte range, never the
+  whole page as an unverified complete document. On reload,
+  restoreDurable validates file identity before publishing text.
+- Existing FileWorkspace and LinkCore remain the event authorities;
+  OCDA relations and failures are logged through HubUnit/OMU.
+- IO complexity: page read O(page bytes), each indexed jump O(bytes
+  scanned since nearest checkpoint), each Save O(whole file bytes)
+  because Patch17 reconstructs/validates the complete file in bounded
+  chunks. Page edit O(page code units), bounded by SlicePolicy 1Mi.
+- Parallelism: separate document operations may execute concurrently;
+  same document HubUnit queue serializes edit/save/page. Journal
+  revision CAS prevents stale edits. Global line prefix scans may be
+  time-consuming for a cold jump near file end; Patch20 targets
+  background indexing and cancelable quick navigation.
+- P0 remaining: no full smooth scroll virtualization, no arbitrary
+  global line seek, no cross-slice edit spanning multiple pages,
+  full OS crash/power-loss recovery not certified, and no 1/5-GiB
+  performance acceptance. PR8 remains NOT PASS.
+- Tests include UTF-16 emoji+Chinese splice, persistent checkpoint,
+  conflict/error 409/503, browser large-file editing and continuous
+  gutter, verified Save and checkpoint retirement.
