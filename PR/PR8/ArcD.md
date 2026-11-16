@@ -515,3 +515,15 @@ may dispatch concurrently via HubUnit.
 
 - Patch23 fix: cross-document demotion guard filters target Object's
   slice IDs before invoking SliceRegistry.demote through HubUnit.
+
+### Patch(+24-Fix1) bounded prefetch Event Chain
+UI/Observer -> HubUnit -> viewport-slices.navigate -> HubUnit ->
+SliceLoader.Request.loadBatch(indices<=4) -> UTF8SlicePolicy.read concurrently
+-> HubUnit -> SliceRegistry.Request.registerVirtual/load/list sequentially
+-> SliceLoader.Response.loadBatch(final-resident IDs only) -> OMU.
+
+- Owner-scoped visibility remains authoritative across documents.
+- EHU 400 invalid batch; 413 pinned full budget; 422 invalid UTF8.
+- Optional preload budget miss is returned in skipped list, never
+  silently represented as resident. A changed limit triggers retry.
+- No Worker CPU execution yet; batched concurrency is asynchronous I/O.
