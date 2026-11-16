@@ -1,3 +1,5 @@
+import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
+import { AccessPolicy } from "../property/AccessPolicy.js";
 import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
 import { ObjectManagementUnit } from "./ObjectManagementUnit.js";
 import { EntireDomainPropertyManagementUnit } from "./EntireDomainPropertyManagementUnit.js";
@@ -10,8 +12,10 @@ export class LinkCore {
     this.omu = new ObjectManagementUnit();
     this.edpmu = new EntireDomainPropertyManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.1-pr1.patch2";
+    this.version = "0.0.1-pr1.patch4";
     this.edpmu.register("SystemVersion", this.version);
+    this.edpmu.register("ParallelExecutionPolicy", ParallelExecutionPolicy);
+    this.edpmu.register("AccessPolicy", AccessPolicy);
     this.edpmu.register("DocumentStatus", Object.freeze({
       SYNCED: "green", DIRTY: "yellow",
       ERROR: "red", LOADING: "blue"
