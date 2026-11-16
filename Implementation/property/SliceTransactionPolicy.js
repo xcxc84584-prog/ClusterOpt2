@@ -4,6 +4,7 @@
  */
 export const SliceTransactionPolicy = Object.freeze({
   maxSliceUnits: 1024 * 1024,
+  maxOpenSlices: 64,
   maxOperations: 128,
 
   checkText(text) {
