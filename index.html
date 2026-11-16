@@ -50,7 +50,7 @@
               </button>
             </div>
             <button id="pluginBtn" type="button"
-              aria-haspopup="dialog" aria-controls="pluginDialog">
+              aria-controls="pluginWindow">
               ◇ 插件
             </button>
             <button id="paletteBtn" type="button"
@@ -102,34 +102,15 @@
             <textarea id="editor" spellcheck="false"
               aria-label="文字編輯器" wrap="off"></textarea>
           </div>
-        </main>
-      </div>
-    </div>
-    <footer class="statusbar">
-      <div class="meter progress-track" aria-hidden="true">
-        <div id="meterFill" class="progress-fill"></div>
-      </div>
-      <span id="meterPercent"></span>
-      <span id="statusLamp" class="lamp green"></span>
-      <span id="status" aria-live="polite">就緒</span>
-      <span class="grow"></span>
-      <span id="position">Ln 1, Col 1</span>
-      <span>UTF-8</span>
-      <span id="fileType">純文字</span>
-    </footer>
-  </div>
-    <dialog id="pluginDialog" class="file-tool-dialog plugin-dialog"
-      aria-labelledby="pluginDialogTitle">
-      <div class="file-tool-dialog-head">
-        <div>
-          <span class="file-tool-eyebrow">CLUSTER / PLUGIN</span>
-          <h2 id="pluginDialogTitle">插件管理</h2>
-          <p id="pluginDialogIntro">管理編輯器擴充功能與效能設定。</p>
-        </div>
-        <button id="pluginClose" type="button" aria-label="關閉">×</button>
-      </div>
-      <div class="plugin-dialog-layout">
-        <nav class="plugin-dialog-nav" aria-label="插件類別">
+          <section id="pluginWindow" class="plugin-workbench-window"
+            aria-labelledby="pluginDialogTitle" hidden>
+            <div class="plugin-workbench-header">
+              <div class="plugin-workbench-identity">
+                <span class="file-tool-eyebrow">CLUSTER / EXTENSIONS</span>
+                <h2 id="pluginDialogTitle">插件管理</h2>
+                <p id="pluginDialogIntro">管理編輯器擴充功能與效能設定。</p>
+              </div>
+              <nav class="plugin-window-categories" aria-label="插件類別">
           <div class="plugin-nav-caption" id="pluginNavCaption">類別 / CATEGORIES</div>
           <button id="pluginPerformanceBtn" type="button" class="selected"
             data-plugin-tab="performance" aria-current="page">
@@ -152,6 +133,8 @@
             <span id="pluginCommitterNavLabel">編輯提交單元</span>
           </button>
         </nav>
+            </div>
+            <div class="plugin-workbench-body">
         <div class="plugin-dialog-content">
           <section id="pluginPerformanceOptions" data-plugin-panel="performance">
             <div class="plugin-panel-heading">
@@ -227,12 +210,29 @@
             API 標準可下載供開發參考；自訂插件目前不會執行。
           </p>
         </div>
+
+            </div>
+            <div class="plugin-workbench-footer">
+              <span id="pluginFooter">設定保留於此瀏覽器</span>
+              <button id="pluginDone" type="button">關閉視窗</button>
+            </div>
+          </section>
+        </main>
       </div>
-      <div class="file-tool-dialog-footer">
-        <span id="pluginFooter">設定保留於此瀏覽器</span>
-        <button id="pluginDone" type="button">完成</button>
+    </div>
+    <footer class="statusbar">
+      <div class="meter progress-track" aria-hidden="true">
+        <div id="meterFill" class="progress-fill"></div>
       </div>
-    </dialog>
+      <span id="meterPercent"></span>
+      <span id="statusLamp" class="lamp green"></span>
+      <span id="status" aria-live="polite">就緒</span>
+      <span class="grow"></span>
+      <span id="position">Ln 1, Col 1</span>
+      <span>UTF-8</span>
+      <span id="fileType">純文字</span>
+    </footer>
+  </div>
     <dialog id="blockedTypesDialog" class="file-tool-dialog"
       aria-labelledby="blockedTypesTitle">
       <div class="file-tool-dialog-head">

@@ -102,3 +102,24 @@ this limit currently applies only to the independent registry.
 - Unimplemented runtimes remain inactive; API specs are downloadable.
 - Test modal navigation, narrow viewport, locale and blocked list actions.
 - No change to slice-loader/editor memory architecture in this patch.
+
+## Patch(+10): File Tool Plugin as workspace TAB
+- Replace Plugin modal with read-only (non-document) tool window.
+- The existing file-tab strip renders tool and document tabs together.
+- ToolTabManager owns open/activate/deactivate/close/move/list lifecycle;
+  ToolTabPolicy owns tool identity, ordering and insertion bounds.
+- Plugin classification buttons are in the **tool-window header top-right**,
+  not in the application toolbar. Responsive behavior is contained.
+- FileWorkspace remains sole owner of file bytes; closing/saving Plugin
+  must not modify the file or corrupt restoration.
+- VTE tests cover 200/400/404 EventChain, EHU and relation codes.
+- Browser tests cover unsaved-text protection, switching/reopening,
+  actual window-relative category placement, settings and localization.
+- Per-tab memory and runtime cost are bounded; no full-file processing
+  is introduced by this UI patch.
+- Full PR8 six-layer sliced editor and Plugin runtime remain pending.
+
+### Patch(+10) recovery extension
+- Restore tool-tab state/category after document recovery, clamping
+  positions if documents become unavailable; closing the tab persists.
+- Never put tool tabs into FileWorkspace or editable document snapshots.
