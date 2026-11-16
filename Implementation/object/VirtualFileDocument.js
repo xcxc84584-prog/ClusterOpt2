@@ -317,6 +317,11 @@ export class VirtualFileDocument extends FileDocument {
 
   async receive(action, payload = {}) {
     if (action === "load" || action === "page") {
+      const intended = action === "load" ?
+        payload.index ?? this.virtualPageIndex : payload.index;
+      if (this.virtualEditable && intended === this.virtualPageIndex) {
+        return this.describePage();
+      }
       const oldStatus = this.status;
       this.status = DocumentStatus.LOADING;
       this.progress = 0;
