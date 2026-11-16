@@ -77,3 +77,14 @@ flowchart TD
 
 ## Current implementation state
 This document defines candidate work; it does not certify new Objects, properties, relations or tests as implemented.
+
+## Patch(+2) implemented event chains
+Close All: UI → HubUnit(Request.closeAll) → FileWorkspace.Response.closeAll
+→ Language.confirmCloseAll → unregister FileDocument* → OMU events → UI.
+Cancellation returns false, leaves registration and text unchanged.
+Reorder: Native tab drag/drop → UI → HubUnit(Request.reorder)
+→ FileWorkspace.Response.reorder → documents.splice → UI.
+Object: existing FileWorkspace; property: existing Language.
+Relation: UI -> Workspace request 10; Workspace -> UI response 01;
+combined pair 11. Invalid indices produce EHU 400 from Workspace.
+No new shared Property in this patch.
