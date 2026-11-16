@@ -36,3 +36,14 @@ Version label is centralized in LinkCore but deploy cache needs cross-browser ch
 Backup `backup/pre-pr4-20261116` was created from main before edits.
 Only merge PR #5 into main after test evidence and data-integrity review.
 No force-push or destructive rollback operation should occur.
+
+## Verification infrastructure amendment
+Created `.github/workflows/ocda-ci.yml` with Node 20 unit/lint gate
+and Chromium Playwright gate on main/PR4 branch updates.
+Revised browser File mock to keep stable lastModified until actual write;
+fixed URU object-list test to assert returned string IDs.
+Static JS syntax checks for ten affected source/test modules PASS;
+all inspected source lines fit the 120-column convention.
+A mocked FileWorkspace smoke check PASS for reorder, cancelled Close All,
+accepted Close All and valid setPriority; this does NOT replace CI.
+Current GitHub connector reports no finished workflow runs or statuses.
