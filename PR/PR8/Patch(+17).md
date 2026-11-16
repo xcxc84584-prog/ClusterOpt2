@@ -22,8 +22,12 @@
   set SystemVersion 0.0.8-pr8.patch17.
 - Main registers the new Object for sandbox/VTE only.
 - Added Node tests for successful size-changing writeback,
-  stale external file, aborted write, corrupt readback,
-  non-durable/stale revision and Hub relation 10/01.
+  stale external file/hash, aborted write, corrupt readback,
+  retirement failure, non-durable/stale revision and Hub 10/01.
+- Added Chromium OPFS integration test to verify a real browser
+  FileSystemFileHandle and Unicode byte-splice after readback.
+- Unmodified chunk SHA-256 is captured BEFORE writer close: old File
+  snapshots might be unreadable after browser file replacement.
 - Plan.md, ArcD.md, global property inventory and pending tests updated.
 
 ## Event Chain and failure matrix
