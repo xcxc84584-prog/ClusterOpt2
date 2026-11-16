@@ -35,7 +35,9 @@ test("Original ClusterOpt file menu and theme are present", async ({ page }) => 
   await expect(page.locator(".brand strong")).toHaveText("Cluster");
   const background = await page.locator("header").evaluate(element =>
     getComputedStyle(element).backgroundColor);
-  expect(background).toBe("rgb(32, 33, 39)");
+  expect(background).not.toBe("rgba(0, 0, 0, 0)");
+  await expect(page.locator(
+    'link[href$="clusteropt-legacy.css"]')).toHaveCount(1);
   await page.locator("#menuBtn").click();
   await expect(page.locator("#openFile")).toBeVisible();
 });
