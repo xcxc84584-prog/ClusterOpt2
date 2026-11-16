@@ -188,10 +188,7 @@ function closeMenu() {
   if (tools) tools.hidden = true;
   const languages = document.getElementById("languageOptions");
   if (languages) languages.hidden = true;
-  const plugins = document.getElementById("pluginOptions");
-  if (plugins) plugins.hidden = true;
-  const perf = document.getElementById("pluginPerformanceOptions");
-  if (perf) perf.hidden = true;
+
 }
 menuButton.addEventListener("click", () => {
   menu.hidden = !menu.hidden;
@@ -714,13 +711,34 @@ function renderBlockedTypes() {
     remove.addEventListener("click", () => {
       void changeBlockedTypes("remove", extension);
     });
-    row.append(name, remove);
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.textContent = localized("blockedTypesEdit");
+    edit.addEventListener("click", () => {
+      const input = document.createElement("input");
+      input.value = extension;
+      input.maxLength = 21;
+      input.setAttribute("aria-label", localized("blockedTypesEdit"));
+      const save = document.createElement("button");
+      save.type = "button";
+      save.textContent = localized("blockedTypesSave");
+      save.addEventListener("click", () => {
+        void changeBlockedTypes("replace", extension, input.value);
+      });
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = localized("blockedTypesCancel");
+      cancel.addEventListener("click", renderBlockedTypes);
+      row.replaceChildren(input, save, cancel);
+      input.focus();
+    });
+    row.append(name, edit, remove);
     container.append(row);
   }
 }
-async function changeBlockedTypes(action, extension = "") {
+async function changeBlockedTypes(action, extension = "", replacement = "") {
   const result = await linkCore.request("ui", "file-types",
-    action, { extension }, { origin: "user" });
+    action, { extension, replacement }, { origin: "user" });
   document.getElementById("blockedTypesError").textContent =
     result.ok ? "" : result.error;
   if (result.ok) {
@@ -764,21 +782,17 @@ async function renderPluginBudget() {
   }
 }
 const pluginBtn = document.getElementById("pluginBtn");
-const pluginOptions = document.getElementById("pluginOptions");
-const pluginPerfBtn = document.getElementById("pluginPerformanceBtn");
-const pluginPerfOptions = document.getElementById("pluginPerformanceOptions");
-pluginBtn.addEventListener("click", event => {
-  event.stopPropagation();
-  pluginOptions.hidden = !pluginOptions.hidden;
-  pluginBtn.setAttribute("aria-expanded", String(!pluginOptions.hidden));
+const pluginDialog = document.getElementById("pluginDialog");
+pluginBtn.addEventListener("click", () => {
+  closeMenu();
+  pluginDialog.showModal();
+  void renderPluginBudget();
 });
-pluginPerfBtn.addEventListener("click", event => {
-  event.stopPropagation();
-  pluginPerfOptions.hidden = !pluginPerfOptions.hidden;
-  pluginPerfBtn.setAttribute("aria-expanded",
-    String(!pluginPerfOptions.hidden));
-  if (!pluginPerfOptions.hidden) void renderPluginBudget();
-});
+for (const id of ["pluginClose", "pluginDone"]) {
+  document.getElementById(id).addEventListener("click", () => {
+    pluginDialog.close();
+  });
+}
 document.getElementById("pluginUnlimited").addEventListener(
   "change", event => {
     document.getElementById("pluginMaxMiB").disabled =

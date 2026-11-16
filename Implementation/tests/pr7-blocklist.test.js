@@ -39,3 +39,28 @@ test("PR7 invalid extension generates EHU 400", async () => {
   assert.equal(result.ok, false);
   assert.equal(result.status, 400);
 });
+
+test("PR8 restored replace preserves extensions on conflict", async () => {
+  const core = new LinkCore();
+  new FileWorkspace(core, () => {});
+  new FileTypeManager(core, null);
+  core.register({ id: "tester", receive: async () => null,
+    authorization: { default: "Public" } });
+  const request = (action, payload) =>
+    core.request("tester", "file-types", action, payload);
+  assert.equal((await request("add", { extension: ".custom" })).status, 200);
+  assert.equal((await request("replace", {
+    extension: ".custom", replacement: ".changed"
+  })).status, 200);
+  assert.equal((await request("replace", {
+    extension: ".changed", replacement: ".mp4"
+  })).status, 409);
+  assert.equal((await request("replace", {
+    extension: ".unknown", replacement: ".new"
+  })).status, 404);
+  const types = (await request("list")).value;
+  assert.ok(types.includes(".changed"));
+  assert.ok(!types.includes(".custom"));
+  assert.ok(core.omu.snapshot().logs.some(item =>
+    item.kind === "EHU" && item.status === 409));
+});

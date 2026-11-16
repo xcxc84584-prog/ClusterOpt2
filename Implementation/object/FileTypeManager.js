@@ -6,7 +6,7 @@ export class FileTypeManager {
     this.storage = storage;
     this.strictOCDA = true;
     this.authorization = Object.freeze({ default: "Public" });
-    const actions = ["list", "add", "remove", "reset"];
+    const actions = ["list", "add", "remove", "replace", "reset"];
     this.ocda = Object.freeze({
       Request: actions, Response: actions, UserAPI: actions,
       AgentAPI: [], Property: ["FileTypePolicy", "BlockedFileTypes"],
@@ -55,6 +55,23 @@ export class FileTypeManager {
       return this.publish(policy.sanitize([
         ...this.current(), policy.normalize(payload.extension)
       ]));
+    }
+    if (action === "replace") {
+      const previous = policy.normalize(payload.extension);
+      const next = policy.normalize(payload.replacement);
+      const current = this.current();
+      if (!current.includes(previous)) {
+        const error = new Error("Extension not found");
+        error.status = 404;
+        throw error;
+      }
+      if (previous !== next && current.includes(next)) {
+        const error = new Error("Extension already exists");
+        error.status = 409;
+        throw error;
+      }
+      return this.publish(policy.sanitize(
+        current.map(item => item === previous ? next : item)));
     }
     if (action === "remove") {
       const extension = policy.normalize(payload.extension);

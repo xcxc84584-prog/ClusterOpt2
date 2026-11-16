@@ -77,3 +77,14 @@ Highlighter entry disabled until plugin processor Object is installed.
 - Planned Plugin chains: SliceProcessor.process and
   EditCommitter.process; disable defaults only with clear fallback
   and documented data-integrity/security consequences.
+
+## Patch(+8): UI facade and FileTypeManager parity
+- UI.Plugin.open -> modal -> UI.Plugin.performance -> HubUnit
+  -> SliceRegistry.list/setLimit -> OMU response.
+- UI.BlockedFileTypes.replace -> HubUnit -> FileTypeManager
+  -> FileTypePolicy.normalize/sanitize -> EDPMU.SharedProperty
+  -> Explorer projection -> OMU dependency/log.
+- EHU: 200 successful operations, 400 invalid extension,
+  404 original missing, 409 duplicate replacement, 413 budget limit.
+- Plugin API markdown is downloadable documentation; no new Object
+  executing third-party code, so no untrusted JS in this patch.
