@@ -19,14 +19,15 @@ export class FileWorkspace {
     this.ocda = Object.freeze({
       Request: ["new", "open", "page", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal", "list",
-        "entries", "snapshot", "restore", "closeMany"],
+        "entries", "snapshot", "restore", "closeMany", "sliceManifest"],
       Response: ["new", "open", "page", "activate", "close", "closeAll",
-        "reorder", "save", "setPriority", "syncExternal"],
+        "reorder", "save", "setPriority", "syncExternal",
+      "sliceManifest"],
       UserAPI: ["new", "open", "page", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal"],
       AgentAPI: [],
       Property: ["DocumentStatus", "StoragePriority", "FileManagement",
-        "VirtualDocumentPolicy"],
+        "VirtualDocumentPolicy", "DocumentSliceContract"],
       Program: "FileWorkspace",
       EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
@@ -154,6 +155,19 @@ export class FileWorkspace {
 
   async receive(action, payload = {}) {
     if (action === "snapshot") return this.snapshot();
+    if (action === "sliceManifest") {
+      const doc = this.documents.find(item => item.id === payload.id);
+      if (!doc) {
+        const error = new Error("Unknown document");
+        error.status = 404;
+        throw error;
+      }
+      const bytes = doc.handle ? (await doc.handle.getFile()).size :
+        new TextEncoder().encode(doc.text).byteLength;
+      const policy = this.core.readProperty(
+        this.id, "DocumentSliceContract").value;
+      return policy.describe(doc, bytes);
+    }
     if (action === "restore") return this.restoreSnapshot(payload.snapshot);
     if (action === "list") return FileManagement.summarize(this.documents);
     if (action === "entries") return this.documents.map(doc => ({
