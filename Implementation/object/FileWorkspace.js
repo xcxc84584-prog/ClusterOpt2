@@ -47,14 +47,15 @@ export class FileWorkspace {
         lineEnding: doc.lineEnding, hasUtf8Bom: doc.hasUtf8Bom,
         virtual: Boolean(doc.virtualReadOnly),
         virtualPageIndex: doc.virtualPageIndex ?? 0,
-        virtualEdit: doc.virtualReadOnly &&
+        virtualEdit: doc.pendingRecovery ??
+          (doc.virtualReadOnly &&
           doc.status === DocumentStatus.DIRTY ? {
             id: doc.editSliceId, revision: doc.editRevision,
             fingerprint: doc.fileFingerprint,
             sourceHash: doc.sourceHash,
             index: doc.virtualPageIndex,
             start: doc.pageStart, end: doc.pageEnd
-          } : null
+          } : null)
       }))
     };
   }
