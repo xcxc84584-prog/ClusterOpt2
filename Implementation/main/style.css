@@ -348,3 +348,21 @@ header .menu-wrap { margin-left:auto; }
 #explorerTree .explorer-inline-action:hover:not(:disabled) {
   background: var(--ui-hover);
 }
+
+/* PR8: the operation meter inherits the four document status colors. */
+#meterFill[data-status="green"] { background: #4ac78f; }
+#meterFill[data-status="yellow"] { background: #efc96f; }
+#meterFill[data-status="red"] { background: #f07575; }
+#meterFill[data-status="blue"] { background: #69aafa; }
+
+/* The viewport guides are behind the textarea and reflect its font. */
+#tabGuide {
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 0;
+  white-space: pre;
+  tab-size: 4;
+  height: 100%;
+  color: transparent;
+  text-shadow: 0 0 0 var(--ui-muted, #8793a6);
+}

@@ -2,6 +2,7 @@ import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js"
 import { Language } from "../property/Language.js";
 import { StoragePriority } from "../property/StoragePriority.js";
 import { EditorInteractionPolicy } from "../property/EditorInteractionPolicy.js";
+import { EditorViewportPolicy } from "../property/EditorViewportPolicy.js";
 import { UI_COLOR } from "../property/UI_COLOR.js";
 import { FileManagement } from "../property/FileManagement.js";
 import { RecoveryPolicy } from "../property/RecoveryPolicy.js";
@@ -20,7 +21,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.7-pr7.patch7";
+    this.version = "0.0.8-pr8.patch1";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -38,6 +39,10 @@ export class LinkCore {
     this.hub.registerProperty("StoragePriority", StoragePriority.defaultValue, {
       owners: ["LinkCore", "workspace"], visibility: "Public"
     });
+    this.hub.registerProperty("EditorViewportPolicy",
+      EditorViewportPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
     this.hub.registerProperty("EditorInteractionPolicy",
       EditorInteractionPolicy, {
         owners: ["LinkCore"], visibility: "Public"

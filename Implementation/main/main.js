@@ -222,7 +222,8 @@ linkCore.register({
     Response: [], UserAPI: ["new", "open", "save", "close", "closeAll",
       "reorder", "setPriority", "syncExternal"],
     AgentAPI: [], Property: ["DocumentStatus", "SystemVersion",
-      "Language", "EditorInteractionPolicy"],
+      "Language", "EditorInteractionPolicy",
+      "EditorViewportPolicy"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
   receive: async () => {
@@ -232,6 +233,8 @@ linkCore.register({
 
 const editorPolicy =
   linkCore.readProperty("ui", "EditorInteractionPolicy").value;
+const viewportPolicy =
+  linkCore.readProperty("ui", "EditorViewportPolicy").value;
 let paletteStorage = null;
 try {
   paletteStorage = window.localStorage;
@@ -306,6 +309,7 @@ function render() {
   if (!active) {
     ui.statusLamp.className = "lamp green";
     ui.statusText.textContent = localized("ready");
+    ui.progressFill.dataset.status = DocumentStatus.SYNCED;
     ui.progressFill.style.width = "0%";
     ui.progressText.textContent = "";
     return;
@@ -476,9 +480,22 @@ function scheduleGuides() {
       ui.editor.value, ui.editor.scrollTop, lineHeight,
       ui.editor.clientHeight, guideAnchor);
     guideAnchor = { firstLine: bounds.firstLine, offset: bounds.offset };
-    ui.tabGuide.textContent = bounds.lines.join("\\n");
-    ui.tabGuide.style.top = (16 -
-      (ui.editor.scrollTop % lineHeight)) + "px";
+
+    // Use actual line breaks; literal backslash-n makes multiple rows
+    // occupy one rendered line and drifts badly during scrolling.
+    ui.tabGuide.textContent = bounds.lines.join("\n");
+    const position = viewportPolicy.guidePosition({
+      scrollTop: ui.editor.scrollTop,
+      scrollLeft: ui.editor.scrollLeft,
+      lineHeight,
+      paddingTop: parseFloat(computed.paddingTop),
+      paddingLeft: parseFloat(computed.paddingLeft)
+    });
+    ui.tabGuide.style.top = position.top + "px";
+    ui.tabGuide.style.paddingLeft = position.paddingLeft + "px";
+    ui.tabGuide.style.font = computed.font;
+    ui.tabGuide.style.lineHeight = computed.lineHeight;
+    ui.tabGuide.style.tabSize = computed.tabSize;
   });
 }
 
@@ -503,9 +520,11 @@ function updateStatus() {
   ui.statusText.textContent = doc.error && doc.status === DocumentStatus.ERROR ?
     doc.error : statusLabel(doc.status,
       linkCore.readProperty("ui", "Language").value);
-  ui.progressFill.style.width = doc.progress + "%";
-  ui.progressText.textContent = doc.status === DocumentStatus.LOADING ?
-    doc.progress + "%" : "";
+  const progress = viewportPolicy.progress(doc.status, doc.progress);
+  ui.progressFill.dataset.status = progress.status;
+  ui.progressFill.style.width = progress.percent + "%";
+  ui.progressText.textContent = progress.label ?
+    progress.percent + "%" : "";
 }
 
 ui.editor.addEventListener("input", async () => {
