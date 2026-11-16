@@ -15,3 +15,8 @@ Patch(+12) creates sparse line indexing and exact line/byte
 navigation but does not yet replace the production textarea.
 No PR8-wide PASS or large-file edit claim may be made until
 Nos.55–60 and their VTE/E2E acceptance tests pass.
+
+Patch(+12) extra coverage: clean virtual close + index disposal,
+Blob ID reuse, and dirty-close refusal tested through real VTE.
+No.59 remains pending because dirty state is deliberately not
+released without a durable writeback implementation.
