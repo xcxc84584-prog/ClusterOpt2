@@ -162,3 +162,15 @@ Click File menu -> browser picker (user gesture) -> authorized handle
 Playwright uses mock File System Access handles, while Node tests use
 in-memory fake handles and Blob streams. Native permission prompts and
 OS-specific file changes still require actual browser manual tests.
+
+## Patch(+6) UserAPI and AgentAPI security
+An explicit `origin="user"` or `origin="agent"` on a Request
+is validated against the destination Object's declared allowlist.
+An undeclared action generates EHU 403 before execution.
+
+UI file menu and tab controls -> HubUnit -> FileWorkspace.
+UI edit events -> HubUnit -> FileDocument.
+Other internal Object -> Object requests use the internal channel.
+
+This is not yet a cryptographic identity mechanism; untrusted external
+Agent transports must authenticate their source/capabilities separately.
