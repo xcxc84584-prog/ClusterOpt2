@@ -60,8 +60,13 @@ test("Patch19 fix: actual 65 MiB document can save and close safely",
     await page.keyboard.press("Control+o");
     const editor = page.locator("#editor");
     await expect(editor).toHaveAttribute("data-virtual-page-index", "0");
+    await expect(editor).toHaveJSProperty("readOnly", false);
+    await expect.poll(async () => (await editor.inputValue()).length)
+      .toBe(65536);
+    const originalPage = await editor.inputValue();
+    expect(originalPage.startsWith("ORIGINAL")).toBe(true);
     await editor.fill("REPLACED" +
-      (await editor.inputValue()).slice("ORIGINAL".length));
+      originalPage.slice("ORIGINAL".length));
     await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
     await page.keyboard.press("Control+s");
     await expect(page.locator("#statusLamp"), "verified large save")
