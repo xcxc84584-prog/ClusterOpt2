@@ -64,3 +64,13 @@
 ## References
 - microsoft/vscode-textbuffer — Piece Tree based text buffer.
 - MDN Blob.slice and FileSystemFileHandle.getFile documentation.
+
+## CI and merge record (2026-11-16)
+- Draft PR #20 promoted and merged into main after both OCDA CI and
+  PR1 OCDA Verification completed successfully on head
+  `486ae9c1be5dbf1400da940f9a3cadffc28e6eca`.
+- Merge SHA: `cf56a55afba7641544991f5f47fc29dd3f9a82ca`.
+- Verified rollback branch: `backup/pre-pr8-patch18-main-20261116`
+  points to `a2c2cd0cdff682f60c9267de1cbb009d3d5d4cd6`.
+- Note: virtual large-file pages remain **read-only**.
+  Full editable six-layer viewport is NOT PASS; Patch19+ pending.
