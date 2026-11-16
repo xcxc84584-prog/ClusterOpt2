@@ -240,3 +240,24 @@ test("Patch12 dirty virtual close fails without losing any edits",
     assert.ok(vte.log().some(item =>
       item.kind === "EHU" && item.status === 409));
   });
+
+test("Patch12 user API cannot bypass coordinated cleanup", async () => {
+  const { vte, request } = fixture();
+  await request("viewport-slices", "open", {
+    id: "internal", blob: new Blob(["safety"])
+  });
+  for (const [target, action] of [
+    ["virtual-line-index", "close"],
+    ["slice-loader", "close"],
+    ["slice-registry", "release"]
+  ]) {
+    const response = await vte.core.request("VTE.actor",
+      target, action, { id: "internal" }, { origin: "user" });
+    assert.equal(response.status, 403);
+  }
+  assert.equal((await request("viewport-slices", "close", {
+    id: "internal"
+  })).status, 200);
+  assert.ok(vte.log().some(item =>
+    item.kind === "EHU" && item.status === 403));
+});
