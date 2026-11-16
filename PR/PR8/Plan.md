@@ -80,3 +80,15 @@ this limit currently applies only to the independent registry.
   import and downloadable API standards added to future acceptance.
 - Plugin interfaces must define input/output types, permissions,
   versioning, time/memory limits, failure policy and safe fallback.
+
+## Patch(+8): UI and extension API contract baseline
+- Native dialog for File > Tool > Plugin, responsive with palette tokens.
+- Existing SliceRegistry limit setting and Off mode retained.
+- Three downloadable versioned API specs: processor, committer,
+  highlighter; execution/import remain unavailable until sandbox review.
+- Restore legacy blocked-file-type replace action through HubUnit,
+  with 400/404/409 failures and Explorer refresh.
+- Plugin categories will support disabling defaults in later stages;
+  disabling critical MVCC does not disable core conflict protection.
+- UI E2E: modal opening, escape/done, language, narrow layout,
+  preference persistence and disabled unfinished actions.
