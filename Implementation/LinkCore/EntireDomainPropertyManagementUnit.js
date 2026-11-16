@@ -42,6 +42,13 @@ export class EntireDomainPropertyManagementUnit {
     return this.properties.delete(name);
   }
 
+  inheritedBy(objectPath) {
+    return [...this.properties].filter(([, property]) =>
+      property.owners.some(owner => objectPath === owner ||
+        objectPath.startsWith(owner + "."))
+    ).map(([name]) => name);
+  }
+
   list() {
     return [...this.properties].map(([name, record]) => ({
       name, visibility: record.visibility, owners: [...record.owners]
