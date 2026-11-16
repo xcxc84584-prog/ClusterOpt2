@@ -9,13 +9,16 @@ import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js"
  */
 export class ExecutionScheduler {
   constructor({ maxConcurrency = ParallelExecutionPolicy.maxConcurrency,
-    maxQueue = ParallelExecutionPolicy.maxQueue } = {}) {
+    maxQueue = ParallelExecutionPolicy.maxQueue,
+    maxNested = ParallelExecutionPolicy.maxNested } = {}) {
     if (!Number.isSafeInteger(maxConcurrency) || maxConcurrency < 1 ||
-        !Number.isSafeInteger(maxQueue) || maxQueue < 1) {
+        !Number.isSafeInteger(maxQueue) || maxQueue < 1 ||
+        !Number.isSafeInteger(maxNested) || maxNested < 0) {
       throw new RangeError("Invalid scheduler limits");
     }
     this.maxConcurrency = maxConcurrency;
     this.maxQueue = maxQueue;
+    this.maxNested = maxNested;
     this.pending = [];
     this.activeKeys = new Set();
     this.running = 0;
@@ -36,7 +39,8 @@ export class ExecutionScheduler {
     return new Promise((resolve, reject) => {
       const task = {
         id: this.nextTaskId++, key, execute, resolve, reject,
-        signal: options.signal, abortHandler: null
+        signal: options.signal, abortHandler: null,
+        nested: options.nested === true
       };
       if (task.signal) {
         task.abortHandler = () => {
@@ -62,11 +66,13 @@ export class ExecutionScheduler {
   }
 
   pump() {
-    while (this.running < this.maxConcurrency) {
+    while (this.running < this.maxConcurrency + this.maxNested) {
       // Preserve FIFO per key: only the oldest queued task for a key
       // can start while that resource is unlocked.
       const index = ParallelExecutionPolicy.selectRunnableIndex(
-        this.pending, this.activeKeys);
+        this.pending, this.activeKeys,
+        this.running < this.maxConcurrency,
+        this.running < this.maxConcurrency + this.maxNested);
       if (index < 0) break;
       const [task] = this.pending.splice(index, 1);
       if (task.abortHandler) {
@@ -88,6 +94,7 @@ export class ExecutionScheduler {
   snapshot() {
     return Object.freeze({
       maxConcurrency: this.maxConcurrency,
+      maxNested: this.maxNested,
       running: this.running,
       queued: this.pending.length,
       activeKeys: [...this.activeKeys]
