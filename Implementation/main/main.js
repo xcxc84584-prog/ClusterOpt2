@@ -13,6 +13,7 @@ import { VirtualLineIndex } from "../object/VirtualLineIndex.js";
 import { EditorViewportObserver } from "../object/EditorViewportObserver.js";
 import { SliceRecoveryJournal } from "../object/SliceRecoveryJournal.js";
 import { SliceEditTransaction } from "../object/SliceEditTransaction.js";
+import { SliceWritebackUnit } from "../object/SliceWritebackUnit.js";
 import { ToolTabManager } from "../object/ToolTabManager.js";
 import { FileTypeManager } from "../object/FileTypeManager.js";
 import { DocumentStatus, statusLabel } from "../property/DocumentStatus.js";
@@ -67,6 +68,8 @@ new EditorViewportObserver(linkCore);
 // Patch16: registered for Hub/VTE, not connected to the live editor.
 new SliceRecoveryJournal(linkCore);
 new SliceEditTransaction(linkCore);
+// Trusted sandbox only; the production FileDocument save stays unchanged.
+new SliceWritebackUnit(linkCore);
 const fileTypes = new FileTypeManager(linkCore);
 // Read-only viewport observation: never mutates editor text or disk.
 let viewportTimer = 0;
