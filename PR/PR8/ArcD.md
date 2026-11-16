@@ -314,3 +314,46 @@ Highlighter entry disabled until plugin processor Object is installed.
 - Deferred Patch19: global line-position map, true virtual
   text render, editable Piece Tree, MVCC journal/writeback
   binding with UTF-16/UTF-8 offset synchronization.
+
+## Patch(+19): editable virtual pages and line index
+### Objects / Properties
+- Reused Object: VirtualFileDocument, FileWorkspace,
+  SliceEditTransaction, SliceRecoveryJournal, SliceWritebackUnit.
+- New shared immutable EDPMU Property: VirtualPageLinePolicy.
+- Existing PieceTreePolicy and BPlusSliceIndex maintain page-level
+  immutable text and offset lookup. UTF8SlicePolicy owns aligned
+  source byte ranges, SliceFileWritePolicy owns byte writeback.
+### Event Chains (all through HubUnit)
+1. UI.edit -> VirtualFileDocument.edit -> calculate minimal UTF-16
+   splice via VirtualPageLinePolicy -> SliceTransactionPolicy.apply
+   immutable candidate -> HubUnit -> SliceEditTransaction.transactDurable
+   -> HubUnit -> SliceRecoveryJournal.persist -> IndexedDB CAS ->
+   publish page Tree/B+ and status yellow -> OMU Log/Dependency.
+2. UI.save -> FileWorkspace.save -> HubUnit ->
+   VirtualFileDocument.save -> SliceEditTransaction.commitWriteback ->
+   HubUnit -> SliceWritebackUnit.commit -> SliceRecoveryJournal.restore
+   -> fingerprint+source hash check -> bounded exclusive file stream
+   -> verify all written bytes -> journal CAS retirement ->
+   status green -> bounded reload page and global line checkpoints.
+3. UI.page -> FileWorkspace.page -> VirtualFileDocument.loadPage
+   -> block if dirty (EHU409) -> aligned Blob read ->
+   VirtualPageLinePolicy.prefix LF scan from nearest checkpoint
+   -> PieceTreePolicy/BPlusIndex -> existing editor render ->
+   global gutter, current operation progress.
+4. SessionRecovery -> FileWorkspace.restoreSnapshot ->
+   VirtualFileDocument.pendingRecovery (id, revision, fingerprint,
+   page byte addresses, source hash) -> HubUnit -> SliceEditTransaction.restoreDurable
+   -> SHA-256 verify -> source fingerprint match -> publish dirty Tree
+   or error without discarding journal.
+### EHU
+- 200 accepted page edit/save/line scan; 400 invalid page/range;
+  409 dirty navigation, stale MVCC revision, external file mismatch;
+  413 excessive slice data; 422 invalid UTF-8 or corruption;
+  503 inaccessible storage, missing cryptography or write failure.
+- Relation codes through HubUnit: outgoing Request=10,
+  incoming Response=01; bidirectional relationships=11.
+### Isolation
+- A dirty page may not be evicted or closed. UserAPI is narrow;
+  low-level writeback remains internal (no direct user API).
+- No independent new visual UI, no direct invocation of other
+  Objects outside the Hub.

@@ -25,7 +25,7 @@ test("Patch18 opens a large OPFS file in the existing editor window",
     const editor = page.locator("#editor");
     await expect(editor).toHaveAttribute(
       "data-virtual-page-index", "0");
-    await expect(editor).toHaveJSProperty("readOnly", true);
+    await expect(editor).toHaveJSProperty("readOnly", false);
     const first = await editor.inputValue();
     expect(first.length).toBeLessThanOrEqual(65540);
     expect(first.startsWith("FIRST PAGE")).toBe(true);
@@ -37,7 +37,7 @@ test("Patch18 opens a large OPFS file in the existing editor window",
     const second = await editor.inputValue();
     expect(second.length).toBeLessThanOrEqual(65540);
     expect(second.startsWith("SECOND PAGE")).toBe(true);
-    await expect(editor).toHaveJSProperty("readOnly", true);
+    await expect(editor).toHaveJSProperty("readOnly", false);
 
     const original = await page.evaluate(async () => {
       const root = await navigator.storage.getDirectory();

@@ -97,3 +97,24 @@ No unbounded cache when a configured byte budget is active.
 - Preserve the existing small-file workflow completely.
 - Editable large-file viewport, global line positions and
   durable MVCC writeback are acceptance items for Patch19+.
+
+## Patch(+19): editable pages and global line-number acceptance
+- VirtualFileDocument page is editable through existing ClusterOpt
+  textarea; a minimal UTF-16 splice updates Piece Tree only after
+  a successful durable SliceEditTransaction MVCC checkpoint.
+- No dirty-page eviction, navigation, or tab close until verified
+  writeback; file Save streams original untouched bytes and validates
+  replacement+source fingerprints, then retires exact checkpoint.
+- Gutter and editor current position must show global LF line
+  numbers across physical byte-slice boundaries (CRLF is one line
+  break); page-local line numbering from 1 is forbidden.
+- The UI must preserve original palette/language/Explorer/tabs and
+  show operation completion in the existing status/progress controls.
+- Recovery snapshot stores only bounded metadata (edit ID/revision,
+  original disk fingerprint, SHA-256 source bytes, page address),
+  never full-file text;
+  reapply a checkpoint only after source identity verification.
+- Real large 65 MiB browser edit and separate verified OPFS save
+  test, plus O(page) UTF-16/UTF-8 and EventChain failures required.
+- Explicitly defer continuous multi-GiB scroll, cross-page
+  transaction and 1/5-GiB save performance to Patch20+.

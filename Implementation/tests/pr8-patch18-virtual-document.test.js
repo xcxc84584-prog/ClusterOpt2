@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { LinkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { VirtualFileDocument } from "../object/VirtualFileDocument.js";
+import { SliceEditTransaction } from "../object/SliceEditTransaction.js";
+import { SliceRecoveryJournal } from "../object/SliceRecoveryJournal.js";
+import { SliceWritebackUnit } from "../object/SliceWritebackUnit.js";
 
 const SIZE = 65 * 1024 * 1024;
 
@@ -25,6 +28,31 @@ function fakeHandle(size = SIZE) {
 function setup() {
   const core = new LinkCore();
   core.register({ id: "ui", receive: async () => true });
+  const checkpoints = new Map();
+  new SliceRecoveryJournal(core, {
+    async get(id) { return structuredClone(checkpoints.get(id)); },
+    async putIfNewer(entry) {
+      const current = checkpoints.get(entry.id);
+      if (current && current.revision >= entry.revision) {
+        const error = new Error("Stale checkpoint");
+        error.status = 409;
+        throw error;
+      }
+      checkpoints.set(entry.id, structuredClone(entry));
+    },
+    async deleteIfMatch(id, revision, checksum) {
+      const current = checkpoints.get(id);
+      if (!current || current.revision !== revision ||
+          current.checksum !== checksum) {
+        const error = new Error("Checkpoint changed");
+        error.status = 409;
+        throw error;
+      }
+      checkpoints.delete(id);
+    }
+  });
+  new SliceEditTransaction(core);
+  new SliceWritebackUnit(core);
   const workspace = new FileWorkspace(core, () => {});
   const request = (target, action, payload = {}) =>
     core.request("ui", target, action, payload, { origin: "user" });
@@ -58,27 +86,30 @@ test("Patch18 opens a 65 MiB file without a whole-file read",
     assert.equal(doc.pieceIndex.length, doc.text.length);
   });
 
-test("Patch18 refuses whole-file edit/save on partial page",
+test("Patch19 large page edits cannot bypass verified writeback",
   async () => {
-    const { core, workspace, request } = setup();
+    const { workspace, request } = setup();
     const handle = fakeHandle();
     assert.equal((await request("workspace", "open", {
       handles: [handle]
     })).ok, true);
     const doc = workspace.active;
-    const original = doc.text;
-    assert.equal((await request(doc.id, "edit", {
-      text: "overwrite"
+    const edited = await request(doc.id, "edit", {
+      text: "replaced bounded page"
+    });
+    assert.equal(edited.ok, true, edited.error);
+    assert.equal(doc.status, "yellow");
+    assert.equal((await request("workspace", "page", {
+      id: doc.id, index: 1
     })).status, 409);
-    assert.equal((await request(doc.id, "save", {
-      handle
-    })).status, 409);
-    assert.equal((await request("workspace", "save")).status, 409);
-    assert.equal(doc.text, original);
-    const status = await request(doc.id, "describePage");
-    assert.equal(status.value.textLength, original.length);
-    assert.ok(core.getSnapshot().logs.some(log =>
-      log.kind === "EHU" && log.status === 409));
+    // Mock handle has no authorized createWritable method:
+    // a partial page may never silently become a full-file save.
+    assert.equal((await request(doc.id, "save")).status, 400);
+    assert.equal(doc.status, "yellow");
+    assert.equal(doc.text, "replaced bounded page");
+    const state = await request(doc.id, "describePage");
+    assert.equal(state.ok, true, state.error);
+    assert.equal(state.value.textLength, doc.text.length);
   });
 
 test("Patch18 wrong page cannot replace the published Piece Tree",
