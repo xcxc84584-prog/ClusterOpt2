@@ -1,13 +1,15 @@
 // v0.0.69 PR-02 — Browser UI only. Never runs OS commands.
 import {PowerShellManager} from './powershell-manager.js';
 import {PowerShellClient} from './powershell-client.js';
-import {createSetupCmd,SETUP_FILENAME} from './cmd-setup.js';
+import {createSetupCmd,setupFilename} from './cmd-setup.js';
 const COPY={
  'zh-Hant':{title:'PowerShell',setup:'配置本地代理',desc:'尚未連線至 PowerShell Local Agent。此介面不可執行命令。',check:'檢查連線',tool:'PowerShell 工具',permissions:'權限管理',revoke:'撤銷本地權限',unavailable:'本地代理尚未提供。無法執行命令。',command:'環境檢查指令（CMD）',hint:'這是選用的環境診斷指令；請在 Windows CMD 執行。Token 僅輸入於上方配對欄位。',close:'關閉',status:'未配置',rule:'預設權限：可申請',notice:'權限管理需先配置可信任的本地代理；目前僅提供規則說明。'},
  en:{title:'PowerShell',setup:'Set up Local Agent',desc:'PowerShell Local Agent is not connected. Commands cannot be executed here.',check:'Check connection',tool:'PowerShell tools',permissions:'Permission management',revoke:'Revoke local access',unavailable:'Local Agent is not available. Commands are disabled.',command:'Environment check (CMD)',hint:'Optional environment diagnostics for Windows CMD. Enter the token only in the pairing field.',close:'Close',status:'Not configured',rule:'Default permission: Requestable',notice:'Permission management requires a trusted Local Agent. This is an informational preview.'}
 };
 const CHECK='powershell.exe -NoProfile -Command "$PSVersionTable.PSVersion.ToString(); [Environment]::OSVersion.VersionString"';
-export function mountPowerShellUI({host,button,language,manager=new PowerShellManager({agent:new PowerShellClient()}),palette=null}){
+export function mountPowerShellUI({host,button,language,version,
+ manager=new PowerShellManager({agent:new PowerShellClient()}),palette=null}){
+ if(typeof version!=='string'||!version)throw new Error('PSM_VERSION_REQUIRED');
  if(!host||!button||!language)throw new Error('PSM_UI_MISSING_DEPENDENCY');
  let open=false;
  const toolMenu=()=>pane.querySelector('.psm-menu');
@@ -33,7 +35,7 @@ export function mountPowerShellUI({host,button,language,manager=new PowerShellMa
  const pane=document.createElement('section');
  pane.id='powershellManagerPane';pane.className='psm-pane';pane.hidden=true;
  pane.setAttribute('aria-label','PowerShell');
- pane.innerHTML=`<div class="psm-top"><strong data-psm="title"></strong><div class="psm-actions"><span data-psm="status"></span><button type="button" data-psm-action="tool" aria-expanded="false" aria-label="PowerShell tools">⚙</button><button type="button" data-psm-action="close" aria-label="Close">×</button></div></div><div class="psm-menu" hidden><button type="button" data-psm-action="connection-settings"></button><button type="button" data-psm-action="clear"></button></div><div class="psm-body"><div class="psm-intro"><span class="psm-glyph" aria-hidden="true">⌁</span><div><span class="psm-eyebrow">LOCAL CONNECTION · v0.0.69</span><h2 data-psm="setup"></h2><p data-psm="desc"></p></div></div><details class="psm-advanced"><summary data-psm="command"></summary><label for="psmCheckCommand" data-psm="hint"></label><input id="psmCheckCommand" readonly></details><div class="psm-footer"><button type="button" data-psm-action="check" class="psm-primary"></button><p role="status" aria-live="polite" data-psm="feedback"></p></div></div>`;
+ pane.innerHTML=`<div class="psm-top"><strong data-psm="title"></strong><div class="psm-actions"><span data-psm="status"></span><button type="button" data-psm-action="tool" aria-expanded="false" aria-label="PowerShell tools">⚙</button><button type="button" data-psm-action="close" aria-label="Close">×</button></div></div><div class="psm-menu" hidden><button type="button" data-psm-action="connection-settings"></button><button type="button" data-psm-action="clear"></button></div><div class="psm-body"><div class="psm-intro"><span class="psm-glyph" aria-hidden="true">⌁</span><div><span class="psm-eyebrow">LOCAL CONNECTION</span><h2 data-psm="setup"></h2><p data-psm="desc"></p></div></div><details class="psm-advanced"><summary data-psm="command"></summary><label for="psmCheckCommand" data-psm="hint"></label><input id="psmCheckCommand" readonly></details><div class="psm-footer"><button type="button" data-psm-action="check" class="psm-primary"></button><p role="status" aria-live="polite" data-psm="feedback"></p></div></div>`;
  host.append(pane);
  const terminal=document.createElement('section');
  terminal.className='psm-terminal psm-terminal-classic';terminal.hidden=true;
@@ -141,6 +143,7 @@ export function mountPowerShellUI({host,button,language,manager=new PowerShellMa
  pane.querySelector('.psm-body').prepend(setup);
  pane.classList.add('psm-compact-setup');
  const q=s=>pane.querySelector(s);
+ q('.psm-eyebrow').textContent='LOCAL CONNECTION · '+version;
  q('#psmAgentPort').value=String(remote.port||43881);
  q('#psmCheckCommand').value=CHECK;
  function t(){return COPY[language.value]||COPY['zh-Hant'];}
@@ -222,9 +225,9 @@ export function mountPowerShellUI({host,button,language,manager=new PowerShellMa
    if(action==='new-session'){createSession();return;}
    if(action==='close-session'){closeSession(selected);return;}
    if(action==='download'){
-     const cmd=createSetupCmd();
+     const cmd=createSetupCmd({version});
      const url=URL.createObjectURL(new Blob([cmd],{type:'application/octet-stream'}));
-     const a=document.createElement('a');a.href=url;a.download=SETUP_FILENAME;
+     const a=document.createElement('a');a.href=url;a.download=setupFilename(version);
      document.body.append(a);a.click();a.remove();
      setTimeout(()=>URL.revokeObjectURL(url),1000);
    }
