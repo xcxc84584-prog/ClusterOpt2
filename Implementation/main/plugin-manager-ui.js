@@ -215,6 +215,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
       if(result.ok) {
         selected="";
         void core.forgetReviewedPlugin(p.providerId);
+        void core.removeStoredPluginBundle(p.providerId);
       } else if(result.status===409) {
         doc.defaultView.alert(t(
           "尚有插件依賴此服務，請先停用相依插件。",
@@ -244,8 +245,15 @@ export function mountPluginManagerUI(core,doc,options={}) {
             p.providerId,staged.value.snapshot,{
               consented:true,approvedPermissions:[...permissions]
             });
+          let stored={ok:false};
+          if(result.ok) {
+            stored=await core.savePluginBundle(staged.value.snapshot);
+          }
           doc.defaultView.alert(result.ok ?
-            t("插件已更新。","Plugin updated.") :
+            (stored.ok ?
+              t("插件已更新並保存。","Plugin updated and saved.") :
+              t("插件已更新，但無法保存到本機。",
+                "Plugin updated, but local persistence failed.")) :
             t("更新失敗（狀態 ","Update failed (status ")+
               result.status+").");
           if(result.ok) options.onPluginInstalled?.();
