@@ -7,7 +7,7 @@ const path=require('node:path');
 const {spawn}=require('node:child_process');
 const {WebSocketServer}=require('ws');
 const pty=require('node-pty');
-const PORT=Number(process.env.CLUSTER_TERMINAL_PORT||43879);
+const PORT=Number(process.env.CLUSTER_TERMINAL_PORT||43881);
 const ORIGIN=process.env.CLUSTER_TERMINAL_ORIGIN;
 if(!ORIGIN||!/^https:\/\/[^/]+(?:\/[^?#]*)?$/.test(ORIGIN)){
  console.error('Set CLUSTER_TERMINAL_ORIGIN to the exact GitHub Pages origin (e.g. https://account.github.io).');process.exit(1);
@@ -196,7 +196,7 @@ wss.on('connection',ws=>{
     fs.writeFileSync(tokenFile,token+'\n',{mode:0o600});
     for(const id of [...sessions.keys()])closeSession(id);
     roots.clear();
-    // Revoke access and terminate the local listener. Port 43879 must be released.
+    // Revoke access and terminate the local listener. Port 43881 must be released.
     for(const client of wss.clients)send(client,{type:'revoked',portClosed:true});
     setTimeout(()=>{
      for(const client of wss.clients){try{client.close(1000,'Pairing revoked');}catch{}}
