@@ -65,3 +65,17 @@ sequenceDiagram
  Hub->>OMU: EHU preserved
 ```
 稽核程序為獨立工具而非運行期 Object / Property，**不修改生產 HubUnit、URU、EDPMU 或 OMU**。測試路由在新的 `LinkCore` 實體上完成；VTE 在另一個獨立記憶體領域，阻止誤觸真實文件資料。此 Patch 不增加任何新的全域 Property。
+
+## Patch(+4) — failure EventChain
+```mermaid
+flowchart TD
+  A[Runtime Audit] --> U[URU register invalid]
+  U -->|400 EHU| O[OMU]
+  A --> D[URU register duplicate]
+  D -->|409 EHU| O
+  A --> X[Hub Request Left.loop]
+  X --> Y[Left -> Right.loop]
+  Y --> Z[Right -> Left.loop]
+  Z -->|423 cyclic wait EHU| O
+```
+All tests run against a newly created `LinkCore` instance; EHU is not suppressed. The existing Hub scheduler remains untouched; only **observability** is extended. Duplicate object registration yields status 409 via OMU, while invalid strict OCDA contracts yield 400.

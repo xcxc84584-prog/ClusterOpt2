@@ -42,3 +42,8 @@ Patch2 將 CLI 測試擴大為**真實倉庫整合測試**（非只對 synthetic
 
 ### 驗收證據分層
 A：真實 Node LinkCore 路由、EHU、VTE；B：Chromium Playwright；C：Windows runner native ConPTY；D：真實桌面 File System Access 互動與 1–5 GiB 實際負荷。只有 A/B/C 在本大 PR 建立可重現證據，D 保留為未經驗證的已知限制，後續 L1/L2/L6 PR 負責效能與權限硬體驗收。
+
+## Patch(+4) — GitHub implementation study / OCDA refinement
+Reviewed [VS Code extension service](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/extensions/common/extensions.ts) and [Theia plugin-ext](https://github.com/eclipse-theia/theia/tree/master/packages/plugin-ext): extension boundaries depend on explicit contracts and lifecycle, not wildcard routing. Audit tooling therefore executes **real HubUnit rules** and refuses to treat static code relationships as permissions.
+
+Node runtime audit now covers 200 / 400 / 403 / 404 / 409 / 423 with real URU registration, Hub request scheduling, EHU, OMU Dependency, and isolated VTE. It does not mutate production HubUnit or alter version. Final merged PR requires CI on **exact final commit**, plus disclosure of manual browser prompts and 1GiB/5GiB testing limitations. Existing 65MiB OPFS E2E covers bounded pages but not a 5GiB real-machine acceptance.

@@ -27,3 +27,6 @@ Production version stays `0.0.9-pr9.patch9`.
 
 ## Patch(+3) 交付
 新增真正執行期的 OCDA 容器驗證（Node 上建立 LinkCore 與隔離 VTE）：測試 REQ、REP、EHU、Relation 和權限拒絕案例；將可下載報告加入 CI artifact。此小 PR 交付的功能是可獨立執行的 **Runtime Audit CLI**，不是插件執行期或正式磁碟寫入。對不在 PR01 範圍內的 5 GiB 寫入與實體權限驗收維持 NOT RUN。
+
+## Patch(+4) test coverage completion
+Expand the **fully executable** Runtime Audit CLI from 5 to 8 assertions: request/reply success, User/Agent permission isolation, unknown target/source, invalid object contract 400, duplicate ID 409, and cycle detection 423. This remains a production-class LinkCore behavior test and an executable, independently verifiable Node deliverable.

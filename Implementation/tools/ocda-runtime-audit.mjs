@@ -63,6 +63,33 @@ export async function runRuntimeAudit() {
   record("unknown sender denied",
     await core.request("Unknown", "Audit.Target", "echo"),
     r => !r.ok && r.status === 404);
+  record("invalid strict OCDA contract", {
+    ok: core.register({
+      id: "Audit.Invalid", parentPath: "Audit", strictOCDA: true,
+      receive: async () => null
+    }),
+    status: 400
+  }, r => !r.ok && r.status === 400);
+  record("duplicate Object ID", {
+    ok: core.register({ ...target }),
+    status: 409
+  }, r => !r.ok && r.status === 409);
+  assertAudit(core.register({
+    id: "Audit.Left", parentPath: "Audit", strictOCDA: true,
+    ocda: contract(["loop"]),
+    authorization: { default: "Public" },
+    receive: async () => core.request("Audit.Left", "Audit.Right", "loop")
+  }), "left registration");
+  assertAudit(core.register({
+    id: "Audit.Right", parentPath: "Audit", strictOCDA: true,
+    ocda: contract(["loop"]),
+    authorization: { default: "Public" },
+    receive: async () => core.request("Audit.Right", "Audit.Left", "loop")
+  }), "right registration");
+  record("circular REQ wait rejected",
+    await core.request("Audit.Caller", "Audit.Left", "loop"),
+    r => r.ok && r.value?.ok &&
+      r.value.value?.status === 423);
   const snapshot = core.getSnapshot();
   assertAudit(snapshot.logs.some(item =>
     item.kind === "Log" && item.action === "Request.echo" &&
@@ -70,9 +97,11 @@ export async function runRuntimeAudit() {
   assertAudit(snapshot.logs.some(item =>
     item.kind === "Log" && item.action === "Response.echo" &&
     item.status === 200), "response log");
-  assertAudit(snapshot.logs.filter(item =>
-    item.kind === "EHU" && item.status >= 400).length >= 4,
-  "failure EHU preservation");
+  for (const status of [400, 403, 404, 409, 423]) {
+    assertAudit(snapshot.logs.some(item =>
+      item.kind === "EHU" && item.status === status),
+    "failure EHU preservation " + status);
+  }
   assertAudit(snapshot.dependencies.some(item =>
     item.link === "Audit.Caller->Audit.Target" && item.code === "10"),
   "REQ dependency");

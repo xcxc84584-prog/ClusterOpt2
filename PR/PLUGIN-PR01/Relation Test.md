@@ -31,3 +31,13 @@ These results do not certify later SHA or manual 5 GiB test.
 
 ## Patch(+3) operational Relation Test
 `node --test Implementation/tests/ocda-runtime-audit.test.js` must PASS on latest SHA; `node Implementation/tools/ocda-runtime-audit.mjs` emits **real LinkCore OMU REQ/REP/EHU** JSON, not mocked fixture. CI uploads `runtime.json` artifact alongside static JSON/MD. New entries: UserAPI 200, AgentAPI 403, Private 403, unknown target/sender 404, dependency Request=10 Response=01, detached VTE success and isolation. **Latest SHA CI pending until GitHub completes.**
+
+## Patch(+3) exact-head CI results
+Commit `117307604e83cf0cd4cf3a50f285f08f44b21f19`:
+- [PR01 inventory + Runtime Audit](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017468003) — PASS
+- [PR1 OCDA Verification](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017468001) — PASS
+- [OCDA CI](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017468027) — PASS
+- [Local Agent PowerShell Parse](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017468007) — PASS
+
+## Patch(+4) additional runtime cases
+400 invalid contract, 409 duplicate ID and 423 cyclic wait, including explicit EHU preservation checks. **Pending latest SHA CI**. No assertion of user gesture, 1GiB/5GiB real file performance, or hardware-specific permission success.
