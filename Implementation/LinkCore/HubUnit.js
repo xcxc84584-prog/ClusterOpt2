@@ -44,6 +44,8 @@ export class HubUnit {
     this.routeHistory = new Map([[0, this.replaceRoutes]]);
     this.routeInflight = new Map();
     this.routeDrainWaiters = new Map();
+    this.providerInflight = new Map();
+    this.providerDrainWaiters = new Map();
     this.routeTransactions = new RouteTransactionUnit(this);
   }
 
@@ -55,6 +57,12 @@ export class HubUnit {
   }
 
   unregister(id) {
+    for (const [providerId, count] of this.providerInflight) {
+      if (count > 0 && this.registry.getProvider(providerId)?.objectId === id) {
+        this.omu.record("EHU", id, "Unregister", 409);
+        return false;
+      }
+    }
     const removed = this.registry.unregister(id);
     this.omu.record(removed ? "Log" : "EHU", id, "Unregister",
       removed ? 200 : 404);
@@ -97,6 +105,10 @@ export class HubUnit {
   }
 
   unregisterProvider(source, providerId) {
+    if (this.providerInflight.get(providerId) > 0) {
+      this.omu.record("EHU", source, "Provider.Unregister", 409);
+      return { ok: false, status: 409 };
+    }
     if (!this.registry.objects.has(source)) {
       this.omu.record("EHU", source, "Provider.Unregister", 404);
       return { ok: false, status: 404 };
@@ -565,6 +577,68 @@ export class HubUnit {
     });
   }
 
+  /** Inflight Provider pins prevent removal during a selected route. */
+  enterRouteProviders(ids) {
+    for (const id of ids) {
+      this.providerInflight.set(id,
+        (this.providerInflight.get(id) ?? 0) + 1);
+    }
+  }
+
+  leaveRouteProviders(ids) {
+    for (const id of ids) {
+      const remaining = (this.providerInflight.get(id) ?? 1) - 1;
+      if (remaining > 0) {
+        this.providerInflight.set(id, remaining);
+        continue;
+      }
+      this.providerInflight.delete(id);
+      for (const resolve of this.providerDrainWaiters.get(id) ?? []) {
+        resolve();
+      }
+      this.providerDrainWaiters.delete(id);
+    }
+  }
+
+  /** Disable new Provider selection before awaiting existing requests. */
+  async drainProvider(source, providerId) {
+    const manifest = this.registry.getProvider(providerId);
+    if (!manifest || !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Drain", 404);
+      return { ok: false, status: 404 };
+    }
+    if (manifest.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Drain", 403);
+      return { ok: false, status: 403 };
+    }
+    const disabled = this.setProviderEnabled(source, providerId, false);
+    if (!disabled.ok) return disabled;
+    if (this.providerInflight.get(providerId) > 0) {
+      await new Promise(resolve => {
+        const waiters = this.providerDrainWaiters.get(providerId) ?? [];
+        waiters.push(resolve);
+        this.providerDrainWaiters.set(providerId, waiters);
+      });
+    }
+    const removed = this.unregisterProvider(source, providerId);
+    this.omu.record(removed.ok ? "Log" : "EHU", source,
+      "Provider.Drain", removed.status, providerId);
+    return removed;
+  }
+
+  /** Host-controlled rehydrate must pass the same transaction Gate. */
+  restoreRouteConfiguration(candidate) {
+    const started = this.beginRouteTransaction(candidate);
+    if (!started.ok) return started;
+    const id = started.value.transactionId;
+    const validated = this.validateRouteTransaction(id);
+    if (!validated.ok) {
+      this.abortRouteTransaction(id);
+      return validated;
+    }
+    return this.commitRouteTransaction(id);
+  }
+
   enterRouteGeneration(generation) {
     this.routeInflight.set(generation,
       (this.routeInflight.get(generation) ?? 0) + 1);
@@ -607,6 +681,7 @@ export class HubUnit {
       options.origin === "agent" ? options.origin : null;
     const snapshot = this.routeSnapshot();
     this.enterRouteGeneration(snapshot.generation);
+    let selectedProviders = [];
     try {
     const route = this.serviceResolver.resolve(
       service, action, source, origin, snapshot.routes);
@@ -616,6 +691,11 @@ export class HubUnit {
         { error: route.error });
       return route;
     }
+    selectedProviders = [...new Set([
+      ...(route.value.stages ?? [route.value]),
+      ...(route.value.responsePipeline ?? [])
+    ].map(stage => stage.providerId).filter(Boolean))];
+    this.enterRouteProviders(selectedProviders);
     this.omu.record("Log", source, "Service.Resolve", 200,
       route.value.objectId, {
         service: route.value.service,
@@ -642,6 +722,7 @@ export class HubUnit {
     return this.executeResponsePipeline(source, route.value,
       result, options);
     } finally {
+      this.leaveRouteProviders(selectedProviders);
       this.leaveRouteGeneration(snapshot.generation);
     }
   }

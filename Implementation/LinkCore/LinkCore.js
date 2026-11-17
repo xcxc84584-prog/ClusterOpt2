@@ -273,6 +273,12 @@ export class LinkCore {
   awaitRouteDrain(generation) {
     return this.hub.awaitRouteDrain(generation);
   }
+  drainProvider(source, providerId) {
+    return this.hub.drainProvider(source, providerId);
+  }
+  restoreRouteConfiguration(table) {
+    return this.hub.restoreRouteConfiguration(table);
+  }
   /** Trusted host only: identity is verified by the embedding host. */
   configureOwnedRoutes(source, table) {
     return this.hub.configureOwnedRoutes(source, table);
