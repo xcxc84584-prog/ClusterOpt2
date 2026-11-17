@@ -97,7 +97,7 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
     descriptor.description || t("未提供描述","No description registered")));
   host.append(overview);
   if (entry.kind === "Request" || entry.kind === "Provider" ||
-      entry.kind === "Protocol") {
+      entry.kind === "Protocol" || entry.kind === "Action") {
     const envelopes=section(doc,t("Request / Response 對稱協議",
       "Symmetric Request / Response protocol"));
     const methods=node(doc,"div","pm-contract-fields");
