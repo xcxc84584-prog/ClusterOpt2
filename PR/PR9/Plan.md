@@ -85,3 +85,22 @@ large file restore after delayed permissions and reload.
 - Existing multi-page durable batch Save continues to own writeback.
 - Real 1/5 GiB latency and Windows filesystem acceptance are still
   separate PR8 gates, never implied by 65 MiB Playwright green.
+
+## Patch(+6) Windows native installer ParserError fix
+- Diagnosis: the CMD succeeded at download; the PowerShell installer
+  failed at ParseFile before any Node/npm operation. The first
+  ValidatePattern regex was missing quote/closure and the entire
+  installer code block appeared twice.
+- Fix: a single well-formed installer; independent named functions;
+  current SystemVersion passed into CMD and checked against
+  current-repo manifest; local paths derived at runtime.
+- Acceptance: AST syntax checking with both Windows PowerShell
+  5.1 and PowerShell 7, no duplicate functions/body, no secrets
+  written to disk, occupied port never forces process termination,
+  current Node/npm discovery and original OCDA regressions.
+- Security: Loopback 127.0.0.1 agent; no automatically granted OS
+  privileges. No API key or constant token in source. The pairing
+  token is shown only in the separate native console.
+- Load: downloads three agent sources, optional portable Node zip,
+  npm dependencies; installation serial, native process async.
+- Manual Windows ConPTY pairing remains an independent gate.
