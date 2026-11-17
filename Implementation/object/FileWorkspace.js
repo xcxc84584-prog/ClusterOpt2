@@ -17,13 +17,13 @@ export class FileWorkspace {
     this.authorization = Object.freeze({ default: "Public" });
     this.strictOCDA = true;
     this.ocda = Object.freeze({
-      Request: ["new", "open", "page", "activate", "close", "closeAll",
+      Request: ["new", "open", "page", "gotoLine", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal", "list",
         "entries", "snapshot", "restore", "closeMany", "sliceManifest"],
-      Response: ["new", "open", "page", "activate", "close", "closeAll",
+      Response: ["new", "open", "page", "gotoLine", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal",
       "sliceManifest"],
-      UserAPI: ["new", "open", "page", "activate", "close", "closeAll",
+      UserAPI: ["new", "open", "page", "gotoLine", "activate", "close", "closeAll",
         "reorder", "save", "setPriority", "syncExternal", "sliceManifest"],
       AgentAPI: [],
       Property: ["DocumentStatus", "StoragePriority", "FileManagement",
@@ -188,6 +188,7 @@ export class FileWorkspace {
     if (action === "new") return this.create();
     if (action === "open") return this.open(payload.handles);
     if (action === "page") return this.page(payload);
+    if (action === "gotoLine") return this.gotoLine(payload);
     if (action === "activate") return this.activate(payload.id);
     if (action === "close") return this.close(payload.id);
     if (action === "closeAll") return this.closeAll();
@@ -266,6 +267,25 @@ export class FileWorkspace {
     const result = await this.core.request(this.id, doc.id, "page", {
       index, onProgress: () => this.onChange()
     });
+    if (!result.ok) {
+      const error = new Error(result.error);
+      error.status = result.status;
+      throw error;
+    }
+    this.onChange();
+    return result.value;
+  }
+
+  async gotoLine({ id = this.activeId, line, lineHeight,
+    viewportHeight, onProgress = () => {} } = {}) {
+    const doc = this.documents.find(item => item.id === id);
+    if (!doc?.virtualReadOnly) {
+      const error = new Error("Global seek requires a sliced document");
+      error.status = 400;
+      throw error;
+    }
+    const result = await this.core.request(this.id, doc.id,
+      "seekLine", { line, lineHeight, viewportHeight, onProgress });
     if (!result.ok) {
       const error = new Error(result.error);
       error.status = result.status;
