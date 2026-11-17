@@ -157,3 +157,22 @@ PR02.06 repair: CatalogCollection checks Object.ocda.APIDescriptors
 before invoking strict URU.describeAPI. Legacy Objects lacking the
 contract produce zero API metadata but still participate as registered
 Hub callers. No new registry and no change to actual Request routing.
+
+## PR02.07 — Version Compatibility Property
+```mermaid
+flowchart LR
+  Descriptor[APIDescriptor version/since/deprecated] --> Validation[ObjectContract]
+  Validation --> Version[CatalogVersionPolicy.inspect]
+  Version -->|contradictory| EHU[HubUnit registration EHU 400]
+  Version -->|valid| URU[URU registration]
+  Query[Trusted metadata consumer] --> Version
+  Version --> Info[compatible + deprecated snapshot]
+  URU --> Hub[Original HubUnit.request permission path]
+```
+New Property CatalogVersionPolicy registered once in LinkCore.
+No new Object, registry or request handler. EventChain: registration
+calls strict APIDescriptor validation, then since<=version; invalid
+contract returns EHU 400 and does not register. Consumer calls pure
+inspect and receives 200 compatibility/deprecation metadata or 400.
+No route through policy can authorize an action. Parallel independent
+checks have no mutation and no dependency edge except existing Hub.
