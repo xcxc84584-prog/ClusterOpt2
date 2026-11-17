@@ -323,6 +323,19 @@ export function mountPluginManagerUI(core,doc,options={}) {
       const descriptor=item.descriptor;
       add("Property",item.name,descriptor.owners.join(", "),descriptor);
     }
+    // HubUnit's actual core method signatures are a shared read-only
+    // EDPMU Property, not inferred APIs or a parallel plugin registry.
+    const protocol=core.readProperty("ui","HubProtocolPolicy");
+    if(protocol.ok) {
+      for(const item of protocol.value.descriptions) {
+        add("Protocol",item.id,"HubUnit",{
+          id:item.id,action:item.action,visibility:"Public",
+          description:item.description,
+          inputSchema:item.inputSchema,
+          outputSchema:item.outputSchema
+        });
+      }
+    }
     let providerOffset=0;
     while(providerOffset<4096) {
       const result=core.listProviderContracts("ui",{
