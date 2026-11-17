@@ -1,5 +1,5 @@
 import { PluginWorkbenchTabUnit } from "./PluginWorkbenchTabUnit.js";
-import { downloadAgentQuickSetup } from
+import { downloadAgentQuickSetup, downloadMCPQuickSetup } from
   "../main/plugin-agent-download.js";
 import { PluginMCPReadOnlyObject } from
   "../object/PluginMCPReadOnlyObject.js";
@@ -604,10 +604,14 @@ export class PluginUIHostUnit {
             view.workbenchTab?.close();
             return;
           }
-          if (event.data?.type !== "cluster-plugin-quick-setup") return;
-          void downloadAgentQuickSetup(this.doc).catch(() =>
-            this.core.omu.record("EHU","PluginUIHost",
-              "Plugin.QuickSetupDownload",503,provider.providerId));
+          const action = event.data?.type;
+          if (action !== "cluster-plugin-quick-setup" &&
+              action !== "cluster-plugin-mcp-quick-setup") return;
+          const download = action === "cluster-plugin-quick-setup" ?
+            downloadAgentQuickSetup : downloadMCPQuickSetup;
+          void download(this.doc).catch(() =>
+            this.core.omu.record("EHU", "PluginUIHost",
+              "Plugin.QuickSetupDownload", 503, provider.providerId));
         };
         this.doc.defaultView.addEventListener("message", onQuickSetup);
         view.unlistenQuickSetup = () => this.doc.defaultView
