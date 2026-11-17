@@ -11,7 +11,7 @@ import { PluginRPCContractPolicy as RPC } from
  * The opaque-origin iframe owns and can terminate that Worker even
  * when the plugin runs an unbounded synchronous computation.
  */
-const BOOTSTRAP = `
+const BOOTSTRAP = String.raw`
 const WORKER_SOURCE = "\"use strict\";\nlet channel = null;\nlet plugin = null;\nself.addEventListener(\"message\", async event => {\n  if (channel || event.data?.kind !== \"start\" ||\n      event.ports.length !== 1) return;\n  channel = event.ports[0];\n  try {\n    const source = event.data.source;\n    if (typeof source !== \"string\") throw Error(\"Source missing\");\n    const url = \"data:text/javascript;charset=utf-8,\" +\n      encodeURIComponent(source);\n    plugin = await import(url);\n    channel.onmessage = async ({data}) => {\n      if (data?.kind !== \"invoke\" ||\n          !Number.isSafeInteger(data.id)) return;\n      try {\n        const fn = Object.hasOwn(plugin, data.action) ?\n          plugin[data.action] : null;\n        if (typeof fn !== \"function\") {\n          channel.postMessage({kind:\"response\",id:data.id,\n            ok:false,status:404});\n          return;\n        }\n        const value = await fn(data.payload);\n        channel.postMessage({kind:\"response\",id:data.id,\n          ok:true,value:value ?? null});\n      } catch (_error) {\n        channel.postMessage({kind:\"response\",id:data.id,\n          ok:false,status:500});\n      }\n    };\n    channel.start();\n    channel.postMessage({kind:\"ready\"});\n  } catch (_error) {\n    channel.postMessage({kind:\"error\",status:400});\n  }\n});\n";
 "use strict";
 let launched = false;
