@@ -57,7 +57,7 @@ const server=http.createServer(async(req,res)=>{
    const state=q.get('state')||'',challenge=q.get('code_challenge')||'';
    if(q.get('response_type')!=='code'||q.get('code_challenge_method')!=='S256'||!/^[A-Za-z0-9_-]{43,128}$/.test(challenge)||!state||state.length>512)return oauthErrorRedirect(res,uri,state,'invalid_request');
    const requested=(q.get('scope')||'cluster.read').trim()
-    .split(/\\s+/);
+    .split(/\s+/);
    const permitted=new Set(['cluster.read','cluster.control']);
    if(requested.length<1||requested.length>2||
       new Set(requested).size!==requested.length||
