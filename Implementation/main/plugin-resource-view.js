@@ -343,31 +343,63 @@ export function renderResources(doc, host, options) {
   }
   search.addEventListener("input", renderCards);
   renderCards();
-  // PR13.2: local user packages are staged only. Never describe them as
-  // mounted or executable before sandbox and Hub authorization exist.
-  const localPackage = button(doc, t("驗證本地自製插件包",
-    "Validate local custom plugin package"), async () => {
+  // PR13.2–13.4: explicit folder gesture, bounded data intake,
+  // separate consent, then HubUnit/URU-backed sandbox installation.
+  const localPackage = button(doc, t("選擇並裝載自製插件資料夾",
+    "Select and install custom plugin folder"), async event => {
+    // Native click events are trusted; plugin code in an opaque sandbox
+    // cannot synthesize a valid host activation gesture.
+    if (event && event.isTrusted === false) return;
     status.textContent = t("正在讀取所選插件包...",
       "Reading selected plugin package...");
     const result = await core.localPluginPackage.selectAndStage();
-    if (result.ok && result.value.snapshot) {
-      const saved = await core.savePluginBundle(result.value.snapshot);
-      status.textContent = saved.ok ?
-        t("整個插件資料夾已保存，重載後可恢復待審核套件；尚未執行。",
-          "Full plugin folder saved for reload; execution is pending.") :
-        t("套件驗證通過，但儲存失敗。",
-          "Package validated, but storage failed.");
-    } else {
+    if (!result.ok || !result.value.snapshot) {
       status.textContent = result.ok ?
-        t("插件已驗證，但目前瀏覽器不支援完整資料夾保存。",
-          "Plugin validated, but full folder storage is unavailable.") :
+        t("無法讀取完整資料夾，未執行插件。",
+          "Complete folder access unavailable; plugin not executed.") :
         t("插件包驗證失敗（狀態 ",
           "Package validation failed (status ") + result.status + ").";
+      return;
     }
+    const snapshot = result.value.snapshot;
+    const saved = await core.savePluginBundle(snapshot);
+    if (!saved.ok) {
+      status.textContent = t("插件包未能保存，未進行安裝。",
+        "Package persistence failed; installation aborted.");
+      return;
+    }
+    const provider = result.value.manifest.provider;
+    const summary = t(
+      "確認執行自製插件？\\nProvider: ",
+      "Run this user-authored plugin?\\nProvider: ") +
+      provider.providerId + "\\n" +
+      t("要求權限：", "Requested permissions: ") +
+      (provider.permissions.join(", ") ||
+        t("無", "None")) + "\\n" +
+      t("插件將在隔離環境執行，無主頁權限。",
+        "The plugin runs in an isolated sandbox without host access.");
+    const consented = doc.defaultView.confirm(summary);
+    if (!consented) {
+      status.textContent = t("套件已保存為待審核，未執行。",
+        "Package stored as pending review; not executed.");
+      return;
+    }
+    status.textContent = t("正在啟動隔離插件...",
+      "Starting isolated plugin...");
+    const installed = await core.pluginHostInstaller.install(snapshot,{
+      consented: true,
+      approvedPermissions: [...provider.permissions]
+    });
+    status.textContent = installed.ok ?
+      t("插件已透過 HubUnit／URU 註冊並在隔離環境啟動。",
+        "Plugin registered via HubUnit/URU in isolated sandbox.") :
+      t("安全裝載失敗（狀態 ", "Safe activation failed (status ") +
+      installed.status + ").";
+    if (installed.ok) onPluginInstalled?.();
   });
   localPackage.setAttribute("aria-label", t(
-    "選擇本地資料夾並驗證自製插件",
-    "Select local folder and validate custom plugin"));
+    "選擇資料夾、審核權限並裝載自製插件",
+    "Choose folder, approve capabilities, install custom plugin"));
   const localGroup = el(doc, "section", "pm-resource-local");
   localGroup.append(localPackage);
   heading.append(search);
