@@ -215,6 +215,16 @@ export class LinkCore {
   unregisterProvider(source, providerId) {
     return this.hub.unregisterProvider(source, providerId);
   }
+  grantPluginPermission(source, id, permission, approved = false) {
+    return this.hub.grantPluginPermission(source, id,
+      permission, approved);
+  }
+  revokePluginPermission(source, id, permission) {
+    return this.hub.revokePluginPermission(source, id, permission);
+  }
+  checkPluginPermission(id, permission) {
+    return this.hub.checkPluginPermission(id, permission);
+  }
   attachProviderFactory(source, providerId, factory) {
     return this.hub.attachProviderFactory(source, providerId, factory);
   }

@@ -10,6 +10,7 @@ import { ServiceRequestResolver } from "./ServiceRequestResolver.js";
 import { RouteTablePolicy } from
   "../property/RouteTablePolicy.js";
 import { RouteTransactionUnit } from "./RouteTransactionUnit.js";
+import { PluginPermissionUnit } from "./PluginPermissionUnit.js";
 import { RouteContractPolicy } from
   "../property/RouteContractPolicy.js";
 import { ResponsePipelinePolicy } from
@@ -47,6 +48,7 @@ export class HubUnit {
     this.providerInflight = new Map();
     this.providerDrainWaiters = new Map();
     this.routeTransactions = new RouteTransactionUnit(this);
+    this.pluginPermissions = new PluginPermissionUnit(registry, omu);
   }
 
   register(object) {
@@ -63,7 +65,11 @@ export class HubUnit {
         return false;
       }
     }
+    const owned = this.registry.listProviders().filter(item =>
+      item.objectId === id).map(item => item.providerId);
     const removed = this.registry.unregister(id);
+    if (removed) owned.forEach(providerId =>
+      this.pluginPermissions.forget(providerId));
     this.omu.record(removed ? "Log" : "EHU", id, "Unregister",
       removed ? 200 : 404);
     return removed;
@@ -123,8 +129,23 @@ export class HubUnit {
       return { ok: false, status: 403 };
     }
     this.registry.unregisterProvider(providerId);
+    this.pluginPermissions.forget(providerId);
     this.omu.record("Log", source, "Provider.Unregister", 200, providerId);
     return { ok: true, status: 200 };
+  }
+
+  /** Explicitly authorized runtime grants; not part of browser APIs. */
+  grantPluginPermission(source, id, permission, approved = false) {
+    return this.pluginPermissions.grant(source, id,
+      permission, approved);
+  }
+
+  revokePluginPermission(source, id, permission) {
+    return this.pluginPermissions.revoke(source, id, permission);
+  }
+
+  checkPluginPermission(id, permission) {
+    return this.pluginPermissions.allows(id, permission);
   }
 
   /**
