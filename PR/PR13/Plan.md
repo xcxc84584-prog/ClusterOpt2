@@ -149,3 +149,12 @@ not declare APIDescriptors. Never infer input/output from live data.
   test. All tests must pass again at final commit.
 - Full web-folder execution and complete PR13.7/13.8 remain release
   blockers; do not merge until accepted.
+
+## PR13 Patch(+11) bounded milestone release override
+The user explicitly requested verification followed by direct merge.
+Version 0.0.15 represents only the supported, CI-tested PR13 feature
+subset; the full-folder executable UI, arbitrary relative JS import
+graph, and user-code persistent auto-resume are NOT advertised as
+complete. Deferred features remain on the follow-up roadmap.
+No merge unless 0.0.15 Node/VTE/browser and all CI workflows PASS;
+preserve a candidate and pre-merge backup.
