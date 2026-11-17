@@ -2,13 +2,21 @@ import {evaluateCommand} from './permission-policy.js';
 // OCDA browser-side facade. This never executes commands or grants OS privileges.
 export class PowerShellManager {
   #rules=[]; #status='UNCONFIGURED'; #lastError='';
-  constructor({agent=null}={}){this.agent=agent;}
+  constructor({agent=null,expectedVersion=null}={}){
+    this.agent=agent;
+    this.expectedVersion=expectedVersion;
+  }
   getStatus(){return Object.freeze({status:this.#status,configured:this.#status==='CONNECTED',error:this.#lastError});}
   async checkConnection(){
     if(!this.agent){this.#status='UNCONFIGURED';return this.getStatus();}
     try{
       const response=await this.agent.checkConnection();
-      this.#status=response?.connected===true?'CONNECTED':'DISCONNECTED';this.#lastError=this.#status==='CONNECTED'?'':'AGENT_NOT_CONNECTED';
+      const validVersion=!this.expectedVersion ||
+        response?.version===this.expectedVersion;
+      this.#status=response?.connected===true&&validVersion?
+        'CONNECTED':'DISCONNECTED';
+      this.#lastError=this.#status==='CONNECTED'?'':
+        (!validVersion?'AGENT_VERSION_MISMATCH':'AGENT_NOT_CONNECTED');
     }catch(error){this.#status='DISCONNECTED';this.#lastError=error?.message||'NETWORK_UNAVAILABLE';}
     return this.getStatus();
   }
