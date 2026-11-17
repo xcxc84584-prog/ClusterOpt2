@@ -532,15 +532,25 @@ export class PluginUIHostUnit {
         for (const other of this.views.values()) {
           if (other !== view) other.workbenchTab?.deactivate();
         }
-        view.workbenchTab?.open();
-        sync();
+        if (view.workbenchTab) {
+          view.workbenchTab.open();
+        } else {
+          const next = panel.hidden;
+          panel.hidden = !next;
+          button.setAttribute("aria-pressed", String(next));
+        }
+        if (!panel.hidden) sync();
       };
       button.addEventListener("click", open);
       frame.addEventListener("load", sync);
       const closeForWorkbench = event => {
         if (!event.target.closest?.("#explorerPowerShell, #pluginBtn"))
           return;
-        view.workbenchTab?.deactivate();
+        if (view.workbenchTab) view.workbenchTab.deactivate();
+        else {
+          panel.hidden = true;
+          button.setAttribute("aria-pressed", "false");
+        }
       };
       this.doc.addEventListener("click", closeForWorkbench);
       const localeObserver = new MutationObserver(sync);
@@ -577,9 +587,11 @@ export class PluginUIHostUnit {
       toolbar.append(button);
       workspace.style.position = "relative";
       workspace.append(panel);
-      view.workbenchTab = new PluginWorkbenchTabUnit(
-        this.doc, view, sync);
-      view.workbenchTab.attach();
+      if (provider.providerId === "cluster.ai-agent-mcp") {
+        view.workbenchTab = new PluginWorkbenchTabUnit(
+          this.doc, view, sync);
+        view.workbenchTab.attach();
+      }
       if (provider.providerId === "cluster.ai-agent-mcp") {
         const onQuickSetup = event => {
           if (event.source !== frame.contentWindow) return;
@@ -626,7 +638,11 @@ export class PluginUIHostUnit {
       view.localAgent?.disableShellBridge();
       view.localAgent?.disableReadBridge();
       view.resetToolBox?.();
-      view.workbenchTab?.deactivate();
+      if (view.workbenchTab) view.workbenchTab.deactivate();
+      else {
+        view.panel.hidden = true;
+        view.button.setAttribute("aria-pressed", "false");
+      }
     }
   }
 
