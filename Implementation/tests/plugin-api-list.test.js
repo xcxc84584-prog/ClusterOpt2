@@ -32,7 +32,12 @@ function provider() {
 test("PR13 HubUnit discovers symmetric Provider input/output", () => {
   const env = new VirtualTestEnvironment();
   assert.equal(env.core.register({
-    id: "User.Contract", receive: async () => null
+    id: "User.Contract", receive: async () => null,
+    ocda: {
+      Request: ["tokenize"], Response: [], UserAPI: ["tokenize"],
+      AgentAPI: [], Property: [], Program: "Test",
+      EHU: [], Log: []
+    }
   }), true);
   assert.equal(env.core.registerProvider(
     "User.Contract", provider()).ok, true);
@@ -63,7 +68,12 @@ test("PR13 HubUnit discovery is read-only, deny unknown source", () => {
 test("PR13 HubUnit drops disabled Provider from API contracts", () => {
   const env = new VirtualTestEnvironment();
   env.core.register({
-    id: "User.Contract", receive: async () => null
+    id: "User.Contract", receive: async () => null,
+    ocda: {
+      Request: ["tokenize"], Response: [], UserAPI: ["tokenize"],
+      AgentAPI: [], Property: [], Program: "Test",
+      EHU: [], Log: []
+    }
   });
   env.core.registerProvider("User.Contract",provider());
   const disabled = env.core.setProviderEnabled(
