@@ -27,6 +27,8 @@ export function mountNativePowerShell({ core, button, host, translate }) {
         spellcheck="false">
       <button id="nativePsPair" type="button">Connect</button>
       <p id="nativePsNotice" role="status" aria-live="polite"></p>
+      <a id="nativePsSetupLink" target="_blank" rel="noopener noreferrer"
+        href="https://github.com/xcxc84584-prog/ClusterOpt/tree/main/Program/local-agent">Agent setup</a>
     </div>
     <div id="nativePsTerminal" class="native-ps-terminal"></div>`;
   host.append(content);
@@ -158,6 +160,12 @@ export function mountNativePowerShell({ core, button, host, translate }) {
   }
 
   function paint() {
+    content.querySelector('label[for="nativePsPort"]').textContent =
+      translate("powerShellPort");
+    content.querySelector('label[for="nativePsToken"]').textContent =
+      translate("powerShellToken");
+    select("nativePsPair").textContent = translate("powerShellConnect");
+    select("nativePsSetupLink").textContent = translate("powerShellSetup");
     content.hidden = !visible;
     tabs.replaceChildren();
     for (const item of state.sessions) {
@@ -233,5 +241,5 @@ export function mountNativePowerShell({ core, button, host, translate }) {
     const selected = records.get(state.activeId);
     if (selected) resize(selected);
   });
-  return Object.freeze({ hide, show });
+  return Object.freeze({ hide, show, refresh: paint });
 }
