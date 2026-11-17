@@ -21,15 +21,28 @@ const EXTENSIONS = Object.freeze({
 });
 
 const WORDS = Object.freeze({
-	js: "const let var function return if else for while class new import export async await try catch throw typeof instanceof this null undefined true false switch case break continue",
-	ts: "const let var function return if else for while class new import export async await interface type enum extends implements readonly public private protected string number boolean void true false",
-	py: "def class return if elif else for while in not and or is import from as async await try except finally raise with yield True False None lambda pass",
-	cpp: "int long short float double char bool void auto const constexpr static class struct public private protected template typename namespace return if else for while new delete true false nullptr include",
-	java: "class interface extends implements public private protected static final void int long double boolean String return if else for while new null true false package import",
+	js: "const let var function return if else for while class new import " +
+		"export async await try catch throw typeof instanceof this null " +
+		"undefined true false switch case break continue",
+	ts: "const let var function return if else for while class new import " +
+		"export async await interface type enum extends implements readonly " +
+		"public private protected string number boolean void true false",
+	py: "def class return if elif else for while in not and or is import " +
+		"from as async await try except finally raise with yield True False " +
+		"None lambda pass",
+	cpp: "int long short float double char bool void auto const constexpr " +
+		"static class struct public private protected template typename " +
+		"namespace return if else for while new delete true false nullptr " +
+		"include",
+	java: "class interface extends implements public private protected static " +
+		"final void int long double boolean String return if else for while " +
+		"new null true false package import",
 	css: "@media @import @supports !important",
 	html: "",
 	json: "true false null",
-	sql: "SELECT FROM WHERE JOIN LEFT RIGHT INNER OUTER ON GROUP BY ORDER HAVING LIMIT INSERT INTO VALUES UPDATE DELETE CREATE TABLE NULL AND OR AS DISTINCT"
+	sql: "SELECT FROM WHERE JOIN LEFT RIGHT INNER OUTER ON GROUP BY ORDER " +
+		"HAVING LIMIT INSERT INTO VALUES UPDATE DELETE CREATE TABLE NULL AND " +
+		"OR AS DISTINCT"
 });
 
 const ALIASES = Object.freeze({
