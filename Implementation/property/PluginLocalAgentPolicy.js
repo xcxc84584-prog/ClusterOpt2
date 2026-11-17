@@ -10,7 +10,7 @@ const SAFE = new Set(["ready", "pong", "error",
   "bridge_registered", "tool_call",
   "powershell_execution_result"]);
 export const PluginLocalAgentPolicy = Object.freeze({
-  address: "ws://127.0.0.1:43879/agent",
+  address: "ws://127.0.0.1:43881/agent",
   validPort(value) {
     return Number.isInteger(value) && value >= 1024 &&
       value <= 65535;

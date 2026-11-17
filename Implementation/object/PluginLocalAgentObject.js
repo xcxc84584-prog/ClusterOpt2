@@ -3,7 +3,8 @@ import { PluginLocalAgentPolicy as Policy } from
 
 /**
  * Host-owned OCDA Object: one explicitly approved local connection.
- * No model, tool, shell, file or MCP message may transit this bridge.
+ * MCP calls require a registered bridge and trusted ToolBox decisions.
+ * PS commands need a separate browser approval; no ambient privilege.
  * Pairing token exists only in a local function scope during auth.
  */
 export class PluginLocalAgentObject {
@@ -42,8 +43,9 @@ export class PluginLocalAgentObject {
     this.modelReplyQueue = Promise.resolve();
     this.shellApprovalId = null;
     this.mcpReadId = null;
+    this.explorerId = null;
     this.bridgeRegistered = false;
-    this.pairPort = 43879;
+    this.pairPort = 43881;
   }
 
   audit(status, action) {
@@ -135,6 +137,19 @@ export class PluginLocalAgentObject {
     this.mcpReadId = null;
   }
 
+  /**
+   * Only a trusted PluginExplorer Object is eligible. This association
+   * never grants filesystem rights; ToolBox authorizes each operation.
+   */
+  registerExplorer(objectId) {
+    if (typeof objectId !== "string" ||
+        !objectId.startsWith("PluginExplorer.")) {
+      return { ok: false, status: 400 };
+    }
+    this.explorerId = objectId;
+    return { ok: true, status: 200 };
+  }
+
   async dispatchShellTool(message) {
     const requestId = message.requestId;
     let result = message.name === "cluster.powershell_request" ?
@@ -143,13 +158,132 @@ export class PluginLocalAgentObject {
         this.shellApprovalId) {
       const reply = await this.core.request(this.id,
         this.shellApprovalId, "approve", {
-          command: message.args.command,
-          path: message.args.path
+          command: message.args?.command,
+          path: message.args?.path
         });
       result = {
         approved: reply.ok &&
           reply.value?.approved === true
       };
+    } else if (message.name === "cluster.open_powershell" &&
+        this.shellApprovalId && this.explorerId) {
+      const rootReply = await this.core.request(this.id,
+        this.explorerId, "status", {});
+      if (!rootReply.ok ||
+          rootReply.value?.permissions?.ps !== true ||
+          !rootReply.value?.selected) {
+        result = { error: "PowerShell permission not granted" };
+      } else {
+        const button = this.doc.getElementById(
+          "explorerPowerShell");
+        if (!button) {
+          result = { error: "PowerShell UI not available" };
+        } else {
+          button.click();
+          result = {
+            requested: true, ready: false,
+            message: "PowerShell tab opening; verify its local session"
+          };
+        }
+      }
+    } else if (this.mcpReadId && this.explorerId &&
+        message.name === "cluster.find_root_windows_path") {
+      const rootReply = await this.core.request(this.id,
+        this.explorerId, "status", {});
+      const requestedRoot = message.args?.root;
+      if (!rootReply.ok ||
+          rootReply.value?.selected !== true ||
+          rootReply.value?.permissions?.read !== true ||
+          requestedRoot !== rootReply.value.folderName) {
+        result = { error: "Explorer root read permission denied" };
+      } else {
+        const choices = Array.isArray(message.args?.candidates) ?
+          message.args.candidates.filter(item =>
+            typeof item === "string").slice(0, 5) : [];
+        const chosen = this.doc.defaultView.prompt(
+          "確認 Windows 資料夾路徑 / Confirm root path" +
+          "\\n候選位置 / Candidates:\\n" +
+          choices.join("\\n"), choices[0] ?? "");
+        if (typeof chosen === "string" && chosen.trim()) {
+          result = {
+            absolutePath: chosen.trim(),
+            verified: false, confirmedByUser: true
+          };
+        } else {
+          result = { error: "Root path confirmation denied" };
+        }
+      }
+    } else if (this.mcpReadId && this.explorerId &&
+        message.name === "cluster.list_roots") {
+      const reply = await this.core.request(this.id,
+        this.explorerId, "roots", {});
+      result = reply.ok ?
+        reply.value.roots.map(name => ({
+          name, kind: "directory"
+        })) : { error: "Access denied" };
+    } else if (this.mcpReadId && this.explorerId &&
+        Object.hasOwn({
+          "cluster.list_directory": "list",
+          "cluster.read_path": "readChunk",
+          "cluster.create_file": "create",
+          "cluster.write_path": "update",
+          "cluster.delete_path": "delete"
+        }, message.name)) {
+      const actions = {
+        "cluster.list_directory": "list",
+        "cluster.read_path": "readChunk",
+        "cluster.create_file": "create",
+        "cluster.write_path": "update",
+        "cluster.delete_path": "delete"
+      };
+      const args = message.args ?? {};
+      const rootReply = await this.core.request(
+        this.id, this.explorerId, "status", {});
+      const rootName = rootReply.ok &&
+        rootReply.value?.selected ? rootReply.value.folderName : null;
+      const full = args.path;
+      if (!rootName || typeof full !== "string" ||
+          (full !== rootName &&
+           !full.startsWith(rootName + "/"))) {
+        result = { error: "Explorer root is not authorized" };
+      } else {
+        const path = full === rootName ? "" :
+          full.slice(rootName.length + 1);
+        const fileName = args.name;
+        if (message.name === "cluster.create_file" &&
+            (typeof fileName !== "string" ||
+             fileName.length === 0 || fileName.length > 255 ||
+             fileName === "." || fileName === ".." ||
+             fileName.includes("/") ||
+             fileName.includes(String.fromCharCode(92)) ||
+             [...fileName].some(ch => ch.charCodeAt(0) < 32))) {
+          result = { error: "Invalid Explorer file name" };
+        } else {
+          const combined = message.name === "cluster.create_file" ?
+            (path ? path + "/" : "") + String(fileName ?? "") : path;
+          const reply = await this.core.request(this.id,
+            this.explorerId, actions[message.name], {
+              path: combined, content: args.content,
+              offset: args.offset, length: args.length
+            });
+          if (!reply.ok) {
+            result = { error: "ToolBox denied file operation" };
+          } else if (message.name === "cluster.list_directory") {
+            result = { path: full, items: reply.value.entries,
+              truncated: reply.value.truncated };
+          } else if (message.name === "cluster.read_path") {
+            result = { path: full, ...reply.value };
+          } else if (message.name === "cluster.create_file") {
+            result = { created: true,
+              path: full + (full.endsWith("/") ? "" : "/") +
+                String(fileName) };
+          } else if (message.name === "cluster.write_path") {
+            result = { updated: true, path: full };
+          } else {
+            result = { deleted: true, path: full };
+          }
+        }
+      }
     } else if (this.mcpReadId && [
       "cluster.list_files", "cluster.get_editor_state",
       "cluster.read_file"
@@ -369,7 +503,20 @@ export class PluginLocalAgentObject {
         } else if (checked.value.type === "tool_call" &&
             this.state === "connected" &&
             this.bridgeRegistered) {
-          void this.dispatchShellTool(checked.value);
+          const requestId = checked.value.requestId;
+          void this.dispatchShellTool(checked.value).catch(() => {
+            this.audit(500, "ToolDispatchFailed");
+            if (this.socket && this.state === "connected") {
+              try {
+                this.socket.send(JSON.stringify({
+                  type: "tool_result", requestId,
+                  error: "Tool operation failed"
+                }));
+              } catch {
+                this.close();
+              }
+            }
+          });
         } else if (checked.value.type ===
                    "powershell_execution_result" &&
                    this.bridgeRegistered) {

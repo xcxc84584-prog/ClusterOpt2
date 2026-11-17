@@ -161,23 +161,12 @@ color:#ffb7b7
 font:11px ui-monospace,monospace;
 color:#91a1b7
 }
-.cai-workspace form{
-display:flex;
-align-items:flex-end;
-gap:10px;
-padding:14px;
+.cai-readonly-note{
+padding:10px 16px;
 border-top:1px solid var(--plugin-border,#333);
-margin-top:auto
-}
-.cai-workspace textarea{
-resize:vertical;
-min-height:64px;
-flex:1;
-padding:12px;
-background:var(--plugin-background,#0c0c0c);
-color:var(--plugin-text,#fff);
-border:1px solid var(--plugin-border,#444);
-border-radius:6px
+color:var(--plugin-text,#eee);
+opacity:.75;
+font-size:12px
 }
 .cai-guide{
 margin:12px 24px 18px;
@@ -231,10 +220,6 @@ padding:13px
 }.cai-guide{
 margin:8px;
 padding:10px
-}.cai-workspace form{
-flex-wrap:wrap
-}.cai-workspace textarea{
-flex-basis:100%
 }
 }</style>
 </head>
@@ -280,16 +265,18 @@ flex-basis:100%
 <h2 data-i18n="setupTitle">連結本地 AI Agent</h2>
 <p>沿用 Cluster PowerShell 本地 Agent；初次使用只需下載單一 Quick-Setup.cmd，並依提示完成配置。
 </p>
-<p data-i18n="modelInactive">配對本地 Agent 並設定模型後即可執行純文字任務。
+<p data-i18n="modelInactive">完成本地 Agent 配對與 MCP 授權後，可於此查看操作狀態與輸出。
 </p>
 <div
   class="cai-step">
 <strong>01 · QUICK SETUP</strong>
 <p>下載 Quick-Setup.cmd 後直接執行；會自動取得必要檔案。
- 若 43879 被占用，可選擇 P／C／O。
+ 若 43881 被占用，可選擇 P／C／O。
 </p>
 <button
   type="button" data-quick-setup>下載 Quick-Setup.cmd</button>
+<button
+  type="button" data-mcp-quick-setup>下載 MCP 快速配置 CMD</button>
 </div>
 <div
   class="cai-step">
@@ -345,7 +332,18 @@ flex-basis:100%
 </li>
 <li>點選「模型設定」，在可信任視窗設定 OpenAI API Key 與模型。
 </li>
-<li>MCP／OAuth 需個別啟動並完成本機及 HTTPS 安全授權；不會自動啟用。
+<li>再點選「下載 MCP 快速配置 CMD」執行本機 MCP 配置。它會準備 43880 MCP 與選用的 43879 OAuth；不會自動架設公開 HTTPS。
+</li>
+<li>設定可信任的固定 HTTPS 反向代理，僅指向本機 127.0.0.1:43879，網址必須與 OAuth Issuer 完全一致。
+</li>
+<li>在 ChatGPT 設定自訂 MCP 連線：貼上 https://你的網域/mcp，使用 OAuth 登入，於授權頁輸入本機顯示的授權密碼。
+</li>
+<li>預設 cluster.read 僅提供五項唯讀工具。
+ 若需要遠端檔案 CRUD／PowerShell，必須明確要求 cluster.control，
+ 在 OAuth 頁面同意高權限警告，再於 Cluster ToolBox
+ 分別開啟檔案與 PS 權限。
+</li>
+<li>每一條 PowerShell 命令仍須在 Cluster 視窗確認，關閉 ToolBox 對應權限即可拒絕後續請求。
 </li>
 </ol>
 </div>
@@ -362,19 +360,7 @@ flex-basis:100%
 <div data-model-output>
 </div>
 </div>
-<form
-  id="caiForm">
-<textarea
-  disabled
-  maxlength="8000"
-  rows="3"
-  data-placeholder="prompt"
-  aria-label="Task prompt">
-</textarea>
-<button
-  type="submit" data-i18n="submit"
-  disabled>送出</button>
-</form>
+<div class="cai-readonly-note" role="note" data-i18n="readOnlyNotice">唯讀輸出介面：請透過 ChatGPT MCP 發送操作，此處不提供聊天輸入。</div>
 </div>
 </section>
 <script>
@@ -386,16 +372,12 @@ flex-basis:100%
   let taskPending = false;
   let modelConfigured = false;
   const messages = document.querySelector("[data-model-output]");
-  const taskInput = document.querySelector("textarea");
-  const submit = document.querySelector('form button[type="submit"]');
   function renderModelControls() {
     const connected = agentState === "connected";
     for (const selector of ["configure", "modelInfo"]) {
       document.querySelector('[data-model-action="' + selector + '"]')
         .disabled = !connected;
     }
-    taskInput.disabled = !connected || taskActive || taskPending;
-    submit.disabled = taskInput.disabled;
     // Cancellation is available while a request is being queued too;
     // the host still verifies the exact task ID and live grant.
     document.querySelector('[data-model-action="cancel"]').disabled =
@@ -442,6 +424,9 @@ flex-basis:100%
   document.querySelector("[data-quick-setup]").addEventListener(
     "click", () => window.parent.postMessage({
       type: "cluster-plugin-quick-setup" }, "*"));
+  document.querySelector("[data-mcp-quick-setup]").addEventListener(
+    "click", () => window.parent.postMessage({
+      type: "cluster-plugin-mcp-quick-setup" }, "*"));
   document.querySelector("[data-legacy-close]").addEventListener(
     "click", () => window.parent.postMessage({
       type: "cluster-plugin-panel-close" }, "*"));
@@ -471,23 +456,6 @@ flex-basis:100%
       window.parent.postMessage({ type: messageType }, "*");
     });
   });
-  function submitTask(event) {
-    event.preventDefault();
-    if (taskPending || taskActive || agentState !== "connected" ||
-        !taskInput.value.trim()) return;
-    const prompt = taskInput.value.trim().slice(0, 8000);
-    taskPending = true;
-    renderModelControls();
-    window.parent.postMessage({
-      type: "cluster-model-submit", prompt
-    }, "*");
-    appendMessage(prompt, "user");
-  }
-  // Some sandboxed browsers do not dispatch submit on a button whose
-  // disabled state changes during click processing. Explicitly handle
-  // the user click as well as keyboard-based form submission.
-  submit.addEventListener("click", submitTask);
-  document.querySelector("form").addEventListener("submit", submitTask);
   window.addEventListener("message", event => {
     if (event.source !== window.parent) return;
     if (event.data?.type === "cluster-model-event") {
@@ -504,7 +472,6 @@ flex-basis:100%
         taskPending = false;
         taskActive = !["completed", "failed", "interrupted"]
           .includes(update.status);
-        if (update.status === "queued") taskInput.value = "";
         appendMessage((labels.taskState || "Task") + ": " +
           update.status);
       } else if (update.kind === "reset") {
@@ -519,7 +486,6 @@ flex-basis:100%
       if (value.action === "submit") {
         taskPending = false;
         taskActive = value.taskActive === true;
-        if (value.ok && taskActive) taskInput.value = "";
       }
       if (value.action === "cancel") {
         taskActive = value.taskActive === true;

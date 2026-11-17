@@ -1,14 +1,14 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title ClusterOpt2 AI AGENT MCP(ChatGPT) - Quick Setup
-set "REV=7d74d83d4ec8431b177ea4e3f588eb8fd6122c7d"
+set "REV=079110435ef499f87774c064da4bd6eff750af77"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "URI=https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/%REV%/Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
 echo AI AGENT MCP(ChatGPT) - standalone setup
 echo Source: https://github.com/xcxc84584-prog/ClusterOpt2
 echo This CMD downloads a pinned setup helper and approved plugin sources.
 echo It installs local dependencies; it does NOT request admin access.
-echo If port 43879 is used, choose P / C / O.
+echo If port 43881 is used, choose P / C / O.
 choice /M "Continue"
 if errorlevel 2 exit /b 0
 if errorlevel 1 goto confirmed

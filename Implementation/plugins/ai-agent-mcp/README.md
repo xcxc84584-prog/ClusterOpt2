@@ -3,13 +3,13 @@
 In ClusterOpt2 Resources, download the complete plugin ZIP only to install
 the browser plugin. Extract it and mount the plugin folder.
 
-For Windows Local Agent setup, open the AI Agent tab and click
+For full instructions see [MCP-SETUP.md](MCP-SETUP.md).\n\nFor Windows Local Agent setup, open the AI Agent tab and click
 **下載 Quick-Setup.cmd**. This downloads one CMD file, not the ZIP.
 The CMD downloads a revision-pinned setup helper and Agent files
 after confirmation, then installs dependencies and starts a loopback
-service. Nothing runs automatically from the browser.
+service. Nothing runs automatically from the browser.\n\nFor the separate ChatGPT MCP server, click **下載 MCP 快速配置 CMD**.\nThe second standalone CMD retrieves revision-pinned MCP/OAuth gateway files,\nstarts the local bearer gateway and offers an opt-in OAuth configuration\nwindow. Configure a separate trusted HTTPS proxy to OAuth port 43879;\nthe script never starts a public tunnel.
 
-If port 43879 is occupied, choose **P** to select another port,
+If port 43881 is occupied, choose **P** to select another port,
 **C** to cancel safely, or **O** to inspect owning PID(s) and require
 typing OVERRIDE before terminating any process. Enter the selected
 port and pairing token in the trusted host pairing dialog.
@@ -22,7 +22,7 @@ Review and approve the six requested privileged capabilities:
 The installed plugin adds an AI Agent button beside PowerShell.
 Its isolated UI supports Traditional Chinese / English, palette
 sharing, host-mediated Local Agent pairing, connectivity check,
-model setup, text-only prompts, task output and cancellation.
+model setup, read-only task/operation output and cancellation.
 
 To pair, start the legacy Windows Cluster Terminal Agent configured
 for the exact browser Origin. Enter its 64-character token in the
@@ -37,9 +37,11 @@ key at rest has not yet been verified. Only use a trusted machine and
 a key appropriate to that environment.
 
 The current model transport uses the legacy Agent OpenAI API path.
-All tasks are text-only. Every task receives an ID and may be
-cancelled. The model's file/PowerShell tool calls are not supported.
-Browser ToolBox, a separately consented PowerShell command bridge and\nread-only MCP projections are opt-in host features. Model prompts remain\ntext-only and cannot autonomously invoke these tools.
+Existing model tasks remain host-managed and may be cancelled. The
+plugin UI has no chat composer or task submission controls; ChatGPT MCP
+is the intended external request surface, with ToolBox approval enforced
+by the trusted host. The model's file/PowerShell tool calls are not supported.
+Browser ToolBox, a separately consented PowerShell command bridge and\nread-only MCP projections are opt-in host features. OAuth cluster.read\nnow enforces a five-tool server-side allowlist; listing additional local\nMCP tools through stdio never grants remote write or PowerShell access. The built-in model task flow does not autonomously invoke these tools.
 
 Worker `getStatus` and `describe` report the sandbox Worker's
 own read-only contract. Live pairing, model and tasks are handled by
@@ -78,3 +80,8 @@ PowerShell execution, browser permissions and OAuth end-to-end checks
 remain required before production acceptance.
 
 Do not treat a mock WebSocket test as proof of a real model connection.
+
+## Separate OAuth control scope
+When explicitly requested, `cluster.control` advertises all 14 legacy MCP tools after a distinct authorization-page warning. Requests still pass through the already paired Local Agent, browser ToolBox grants and per-command PowerShell user confirmation; it is **not** a direct shell endpoint. Ordinary `cluster.read` tokens remain five-tool read-only. See MCP-SETUP.md.
+
+C/P/O is now shared by the Local Agent, MCP Gateway, and OAuth Gateway launchers. Defaults: 43881 / 43880 / 43879 respectively. Changed ports persist to the local service port configuration and must be reflected in browser pairing / HTTPS proxy settings.
