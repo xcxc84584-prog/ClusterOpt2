@@ -44,7 +44,7 @@ export function mountPowerShellUI({host,button,language,version,
  // Native ConPTY is the only terminal. No textarea or HTTP-command fallback.
  const nativeWrap=document.createElement('div');
  nativeWrap.className='psm-native-wrap';nativeWrap.hidden=true;
- nativeWrap.style.cssText='flex:1;min-height:220px;background:var(--ui-editor,#000);color:var(--ui-text,#fff);padding:8px;overflow:hidden';
+ nativeWrap.style.cssText='flex:1 1 auto;min-height:0;min-width:0;background:var(--ui-editor,#000);color:var(--ui-text,#fff);padding:8px;overflow:hidden';
  terminal.append(nativeWrap);
  function terminalTheme(){
    const css=getComputedStyle(document.documentElement);
@@ -83,13 +83,14 @@ export function mountPowerShellUI({host,button,language,version,
  }
  function disposeNative(session){
    session.generation++;
+   session.resizeObserver?.disconnect();session.resizeObserver=null;
    session.socket?.close();session.socket=null;
    session.terminal?.dispose();session.terminal=null;
    session.container?.remove();session.container=null;
  }
  function showNative(session){
    for(const other of sessions)if(other.container)other.container.hidden=other!==session;
-   if(session.container){nativeWrap.hidden=false;session.terminal?.focus();}
+   if(session.container){nativeWrap.hidden=false;session.resize?.();session.terminal?.focus();}
  }
  async function startNativeTerminal(session){
    if(!session||!connected||session.socket||session.startingNative)return;
@@ -100,31 +101,42 @@ export function mountPowerShellUI({host,button,language,version,
      if(generation!==session.generation||!sessions.includes(session)||!connected)return;
      const container=document.createElement('div');
      container.className='psm-native-session';
-     container.style.cssText='height:100%;width:100%;overflow:hidden';
+     container.style.cssText='height:100%;width:100%;min-height:0;min-width:0;overflow:hidden';
      nativeWrap.append(container);session.container=container;
      const term=new window.Terminal({cursorBlink:true,convertEol:false,fontFamily:'Consolas, monospace',fontSize:13,theme:terminalTheme(),scrollback:10000});
      session.terminal=term;
+     const fit=new window.FitAddon.FitAddon();
+     term.loadAddon(fit);
+     session.fit=fit;
      nativeWrap.hidden=false;
      showNative(sessions.find(x=>x.id===selected)||session);
      term.open(container);
+     requestAnimationFrame(()=>{if(generation===session.generation)session.resize?.();});
      const ws=remote.openNativeTerminal();session.socket=ws;
      ws.addEventListener('message',event=>{
        if(generation!==session.generation)return;
        let message;try{message=JSON.parse(event.data);}catch{return;}
        if(message.type==='data')term.write(message.data);
-       if(message.type==='ready')term.write('\\r\\n[ConPTY connected]\\r\\n');
-       if(message.type==='error')term.write('\\r\\n'+message.message+'\\r\\n');
-       if(message.type==='exit')term.write('\\r\\n[Shell exited: '+message.exitCode+']\\r\\n');
+       if(message.type==='ready')term.write('\r\n[ConPTY connected]\\r\\n');
+       if(message.type==='error')term.write('\r\n'+message.message+'\r\n');
+       if(message.type==='exit')term.write('\r\n[Shell exited: '+message.exitCode+']\\r\\n');
      });
-     ws.addEventListener('close',()=>{if(generation===session.generation){session.socket=null;term.write('\\r\\n[Native terminal disconnected]\\r\\n');}});
+     ws.addEventListener('close',()=>{if(generation===session.generation){session.socket=null;term.write('\r\n[Native terminal disconnected]\\r\\n');}});
      term.onData(data=>{if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'input',data}));});
      const resize=()=>{
        if(generation!==session.generation||ws.readyState!==WebSocket.OPEN||session.id!==selected)return;
-       const cols=Math.max(20,Math.floor(container.clientWidth/8)),rows=Math.max(8,Math.floor(container.clientHeight/17));
-       term.resize(cols,rows);ws.send(JSON.stringify({type:'resize',cols,rows}));
+       if(container.hidden||nativeWrap.hidden||!container.clientWidth||!container.clientHeight)return;
+       fit.fit();
+       const cols=term.cols,rows=term.rows;
+       if(cols>=10&&rows>=5&&cols<=500&&rows<=200){
+         ws.send(JSON.stringify({type:'resize',cols,rows}));
+       }
      };
-     ws.addEventListener('open',resize);
+     ws.addEventListener('open',()=>requestAnimationFrame(resize));
      session.resize=resize;
+     session.resizeObserver=new ResizeObserver(()=>requestAnimationFrame(resize));
+     session.resizeObserver.observe(nativeWrap);
+     session.resizeObserver.observe(container);
      if(session.id===selected)term.focus();
    }catch(e){
      if(generation===session.generation){
