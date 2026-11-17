@@ -158,3 +158,12 @@ full OCDA / Windows exact-head checks. Status: CI pending.
 PR02.04 exact-head 79c56332: four workflows success. Rollback
 backup/plugin-pr02-sub04-79c5633.
 PR02.05 CI status must be verified separately before PASS.
+
+## PR02.06 CI failure analysis / compatibility repair
+Initial exact-head f4d4b13 dedicated CI FAILED (Node + Chromium),
+caused by CatalogCollection calling strict URU.describeAPI on legacy
+Objects that have no APIDescriptors. They are valid runtime senders but
+not catalog providers. Fixed: skip absent APIDescriptors, preserve
+legacy Object runtime and do not synthesize undocumented metadata.
+New regression test verifies registered legacy caller, empty read-only
+projection and Hub-mediated discovery 200. Re-test full exact-head CI.
