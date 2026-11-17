@@ -1,5 +1,5 @@
 'use strict';
-// Cluster MCP stdio bridge P3. Read-only. Run on the same Windows account as Cluster Agent.
+// Cluster MCP stdio bridge. Local requests use the browser's scoped ToolBox approvals.\n// Mutating operations are never authorized merely by a tools/list response.
 // MCP stdio transport uses newline-delimited JSON-RPC messages.
 const fs=require('node:fs');
 const path=require('node:path');
@@ -15,11 +15,20 @@ async function local(route,call){
  return response.json();
 }
 const tools=[
- {name:'cluster.get_status',description:'Read the status of the local Cluster Gateway. This does not expose browser editor state.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
- {name:'cluster.get_task_status',description:'List recent locally recorded gateway tasks (read-only).',inputSchema:{type:'object',properties:{},additionalProperties:false}},
- {name:'cluster.list_files',description:'List documents currently opened in Cluster editor; not entire disk.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
- {name:'cluster.get_editor_state',description:'Get active Cluster editor tab metadata.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
- {name:'cluster.read_file',description:'Read an opened, saved, small document by ID; unsaved edits and large files are rejected.',inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id'],additionalProperties:false}}
+ {name:'cluster.get_status',description:'Get status of the paired Cluster local Agent and browser editor.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+ {name:'cluster.get_task_status',description:'Get recent local task states.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+ {name:'cluster.list_files',description:'List files opened in Cluster editor.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+ {name:'cluster.get_editor_state',description:'Get active Cluster editor state.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+ {name:'cluster.read_file',description:'Read an open and saved Cluster editor file by its ID.',inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id'],additionalProperties:false}},
+ {name:'cluster.list_roots',description:'List Explorer roots.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+ {name:'cluster.find_root_windows_path',description:'Search bounded Windows user folders for Explorer root directory name. Returns candidates only; browser handle identity is not verified.',inputSchema:{type:'object',properties:{root:{type:'string'}},required:['root'],additionalProperties:false}},
+ {name:'cluster.list_directory',description:'List entries in an authorized Explorer directory.',inputSchema:{type:'object',properties:{path:{type:'string'}},required:['path'],additionalProperties:false}},
+ {name:'cluster.read_path',description:'Read a portion of an Explorer file using offset and length; supports large files without loading them all.',inputSchema:{type:'object',properties:{path:{type:'string'},offset:{type:'integer',minimum:0},length:{type:'integer',minimum:1,maximum:262144}},required:['path'],additionalProperties:false}},
+ {name:'cluster.create_file',description:'Create an empty file in an authorized Explorer directory.',inputSchema:{type:'object',properties:{path:{type:'string'},name:{type:'string'}},required:['path','name'],additionalProperties:false}},
+ {name:'cluster.write_path',description:'Replace an authorized Explorer file with UTF-8 text. No timestamp or extra confirmation flags required. This overwrites the full file.',inputSchema:{type:'object',properties:{path:{type:'string'},content:{type:'string'}},required:['path','content'],additionalProperties:false}},
+ {name:'cluster.delete_path',description:'Delete one Explorer file when workspace Delete permission and browser write permission are granted.',inputSchema:{type:'object',properties:{path:{type:'string'}},required:['path'],additionalProperties:false}},
+ {name:'cluster.open_powershell',description:'Request opening a Cluster PowerShell terminal window; execution still requires Workspace PowerShell permission and approval.',inputSchema:{type:'object',properties:{},additionalProperties:false}},
+ {name:'cluster.powershell_request',description:'Execute a PowerShell command only after the Cluster browser explicitly confirms the exact command. Runs as the local signed-in user; not sandboxed.',inputSchema:{type:'object',properties:{path:{type:'string',description:'Authorized Explorer workspace root name'},command:{type:'string'}},required:['path','command'],additionalProperties:false}}
 ];
 async function handle(m){
  if(!m||m.jsonrpc!=='2.0'||typeof m.method!=='string')return;
