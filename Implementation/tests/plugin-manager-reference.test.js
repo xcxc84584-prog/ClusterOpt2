@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { LinkCore } from "../LinkCore/LinkCore.js";
 test("reference manager uses only live URU and OMU sources",()=>{
   const text=readFileSync(new URL(
@@ -17,4 +19,11 @@ test("global Language property readable without invented Object",()=>{
   assert.equal(typeof core.edpmu.get("Language"),"string");
   assert.equal(core.getSnapshot().logs.some(e=>e.kind==="EHU"&&
     e.target==="Language"&&e.source==="ui"),false);
+});
+
+test("plugin manager module parses without duplicate lexical bindings",()=>{
+  const path=fileURLToPath(new URL(
+    "../main/plugin-manager-ui.js",import.meta.url));
+  assert.doesNotThrow(()=>execFileSync(process.execPath,
+    ["--check",path],{stdio:"pipe"}));
 });
