@@ -31,11 +31,13 @@ test("plugin manager module parses without duplicate lexical bindings",()=>{
 test("sketch tabs and API explorer use registered contracts",()=>{
   const source=readFileSync(new URL(
     "../main/plugin-manager-ui.js",import.meta.url),"utf8");
-  assert.match(source,/VIEWS=Object\.freeze\(\["permissions","api","ehu","performance"\]\)/);
+  assert.match(source,/VIEWS=Object\.freeze\(\["permissions","api","ehu","resources"\]\)/);
   assert.match(source,/core\.catalog\.collect\(\)/);
   assert.match(source,/core\.edpmu\.list\(\)/);
   assert.match(source,/provider\.provides/);
-  assert.match(source,/JSON\.stringify\(entry\.descriptor,null,2\)/);
+  const view=readFileSync(new URL(
+    "../main/plugin-contract-view.js",import.meta.url),"utf8");
+  assert.match(view,/JSON\.stringify\(descriptor,null,2\)/);
 });
 
 test("registered provider API schemas are discoverable from live registry",()=>{
@@ -60,4 +62,14 @@ test("registered provider API schemas are discoverable from live registry",()=>{
   assert.equal(registered[0].provides[0].service,"catalog.example");
   assert.equal(registered[0].provides[0].inputSchema.properties.value.type,
     "string");
+});
+
+test("PR10 resources and detailed contract modules parse",()=>{
+  const scripts=["plugin-manager-ui.js","plugin-contract-view.js",
+    "plugin-resource-view.js"];
+  for(const name of scripts) {
+    const module=fileURLToPath(new URL("../main/"+name,import.meta.url));
+    assert.doesNotThrow(()=>execFileSync(process.execPath,
+      ["--check",module],{stdio:"pipe"}));
+  }
 });

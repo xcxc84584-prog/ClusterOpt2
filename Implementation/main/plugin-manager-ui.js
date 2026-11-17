@@ -1,8 +1,10 @@
 import { Language } from "../property/Language.js";
 import { PluginPermissionPolicy } from
   "../property/PluginPermissionPolicy.js";
+import { renderContractDetail } from "./plugin-contract-view.js";
+import { renderResources } from "./plugin-resource-view.js";
 
-const VIEWS=Object.freeze(["permissions","api","ehu","performance"]);
+const VIEWS=Object.freeze(["permissions","api","ehu","resources"]);
 function dom(doc,tag,cls="",value) {
   const el=doc.createElement(tag);
   if(cls) el.className=cls;
@@ -89,17 +91,20 @@ export function mountPluginManagerUI(core,doc) {
   nav.setAttribute("role","tablist");
   const page=dom(doc,"section","pm-page");
   const search=dom(doc,"input","pm-search");
-  const filter=dom(doc,"select","pm-filter");
   const items=dom(doc,"div","pm-list");
   const toolbar=dom(doc,"div","pm-search-row");
-  let selected="",active="permissions",query="",mode="all",pending=null;
-  let selectedAPI=null;
+  let selected="",active="permissions",query="",pending=null;
+  let selectedAPI=null,apiQuery="",sidebarOpen=true;
   search.type="search"; search.id="pluginManagerSearch";
   search.placeholder="Search plugin...";
-  filter.id="pluginManagerFilter";
-  filter.setAttribute("aria-label","Plugin filter");
-  toolbar.append(search,filter);
+  toolbar.append(search);
   const sideHeading=dom(doc,"header","pm-side-heading");
+  const sidebarToggle=btn(doc,"☰",()=>{
+    sidebarOpen=!sidebarOpen;
+    renderSidebar();
+  },"pm-sidebar-toggle");
+  sidebarToggle.id="pluginSidebarToggle";
+  sideHeading.append(sidebarToggle,dom(doc,"span","pm-side-title"));
   sidebar.append(sideHeading,toolbar,items);
   main.append(nav,page);shell.append(sidebar,main);
   root.replaceChildren(shell);
@@ -155,7 +160,7 @@ export function mountPluginManagerUI(core,doc) {
     permissions:t("權限","Permission"),
     api:t("API 列表","API List"),
     ehu:t("EHU 日誌","EHU Log"),
-    performance:t("效能","Performance")
+    resources:t("資源","Resources")
   })[key];
   const card=(name,action)=> {
     const section=dom(doc,"section","pm-card");
@@ -225,23 +230,36 @@ export function mountPluginManagerUI(core,doc) {
     return section;
   }
   function renderSidebar() {
-    search.placeholder=t("搜尋插件...","Search plugin...");
-    filter.setAttribute("aria-label",t("篩選插件","Filter plugins"));
+    const expanded=sidebarOpen;
+    sidebar.classList.toggle("pm-sidebar-collapsed",!expanded);
+    sidebarToggle.setAttribute("aria-expanded",String(expanded));
+    sidebarToggle.setAttribute("aria-label",expanded?
+      t("收合插件清單","Collapse plugin list"):
+      t("展開插件清單","Expand plugin list"));
+    sidebarToggle.title=expanded?
+      t("收合插件清單","Collapse plugin list"):
+      t("展開插件清單","Expand plugin list");
+    search.placeholder=t("搜尋插件或 Enabled/Disabled...",
+      "Search plugin or Enabled/Disabled...");
+    search.setAttribute("aria-label",t("搜尋插件","Search plugins"));
+    toolbar.hidden=!expanded;items.hidden=!expanded;
     reject.textContent=t("拒絕","Deny");
     approve.textContent=t("同意此權限","Allow permission");
-    items.replaceChildren();filter.replaceChildren();
-    const choices=[["all",t("全部","All")],
-      ["enabled",t("啟用","Enabled")],
-      ["disabled",t("停用","Disabled")]];
-    for(const [value,label] of choices) {
-      const option=dom(doc,"option","",label);
-      option.value=value;filter.append(option);
-    }
-    filter.value=mode;
-    for(const p of providers().filter(x=>
-      (x.providerId.toLowerCase().includes(query.toLowerCase())||
-       x.objectId.toLowerCase().includes(query.toLowerCase()))&&
-      (mode==="all"||(mode==="disabled")===disabled(x)))) {
+    if(!expanded)return;
+    items.replaceChildren();
+    const terms=query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const matches=provider=>{
+      const enabled=!disabled(provider);
+      const tags=[
+        provider.providerId,provider.objectId,
+        ...provider.provides.map(x=>x.service+" "+x.action+
+          " "+x.version),
+        ...(provider.permissions??[]),
+        enabled?"enabled 啟用 active":"disabled 停用 inactive"
+      ].join(" ").toLowerCase();
+      return terms.every(term=>tags.includes(term));
+    };
+    for(const p of providers().filter(matches)) {
       const row=btn(doc,"",()=>{selected=p.providerId;render();},
         "pm-provider");
       row.setAttribute("aria-pressed",String(selected===p.providerId));
@@ -254,8 +272,8 @@ export function mountPluginManagerUI(core,doc) {
         dom(doc,"span",disabled(p)?"pm-dot off":"pm-dot","●"));
       items.append(row);
     }
-    if(!items.childElementCount)
-      items.append(dom(doc,"p","pm-muted",t("沒有插件","No plugins")));
+    if(!items.childElementCount)items.append(dom(doc,"p",
+      "pm-muted",t("沒有符合的插件","No matching plugins")));
   }
 
   /** Read-only discovery of the live HubUnit-connected registries. */
@@ -304,47 +322,57 @@ export function mountPluginManagerUI(core,doc) {
   }
   function renderAPIs() {
     const entries=apiEntries();
-    const section=card(t("HubUnit API 與屬性註冊表",
-      "HubUnit API & Property Registry"));
-    const note=dom(doc,"p","pm-muted",
-      t("已註冊契約的唯讀檢視；API 執行仍受 HubUnit 權限控制。",
-        "Read-only contracts. HubUnit still enforces execution permissions."));
-    section.append(note);
+    const section=card(t("HubUnit API 契約","HubUnit API Contracts"));
+    const body=dom(doc,"div","pm-api-browser");
+    section.append(body);
     if(selectedAPI) {
-      const entry=entries.find(x=>x.key===selectedAPI);
-      if(entry) {
-        section.append(btn(doc,"← "+t("返回清單","Back to list"),
-          ()=>{selectedAPI=null;render();},"pm-mini"));
-        const table=tabular(doc,[],[
-          [t("種類","Type"),entry.kind],
-          [t("名稱","Name"),entry.id],
-          [t("所屬物件","Owner"),entry.owner],
-          [t("提供者","Provider"),entry.providerId||"—"],
-          [t("動作","Action"),entry.descriptor.action??"—"],
-          [t("版本","Version"),entry.descriptor.version??"—"],
-          [t("可見性","Visibility"),entry.descriptor.visibility??"—"]
-        ]);
-        section.append(table);
-        section.append(dom(doc,"h3","pm-contract-title",
-          t("詳細契約結構","Detailed contract structure")));
-        const pre=dom(doc,"pre","pm-contract-json",
-          JSON.stringify(entry.descriptor,null,2));
-        pre.tabIndex=0;section.append(pre);
-        page.append(section);return;
+      const selectedEntry=entries.find(x=>x.key===selectedAPI);
+      if(selectedEntry) {
+        renderContractDetail(doc,body,selectedEntry,t,()=>{
+          selectedAPI=null;render();
+        });
+        page.append(section);
+        return;
       }
       selectedAPI=null;
     }
+    const input=dom(doc,"input","pm-api-search");
+    input.type="search";
+    input.id="pluginApiSearch";
+    input.value=apiQuery;
+    input.placeholder=t("搜尋 API、Owner、Action、版本...",
+      "Search API, owner, action, version...");
+    input.setAttribute("aria-label",t("搜尋 API 契約",
+      "Search API contracts"));
     const list=dom(doc,"div","pm-api-list");
-    for(const entry of entries) {
-      const label=entry.kind+" · "+entry.id+" · "+entry.owner;
-      const button=btn(doc,label,()=>{
-        selectedAPI=entry.key;render();
-      },"pm-api-entry");
-      list.append(button);
+    body.append(input,list);
+    function update() {
+      apiQuery=input.value;
+      const terms=apiQuery.toLowerCase().trim().split(/\s+/)
+        .filter(Boolean);
+      list.replaceChildren();
+      const matching=entries.filter(x=>{
+        const text=[x.kind,x.id,x.owner,x.providerId,
+          x.descriptor.action,x.descriptor.version,
+          x.descriptor.visibility,x.descriptor.description]
+          .filter(Boolean).join(" ").toLowerCase();
+        return terms.every(term=>text.includes(term));
+      });
+      for(const entry of matching) {
+        const label=entry.kind+" · "+entry.id+" · "+entry.owner+
+          (entry.descriptor.version?
+            " · v"+entry.descriptor.version:"");
+        const button=btn(doc,label,()=>{
+          selectedAPI=entry.key;render();
+        },"pm-api-entry");
+        list.append(button);
+      }
+      if(!matching.length)list.append(dom(doc,"p","pm-muted",
+        t("沒有符合的 API 契約","No matching API contracts")));
     }
-    if(!entries.length)list.append(dom(doc,"p","pm-muted",
-      t("目前沒有已註冊的契約","No registered contracts")));
-    section.append(list);page.append(section);
+    input.addEventListener("input",update);
+    update();
+    page.append(section);
   }
 
   function render() {
@@ -352,7 +380,8 @@ export function mountPluginManagerUI(core,doc) {
     if(selected&&!all.some(x=>x.providerId===selected))selected="";
     if(!selected&&all.length)selected=all[0].providerId;
     renderSidebar();
-    sideHeading.textContent=t("插件清單","Plugin List");
+    sideHeading.querySelector(".pm-side-title").textContent=
+      t("插件清單","Plugin List");
     windowNode.setAttribute("aria-label",
       t("插件管理","Plugin Manager"));
     const p=current();
@@ -365,9 +394,14 @@ export function mountPluginManagerUI(core,doc) {
     }
     page.replaceChildren();
     page.append(migrated);
-    migrated.hidden=active!=="performance";
-    oldSettings.hidden=active!=="performance";
-    if(active==="performance")return;
+    migrated.hidden=active!=="resources";
+    oldSettings.hidden=active!=="resources";
+    if(active==="resources") {
+      renderResources(doc,page,{
+        t,settings:migrated,providers,disabled,apiEntries,logs
+      });
+      return;
+    }
     if(active==="api")return renderAPIs();
     if(!p) {
       page.append(dom(doc,"p","pm-muted",
@@ -388,7 +422,6 @@ export function mountPluginManagerUI(core,doc) {
     renderSidebar();
     search.focus();search.setSelectionRange(caret,caret);
   });
-  filter.addEventListener("change",()=>{mode=filter.value;renderSidebar();});
   activate("permissions");
   return Object.freeze({refresh:render,select:activate});
 }

@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { LinkCore } from "../LinkCore/LinkCore.js";
 
 test("PR06.08 four pages are separate and no inert overview tab", () => {
@@ -13,7 +15,7 @@ test("PR06.08 four pages are separate and no inert overview tab", () => {
   assert.match(html, /id="pluginMaxMiB"/);
   assert.doesNotMatch(html, /class="plugin-workbench-header"/);
   assert.doesNotMatch(html, /id="pluginUnlimited"/);
-  assert.match(source, /"permissions","api","ehu","performance"/);
+  assert.match(source, /"permissions","api","ehu","resources"/);
   assert.match(source, /core\.catalog\.collect\(\)/);
   assert.match(source, /event\.isTrusted/);
   assert.match(source, /grantPluginPermission\(/);
@@ -25,4 +27,14 @@ test("PR06.08 real permissions are URU-owned, no simulated fixtures", () => {
   const core = new LinkCore();
   assert.equal(core.uru.listProviders().length, 0);
   assert.equal(typeof core.checkPluginPermission, "function");
+});
+
+test("PR10 resources and detailed contract modules parse",()=>{
+  const scripts=["plugin-manager-ui.js","plugin-contract-view.js",
+    "plugin-resource-view.js"];
+  for(const name of scripts) {
+    const module=fileURLToPath(new URL("../main/"+name,import.meta.url));
+    assert.doesNotThrow(()=>execFileSync(process.execPath,
+      ["--check",module],{stdio:"pipe"}));
+  }
 });

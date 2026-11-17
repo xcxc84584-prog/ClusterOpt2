@@ -20,6 +20,8 @@ test("sketch layout has four tabs and persistent scrollable sidebar",
     await page.locator(".pm-tabs [role=tab]").nth(3).click();
     await expect(page.locator("#pluginLegacySettings")).toBeVisible();
     await expect(page.locator("#pluginMaxMiB")).toBeVisible();
+    await expect(page.locator(".pm-resources")).toBeVisible();
+    await expect(page.locator(".pm-resource-pane")).toHaveCount(2);
   });
 
 test("live Provider manifest publishes inspectable API contract",
@@ -129,4 +131,98 @@ test("Plugin Manager mounts without missing-DOM errors on startup",
     await expect(page.locator(".pm-shell")).toBeVisible();
     expect(errors.filter(x=>/Missing Plugin Manager DOM/.test(x)))
       .toHaveLength(0);
+  });
+
+test("Plugin List collapses and search matches status without select",
+  async ({page})=>{
+    await openManager(page);
+    await page.evaluate(async()=>{
+      const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
+      linkCore.register({id:"SearchOwner",receive:async()=>null,
+        ocda:{Request:["run"],Response:[],UserAPI:[],AgentAPI:[],
+          Property:[],Program:{},EHU:[],Log:[]}});
+      const manifest={
+        manifestVersion:1,providerId:"search.plugin",
+        objectId:"SearchOwner",
+        provides:[{service:"search.service",action:"run",
+          version:"1.0.0",inputSchema:{type:"object"},
+          outputSchema:{type:"object"}}],
+        requires:[],permissions:[],
+        execution:{isolation:"worker",concurrency:"serial"}
+      };
+      if(!linkCore.registerProvider("SearchOwner",manifest).ok)
+        throw Error("Fixture registration failed");
+    });
+    await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await page.locator(".pm-tabs [role=tab]").nth(0).click();
+    await expect(page.locator("#pluginManagerFilter")).toHaveCount(0);
+    await page.locator("#pluginManagerSearch").fill("Enabled");
+    await expect(page.locator(".pm-provider")).toHaveCount(1);
+    await page.locator("#pluginManagerSearch").fill("Disabled");
+    await expect(page.locator(".pm-provider")).toHaveCount(0);
+    await page.locator("#pluginManagerSearch").fill("search.plugin");
+    await expect(page.locator(".pm-provider")).toHaveCount(1);
+    await page.locator("#pluginSidebarToggle").click();
+    await expect(page.locator(".pm-sidebar"))
+      .toHaveClass(/pm-sidebar-collapsed/);
+    await expect(page.locator("#pluginManagerSearch")).toBeHidden();
+    await page.locator("#pluginSidebarToggle").click();
+    await expect(page.locator("#pluginManagerSearch")).toBeVisible();
+    await expect(page.locator("#pluginManagerSearch"))
+      .toHaveValue("search.plugin");
+  });
+
+test("Resources exports JSON and both panes scroll independently",
+  async ({page})=>{
+    await openManager(page);
+    await page.locator(".pm-tabs [role=tab]").nth(3).click();
+    await expect(page.locator(".pm-tabs [role=tab]").nth(3))
+      .toHaveText("資源");
+    await expect(page.locator("#pluginMaxMiB")).toBeVisible();
+    await expect(page.locator(".pm-resource-pane")).toHaveCount(2);
+    const scroll=await page.locator(".pm-resource-pane").evaluateAll(
+      nodes=>nodes.map(node=>getComputedStyle(node).overflowY));
+    expect(scroll).toEqual(["auto","auto"]);
+    const download=page.waitForEvent("download");
+    await page.getByRole("button",{name:"下載 API 清單 JSON"}).click();
+    expect((await download).suggestedFilename())
+      .toBe("clusteropt2-api-list.json");
+    const logDownload=page.waitForEvent("download");
+    await page.getByRole("button",{name:"下載 EHU 日誌 JSON"}).click();
+    expect((await logDownload).suggestedFilename())
+      .toBe("clusteropt2-ehu-log.json");
+    await expect(page.locator("#pluginResourceSearch")).toBeVisible();
+  });
+
+test("API explorer presents schema fields and raw contract",
+  async ({page})=>{
+    await openManager(page);
+    await page.evaluate(async()=>{
+      const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
+      linkCore.register({id:"SchemaOwner",receive:async()=>null,
+        ocda:{Request:["run"],Response:[],UserAPI:["run"],
+          AgentAPI:[],Property:[],Program:{},EHU:[],Log:[]}});
+      linkCore.registerProvider("SchemaOwner",{
+        manifestVersion:1,providerId:"schema.plugin",
+        objectId:"SchemaOwner",
+        provides:[{service:"schema.service",action:"run",
+          version:"1.0.0",inputSchema:{type:"object",
+            properties:{message:{type:"string"}},
+            required:["message"]},
+          outputSchema:{type:"object"}}],
+        requires:[],permissions:[],
+        execution:{isolation:"worker",concurrency:"serial"}
+      });
+    });
+    await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await page.locator("#pluginApiSearch").fill("schema.service");
+    await page.locator(".pm-api-entry").click();
+    await expect(page.locator(".pm-contract-heading"))
+      .toContainText("schema.service");
+    await expect(page.locator(".pm-contract-section"))
+      .toHaveCount(3);
+    await expect(page.locator(".pm-schema-row"))
+      .toContainText(["輸入","message","輸出"]);
+    await expect(page.locator(".pm-contract-json"))
+      .toContainText('"required"');
   });
