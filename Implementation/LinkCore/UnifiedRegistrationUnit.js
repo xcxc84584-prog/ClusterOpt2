@@ -2,6 +2,8 @@ import { describeObjectAPIs, validateObjectContract } from "./ObjectContract.js"
 import { ProviderManifestPolicy } from "../property/ProviderManifestPolicy.js";
 import { ProviderFactoryPolicy } from "../property/ProviderFactoryPolicy.js";
 import { ProviderHealthPolicy } from "../property/ProviderHealthPolicy.js";
+import { ProviderSharedPropertyPolicy } from
+  "../property/ProviderSharedPropertyPolicy.js";
 
 /**
  * Volatile runtime registry. No localStorage: registrations expire on reload.
@@ -89,8 +91,17 @@ export class UnifiedRegistrationUnit {
       return { ok: false, status: 400,
         error: "Provider action not declared by Object" };
     }
-    if (this.providers.has(value.providerId)) {
-      return { ok: false, status: 409, error: "Duplicate provider ID" };
+    if (this.providers.has(value.providerId) ||
+        this.providers.size >= 4096) {
+      return { ok: false, status: 409,
+        error: "Duplicate provider ID or capacity reached" };
+    }
+    const claims = ProviderSharedPropertyPolicy.inspect(
+      value, this.propertyRegistry);
+    if (!claims.ok) return claims;
+    if (this.hasProviderCycle(value)) {
+      return { ok: false, status: 409,
+        error: "Cyclic Provider dependency" };
     }
     this.providers.set(value.providerId, value);
     this.providerHealth.set(value.providerId,
@@ -101,6 +112,37 @@ export class UnifiedRegistrationUnit {
       this.providerServices.set(item.service, list);
     }
     return { ok: true, status: 201, value };
+  }
+
+  /**
+   * Conservative Service-dependency cycle detector across all Provider
+   * metadata. Registration is atomic: no indices mutate on rejection.
+   */
+  hasProviderCycle(candidate) {
+    const graph = new Map();
+    for (const manifest of [...this.providers.values(), candidate]) {
+      for (const item of manifest.provides) {
+        const dependencies = graph.get(item.service) ?? new Set();
+        for (const required of manifest.requires) {
+          dependencies.add(required);
+        }
+        graph.set(item.service, dependencies);
+      }
+    }
+    const visited = new Set();
+    const active = new Set();
+    const visit = id => {
+      if (active.has(id)) return true;
+      if (visited.has(id)) return false;
+      visited.add(id);
+      active.add(id);
+      for (const next of graph.get(id) ?? []) {
+        if (visit(next)) return true;
+      }
+      active.delete(id);
+      return false;
+    };
+    return [...graph.keys()].some(visit);
   }
 
   attachProviderFactory(providerId, factory) {
