@@ -8,8 +8,6 @@
   "ping": "Test connection",
   "stop": "Cancel task",
   "close": "Close",
-  "prompt": "Describe a task…",
-  "submit": "Send",
   "feed": "Task output",
   "unavailable": "AI models and task execution are not enabled yet.",
   "status": "Current phase: UI preview",
@@ -24,5 +22,6 @@
   "modelInactive": "Pair Local Agent and configure a model to run text-only tasks.",
   "modelReady": "Model ready",
   "modelNotConfigured": "Model not configured",
-  "taskState": "Task"
+  "taskState": "Task",
+  "readOnlyNotice": "Read-only output: send requests through ChatGPT MCP; this panel has no chat input."
 }
