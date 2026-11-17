@@ -7,6 +7,8 @@ import { ProviderManifestPolicy } from
 import { ExecutionScheduler } from "./ExecutionScheduler.js";
 import { ServiceRegistry } from "./ServiceRegistry.js";
 import { ServiceRequestResolver } from "./ServiceRequestResolver.js";
+import { RouteTablePolicy } from
+  "../property/RouteTablePolicy.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
   "./AuthorizedCatalogCollection.js";
@@ -27,6 +29,8 @@ export class HubUnit {
     this.catalog = catalog;
     this.serviceResolver = new ServiceRequestResolver(
       services ?? new ServiceRegistry(registry), registry);
+    // Internal-only declarative snapshot; URU remains Provider authority.
+    this.replaceRoutes = Object.freeze([]);
   }
 
   register(object) {
@@ -233,6 +237,50 @@ export class HubUnit {
   }
 
   /**
+   * Trusted LinkCore configuration boundary. PR04.08 will add a
+   * separately authorized external route-control API. This operation
+   * does not become a Cluster.api method.
+   *
+   * Validate the entire table before a single synchronous swap.
+   * Neither invalid entries nor inactive Providers can partially apply.
+   */
+  configureReplaceRoutes(candidate) {
+    const parsed = RouteTablePolicy.validate(candidate);
+    if (!parsed.ok) {
+      this.omu.record("EHU", "LinkCore", "Service.Route.Configure",
+        parsed.status);
+      return parsed;
+    }
+    if (!parsed.value.routes.every(route => route.mode === "replace")) {
+      this.omu.record("EHU", "LinkCore", "Service.Route.Configure", 400);
+      return { ok: false, status: 400,
+        error: "Only replace routes are executable in PR04.03" };
+    }
+    for (const route of parsed.value.routes) {
+      const found = this.serviceResolver.services.resolve(route.service);
+      const target = found.ok && found.value.find(provider =>
+        provider.providerId === route.providers[0] &&
+        provider.provides.some(item =>
+          item.service === route.service &&
+          item.action === route.action) &&
+        this.registry.objects.has(provider.objectId));
+      if (!target) {
+        this.omu.record("EHU", "LinkCore",
+          "Service.Route.Configure", 404, route.routeId);
+        return { ok: false, status: 404,
+          error: "Replace Provider unavailable" };
+      }
+    }
+    // Existing in-flight requests hold their already resolved Object.
+    this.replaceRoutes = parsed.value.routes;
+    this.omu.record("Log", "LinkCore",
+      "Service.Route.Configure", 200, "HubUnit",
+      { count: this.replaceRoutes.length });
+    return { ok: true, status: 200,
+      value: Object.freeze({ count: this.replaceRoutes.length }) };
+  }
+
+  /**
    * Map a logical Service to one Object, then reuse the entire
    * existing Hub request, authorization, scheduler and EHU path.
    */
@@ -252,7 +300,10 @@ export class HubUnit {
       return { ok: false, status: 400,
         error: "Invalid request options" };
     }
-    const route = this.serviceResolver.resolve(service, action);
+    const origin = options.origin === "user" ||
+      options.origin === "agent" ? options.origin : null;
+    const route = this.serviceResolver.resolve(
+      service, action, source, origin, this.replaceRoutes);
     if (!route.ok) {
       this.omu.record("EHU", source, "Service.Resolve",
         route.status, typeof service === "string" ? service : "",

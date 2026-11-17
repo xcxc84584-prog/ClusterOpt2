@@ -61,3 +61,38 @@ EventChain: local validation only; no Request or Response dispatch, no
 new Dependency edge, no EHU mutation. Future callers must use HubUnit
 for route operations, permission checking and EHU/Log; this pure policy
 cannot authorize its own input. Relation Code 00 for validation itself.
+
+## PR04.03 — Replace routing
+Object/Property: no new Object or EDPMU Property. ServiceRequestResolver
+reads an immutable HubUnit-owned RouteTablePolicy snapshot; URU is the
+single live Provider authority. HubUnit retains all Request/Response,
+AccessPolicy, User/Agent API checks and OMU records.
+
+```mermaid
+flowchart TD
+  Host[Trusted host config] --> Check[RouteTablePolicy]
+  Check --> Live[URU live Provider validation]
+  Live -->|all valid| Snapshot[Immutable route snapshot]
+  Caller[Registered caller + origin] --> Resolver[ServiceRequestResolver]
+  Snapshot --> Resolver
+  Resolver -->|one selected provider| Hub[HubUnit.request]
+  Hub --> ACL[UserAPI AgentAPI and AccessPolicy]
+  ACL --> Target[Registered Object.receive]
+  Resolver -->|404 or 409| EHU[OMU EHU]
+  Hub --> EHU
+```
+
+Event Chain:
+1. Host configuration validates RouteTablePolicy; rejects 400/404
+   without mutation, records EHU. On success swaps one snapshot.
+2. Incoming REQ checks caller existence and explicit origin.
+3. Matching replace routes filtered by Service/action/origin/caller.
+4. Highest priority resolves live URU Provider. A disabled or missing
+   selected Provider returns 404; no silent reassignment.
+5. Existing HubUnit.request enforces ACL, scheduler, EHU/Log and REP.
+6. Dependencies are still Request=10 and Response=01 on success.
+No new Event ID allocator or independent route authority.
+
+Separate future PR05 routeVersion/CAS/draining and PR04.08 external
+permission gate; this is a trusted in-process configuration, not a
+sandbox boundary or untrusted plugin administration API.

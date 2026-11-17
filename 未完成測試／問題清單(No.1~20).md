@@ -89,3 +89,9 @@ PR1 is not considered accepted based on source code alone.
 - PR04.01 Node, VTE and Chromium tests: PENDING latest-head CI.
 - PR04.02–PR04.10 Route Table, ACL, and execution paths: TODO.
 - Real browser File System Access/manual 5GiB edit: NOT validated.
+
+## PLUGIN PR04.03 status
+- Replace-route runtime/ACL/VTE code and regression tests submitted.
+- Exact-head CI and restore proof: pending; no PASS until confirmed.
+- External route ACL (PR04.08), routeVersion/CAS (PR05) outstanding.
+- Real 5GiB and browser file permission manual tests remain open.

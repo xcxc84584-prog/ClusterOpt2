@@ -48,3 +48,29 @@ plugin host dependency injection. Explicit contribution metadata improves
 composability without granting permissions by declaration alone.
 Complexity O(bytes + routes * providers); no persistent changes, DOM,
 network, additional workflow or separate service registry.
+
+## PR04.03 — Replace route
+Architecture: resolve declarative Route Table to ONE active provider per
+Service/action for a registered caller and explicit request origin.
+The trusted host configures a complete schema-validated snapshot through
+LinkCore.configureReplaceRoutes(); the browser Cluster.api never receives
+this method. Full external route ACL is reserved for PR04.08.
+
+Design study: VS Code's extensionsRegistry.ts uses declarative
+contributions with explicit extension activation boundaries; ClusterOpt2
+keeps runtime Provider identity in URU and dispatch in HubUnit, unlike
+a second plugin-owned dispatcher. Theia's plugin architecture motivates
+service identification distinct from provider implementation.
+
+Before commit, validate ALL referenced providers, service/action and
+live Object IDs, then publish a single immutable snapshot. A selected
+provider becoming disabled/unregistered produces 404, NOT fallback.
+No implicit provider creation, separate registry, remote worker, or
+physical File System Access is introduced.
+
+Complexity: O(R * P) at configuration (R<=32, P from URU), O(R+P)
+per request. Keep EHU for failed config/dispatch; request lineage,
+scheduler and authorization stay with existing HubUnit.request().
+Priority picks the highest matching declaration; origin/object filters
+are exact, origin never inferred. timeoutMs is metadata only until
+bounded execution support in PR04.04–05.

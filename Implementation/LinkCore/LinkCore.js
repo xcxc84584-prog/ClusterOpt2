@@ -241,6 +241,13 @@ export class LinkCore {
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
   }
+  /**
+   * Trusted host configuration, intentionally not added to Cluster.api.
+   * No third-party privilege or self-service route control until PR04.08.
+   */
+  configureReplaceRoutes(table) {
+    return this.hub.configureReplaceRoutes(table);
+  }
   requestService(source, service, action, payload = {}, options = {}) {
     return this.hub.requestService(source, service, action,
       payload, options);

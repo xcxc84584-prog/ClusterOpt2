@@ -24,3 +24,15 @@ No real 5GiB editor or physical file-permission acceptance is claimed.
   provider duplication, invalid source/origin, unsupported timeouts.
 - Existing HubUnit request/requestService remain unchanged.
 - Exact-head Node and Chromium CI results must be checked after push.
+
+## PR04.03 — Replace execution and relation tests
+- Explicit origin + registered source matches only scoped routes.
+- Higher priority wins; unmatched scope does not silently route.
+- Replacing a Service/action does not change direct target-ID API calls.
+- Configuration is validated whole-table and swaps only after success.
+- Disabled/unregistered chosen Provider => 404 with EHU, no fallback.
+- Original UserAPI/AgentAPI and AccessPolicy => 403 with EHU.
+- OMU Request/Response and Dependency remain on original Hub path.
+- VTE runtime route state isolated from a second LinkCore instance.
+- New browser privilege surface and untrusted plugin control absent.
+- Existing exact-head Node, Chromium and release CI required for PASS.

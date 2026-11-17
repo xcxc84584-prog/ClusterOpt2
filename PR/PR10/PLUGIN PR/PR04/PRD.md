@@ -30,3 +30,8 @@ safe plain-text fallback. This is independent of the UI locale Property.
 Immutable Route Table schema, bounded source/provider selection metadata
 and validation only. No route activation, ACL elevation or Service
 execution; these are gated on PR04.03–08.
+
+## PR04.03 scope
+Replace one logical Service/action Provider under a trusted, validated
+in-process route table. No external route editor, agent route mutation,
+manual File I/O, full transaction CAS, fanout or chain execution.
