@@ -36,7 +36,7 @@ test("PR06.07 rejects forged or oversized artifact and digest", async () => {
     [new Uint8Array(0), hash],
     [new Uint8Array(1024 * 1024 + 1), hash],
     [new Uint8Array([1]), "invalid"],
-    [new Uint8Array([1]), hash.toUpperCase()],
+    [new Uint8Array([1]), "A".repeat(64)],
     [new ArrayBuffer(5), hash],
     [null, hash]
   ]) {
