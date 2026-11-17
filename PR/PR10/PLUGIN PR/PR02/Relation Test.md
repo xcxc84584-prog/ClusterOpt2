@@ -44,3 +44,18 @@ Implementation commit `a7ba16a5859b0b428059cd71e5be401da6a637f9`.
 
 Includes strict descriptor mismatch/duplicate EHU 400 and successful
 Hub-mediated Request 200. This is not evidence of PR02.03–PR02.10.
+
+## PR02.03 — acceptance matrix
+| Case | Evidence | Status |
+| --- | --- | --- |
+| Schema type, owners, visibility, read/write, invariants | Node test | PENDING CI |
+| Frozen detached descriptor | Node test | PENDING CI |
+| Duplicate or mismatched EDPMU registration 400/409 | Node + EHU | PENDING CI |
+| Real Hub property read and missing caller 404 | Node, Chromium | PENDING CI |
+| Legacy registration without metadata unchanged | Node | PENDING CI |
+| Browser legacy Cluster facade unaffected | Chromium | PENDING CI |
+| Dedicated PR02 + OCDA + Windows exact-head | GitHub Actions | PENDING CI |
+| Real user disk/5GiB save | Out of scope, no mutation | NOT RUN |
+
+No PASS is claimed solely from a committed test source. The browser
+remains loadable without the new metadata; main unchanged.
