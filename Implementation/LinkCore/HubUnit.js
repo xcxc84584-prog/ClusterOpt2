@@ -108,6 +108,30 @@ export class HubUnit {
     return result;
   }
 
+  attachProviderFactory(source, providerId, factory) {
+    const manifest = this.registry.getProvider(providerId);
+    const result = !this.registry.objects.has(source) || !manifest ?
+      { ok: false, status: 404 } :
+      manifest.objectId !== source ?
+        { ok: false, status: 403 } :
+        this.registry.attachProviderFactory(providerId, factory);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Factory.Attach", result.status, providerId);
+    return result;
+  }
+
+  materializeProvider(source, providerId) {
+    const manifest = this.registry.getProvider(providerId);
+    const result = !this.registry.objects.has(source) || !manifest ?
+      { ok: false, status: 404 } :
+      manifest.objectId !== source ?
+        { ok: false, status: 403 } :
+        this.registry.materializeProvider(providerId);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Factory.Materialize", result.status, providerId);
+    return result;
+  }
+
   // Active wait-for edges are used only for deadlock detection.
   hasWaitPath(start, destination, visited = new Set()) {
     if (start === destination) return true;
