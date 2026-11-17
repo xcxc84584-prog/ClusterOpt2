@@ -117,6 +117,8 @@ export class FileDocument {
    */
   async reconcile(priority, onProgress = () => {}) {
     if (!this.handle || !this.diskRevision) return false;
+    const previousStatus = this.status;
+    const previousError = this.error;
     try {
       const file = await this.handle.getFile();
       const fingerprint = this.fingerprint(file);
@@ -137,6 +139,11 @@ export class FileDocument {
         // Preserve the active text and dirty/synced status; a future
         // explicit user gesture or granted handle can resume polling.
         this.accessBlocked = true;
+        // External-first can fail inside load() after it temporarily
+        // switched the status to loading/error. Restore the exact
+        // pre-poll state without discarding any local changes.
+        this.status = previousStatus;
+        this.error = previousError;
         return false;
       }
       this.status = DocumentStatus.ERROR;
