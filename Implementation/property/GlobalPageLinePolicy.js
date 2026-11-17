@@ -9,11 +9,12 @@
 export const GlobalPageLinePolicy = Object.freeze({
   readBatchBytes: 1024 * 1024,
   async locate({ file, targetLine, pageBytes, edits = new Map(),
-    onProgress = () => {} }) {
+    cache = new Map(), onProgress = () => {} }) {
     if (!(file instanceof Blob) ||
         !Number.isSafeInteger(targetLine) || targetLine < 1 ||
         !Number.isSafeInteger(pageBytes) || pageBytes < 1024 ||
-        pageBytes > 1024 * 1024 || !(edits instanceof Map)) {
+        pageBytes > 1024 * 1024 || !(edits instanceof Map) ||
+        !(cache instanceof Map)) {
       const error = new RangeError("Invalid global line seek");
       error.status = 400;
       throw error;
@@ -25,7 +26,7 @@ export const GlobalPageLinePolicy = Object.freeze({
     for (let index = 0; index < pages; index++) {
       const start = index * pageBytes;
       const end = Math.min(file.size, start + pageBytes);
-      const record = edits.get(index);
+      const record = edits.get(index) ?? cache.get(index);
       let lineBreaks = record?.editedLineBreaks;
       let endsWithLF = record?.endsWithLF;
       if (!Number.isSafeInteger(lineBreaks) || lineBreaks < 0 ||
@@ -48,6 +49,7 @@ export const GlobalPageLinePolicy = Object.freeze({
         lineBreaks = 0;
         for (const byte of bytes) if (byte === 10) lineBreaks++;
         endsWithLF = bytes.at(-1) === 10;
+        cache.set(index, { lineBreaks, endsWithLF });
       }
       const lastLine = firstLine + lineBreaks;
       const nextStartsHere = targetLine === lastLine &&
