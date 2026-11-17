@@ -47,15 +47,15 @@ function flush() {
 test("PR04.06 sends only masked metadata and retains primary result",
   async () => {
     let observed;
-    const core = setup(input => "secret-result:" + input.secret,
+    const core = setup(input => "sensitive-result:" + input.sensitive,
       input => { observed = input; return "ok"; });
     const result = await core.requestService("Caller", service, "run",
-      { secret: "private-input" }, { origin: "user" });
-    assert.equal(result.value, "secret-result:private-input");
+      { sensitive: "private-input" }, { origin: "user" });
+    assert.equal(result.value, "sensitive-result:private-input");
     await flush();
     assert.deepEqual(observed, { service, action: "run",
       status: 200, ok: true });
-    assert.equal(JSON.stringify(observed).includes("secret"), false);
+    assert.equal(JSON.stringify(observed).includes("sensitive"), false);
     assert.ok(Object.isFrozen(observed));
     assert.ok(core.getSnapshot().dependencies.some(item =>
       item.link === "Caller->Observer" && item.code === "10"));
@@ -76,7 +76,7 @@ test("PR04.06 observer rejection cannot replace primary success",
 test("PR04.06 observer exceptions do not propagate or leak",
   async () => {
     const core = setup(() => "safe", () => {
-      throw new Error("observer secret");
+      throw new Error("observer sensitive");
     });
     const result = await core.requestService("Caller", service, "run",
       {}, { origin: "user" });
