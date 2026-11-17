@@ -595,3 +595,14 @@ this limit currently applies only to the independent registry.
 - CPU Worker offloading remains OPEN; Promise.all overlaps Blob I/O only.
 - This milestone may be BC merged once CI passes, while PR8 overall remains
   NOT PASS until authoritative all-file slicing and real stress acceptance.
+
+## Patch(+25) legacy parity and file transfer correctness
+- Reference original ClusterOpt/Program/src/explorer.js and stylesheet.
+- Preserve legacy inline toolbar and existing six/four action tiers
+  until UI-compatible integration is verified.
+- Perform source/destination integrity validation BEFORE cut retirement.
+- Run VTE and browser regression; verify EHU 409 from corrupt output.
+- O(file bytes) readback in two 1 MiB buffers, no whole-file JS read.
+- Security review: same-folder collision and opened-document guard.
+- Outstanding: directory rename and recursive copy/move; old version
+  itself explicitly did not support folder copy/move.
