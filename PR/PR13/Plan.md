@@ -62,3 +62,17 @@ source of service declaration rules.
 Sub-PR patches remain on one PR13 Draft branch. A major-PR release
 requires version sync, CI, browser acceptance, and a backup ref before
 merging main.
+
+## PR13 Patch(+2) integration progress
+- PR13.2: browser directory-handle intake with bounded manifest and entry
+  reads. Returns staged data, does not execute code or register a Provider.
+- PR13.3: RPC envelope contract validator for bounded request/response
+  messages, ID correlation, declared service and action checks.
+- PR13.4: immutable explicit approval review, deny Core and unknown grants.
+- Host-only LinkCore staging method; no public untrusted invocation API.
+
+### Acceptance still required
+External plugin isolation/runtime and UI installation are incomplete.
+A same-origin Worker is not an adequate untrusted-code sandbox.
+Do not call 13.2–13.4 complete or grant untrusted plugins until an
+isolated origin/channel and browser adversarial tests exist.
