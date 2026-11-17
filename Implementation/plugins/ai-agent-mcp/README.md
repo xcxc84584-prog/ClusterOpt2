@@ -3,11 +3,11 @@
 In ClusterOpt2 Resources, download the complete plugin ZIP only to install
 the browser plugin. Extract it and mount the plugin folder.
 
-For Windows Local Agent setup, open the AI Agent tab and click
+For full instructions see [MCP-SETUP.md](MCP-SETUP.md).\n\nFor Windows Local Agent setup, open the AI Agent tab and click
 **下載 Quick-Setup.cmd**. This downloads one CMD file, not the ZIP.
 The CMD downloads a revision-pinned setup helper and Agent files
 after confirmation, then installs dependencies and starts a loopback
-service. Nothing runs automatically from the browser.
+service. Nothing runs automatically from the browser.\n\nFor the separate ChatGPT MCP server, click **下載 MCP 快速配置 CMD**.\nThe second standalone CMD retrieves revision-pinned MCP/OAuth gateway files,\nstarts the local bearer gateway and offers an opt-in OAuth configuration\nwindow. Configure a separate trusted HTTPS proxy to OAuth port 43881;\nthe script never starts a public tunnel.
 
 If port 43879 is occupied, choose **P** to select another port,
 **C** to cancel safely, or **O** to inspect owning PID(s) and require
@@ -41,7 +41,7 @@ Existing model tasks remain host-managed and may be cancelled. The
 plugin UI has no chat composer or task submission controls; ChatGPT MCP
 is the intended external request surface, with ToolBox approval enforced
 by the trusted host. The model's file/PowerShell tool calls are not supported.
-Browser ToolBox, a separately consented PowerShell command bridge and\nread-only MCP projections are opt-in host features. The built-in model task flow does not autonomously invoke these tools.
+Browser ToolBox, a separately consented PowerShell command bridge and\nread-only MCP projections are opt-in host features. OAuth cluster.read\nnow enforces a five-tool server-side allowlist; listing additional local\nMCP tools through stdio never grants remote write or PowerShell access. The built-in model task flow does not autonomously invoke these tools.
 
 Worker `getStatus` and `describe` report the sandbox Worker's
 own read-only contract. Live pairing, model and tasks are handled by
