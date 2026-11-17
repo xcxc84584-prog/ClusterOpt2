@@ -885,3 +885,70 @@ header .menu-wrap { margin-left:auto; }
   color: var(--ui-text-on-control);
 }
 #goToLineError { min-height: 1em; margin: 0; }
+
+/* PR9 native ConPTY panel. Never paint terminal over the editor footer. */
+.native-ps-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  height: min(50vh, 480px);
+  border-top: 1px solid var(--ui-border);
+  background: var(--ui-editor, #101318);
+  color: var(--ui-text, #f1f2f5);
+  overflow: hidden;
+}
+.native-ps-pane[hidden] { display: none !important; }
+.native-ps-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.native-ps-header button {
+  border: 1px solid var(--ui-border);
+  background: var(--ui-control);
+  color: var(--ui-text-on-control);
+  cursor: pointer;
+}
+.native-ps-tabs {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  gap: 4px;
+}
+.native-ps-tabs button.active {
+  border-color: var(--ui-accent);
+}
+.native-ps-connect {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+}
+.native-ps-connect input {
+  width: 150px;
+  min-width: 0;
+  background: var(--ui-control);
+  color: var(--ui-text-on-control);
+  border: 1px solid var(--ui-border);
+}
+.native-ps-connect input[type="number"] { width: 80px; }
+.native-ps-connect p { margin: 0; font-size: 12px; }
+.native-ps-terminal {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.native-ps-session {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.native-ps-session[hidden] { display: none !important; }
+@media (max-height: 560px) {
+  .native-ps-pane { height: 45vh; min-height: 180px; }
+}
