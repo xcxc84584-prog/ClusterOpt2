@@ -167,8 +167,14 @@ export class UnifiedRegistrationUnit {
     if (!this.providers.has(providerId)) {
       return { ok: false, status: 404 };
     }
-    if (this.disabledProviders.has(providerId)) {
+    if (this.disabledProviders.has(providerId) ||
+        !this.providers.get(providerId).provides.some(item =>
+          this.isServiceEnabled(providerId, item.service))) {
       return { ok: false, status: 409, error: "Provider disabled" };
+    }
+    if (!ProviderHealthPolicy.isAvailable(
+      this.providerHealth.get(providerId))) {
+      return { ok: false, status: 429, error: "Provider cooling down" };
     }
     if (this.providerInstances.has(providerId)) {
       return { ok: true, status: 200,
