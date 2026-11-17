@@ -121,12 +121,14 @@ export class PluginPackageStoreUnit {
    * Store reviewed built-in Provider selection separately from user bytes.
    * A persisted ID is NOT a registration or capability grant.
    */
-  async rememberReviewed(providerId) {
+  async rememberReviewed(providerId, enabled = true) {
     if (typeof providerId !== "string" || !providerId ||
-        providerId.length > 128) return fail(400, "Invalid ID");
+        providerId.length > 128 || typeof enabled !== "boolean") {
+      return fail(400, "Invalid reviewed selection");
+    }
     try {
       await this.transaction("readwrite",store=>
-        store.put({providerId}),REVIEWED);
+        store.put({providerId,enabled}),REVIEWED);
       this.record(200,"ReviewedRemember");
       return {ok:true,status:200};
     } catch {
@@ -140,7 +142,9 @@ export class PluginPackageStoreUnit {
       const entries=await this.transaction("readonly",
         store=>store.getAll(),REVIEWED);
       return {ok:true,status:200,
-        value:entries.map(entry=>entry.providerId)};
+        value:entries.map(entry=>({
+          providerId:entry.providerId,enabled:entry.enabled!==false
+        }))};
     } catch {
       this.record(503,"ReviewedList");
       return fail(503,"Storage unavailable");
