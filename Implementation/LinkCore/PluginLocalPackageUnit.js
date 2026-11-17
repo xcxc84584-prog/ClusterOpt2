@@ -1,5 +1,6 @@
 import { PluginPackageManifestPolicy } from
   "../property/PluginPackageManifestPolicy.js";
+import { PluginFolderPackageUnit } from "./PluginFolderPackageUnit.js";
 
 /**
  * PR13.2: read only files explicitly selected by the user.
@@ -24,6 +25,7 @@ async function readBounded(handle, maxBytes) {
 export class PluginLocalPackageUnit {
   constructor(omu) {
     this.omu = omu;
+    this.folderReader = new PluginFolderPackageUnit(omu);
   }
 
   record(status, reason) {
@@ -39,6 +41,27 @@ export class PluginLocalPackageUnit {
           typeof directory.getDirectoryHandle !== "function") {
         this.record(400, "invalid-selection");
         return fail(400, "Expected selected directory");
+      }
+      // Modern directory handles expose async entries(). Read the entire
+      // project, including nested HTML/CSS/JS and binary assets.
+      if (typeof directory.entries === "function") {
+        const complete = await this.folderReader.snapshot(directory);
+        if (!complete.ok) return complete;
+        const { manifestText, files } = complete.value;
+        const parsed = PluginPackageManifestPolicy.validate(manifestText);
+        if (!parsed.ok) return parsed;
+        const encoded = files[parsed.value.entry];
+        const binary = atob(encoded);
+        const bytes = Uint8Array.from(binary,
+          character => character.charCodeAt(0));
+        const source = new TextDecoder("utf-8", {
+          fatal: true
+        }).decode(bytes);
+        this.record(200, "folder-staged");
+        return { ok: true, status: 200, value: Object.freeze({
+          manifest: parsed.value, source, state: "staged",
+          snapshot: complete.value
+        }) };
       }
       const manifestHandle = await directory.getFileHandle("plugin.json");
       const raw = await readBounded(manifestHandle,
