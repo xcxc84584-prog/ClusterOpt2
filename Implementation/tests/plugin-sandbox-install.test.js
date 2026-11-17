@@ -106,13 +106,15 @@ test("PR13.4 per-call permission revocation denies running plugin", async () => 
     approvedPermissions: ["document.slice.read"]
   })).status, 201);
   assert.equal((await h.env.core.request(
-    "VTE", "Author.Sandbox", "transform", {}, { origin: "user" }
+    "VTE", "Author.Sandbox", "transform",
+    { text: "ok" }, { origin: "user" }
   )).ok, true);
   assert.equal(h.invoked, 1);
   assert.equal(h.env.core.revokePluginPermission(
     "Author.Sandbox", "author.sandbox", "document.slice.read").ok, true);
   const denied = await h.env.core.request(
-    "VTE", "Author.Sandbox", "transform", {}, { origin: "user" });
+    "VTE", "Author.Sandbox", "transform",
+    { text: "ok" }, { origin: "user" });
   assert.equal(denied.status, 403);
   assert.equal(h.invoked, 1);
   assert.ok(h.env.log().some(entry =>
