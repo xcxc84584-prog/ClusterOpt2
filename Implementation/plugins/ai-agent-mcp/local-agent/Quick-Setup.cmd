@@ -1,19 +1,28 @@
 @echo off
-setlocal
-title ClusterOpt2 AI Agent MCP Quick Setup
-cd /d "%~dp0"
-if not exist "%~dp0Setup-Quick.ps1" (
-  echo Missing Setup-Quick.ps1. Extract the complete plugin ZIP first.
-  pause
-  exit /b 1
-)
-echo AI Agent MCP (ChatGPT) - local setup
+setlocal EnableExtensions DisableDelayedExpansion
+title ClusterOpt2 AI AGENT MCP(ChatGPT) - Quick Setup
+set "REV=1b83c7edba0113ea313736291f32c149fbb3e820"
+set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
+set "URI=https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/%REV%/Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
+echo AI AGENT MCP(ChatGPT) - standalone setup
 echo Source: https://github.com/xcxc84584-prog/ClusterOpt2
-echo This script installs local dependencies and starts a loopback Agent.
+echo This CMD downloads a pinned setup helper and approved plugin sources.
+echo It installs local dependencies; it does NOT request admin access.
+echo If port 43879 is used, choose P / C / O.
 choice /M "Continue"
 if errorlevel 2 exit /b 1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Setup-Quick.ps1"
-set "CODE=%ERRORLEVEL%"
-if not "%CODE%"=="0" echo Setup failed. Check output above.
+if not exist "%ROOT%" mkdir "%ROOT%"
+if errorlevel 1 goto failed
+echo [1/2] Downloading verified-revision setup helper...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing -Uri '%URI%' -OutFile '%ROOT%\Setup-Quick.ps1' -TimeoutSec 45; if((Get-Item -LiteralPath '%ROOT%\Setup-Quick.ps1').Length -lt 1000){throw 'Incomplete setup helper'}"
+if errorlevel 1 goto failed
+echo [2/2] Starting guided setup...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\Setup-Quick.ps1" -SourceRevision "%REV%"
+if errorlevel 1 goto failed
+echo Setup complete.
 pause
-exit /b %CODE%
+exit /b 0
+:failed
+echo [ERROR] Setup cancelled or failed. Existing service was not automatically stopped.
+pause
+exit /b 1

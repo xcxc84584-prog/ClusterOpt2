@@ -115,7 +115,7 @@ test("PR14.4 unsafe tool message terminates authorized connection",
     await page.locator(".plugin-extension-button").click();
     const frame = page.frameLocator(".plugin-extension-frame");
     await frame.locator('[data-agent-action="pair"]').click();
-    await page.locator("dialog[open] input").fill(token);
+    await page.locator('dialog[open] input[type="password"]').fill(token);
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(frame.locator("[data-agent-status]"))
       .toHaveText("已連線");
@@ -151,7 +151,7 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
       .toContainText("已取得所選資料夾授權");
     await page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-action="pair"]').click();
-    await page.locator("dialog[open] input").fill(token);
+    await page.locator('dialog[open] input[type="password"]').fill(token);
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");
@@ -199,7 +199,7 @@ test("PR14.8 explicit MCP read-only tool bridge returns metadata",
     await page.locator(".plugin-extension-button").click();
     await page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-action="pair"]').click();
-    await page.locator("dialog[open] input").fill(token);
+    await page.locator('dialog[open] input[type="password"]').fill(token);
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");

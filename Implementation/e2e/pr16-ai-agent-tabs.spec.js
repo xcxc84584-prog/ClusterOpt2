@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 async function mountAgent(page) {
   const result = await page.evaluate(async () => {
@@ -59,7 +60,7 @@ test("PR16 workbench Agent tab switches cleanly with Plugin Manager",
     await expect(page.locator(".plugin-extension-panel")).toBeHidden();
   });
 
-test("PR16 legacy setup to runtime, guide and quick-setup ZIP",
+test("PR17 legacy setup offers a standalone quick-setup CMD",
   async ({ page }) => {
     await page.goto("/");
     await mountAgent(page);
@@ -70,8 +71,12 @@ test("PR16 legacy setup to runtime, guide and quick-setup ZIP",
     await expect(frame.locator(".cai-bar")).toBeVisible();
     const downloading = page.waitForEvent("download");
     await frame.locator("[data-quick-setup]").click();
-    expect((await downloading).suggestedFilename())
-      .toBe("ClusterOpt2-AI-Agent-MCP.zip");
+    const downloaded = await downloading;
+    expect(downloaded.suggestedFilename())
+      .toBe("AI-Agent-MCP-Quick-Setup.cmd");
+    const cmd = await readFile(await downloaded.path(), "utf8");
+    expect(cmd).toContain("SourceRevision");
+    expect(cmd).toContain("Setup-Quick.ps1");
 
     await page.evaluate(() => {
       const frame = document.querySelector(
