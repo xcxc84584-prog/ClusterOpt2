@@ -22,17 +22,17 @@ test("PR20 MCP standalone setup is explicit and loopback-only", () => {
   assert.doesNotMatch(cmd, /Stop-Process|taskkill|netsh interface/);
 });
 
-test("PR20 MCP installer pins existing reviewed commit and diagnoses each download", () => {
+test("PR20 MCP installer downloads pinned gateway assets with diagnostics", () => {
   const cmd = asset("local-agent/MCP-Quick-Setup.cmd");
-  assert.match(cmd,
-    /REV=9e9055421f6b0d6c021297b28deedbee964b526a/);
-  assert.match(cmd, /echo Fetching %%F/);
-  assert.match(cmd, /DOWNLOAD FAILED:/);
-  assert.match(cmd, /Failed to download %%F/);
-  assert.match(cmd, /Port-CPO\\.ps1/);
-  assert.match(cmd, /SERVICE_NAME=clusteropt2/);
-  assert.match(cmd, /https:\\/\\/clusteropt2/);
-  assert.match(cmd, /raw\\.githubusercontent\\.com/);
+  assert.ok(cmd.includes(
+    "REV=9e9055421f6b0d6c021297b28deedbee964b526a"));
+  assert.ok(cmd.includes("echo Fetching %%F"));
+  assert.ok(cmd.includes("DOWNLOAD FAILED:"));
+  assert.ok(cmd.includes("Failed to download %%F"));
+  assert.ok(cmd.includes("Port-CPO.ps1"));
+  assert.ok(cmd.includes("SERVICE_NAME=clusteropt2"));
+  assert.ok(cmd.includes("https://clusteropt2"));
+  assert.ok(cmd.includes("raw.githubusercontent.com"));
 });
 
 test("PR20 UI never submits chat, downloads through trusted host", () => {
