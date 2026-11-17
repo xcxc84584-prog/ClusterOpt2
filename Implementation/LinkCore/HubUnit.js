@@ -1015,6 +1015,55 @@ export class HubUnit {
    * filtering, NOT a token or substitute for HubUnit.request checks.
    * No source factories are materialized implicitly.
    */
+  /**
+   * Read-only Provider Contract projection. URU remains the sole live
+   * authority. Metadata visibility does not grant invocation permission.
+   */
+  listProviderContracts(source, options = {}) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Provider.Contract.List", 404);
+      return { ok: false, status: 404 };
+    }
+    const { offset = 0, limit = 100, origin = "user" } = options;
+    if (!["user", "agent"].includes(origin) ||
+        !Number.isSafeInteger(offset) || offset < 0 || offset > 4096 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      this.omu.record("EHU", source, "Provider.Contract.List", 400);
+      return { ok: false, status: 400 };
+    }
+    const entries = [];
+    for (const provider of this.registry.listProviders()) {
+      if (this.registry.disabledProviders.has(provider.providerId) ||
+          !this.registry.objects.has(provider.objectId)) continue;
+      for (const service of provider.provides) {
+        entries.push(Object.freeze({
+          providerId: provider.providerId,
+          owner: provider.objectId,
+          service: service.service, action: service.action,
+          version: service.version,
+          inputSchema: service.inputSchema,
+          outputSchema: service.outputSchema,
+          permissions: provider.permissions
+        }));
+      }
+    }
+    entries.sort((a,b)=>a.service.localeCompare(b.service) ||
+      a.owner.localeCompare(b.owner));
+    const result = Object.freeze({
+      ok: true, status: 200,
+      value: Object.freeze({
+        items: Object.freeze(entries.slice(offset, offset + limit)),
+        total: entries.length,
+        nextOffset: offset + limit < entries.length ?
+          offset + limit : null
+      })
+    });
+    this.omu.record("Log", source, "Provider.Contract.List", 200);
+    return result;
+  }
+
   discoverCatalog(source, command, kind, selector = {}, options = {}) {
     if (typeof source !== "string" ||
         !this.registry.objects.has(source)) {
