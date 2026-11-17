@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 async function mountAgent(page) {
   const result = await page.evaluate(async () => {
