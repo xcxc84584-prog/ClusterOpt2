@@ -19,3 +19,11 @@ Behavior:
 CI state: PENDING exact-head Node/Chromium/OCDA/Windows.
 PR02.05 CI pending previous submission; do not claim PASS prematurely.
 Recovery: backup/plugin-pr02-sub04-79c5633, main protected.
+
+## CI repair (+6.1)
+Dedicated workflow 44025082253 failed Node + Chromium due to legacy
+non-OCDA caller being treated as strict self-described Object.
+Fixed CatalogCollection to bypass such metadata-only enumeration,
+without changing URU runtime registration, Hub request permissions or
+legacy functionality. Added new legacy collection regression test.
+Await exact-head confirmation.
