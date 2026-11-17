@@ -10,6 +10,7 @@ import { VirtualTestEnvironment } from
 function manifest() {
   return JSON.stringify({
     packageVersion: 1, name: "Folder extension", entry: "src/main.js",
+    uiEntry: "index.html",
     provider: {
       manifestVersion: 1, providerId: "test.folder",
       objectId: "Test.Folder", provides: [{
@@ -65,6 +66,8 @@ test("PR13 whole folder preserves nested HTML CSS JS and binary", async () => {
   assert.ok(Object.hasOwn(result.value.files, "src/main.js"));
   assert.ok(Object.hasOwn(result.value.files, "assets/logo.png"));
   assert.equal(unit.inspectImport(result.value).status, 200);
+  assert.equal(PluginFolderPackagePolicy.inspect(
+    result.value).value.manifest.uiEntry, "index.html");
   assert.equal(env.core.uru.listProviders().length, 0);
 });
 
@@ -86,4 +89,14 @@ test("PR13 rejects traversal, oversized assets and tampered manifest", async () 
     "node_modules/x.js"), false);
   assert.equal(PluginFolderPackagePolicy.validPath(
     "styles.css"), true);
+});
+
+test("PR13 optional UI entry must resolve within selected folder", async () => {
+  const env = new VirtualTestEnvironment();
+  const unit = new PluginFolderPackageUnit(env.core.omu);
+  const invalid = folder({
+    "plugin.json": file(manifest()),
+    "src": folder({ "main.js": file("export default 1;") })
+  });
+  assert.equal((await unit.snapshot(invalid)).status, 400);
 });
