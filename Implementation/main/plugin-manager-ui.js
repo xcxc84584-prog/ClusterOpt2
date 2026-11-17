@@ -216,6 +216,96 @@ export function mountPluginManagerUI(core,doc) {
     if(!items.childElementCount)
       items.append(dom(doc,"p","pm-muted",t("沒有插件","No plugins")));
   }
+
+  /** Read-only discovery of the live HubUnit-connected registries. */
+  function apiEntries() {
+    const result=core.catalog.collect();
+    if(!result.ok)return [];
+    const entries=new Map();
+    const add=(kind,id,owner,descriptor,providerId="")=>{
+      const key=kind+"|"+owner+"|"+id;
+      entries.set(key,{key,kind,id,owner,descriptor,providerId});
+    };
+    for(const item of result.value.apis) {
+      const d=item.descriptor;
+      if(d.visibility!=="Private")
+        add("Request",d.id,item.owner,d);
+    }
+    for(const item of result.value.properties) {
+      const d=item.descriptor;
+      if(d.visibility!=="Private")
+        add("Property",item.name,d.owners.join(", "),d);
+    }
+    // Provider Manifests appear immediately after authorized registration.
+    for(const provider of providers()) {
+      if(disabled(provider))continue;
+      for(const item of provider.provides??[]) {
+        add("Provider",item.service,provider.objectId,{
+          apiVersion:1,id:item.service,owner:provider.objectId,
+          action:item.action,version:item.version,visibility:"Public",
+          inputSchema:item.inputSchema,outputSchema:item.outputSchema
+        },provider.providerId);
+      }
+    }
+    // Legacy properties have metadata but no schema. Never invent one.
+    for(const item of core.edpmu.list()) {
+      if(item.visibility==="Private")continue;
+      const key="Property|"+item.owners.join(", ")+"|"+item.name;
+      if(!entries.has(key)) {
+        add("Property",item.name,item.owners.join(", "),{
+          name:item.name,owners:item.owners,visibility:item.visibility,
+          note:"No registered schema descriptor"
+        });
+      }
+    }
+    return [...entries.values()].sort((a,b)=>
+      a.kind.localeCompare(b.kind)||a.id.localeCompare(b.id));
+  }
+  function renderAPIs() {
+    const entries=apiEntries();
+    const section=card(t("HubUnit API 與屬性註冊表",
+      "HubUnit API & Property Registry"));
+    const note=dom(doc,"p","pm-muted",
+      t("已註冊契約的唯讀檢視；API 執行仍受 HubUnit 權限控制。",
+        "Read-only contracts. HubUnit still enforces execution permissions."));
+    section.append(note);
+    if(selectedAPI) {
+      const entry=entries.find(x=>x.key===selectedAPI);
+      if(entry) {
+        section.append(btn(doc,"← "+t("返回清單","Back to list"),
+          ()=>{selectedAPI=null;render();},"pm-mini"));
+        const table=tabular(doc,[],[
+          [t("種類","Type"),entry.kind],
+          [t("名稱","Name"),entry.id],
+          [t("所屬物件","Owner"),entry.owner],
+          [t("提供者","Provider"),entry.providerId||"—"],
+          [t("動作","Action"),entry.descriptor.action??"—"],
+          [t("版本","Version"),entry.descriptor.version??"—"],
+          [t("可見性","Visibility"),entry.descriptor.visibility??"—"]
+        ]);
+        section.append(table);
+        section.append(dom(doc,"h3","pm-contract-title",
+          t("詳細契約結構","Detailed contract structure")));
+        const pre=dom(doc,"pre","pm-contract-json",
+          JSON.stringify(entry.descriptor,null,2));
+        pre.tabIndex=0;section.append(pre);
+        page.append(section);return;
+      }
+      selectedAPI=null;
+    }
+    const list=dom(doc,"div","pm-api-list");
+    for(const entry of entries) {
+      const label=entry.kind+" · "+entry.id+" · "+entry.owner;
+      const button=btn(doc,label,()=>{
+        selectedAPI=entry.key;render();
+      },"pm-api-entry");
+      list.append(button);
+    }
+    if(!entries.length)list.append(dom(doc,"p","pm-muted",
+      t("目前沒有已註冊的契約","No registered contracts")));
+    section.append(list);page.append(section);
+  }
+
   function render() {
     const all=providers();
     if(selected&&!all.some(x=>x.providerId===selected))selected="";
