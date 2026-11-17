@@ -2,7 +2,7 @@
   "heading": "AI Agent",
   "disconnected": "尚未連線",
   "setupTitle": "連結本地 AI Agent",
-  "setupNotice": "本地 Agent 配對將在 PR14.4 提供。",
+  "setupNotice": "請在瀏覽器的可信任配對視窗輸入 Token。配對碼不會儲存或交給插件。",
   "settings": "模型設定",
   "connection": "連線教學",
   "ping": "測試連線",
@@ -14,5 +14,10 @@
   "unavailable": "AI 模型與任務服務尚未啟用。",
   "status": "目前階段：介面預覽",
   "workspace": "工作區",
-  "features": "尚未取得檔案及 PowerShell 權限。"
+  "features": "尚未取得檔案及 PowerShell 權限。",
+  "connect": "配對",
+  "connected": "已連線",
+  "connecting": "連線中…",
+  "disconnect": "中斷連線",
+  "connectionError": "本地 Agent 連線失敗"
 }
