@@ -106,8 +106,10 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
     }
     taskInput.disabled = !connected || taskActive || taskPending;
     submit.disabled = taskInput.disabled;
+    // Cancellation is available while a request is being queued too;
+    // the host still verifies the exact task ID and live grant.
     document.querySelector('[data-model-action="cancel"]').disabled =
-      !connected || !taskActive;
+      !connected || (!taskActive && !taskPending);
   }
   function appendMessage(message, kind = "info") {
     const item = document.createElement("p");
