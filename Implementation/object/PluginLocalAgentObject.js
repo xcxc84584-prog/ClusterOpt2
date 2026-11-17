@@ -40,6 +40,7 @@ export class PluginLocalAgentObject {
     this.generation = 0;
     this.modelReplyQueue = Promise.resolve();
     this.shellApprovalId = null;
+    this.mcpReadId = null;
     this.bridgeRegistered = false;
   }
 
@@ -112,26 +113,61 @@ export class PluginLocalAgentObject {
     this.shellApprovalId = null;
   }
 
+  registerReadBridge(objectId) {
+    if (typeof objectId !== "string" ||
+        !objectId.startsWith("PluginMCPRead.") ||
+        this.state !== "connected" || !this.socket) {
+      return { ok: false, status: 409 };
+    }
+    this.mcpReadId = objectId;
+    try {
+      this.socket.send(JSON.stringify({ type: "bridge_register" }));
+      return { ok: true, status: 200 };
+    } catch {
+      this.mcpReadId = null;
+      return { ok: false, status: 503 };
+    }
+  }
+
+  disableReadBridge() {
+    this.mcpReadId = null;
+  }
+
   async dispatchShellTool(message) {
     const requestId = message.requestId;
-    let approved = false;
-    if (this.shellApprovalId &&
-        message.name === "cluster.powershell_request") {
-      const result = await this.core.request(this.id,
+    let result = { error: "Tool access denied" };
+    if (message.name === "cluster.powershell_request" &&
+        this.shellApprovalId) {
+      const reply = await this.core.request(this.id,
         this.shellApprovalId, "approve", {
           command: message.args.command,
           path: message.args.path
         });
-      approved = result.ok && result.value?.approved === true;
+      result = {
+        approved: reply.ok &&
+          reply.value?.approved === true
+      };
+    } else if (this.mcpReadId && [
+      "cluster.list_files", "cluster.get_editor_state",
+      "cluster.read_file"
+    ].includes(message.name)) {
+      const reply = await this.core.request(this.id,
+        this.mcpReadId, "call", {
+          name: message.name, args: message.args
+        });
+      result = reply.ok ? reply.value : {
+        error: "MCP request failed"
+      };
     }
     if (!this.socket || this.state !== "connected") return;
     try {
       this.socket.send(JSON.stringify({
-        type: "tool_result", requestId,
-        result: { approved }
+        type: "tool_result", requestId, result
       }));
-      this.audit(approved ? 200 : 403,
-        approved ? "ShellApproved" : "ToolDenied");
+      const permitted = result?.approved === true ||
+        (result && !result.error);
+      this.audit(permitted ? 200 : 403,
+        permitted ? "ToolApproved" : "ToolDenied");
     } catch {
       this.audit(503, "ToolResultFailed");
       this.close();
