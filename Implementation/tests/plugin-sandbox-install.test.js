@@ -236,3 +236,28 @@ test("PR13.6 failed upgrade restores active original Provider",
     assert.ok(h.env.log().some(entry =>
       entry.action === "Plugin.Install.UpgradeRolledBack"));
   });
+
+test("PR13.6 successful upgrade retains Provider identity and disabled state",
+  async () => {
+    const h = harness();
+    assert.equal((await h.installer.install(specimen(), {
+      consented: true
+    })).status, 201);
+    const oldBridge = h.installer.handles.get("author.sandbox");
+    assert.equal(h.installer.disable("author.sandbox").status, 200);
+    const next = changeManifest(specimen(), provider => {
+      provider.provides[0].version = "1.0.1";
+    });
+    const result = await h.installer.upgrade("author.sandbox",
+      next, { consented: true, approvedPermissions: [] });
+    assert.equal(result.status, 201);
+    assert.equal(h.env.core.uru.getProvider("author.sandbox")
+      .provides[0].version, "1.0.1");
+    assert.equal(h.env.core.uru.disabledProviders.has(
+      "author.sandbox"), true);
+    assert.notEqual(h.installer.handles.get("author.sandbox"), oldBridge);
+    assert.equal(h.terminated, true);
+    assert.equal(h.installer.enable("author.sandbox").status, 200);
+    assert.equal((await h.env.core.request("VTE", "Author.Sandbox",
+      "transform", { text: "updated" }, { origin: "user" })).status, 200);
+  });
