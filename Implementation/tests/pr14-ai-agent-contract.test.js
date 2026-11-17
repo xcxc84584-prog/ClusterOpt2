@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { PluginPackageManifestPolicy } from
   "../property/PluginPackageManifestPolicy.js";
 import { PluginFolderPackagePolicy } from
   "../property/PluginFolderPackagePolicy.js";
+import { PluginCapabilityReviewPolicy } from
+  "../property/PluginCapabilityReviewPolicy.js";
 import { PluginHostInstallUnit } from
   "../LinkCore/PluginHostInstallUnit.js";
 import { VirtualTestEnvironment } from
@@ -132,17 +133,34 @@ test("PR14.2 Hub routes safe requests and audits denied requests",
     assert.equal(env.core.uru.listProviders().length, 0);
   });
 
-test("PR14.2 fails closed on manifest capability escalation", () => {
+test("PR14.2 core capability cannot be self-approved", async () => {
+  const env = new VirtualTestEnvironment();
   const changed = JSON.parse(asset("plugin.json"));
   changed.provider.permissions = ["route.configure"];
-  assert.equal(PluginPackageManifestPolicy.validate(
-    JSON.stringify(changed)).status, 200);
-  const inspect = PluginFolderPackagePolicy.inspect(
-    snapshot(JSON.stringify(changed)));
-  assert.equal(inspect.status, 200);
-  // Data-only manifest validation never implies privileged approval.
-  assert.equal(changed.provider.permissions[0],
-    "route.configure");
+  const text = JSON.stringify(changed);
+  assert.equal(PluginPackageManifestPolicy.validate(text).status, 200);
+  assert.equal(PluginFolderPackagePolicy.inspect(
+    snapshot(text)).status, 200);
+  assert.equal(PluginCapabilityReviewPolicy.inspect(
+    changed.provider, ["route.configure"]).status, 403);
+  let booted = false;
+  const installer = new PluginHostInstallUnit(
+    env.core, null, () => ({
+      async start() {
+        booted = true;
+        return { ok: true, status: 200 };
+      },
+      terminate() {}
+    }));
+  const denied = await installer.install(snapshot(text), {
+    consented: true,
+    approvedPermissions: ["route.configure"]
+  });
+  assert.equal(denied.status, 403);
+  assert.equal(booted, false);
+  assert.equal(env.core.uru.listProviders().length, 0);
+  assert.ok(env.log().some(item =>
+    item.kind === "EHU" && item.status === 403));
 });
 
 test("PR14.2 rejects undeclared exports and unsafe package paths",
