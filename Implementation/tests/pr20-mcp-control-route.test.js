@@ -116,3 +116,42 @@ test("PR20 open PowerShell requires ToolBox PS right", async () => {
   assert.equal(opened, 1);
   assert.equal(sent.at(-1).result.error, "Tool access denied");
 });
+
+test("PR20 path lookup requires read grant and user confirmation", async () => {
+  const replies = [];
+  let readAllowed = false;
+  let prompts = 0;
+  const core = {
+    omu: { record() {} },
+    async request(_source, _target, action) {
+      assert.equal(action, "status");
+      return { ok: true, status: 200, value: {
+        selected: true, folderName: "Workspace",
+        permissions: { read: readAllowed }
+      } };
+    }
+  };
+  const doc = {
+    defaultView: {
+      prompt() { prompts++; return "X:\\\\Projects\\\\Workspace"; }
+    }
+  };
+  const agent = new PluginLocalAgentObject(
+    core, "cluster.ai-agent-mcp", doc);
+  agent.state = "connected";
+  agent.socket = { send(data) { replies.push(JSON.parse(data)); } };
+  agent.mcpReadId = "PluginMCPRead.cluster_ai_agent_mcp";
+  agent.registerExplorer("PluginExplorer.cluster_ai_agent_mcp");
+  const query = {
+    name: "cluster.find_root_windows_path",
+    args: { root: "Workspace", candidates: [] }
+  };
+  await agent.dispatchShellTool({ ...query, requestId: "q1" });
+  assert.equal(prompts, 0);
+  assert.ok(replies.at(-1).result.error);
+  readAllowed = true;
+  await agent.dispatchShellTool({ ...query, requestId: "q2" });
+  assert.equal(prompts, 1);
+  assert.equal(replies.at(-1).result.confirmedByUser, true);
+  assert.equal(replies.at(-1).result.verified, false);
+});
