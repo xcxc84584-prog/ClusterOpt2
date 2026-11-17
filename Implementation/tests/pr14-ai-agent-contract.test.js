@@ -44,7 +44,8 @@ test("PR14.2 manifest passes both existing package contracts", () => {
     snapshot()).status, 200);
   assert.equal(parsed.value.name, "AI AGENT MCP(ChatGPT)");
   assert.equal(parsed.value.provider.objectId, "AIAgentMCP");
-  assert.deepEqual(parsed.value.provider.permissions, ["network.request"]);
+  assert.deepEqual(parsed.value.provider.permissions,
+    ["network.request", "local-agent.pair"]);
   assert.deepEqual(parsed.value.provider.requires, []);
   assert.equal(parsed.value.uiEntry, "index.html");
   assert.equal(parsed.value.provider.execution.isolation, "worker");
@@ -84,7 +85,7 @@ test("PR14.2 denies install without explicit consent", async () => {
       terminate() {}
     }));
   assert.equal((await installer.install(snapshot(), {
-    approvedPermissions: ["network.request"]
+    approvedPermissions: ["network.request", "local-agent.pair"]
   })).status, 403);
   assert.equal(started, false);
   assert.equal(env.core.uru.listProviders().length, 0);
@@ -112,7 +113,7 @@ test("PR14.2 Hub routes safe requests and audits denied requests",
         terminate() {}
       }));
     const result = await installer.install(snapshot(), {
-      consented: true, approvedPermissions: ["network.request"]
+      consented: true, approvedPermissions: ["network.request", "local-agent.pair"]
     });
     assert.equal(result.status, 201);
     assert.equal(env.core.uru.listProviders().length, 1);
