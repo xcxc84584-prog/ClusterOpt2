@@ -163,3 +163,9 @@ No untrusted JavaScript loads into host main window; no parallel
 plugin registration authority. Runtime bridge handles only source
 execution and message deadlines. Relative module imports and HTML UI
 sandbox activation are pending, not silently executed by this patch.
+
+### Patch(+6) runtime schema checks
+HubUnit before send: RouteContractPolicy.validate(payload, inputSchema).
+HubUnit after reply: RouteContractPolicy.validate(value, outputSchema).
+Malformed Request 400 EHU, malformed Response 502 EHU; neither bypasses
+current Provider/permission checks.
