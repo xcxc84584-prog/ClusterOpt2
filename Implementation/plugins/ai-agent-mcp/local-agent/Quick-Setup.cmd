@@ -10,9 +10,14 @@ echo This CMD downloads a pinned setup helper and approved plugin sources.
 echo It installs local dependencies; it does NOT request admin access.
 echo If port 43879 is used, choose P / C / O.
 choice /M "Continue"
-if errorlevel 2 exit /b 1
-if not exist "%ROOT%" mkdir "%ROOT%"
-if errorlevel 1 goto failed
+if errorlevel 2 exit /b 0
+if errorlevel 1 goto confirmed
+goto failed
+:confirmed
+if not exist "%ROOT%" (
+  mkdir "%ROOT%"
+  if errorlevel 1 goto failed
+)
 echo [1/2] Downloading verified-revision setup helper...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; Invoke-WebRequest -UseBasicParsing -Uri '%URI%' -OutFile '%ROOT%\Setup-Quick.ps1' -TimeoutSec 45; if((Get-Item -LiteralPath '%ROOT%\Setup-Quick.ps1').Length -lt 1000){throw 'Incomplete setup helper'}"
 if errorlevel 1 goto failed
