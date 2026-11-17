@@ -50,6 +50,11 @@ async function install(page) {
                 requestId: message.requestId })
             }));
           }
+          if (message.type === "bridge_register") {
+            queueMicrotask(() => socket.onmessage?.({
+              data: JSON.stringify({ type: "bridge_registered" })
+            }));
+          }
         },
         close() { socket.closed = true; }
       };
@@ -122,4 +127,66 @@ test("PR14.4 unsafe tool message terminates authorized connection",
       .toHaveText("尚未連線");
     expect(await page.evaluate(() =>
       window.__agentSocket.closed)).toBe(true);
+  });
+
+test("PR14.7 ToolBox shell only approves exact command after opt-in",
+  async ({ page }) => {
+    await page.goto("/");
+    expect((await install(page)).approved).toBe(201);
+    await page.evaluate(() => {
+      window.showDirectoryPicker = async () => ({
+        kind: "directory", name: "Project",
+        queryPermission: async () => "granted"
+      });
+      window.prompt = () => ["C:", "Work", "Project"].join("\\\\");
+    });
+    await page.locator(".plugin-extension-button").click();
+    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.getByRole("button", {
+      name: /選取本地資料夾/
+    }).click();
+    const toolbox = page.locator(".plugin-agent-toolbox");
+    await expect(toolbox.getByRole("status"))
+      .toContainText("已取得所選資料夾授權");
+    await page.frameLocator(".plugin-extension-frame")
+      .locator('[data-agent-action="pair"]').click();
+    await page.locator("dialog[open] input").fill(token);
+    await page.locator("dialog[open] button[type=submit]").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator('[data-agent-status]').waitFor();
+    await toolbox.locator('[data-right="ps"]').check();
+    await expect.poll(() => page.evaluate(() =>
+      window.__agentSent.some(item =>
+        item.type === "bridge_register"))).toBe(true);
+    let commandPreview = "";
+    page.on("dialog", async dialog => {
+      commandPreview = dialog.message();
+      await dialog.accept();
+    });
+    await page.evaluate(() => window.__agentSocket.onmessage({
+      data: JSON.stringify({
+        type: "tool_call", requestId: crypto.randomUUID(),
+        name: "cluster.powershell_request",
+        args: { path: "Project", command: "Get-Location" }
+      })
+    }));
+    await expect.poll(() => page.evaluate(() =>
+      window.__agentSent.some(item => item.type === "tool_result" &&
+        item.result?.approved === true))).toBe(true);
+    expect(commandPreview).toContain("Get-Location");
+    await toolbox.locator('[data-right="ps"]').uncheck();
+    await page.evaluate(() => window.__agentSocket.onmessage({
+      data: JSON.stringify({
+        type: "tool_call", requestId: crypto.randomUUID(),
+        name: "cluster.powershell_request",
+        args: { path: "Project", command: "Get-Location" }
+      })
+    }));
+    await expect.poll(() => page.evaluate(() =>
+      window.__agentSent.filter(item =>
+        item.type === "tool_result").length)).toBe(2);
+    const results = await page.evaluate(() => window.__agentSent.filter(
+      item => item.type === "tool_result").map(item =>
+      item.result.approved));
+    expect(results).toEqual([true, false]);
   });
