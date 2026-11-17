@@ -1083,3 +1083,20 @@ header .menu-wrap { margin-left:auto; }
   .plugin-manager-page { padding: 12px; }
   .plugin-manager-table { font-size: 12px; }
 }
+
+/* PR06.08 Patch5: keep the Plugin Tool header above scrollable pages.
+ * Without a stacking boundary the sidebar can intercept header clicks. */
+#pluginWindow .plugin-workbench-header {
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+}
+#pluginWindow .plugin-workbench-body {
+  position: relative;
+  z-index: 1;
+}
+#pluginWindow .plugin-workbench-footer {
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
+}
