@@ -8,6 +8,7 @@ import { PluginPackageManifestPolicy } from
   "../property/PluginPackageManifestPolicy.js";
 import { PluginRPCContractPolicy } from
   "../property/PluginRPCContractPolicy.js";
+import { HubProtocolPolicy } from "../property/HubProtocolPolicy.js";
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
@@ -107,6 +108,10 @@ export class LinkCore {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     }
+    this.hub.registerProperty("HubProtocolPolicy",
+      HubProtocolPolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
     this.hub.registerProperty("PluginFolderPackagePolicy",
       PluginFolderPackagePolicy, {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
