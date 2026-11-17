@@ -148,7 +148,10 @@ wss.on('connection',ws=>{
       return;
      }
      if(pending.name==='cluster.powershell_request'&&!m.error&&m.result?.approved===true){
-      if(sessions.size===0){gatewayResponse(pending.res,403,{error:'POWERSHELL_WINDOW_REQUIRED: Open a PowerShell session in Cluster first'});return;}
+      // PR14.7 plugin adaptation: a dedicated native session is not
+      // required when the host ToolBox has explicitly authorized the
+      // exact command. The browser returns approved=true for that call
+      // only; arbitrary or unapproved bridge requests remain denied.
       const command=pending.command;
       if(typeof command!=='string'||!command.trim()||command.length>2000){gatewayResponse(pending.res,422,{error:'Invalid approved command'});return;}
       runApprovedPowerShell(m.requestId,command).then(result=>{send(browserBridge,{type:'powershell_execution_result',command,result});gatewayResponse(pending.res,200,{result});}).catch(e=>{send(browserBridge,{type:'powershell_execution_result',command,error:e.message});gatewayResponse(pending.res,422,{error:e.message});});return;
