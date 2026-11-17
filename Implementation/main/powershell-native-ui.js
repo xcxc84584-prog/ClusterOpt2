@@ -235,6 +235,9 @@ export function mountNativePowerShell({ core, button, host, translate }) {
     }
   });
   button.addEventListener("click", () => {
+    document.getElementById("menu").hidden = true;
+    document.getElementById("menuBtn").setAttribute(
+      "aria-expanded", "false");
     if (visible) hide(); else show();
   });
   window.addEventListener("resize", () => {
