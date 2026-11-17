@@ -1,4 +1,4 @@
-// v0.0.69 PR-02 — Browser UI only. Never runs OS commands.
+// ClusterOpt2 legacy PSM UI adapter; OS commands run only via local agent.
 import {PowerShellManager} from './powershell-manager.js';
 import {PowerShellClient} from './powershell-client.js';
 import {createSetupCmd,setupFilename} from './cmd-setup.js';
@@ -8,7 +8,7 @@ const COPY={
 };
 const CHECK='powershell.exe -NoProfile -Command "$PSVersionTable.PSVersion.ToString(); [Environment]::OSVersion.VersionString"';
 export function mountPowerShellUI({host,button,language,version,
- manager=new PowerShellManager({agent:new PowerShellClient()}),palette=null}){
+ manager=new PowerShellManager({agent:new PowerShellClient(),expectedVersion:version}),palette=null}){
  if(typeof version!=='string'||!version)throw new Error('PSM_VERSION_REQUIRED');
  if(!host||!button||!language)throw new Error('PSM_UI_MISSING_DEPENDENCY');
  let open=false;
@@ -163,7 +163,7 @@ export function mountPowerShellUI({host,button,language,version,
    q('[data-psm-action="close"]').title=msg.close;
    q('[data-psm-action="close"]').setAttribute('aria-label',msg.close);
    q('[data-psm-action="close"]').textContent=msg.close;
-   const extra=language.value==='en'?{downloadTitle:'Download setup CMD',downloadHint:'Run CMD to start the agent and see its token. If port 43881 is busy, press Y to force-release port 43881; this may stop an unrelated service.',download:'Download .cmd',pairTitle:'Pair local agent',pairHint:'Copy the 64-character token shown in CMD. It is kept only in browser memory.',pair:'Pair',verifyTitle:'Verify connection',verifyHint:'Click Check connection. Never expose the local port publicly.'}:{downloadTitle:'下載快速配置 CMD',downloadHint:'執行 CMD 後顯示 Token。若 43881 已占用，輸入 Y 即可強制釋放連接埠，可能中斷其他程式。',download:'下載 .cmd',pairTitle:'配對本地代理',pairHint:'複製 CMD 顯示的 64 字元 Token，僅存於瀏覽器記憶體。',pair:'配對',verifyTitle:'驗證連線',verifyHint:'點擊下方「檢查連線」，勿公開本地連接埠。'};
+   const extra=language.value==='en'?{downloadTitle:'Download setup CMD',downloadHint:'Run CMD to start the agent and see its token. If port 43881 is busy, choose a different port or cancel; other processes are never stopped.',download:'Download .cmd',pairTitle:'Pair local agent',pairHint:'Copy the 64-character token shown in CMD. It is held for this browser tab session.',pair:'Pair',verifyTitle:'Verify connection',verifyHint:'Click Check connection. Never expose the local port publicly.'}:{downloadTitle:'下載快速配置 CMD',downloadHint:'執行 CMD 後顯示 Token。若 43881 已占用，請選擇其他埠或取消；不會終止其他程式。',download:'下載 .cmd',pairTitle:'配對本地代理',pairHint:'複製 CMD 顯示的 64 字元 Token，僅保留於此瀏覽器分頁的工作階段。',pair:'配對',verifyTitle:'驗證連線',verifyHint:'點擊下方「檢查連線」，勿公開本地連接埠。'};
    for(const key of ['downloadTitle','downloadHint','pairTitle','pairHint','verifyTitle','verifyHint'])q('[data-psm-extra="'+key+'"]').textContent=extra[key];
    q('[data-psm-action="download"]').textContent=extra.download;
    q('[data-psm-action="pair"]').textContent=extra.pair;
