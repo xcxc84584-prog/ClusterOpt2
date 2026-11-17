@@ -43,9 +43,27 @@ inside the Worker.
 - HubUnit routes every inter-Object Request/Response, OMU records
   EHU/Log, URU owns live registrations. No persistent keys in UI.
 
-## Remaining PRs
-14.6 authorized Explorer CRUD; 14.7 approved PowerShell execution;
-14.8 MCP/OAuth; 14.9 lifecycle, 14.10 full security, real-machine
-and end-to-end integration acceptance.
+## PR14.6–14.10 integration
+The host-owned ToolBox supports explicitly selected folders with
+independent read/create/update/delete grants. Browser-chosen directory
+handles remain private to the trusted host, and a typed absolute path
+is only a display/confirmation label. PR14.7 adds a separately enabled
+PowerShell bridge with per-command browser approval; the legacy Agent
+requires a local terminal session before shell execution. PR14.8 adds
+an independent MCP read-only switch. Its three browser-projected tools
+are limited to list_files, get_editor_state and saved small read_file;
+get_status and get_task_status are served directly by the local Agent.
+Other MCP tools are denied unless separately implemented and approved.
+
+The unchanged legacy Node MCP/OAuth gateway files are now bundled in
+local-agent/. Run the separate PowerShell entry scripts explicitly;
+installing a browser plugin never starts a Windows program.
+The OAuth scope remains cluster.read; remote publishing requires a
+trusted external HTTPS proxy and security validation.
+
+PR14.9 resets transient ToolBox grants on disable, uninstall, failed
+UI mount and agent disconnect. PR14.10 local Windows Agent, real
+PowerShell execution, browser permissions and OAuth end-to-end checks
+remain required before production acceptance.
 
 Do not treat a mock WebSocket test as proof of a real model connection.
