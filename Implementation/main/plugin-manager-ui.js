@@ -217,7 +217,38 @@ export function mountPluginManagerUI(core,doc,options={}) {
       }
       render();
     },"pm-mini");
-    controls.append(switchLabel,remove);body.append(controls);
+    controls.append(switchLabel,remove);
+    if(core.pluginHostInstaller.handles.has(p.providerId)) {
+      const upgrade=btn(doc,t("更新插件","Update plugin"),
+        async () => {
+          const staged=await core.localPluginPackage.selectAndStage();
+          if(!staged.ok || !staged.value?.snapshot) {
+            doc.defaultView.alert(t(
+              "更新包驗證失敗，原插件不變。",
+              "Update package rejected; existing plugin unchanged."));
+            return;
+          }
+          const next=staged.value.manifest.provider;
+          const permissions=next.permissions??[];
+          const approved=doc.defaultView.confirm(t(
+            "確認更新插件：","Update plugin: ")+p.providerId+
+            "\n"+t("要求權限：","Requested permissions: ")+
+            (permissions.join(", ")||t("無","None")));
+          if(!approved) return;
+          const result=await core.pluginHostInstaller.upgrade(
+            p.providerId,staged.value.snapshot,{
+              consented:true,approvedPermissions:[...permissions]
+            });
+          doc.defaultView.alert(result.ok ?
+            t("插件已更新。","Plugin updated.") :
+            t("更新失敗（狀態 ","Update failed (status ")+
+              result.status+").");
+          if(result.ok) options.onPluginInstalled?.();
+          render();
+        },"pm-mini");
+      controls.append(upgrade);
+    }
+    body.append(controls);
     const grants=(p.permissions??[]).filter(name=>
       core.checkPluginPermission(p.providerId,name)).length;
     body.append(dom(doc,"p","pm-muted",
