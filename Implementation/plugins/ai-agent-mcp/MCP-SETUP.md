@@ -38,7 +38,7 @@ The local stdio transport now advertises the same 14 names. Local access is stil
 `cluster.list_files`, `cluster.get_editor_state`,
 `cluster.read_file`.
 
-Remote OAuth file modification and PowerShell execution are **not enabled** by this scope. A future `cluster.control` scope would require a separate grant, explicit UI consent, robust authorization tests and production security review. It must never be silently enabled by the read-only connection.
+Remote OAuth file modification and PowerShell execution are **not enabled** by `cluster.read`. The separately requested `cluster.control` scope requires explicit approval, and all operations still pass ToolBox and PowerShell checks.
 
 ## Troubleshooting
 - 43879 busy: use the Local Agent P/C/O prompt, but inspect the owner before consenting to O. MCP/OAuth busy ports are never forcibly cleared.
@@ -51,3 +51,6 @@ Remote OAuth file modification and PowerShell execution are **not enabled** by t
 ## Separate remote control authorization (PR20.1 Patch 3)
 
 The OAuth gateway on port 43881 supports independently requested `cluster.read` and `cluster.control`. Only `cluster.control` can enumerate and request all 14 legacy MCP tools; its OAuth consent page displays a distinct high-privilege warning. It does **not** automatically enable local access: in ClusterOpt2 select the Explorer workspace, grant precisely the required ToolBox CRUD permissions, and independently enable PowerShell. The browser must approve **each exact PowerShell command**. Revoking ToolBox access prevents future commands even with an unexpired OAuth token. `cluster.read` continues to expose only the five read-only tools. Do not use elevated or administrator local Agent processes. Live Windows E2E security testing remains required.
+
+## PR20.1 Patch(+4): wired host tool routes
+Legacy Explorer calls `cluster.list_roots`, `cluster.list_directory`, `cluster.read_path`, `cluster.create_file`, `cluster.write_path` and `cluster.delete_path` now route through the registered host `PluginExplorerObject` using HubUnit requests. Create/update/delete require their own granted ToolBox rights. Large file reads use bounded file slices with offset/length. `cluster.find_root_windows_path` requires a separate, trusted browser prompt and is marked unverified (the browser directory handle cannot prove Windows path identity). `cluster.open_powershell` requires an enabled PS switch and opens the existing PowerShell UI, not a command executor. `cluster.powershell_request` still demands per-command approval from `PluginShellApprovalObject` before the local Node Agent executes it.
