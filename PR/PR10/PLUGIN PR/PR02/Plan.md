@@ -94,3 +94,20 @@ Implementation:
 - Node/Chromium tests and dedicated workflow run on PR branch.
 Performance O(metadata size) bounded; no file handle or SaveTask changes.
 Gate: exact-head CI + browser must PASS; until then PR02.03 PENDING.
+
+## PR02.04 — Live Registry Collection (design review)
+Compare VS Code extension Registry (metadata vs execution), AsyncAPI
+operation descriptions and Theia plugin host isolation. Unlike an
+independent plugin registry, CatalogCollection is a **live read-only
+projection** over the authoritative URU and EDPMU. It never retains
+an executable Object or Property value, grants permissions or invokes
+factories. Collection is bounded to 4096 registered items and takes
+O(objects + properties + declared API descriptors); descriptors have
+PR02.01/03 validation and immutable copies. Legacy properties without
+metadata remain usable and are excluded from documented catalog items.
+Dynamic register/unregister is immediately visible. PR02.05 adds
+external list/query/pagination; PR02.06 enforces caller projection.
+Node and Chromium tests run in dedicated workflow, plus OCDA regression.
+PR02.03 exact-head da2672e: dedicated, PR1, OCDA and Windows workflows
+all passed on 2026-11-17; checkpoint backup/plugin-pr02-sub03-da2672e.
+PR02.04 implementation: pending exact-head CI acceptance.
