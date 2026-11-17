@@ -105,3 +105,14 @@ sandboxed UI runtime is audited; no raw HTML is injected into main DOM.
   separate IndexedDB reviewed records; do not auto-execute user code.
 - Bundle exports include valid reviewed provider IDs + enabled flags.
 - Add browser tests for table and reviewed-plugin reload.
+
+## PR13 Patch(+5) — API protocol and author template
+- Declare actual HubUnit core Request arguments / Response envelope in
+  immutable HubProtocolPolicy, read through HubUnit Property.Read.
+- Render protocol metadata in compact API List, without pretending
+  undescribed legacy actions have schemas.
+- Resources offers a bilingual downloadable ZIP authoring template.
+- Package includes multi-file HTML/CSS/JS, plugin.json, README with
+  explicit instruction to consult API List input/output first.
+- Locale changes must alter the downloaded content, not only button text.
+- Add ZIP format, contract and browser language-switch regression tests.
