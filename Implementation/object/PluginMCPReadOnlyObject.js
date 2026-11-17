@@ -55,7 +55,9 @@ export class PluginMCPReadOnlyObject {
         !this.core.checkPluginPermission(
           this.providerId, "network.request") ||
         !this.core.checkPluginPermission(
-          this.providerId, "local-agent.pair")) {
+          this.providerId, "local-agent.pair") ||
+        !this.core.checkPluginPermission(
+          this.providerId, "mcp.read")) {
       this.audit("Denied", 403);
       return { error: "Denied" };
     }
