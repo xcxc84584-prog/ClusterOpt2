@@ -4,7 +4,8 @@
  * into plugin frames, models, logs or browser storage.
  */
 const OPERATIONS = Object.freeze({
-  list: "read", read: "read", create: "create",
+  list: "read", read: "read", readChunk: "read",
+  create: "create",
   update: "update", delete: "delete"
 });
 const MAX_READ_BYTES = 1024 * 1024;
@@ -19,19 +20,22 @@ export class PluginExplorerObject {
       providerId.replace(/[^a-zA-Z0-9]/g, "_");
     this.strictOCDA = true;
     this.authorization = {
-      default: "Private", status: "Public", list: "Public",
+      default: "Private", status: "Public", roots: "Public",
+      list: "Public",
       read: "Public", create: "Public", update: "Public",
       delete: "Public"
     };
     this.ocda = {
       EHU: [], Log: [],
-      Request: ["status", ...Object.keys(OPERATIONS)],
-      Response: ["status", ...Object.keys(OPERATIONS)],
-      UserAPI: ["status", ...Object.keys(OPERATIONS)],
-      AgentAPI: ["list", "read", "create", "update", "delete"],
+      Request: ["status", "roots", ...Object.keys(OPERATIONS)],
+      Response: ["status", "roots", ...Object.keys(OPERATIONS)],
+      UserAPI: ["status", "roots", ...Object.keys(OPERATIONS)],
+      AgentAPI: ["roots", "list", "read", "readChunk",
+        "create", "update", "delete"],
       Property: [], Program: "PluginExplorerObject"
     };
     this.root = null;
+    this.agentId = null;
     this.label = "";
     this.rights = {
       read: false, create: false, update: false,
@@ -50,6 +54,14 @@ export class PluginExplorerObject {
     const error = new Error("File operation rejected");
     error.status = status;
     throw error;
+  }
+
+  authorizeAgent(objectId) {
+    if (typeof objectId !== "string" ||
+        !objectId.startsWith("PluginLocalAgent.")) {
+      return this.fail("InvalidAgent", 400);
+    }
+    this.agentId = objectId;
   }
 
   setRoot(handle, label) {
@@ -97,11 +109,18 @@ export class PluginExplorerObject {
   }
 
   async receive(action, payload = {}, context = {}) {
-    if (context.source !== "ui" ||
-        !["status", ...Object.keys(OPERATIONS)].includes(action)) {
+    const fromAgent = context.source === this.agentId &&
+      this.agentId !== null;
+    if ((context.source !== "ui" && !fromAgent) ||
+        !["status", "roots", ...Object.keys(OPERATIONS)]
+          .includes(action)) {
       return this.fail("SourceDenied", 403);
     }
     if (action === "status") return this.status();
+    if (action === "roots") {
+      if (!this.root) return this.fail("RootRequired", 409);
+      return { roots: [this.root.name] };
+    }
     const right = OPERATIONS[action];
     if (!this.root || !this.rights[right]) {
       return this.fail("PermissionDenied", 403);
@@ -149,6 +168,27 @@ export class PluginExplorerObject {
       const handle = await folder.getFileHandle(name, {
         create: action === "create"
       });
+      if (action === "readChunk") {
+        const offset = payload.offset ?? 0;
+        const length = payload.length ?? 65536;
+        if (!Number.isSafeInteger(offset) || offset < 0 ||
+            !Number.isSafeInteger(length) ||
+            length < 1 || length > 262144) {
+          return this.fail("InvalidChunk", 400);
+        }
+        const file = await handle.getFile();
+        const data = await file.slice(offset, offset + length)
+          .arrayBuffer();
+        const content = new TextDecoder("utf-8")
+          .decode(data);
+        this.audit("ReadChunk", 200, { bytes: data.byteLength });
+        return {
+          content, size: file.size,
+          lastModified: file.lastModified, offset,
+          nextOffset: Math.min(file.size, offset + length),
+          hasMore: offset + length < file.size
+        };
+      }
       if (action === "read") {
         const file = await handle.getFile();
         if (file.size > MAX_READ_BYTES) {
@@ -158,14 +198,16 @@ export class PluginExplorerObject {
         this.audit("Read", 200, { bytes: file.size });
         return { text };
       }
-      if (typeof payload.content !== "string" ||
-          new TextEncoder().encode(payload.content).length >
+      const content = action === "create" &&
+        payload.content === undefined ? "" : payload.content;
+      if (typeof content !== "string" ||
+          new TextEncoder().encode(content).length >
           MAX_WRITE_BYTES) {
         return this.fail("WriteLimit", 413);
       }
       const stream = await handle.createWritable();
       try {
-        await stream.write(payload.content);
+        await stream.write(content);
         await stream.close();
       } catch (error) {
         await stream.abort().catch(() => {});
