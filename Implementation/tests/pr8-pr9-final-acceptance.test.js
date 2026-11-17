@@ -27,6 +27,8 @@ test("PR9 current version propagates into UI installer and CMD filename", () => 
   assert.equal(cmd.includes("Stop-Process"), false);
   assert.equal(cmd.includes("force-release"), false);
   assert.ok(cmd.includes("if errorlevel 1 goto failed"));
+  assert.equal(setupFilename("1.2.3-pr10.patch7"),
+    "ClusterOpt2-PLA-Setup-1.2.3-pr10.patch7.cmd");
   assert.throws(() => createSetupCmd({ version: "../unsafe" }),
     TypeError);
 });
