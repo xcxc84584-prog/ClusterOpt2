@@ -22,6 +22,19 @@ test("PR20 MCP standalone setup is explicit and loopback-only", () => {
   assert.doesNotMatch(cmd, /Stop-Process|taskkill|netsh interface/);
 });
 
+test("PR20 MCP installer pins existing reviewed commit and diagnoses each download", () => {
+  const cmd = asset("local-agent/MCP-Quick-Setup.cmd");
+  assert.match(cmd,
+    /REV=9e9055421f6b0d6c021297b28deedbee964b526a/);
+  assert.match(cmd, /echo Fetching %%F/);
+  assert.match(cmd, /DOWNLOAD FAILED:/);
+  assert.match(cmd, /Failed to download %%F/);
+  assert.match(cmd, /Port-CPO\\.ps1/);
+  assert.match(cmd, /SERVICE_NAME=clusteropt2/);
+  assert.match(cmd, /https:\\/\\/clusteropt2/);
+  assert.match(cmd, /raw\\.githubusercontent\\.com/);
+});
+
 test("PR20 UI never submits chat, downloads through trusted host", () => {
   const html = asset("index.html");
   const hostCode = readFileSync(
