@@ -43,6 +43,7 @@ export class PluginLocalAgentObject {
     this.shellApprovalId = null;
     this.mcpReadId = null;
     this.bridgeRegistered = false;
+    this.pairPort = 43879;
   }
 
   audit(status, action) {
@@ -256,7 +257,20 @@ export class PluginLocalAgentObject {
     submit.type = "submit";
     submit.textContent = english ? "Connect" : "連線";
     buttons.append(cancel, submit);
-    form.append(input, buttons);
+    const portLabel = this.doc.createElement("label");
+    portLabel.textContent = english ? "Local Agent port" :
+      "本地 Agent 連接埠（P 模式請填新埠）";
+    const portInput = this.doc.createElement("input");
+    portInput.type = "number";
+    portInput.min = "1024";
+    portInput.max = "65535";
+    portInput.step = "1";
+    portInput.value = String(this.pairPort);
+    portInput.required = true;
+    portInput.setAttribute("aria-label", "Local Agent port");
+    portInput.style.cssText = input.style.cssText;
+    portLabel.append(portInput);
+    form.append(portLabel, input, buttons);
     dialog.append(heading, notice, form);
     (this.doc.body ?? this.doc.documentElement).append(dialog);
     return new Promise(resolve => {
@@ -278,7 +292,10 @@ export class PluginLocalAgentObject {
       });
       form.addEventListener("submit", event => {
         event.preventDefault();
-        finish(input.value.trim());
+        const port = Number(portInput.value);
+        if (!Policy.validPort(port) ||
+            String(port) !== portInput.value) return;
+        finish({ token: input.value.trim(), port });
       });
       dialog.showModal();
       input.focus();
@@ -292,14 +309,18 @@ export class PluginLocalAgentObject {
     // Pairing input exists only inside the trusted host UI.
     const token = await this.askToken();
     if (token === null) return this.fail(403, "Cancelled");
-    const secret = token.trim();
-    if (!Policy.validToken(secret)) {
+    const secret = (typeof token === "string" ? token :
+      token?.token ?? "").trim();
+    const port = typeof token === "string" ? this.pairPort :
+      Number(token?.port);
+    if (!Policy.validPort(port) || !Policy.validToken(secret)) {
       return this.fail(400, "InvalidToken");
     }
+    this.pairPort = port;
     this.state = "connecting";
     this.publish();
     let socket;
-    try { socket = this.createSocket(Policy.address); }
+    try { socket = this.createSocket(Policy.addressForPort(port)); }
     catch { this.close(); return this.fail(503, "TransportUnavailable"); }
     this.socket = socket;
     const generation = ++this.generation;
