@@ -12,6 +12,10 @@ const dir=path.join(process.env.LOCALAPPDATA||path.join(os.homedir(),'AppData','
 fs.mkdirSync(dir,{recursive:true});
 const issuer=(process.env.CLUSTER_OAUTH_ISSUER||'').replace(/\/$/,'');
 if(!/^https:\/\/[^/?#]+$/.test(issuer))throw Error('Set CLUSTER_OAUTH_ISSUER to the exact public HTTPS origin (no path).');
+const readonlyTools=new Set([
+ 'cluster.get_status','cluster.get_task_status','cluster.list_files',
+ 'cluster.get_editor_state','cluster.read_file'
+]);
 const port=Number(process.env.CLUSTER_OAUTH_PORT||43881);
 const adminPath=path.join(dir,'oauth-approval-password');
 const bearerPath=path.join(dir,'remote-mcp-token');
@@ -96,10 +100,34 @@ const server=http.createServer(async(req,res)=>{
    if(!session||session.expires<now())return respond(res,401,{error:'Unauthorized'},{'WWW-Authenticate':'Bearer resource_metadata="'+issuer+'/.well-known/oauth-protected-resource/mcp"'});
    if(!['POST','GET','DELETE'].includes(req.method))return fail(res,405,'method_not_allowed');
    const payload=req.method==='POST'?await body(req,32768):undefined;
+   let rpc=null;
+   if(payload!==undefined){
+    try{rpc=JSON.parse(payload)}catch{return fail(res,400,'invalid_json')}
+    if(!rpc||typeof rpc!=='object'||Array.isArray(rpc)||
+       rpc.jsonrpc!=='2.0'||typeof rpc.method!=='string'){
+     return fail(res,400,'invalid_mcp_request');
+    }
+    if(rpc.method==='tools/call'&&!readonlyTools.has(rpc.params?.name)){
+     return respond(res,200,{jsonrpc:'2.0',id:rpc.id??null,
+      error:{code:-32602,message:'Tool denied by cluster.read scope'}});
+    }
+   }
    const internal=fs.readFileSync(bearerPath,'utf8').trim();
    const upstream=await fetch('http://127.0.0.1:43880/mcp',{method:req.method,headers:{Authorization:'Bearer '+internal,'Content-Type':'application/json','Accept':'application/json, text/event-stream'},...(payload!==undefined?{body:payload}:{}),signal:AbortSignal.timeout(18000)});
+   const upstreamBytes=Buffer.from(await upstream.arrayBuffer());
+   if(rpc?.method==='tools/list'&&upstream.ok){
+    let value;
+    try{value=JSON.parse(upstreamBytes.toString('utf8'))}
+    catch{return fail(res,502,'invalid_upstream_response')}
+    if(!value?.result||!Array.isArray(value.result.tools)){
+     return fail(res,502,'invalid_upstream_tool_list');
+    }
+    value.result.tools=value.result.tools.filter(tool=>
+     readonlyTools.has(tool?.name));
+    return respond(res,200,value);
+   }
    res.writeHead(upstream.status,{'Content-Type':upstream.headers.get('content-type')||'application/json','Cache-Control':'no-store'});
-   return res.end(Buffer.from(await upstream.arrayBuffer()));
+   return res.end(upstreamBytes);
   }
   return fail(res,404,'not_found');
  }catch(e){console.error('OAuth gateway error:',e.message);if(!res.headersSent)fail(res,500,'server_error')}
