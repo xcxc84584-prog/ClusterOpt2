@@ -1,7 +1,8 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title ClusterOpt2 - ChatGPT MCP Quick Setup
-set "REV=079110435ef499f87774c064da4bd6eff750af77"
+set "SERVICE_NAME=clusteropt2"
+set "REV=9e9055421f6b0d6c021297b28deedbee964b526a"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "BASE=https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/%REV%/Implementation/plugins/ai-agent-mcp/local-agent"
 echo ====================================================
@@ -34,9 +35,14 @@ if not exist "%ROOT%" (
 )
 echo [1/3] Downloading pinned MCP and OAuth files...
 for %%F in (remote-mcp.cjs oauth-mcp-gateway.cjs Start-MCP.ps1 Start-OAuth.ps1 Port-CPO.ps1) do (
-  powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $url=$env:BASE+'/%%F'; $target=Join-Path $env:ROOT '%%F'; $temp=$target+'.download'; try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $temp -TimeoutSec 45; if((Get-Item -LiteralPath $temp).Length -lt 100){throw 'Incomplete download'}; Move-Item -LiteralPath $temp -Destination $target -Force } finally { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue }"
-  if errorlevel 1 goto failed
+  echo Fetching %%F...
+  powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $url=$env:BASE+'/%%F'; $target=Join-Path $env:ROOT '%%F'; $temp=$target+'.download'; try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $temp -TimeoutSec 45; if((Get-Item -LiteralPath $temp).Length -lt 100){throw 'Incomplete download'}; Move-Item -LiteralPath $temp -Destination $target -Force } catch { Write-Host ('DOWNLOAD FAILED: '+$url+' : '+$_.Exception.Message) -ForegroundColor Red; exit 1 } finally { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue }"
+  if errorlevel 1 (
+    echo Failed to download %%F. Check network, DNS and the revision.
+    goto failed
+  )
 )
+echo All five gateway assets downloaded.
 echo [2/3] Starting local bearer-protected MCP on 127.0.0.1:43880...
 echo If MCP port is occupied, the new window prompts C/P/O.
 start "ClusterOpt2 MCP Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\Start-MCP.ps1"
@@ -54,7 +60,23 @@ goto failed
 
 :oauth
 echo If OAuth port is occupied, the new window prompts C/P/O.
-start "ClusterOpt2 OAuth Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "$issuer=Read-Host 'Trusted public HTTPS issuer (origin only)'; if($issuer -notmatch '^https://[^/?#]+$'){throw 'Invalid issuer origin'}; & (Join-Path $env:ROOT 'Start-OAuth.ps1') -Issuer $issuer"
+start "ClusterOpt2 OAuth Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "$issuer=Read-Host 'clusteropt2 public HTTPS origin (https://clusteropt2.YOUR-DOMAIN)'; if($issuer -notmatch '^https://clusteropt2\\.[a-zA-Z0-9.-]+
+echo In the new OAuth window enter your real HTTPS domain starting with clusteropt2.
+echo Connect ChatGPT with the same origin plus /mcp.
+
+:finish
+echo.
+echo MCP local setup initiated. Verify both spawned windows.
+echo Connect ChatGPT to your HTTPS /mcp URL and approve OAuth.
+echo Current OAuth scope cluster.read is READ ONLY.
+echo Explorer changes and PowerShell require separate approved authorization.
+pause
+exit /b 0
+:failed
+echo [ERROR] MCP setup incomplete. Existing user processes were not stopped.
+pause
+exit /b 1
+){throw 'Provide a real registered HTTPS hostname beginning with clusteropt2.'}; & (Join-Path $env:ROOT 'Start-OAuth.ps1') -Issuer $issuer"
 echo In the new OAuth window enter an exact HTTPS origin.
 echo Connect ChatGPT with the same origin plus /mcp.
 
