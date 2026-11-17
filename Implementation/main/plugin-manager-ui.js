@@ -181,8 +181,12 @@ export function mountPluginManagerUI(core,doc,options={}) {
     toggle.setAttribute("aria-label",t("啟用插件","Enable plugin"));
     toggle.addEventListener("change",()=>{
       if(core.uru.getProvider(p.providerId)!==p)return render();
-      const changed=core.setProviderEnabled(
-        p.objectId,p.providerId,toggle.checked);
+      const managed=core.pluginHostInstaller.handles.has(p.providerId);
+      const changed=managed ?
+        (toggle.checked ? core.pluginHostInstaller.enable(p.providerId) :
+          core.pluginHostInstaller.disable(p.providerId)) :
+        core.setProviderEnabled(
+          p.objectId,p.providerId,toggle.checked);
       if(changed.ok) {
         void core.listReviewedPlugins().then(saved=>{
           if(saved.ok && saved.value.some(entry=>
@@ -206,6 +210,10 @@ export function mountPluginManagerUI(core,doc,options={}) {
       if(result.ok) {
         selected="";
         void core.forgetReviewedPlugin(p.providerId);
+      } else if(result.status===409) {
+        doc.defaultView.alert(t(
+          "尚有插件依賴此服務，請先停用相依插件。",
+          "Other plugins depend on this service. Disable them first."));
       }
       render();
     },"pm-mini");
