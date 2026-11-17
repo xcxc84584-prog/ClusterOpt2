@@ -8,6 +8,7 @@
   <!-- Reuse the ClusterOpt UI; PR1 changes behavior, not visual design. -->
   <link rel="stylesheet" href="./Implementation/main/clusteropt-legacy.css">
   <link rel="stylesheet" href="./Implementation/main/style.css">
+  <link rel="stylesheet" href="./Implementation/main/legacy-powershell/powershell-legacy.css">
   <script type="module" src="./Implementation/main/main.js"></script>
 </head>
 <body>
@@ -22,6 +23,9 @@
         <button id="explorerToggle" type="button"
           aria-controls="explorerPanel" aria-expanded="false"
           title="檔案總管">☰ Explorer</button>
+        <button id="explorerPowerShell" type="button"
+          title="PowerShell" aria-label="PowerShell"
+          aria-pressed="false">⌁</button>
       </div>
       <div class="menu-wrap">
         <button id="menuBtn" type="button" aria-expanded="false"
@@ -50,7 +54,6 @@
                 English <span class="locale-check"></span>
               </button>
             </div>
-            <button id="nativePowerShellBtn" type="button" aria-pressed="false">⌁ PowerShell</button>
             <button id="pluginBtn" type="button"
               aria-controls="pluginWindow">
               ◇ 插件

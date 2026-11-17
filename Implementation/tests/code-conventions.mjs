@@ -12,6 +12,9 @@ const paths = [];
 function collect(directory) {
   for (const item of readdirSync(directory, { withFileTypes: true })) {
     if (item.name === "node_modules" || item.name === ".git") continue;
+    // Upstream ClusterOpt v0.0.69 PSM source and CSS are vendored verbatim
+    // for 1:1 UI parity. All first-party integration code is still linted.
+    if (item.isDirectory() && item.name === "legacy-powershell") continue;
     const path = join(directory, item.name);
     if (item.isDirectory()) collect(path);
     else if (/\.(?:js|mjs|css|html)$/.test(item.name) &&

@@ -4,9 +4,8 @@ import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
-import { PowerShellSessionManager } from
-  "../object/PowerShellSessionManager.js";
-import { mountNativePowerShell } from "./powershell-native-ui.js";
+import { mountPowerShellUI } from
+  "./legacy-powershell/powershell-ui.js";
 import { Explorer } from "../object/Explorer.js";
 import { SessionRecovery } from "../object/SessionRecovery.js";
 import { SliceRegistry } from "../object/SliceRegistry.js";
@@ -40,12 +39,12 @@ workspace.onSaveProgress = doc => {
   if (workspace.activeId === doc.id) updateStatus();
 };
 new ToolTabManager(linkCore);
-new PowerShellSessionManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
 let toolState = { open: false, active: false, position: 0 };
 let pluginCategory = "performance";
 let observedWorkspaceActiveId = null;
-let nativePowerShell = null;
+let legacyPSMUI = null;
+const psmLocaleListeners = new Set();
 
 function saveToolView() {
   try {
@@ -397,6 +396,7 @@ try {
 }
 mountPaletteUI(linkCore, document, paletteStorage);
 mountLanguageUI(linkCore, document, paletteStorage, () => {
+  for (const listener of psmLocaleListeners) listener();
   render();
   renderBlockedTypes();
 });
@@ -407,17 +407,44 @@ function localized(key, args = {}) {
 }
 const notify = message => { ui.statusText.textContent = message; };
 
-nativePowerShell = mountNativePowerShell({
-  core: linkCore,
-  button: document.getElementById("nativePowerShellBtn"),
+// Compatibility adapters preserve the old PSM UI and its two shared
+// domain properties without copying mutable global locale/palette state.
+const legacyLanguage = Object.freeze({
+  get value() {
+    return linkCore.readProperty("ui", "Language").value;
+  },
+  subscribe(listener) {
+    psmLocaleListeners.add(listener);
+    return () => psmLocaleListeners.delete(listener);
+  }
+});
+const psmPaletteListeners = new Set();
+const paletteObserver = new MutationObserver(() => {
+  for (const listener of psmPaletteListeners) listener();
+});
+paletteObserver.observe(document.documentElement, {
+  attributes: true, attributeFilter: ["style", "class"]
+});
+const legacyPalette = Object.freeze({
+  get mode() {
+    return document.documentElement.style.colorScheme === "light" ?
+      "light" : "dark";
+  },
+  subscribe(listener) {
+    psmPaletteListeners.add(listener);
+    return () => psmPaletteListeners.delete(listener);
+  }
+});
+legacyPSMUI = mountPowerShellUI({
   host: document.getElementById("clusterEditorColumn"),
-  translate: key => localized(key)
+  button: document.getElementById("explorerPowerShell"),
+  language: legacyLanguage,
+  palette: legacyPalette
 });
 
 function render() {
   const active = workspace.active;
   renderPriority();
-  nativePowerShell?.refresh();
   void renderExplorer();
   queueRecovery();
   if (workspace.activeId !== observedWorkspaceActiveId) {
@@ -480,11 +507,15 @@ function render() {
     });
     tab.addEventListener("click", () => {
       if (isTool) void requestTool("activate");
-      else void focusDocumentTab(doc.id);
+      else {
+        legacyPSMUI?.hide();
+        void focusDocumentTab(doc.id);
+      }
     });
     tab.append(label, dirty, close);
     ui.tabs.append(tab);
   }
+  legacyPSMUI?.syncTabs();
   pluginWindow.hidden = !toolActive;
   if (!toolActive) {
     // LanguageManager invokes render() before Plugin controls bind.
