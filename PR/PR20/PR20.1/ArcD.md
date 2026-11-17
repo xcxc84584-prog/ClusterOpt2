@@ -53,3 +53,12 @@ Remote tools/call
 → Log / EHU → tool_result → MCP response
 ```
 Explorer grants: `list/read/readChunk`→read, `create`→create, `update`→update, `delete`→delete. Root query needs selected root, PS UI requires ps enabled, PowerShell command approval additionally requires shell.execute capability and one-time user consent. Response request IDs are preserved. Hub rejection and revoked permission fail closed.
+
+## Patch(+5) Port Event Chain / EHU
+```text
+Local Agent CMD -> Port-CPO(terminal,43881) -> service-ports.json -> Node server
+MCP CMD -> Port-CPO(mcp,43880) -> service-ports.json -> Gateway -> Local Agent selected port
+OAuth CMD -> Port-CPO(oauth,43879) -> service-ports.json -> Gateway -> MCP selected port
+Browser pairing -> explicitly chosen Agent port -> authenticated WebSocket
+```
+C denies with no process kill; P validates 1024..65535 and rejects configured service collisions; O displays owner identity, requires typed OVERRIDE and refuses system/current/ancestor/unverified PIDs. Port choice is configuration, not permission elevation; HubUnit and OMU interactions remain unchanged. Parallel launchers use a user-visible pause to prevent stale upstream port values.
