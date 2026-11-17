@@ -41,7 +41,18 @@ workspace.onSaveProgress = doc => {
 };
 new ToolTabManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
-const pluginManager = mountPluginManagerUI(linkCore, document);
+const pluginManager = mountPluginManagerUI(linkCore, document, {
+  getActivePreview() {
+    const active = workspace.active;
+    if (!active) return null;
+    const text = ui.editor.value;
+    return {
+      fileName: active.name,
+      text: text.slice(0, 65536),
+      truncated: text.length > 65536
+    };
+  }
+});
 let toolState = { open: false, active: false, position: 0 };
 let observedWorkspaceActiveId = null;
 let legacyPSMUI = null;
