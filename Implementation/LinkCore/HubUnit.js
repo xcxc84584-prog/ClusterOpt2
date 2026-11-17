@@ -273,6 +273,17 @@ export class HubUnit {
         "Service.Route.OwnedConfigure", allowed.status);
       return allowed;
     }
+    const existing = this.replaceRoutes.filter(route =>
+      route.sourceFilter.objects.length === 1 &&
+      route.sourceFilter.objects[0] === source);
+    const existingControl = RouteControlPolicy.scoped(
+      source, existing, this.registry);
+    if (!existingControl.ok) {
+      this.omu.record("EHU", source,
+        "Service.Route.OwnedConfigure", 403);
+      return { ok: false, status: 403,
+        error: "Existing route owned by another authority" };
+    }
     const remaining = this.replaceRoutes.filter(route =>
       route.sourceFilter.objects.length !== 1 ||
       route.sourceFilter.objects[0] !== source);

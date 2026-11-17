@@ -102,8 +102,10 @@ test("PR04.08 changes only caller-scoped routes, keeps others",
 test("PR04.08 route dependency cycles reject entire update",
   async () => {
     const core = new LinkCore();
-    add(core, "A", "vendor.a", "test.cycle", x => x.text);
-    add(core, "B", "vendor.b", "test.cycle", x => x.text);
+    add(core, "A", "vendor.a", "test.cycle", x => x,
+      STRING, STRING);
+    add(core, "B", "vendor.b", "test.cycle", x => x,
+      STRING, STRING);
     const good = route("test.cycle", ["vendor.a"], "A");
     assert.equal(core.configureServiceRoutes(
       table([good])).status, 200);
