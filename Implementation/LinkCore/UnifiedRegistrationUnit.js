@@ -4,6 +4,8 @@ import { ProviderFactoryPolicy } from "../property/ProviderFactoryPolicy.js";
 import { ProviderHealthPolicy } from "../property/ProviderHealthPolicy.js";
 import { ProviderSharedPropertyPolicy } from
   "../property/ProviderSharedPropertyPolicy.js";
+import { ProviderCompatibilityPolicy } from
+  "../property/ProviderCompatibilityPolicy.js";
 
 /**
  * Volatile runtime registry. No localStorage: registrations expire on reload.
@@ -90,6 +92,19 @@ export class UnifiedRegistrationUnit {
       object.ocda?.Request?.includes(item.action))) {
       return { ok: false, status: 400,
         error: "Provider action not declared by Object" };
+    }
+    const declared = object.ocda?.APIDescriptors ?? [];
+    if (declared.length && !value.provides.every(item => {
+      const api = declared.find(entry =>
+        entry.id === item.service && entry.action === item.action);
+      return api && ProviderCompatibilityPolicy.inspect(item, {
+        service: api.id, version: api.version,
+        inputSchema: api.inputSchema,
+        outputSchema: api.outputSchema
+      }).ok;
+    })) {
+      return { ok: false, status: 400,
+        error: "Provider contract disagrees with Object Descriptor" };
     }
     if (this.providers.has(value.providerId) ||
         this.providers.size >= 4096) {
