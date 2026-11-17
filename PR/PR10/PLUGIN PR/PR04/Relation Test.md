@@ -79,3 +79,17 @@ No real 5GiB editor or physical file-permission acceptance is claimed.
 - No new Cluster.api/Agent API route mutation entry, no source spoofing.
 - VTE instance isolation and existing whole-table regression preserved.
 - Exact-head five CI checks and verified restore required for PASS.
+
+## PR04.09 + PR04.10 final acceptance
+- Scoped list/describe returns only caller-owned metadata, frozen data,
+  bounded paging and 404 for invisible IDs.
+- Preview live resolution and all-stage ACL checks, but ZERO receive,
+  scheduling, mutation, data payload or dependency edges (Relation 00).
+- Bad source/origin/options rejected 400/404, private 403, EHU remains.
+- Browser window.Cluster.routes has only list/describe/preview;
+  Cluster.api and direct target-ID request remain compatible.
+- Existing replace/chain/fanout/observe/response/route ACL regression,
+  native PowerShell parse, PR1/PR02/PR03, Node/VTE and Chromium all run.
+- ReleaseVersion and package mirror agree at 0.0.10 stable; no drift.
+- Pre-major main restore retained; final exact-head major backup verified
+  before ready-for-review and guarded single PR merge.

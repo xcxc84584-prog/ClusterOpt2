@@ -55,3 +55,9 @@ ownership, target Provider ownership, non-destructive multi-owner route
 merge and static dependency cycle check. Runtime ACL remains core-owned.
 An authenticated external configuration surface is deferred until a
 verified principal exists; no untrusted browser API added.
+
+## PR04.09–10 completed scope
+Read-only caller-scoped route list/describe and no-execution preview,
+with strict query validation, per-stage ACL, redaction, and OMU EHU.
+Full regressions use existing CI and release parity. Major PR04 is
+merged only after exact-head five-workflow PASS and verified restore.

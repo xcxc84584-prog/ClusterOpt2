@@ -134,3 +134,23 @@ Conservatively reject static cycles across chain/response-stage edges as
 Cost: O(route count + providers + edges) bounded by existing 32 routes,
 8 primary and 4 response stages. No persistent grants, new API exposed
 to third-party plugins, new CI workflow or version bump.
+
+## PR04.09 + PR04.10 combined final integration
+Read VS Code platform registry and Theia command contribution contracts.
+RouteReadFacade is read-only and pins browser identity to registered ui
+with user origin. RouteQueryPolicy strictly validates command selectors
+and bounded 32-record pagination. list/describe expose only exact
+caller-scoped routes whose Provider ownership is verified, never host
+private routing. preview uses current ServiceRequestResolver but never
+calls receive, schedules work or includes payload; every stage checks
+UserAPI/AgentAPI and AccessPolicy, response includes only status, mode,
+limited counts and routeId when owned. EHU records denials.
+Runtime cost O(32 routes * <=12 Provider checks); no persisted index.
+
+PR04.10 regression uses existing Node/VTE + Chromium CI alongside the
+new route facade tests. The pre-PR04 main SHA and last accepted PR04.08
+checkpoint are retained. Final product version changes only once at
+major gate: ReleaseVersion.product=0.0.10, channel=stable, package mirror
+synchronized; existing browser release assertions updated in same commit.
+No CI duplicate workflow, untrusted sandbox, 5GiB physical acceptance,
+CAS/draining or external route-mutation feature is claimed.

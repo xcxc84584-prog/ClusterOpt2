@@ -179,3 +179,22 @@ caller identity is established by trusted host, never supplied through
 Cluster.api. Each runtime hop keeps HubUnit AccessPolicy, API origin,
 scheduler and OMU EHU/Dependency. Cycles are preflight-rejected, nested
 runtime cycles still generate 423 through existing wait edges.
+
+## PR04.09–10 Route-read and acceptance architecture
+```mermaid
+flowchart TD
+  UI[Browser Cluster.routes] --> Facade[Fixed ui + user origin]
+  Facade --> Query[RouteQueryPolicy]
+  Query --> Hub[HubUnit.inspectRoutes]
+  Hub --> Owned[Scoped owner-only metadata]
+  Hub --> Resolve[ServiceRequestResolver live URU]
+  Resolve --> ACL[Stage UserAPI and AccessPolicy]
+  ACL --> Preview[Redacted no-execution preview]
+  Query --> EHU[OMU read audit and EHU]
+  Gate[Node VTE Chromium and exact SHA CI] --> Backup[Verified major restore]
+  Backup --> Merge[One PR04 merge to main]
+```
+No new Object, EDPMU shared Property or second routing authority.
+RouteQueryPolicy and RouteReadFacade are pure read-boundary helpers.
+Preview has Relation 00: no Request/Response dispatch and no dependency
+edge; real routing remains guarded, keeping 10/01 and EHU semantics.

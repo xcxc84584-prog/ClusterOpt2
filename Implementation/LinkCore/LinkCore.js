@@ -13,6 +13,7 @@ import { ProviderCompatibilityPolicy } from
 import { ProviderHealthPolicy } from
   "../property/ProviderHealthPolicy.js";
 import { createClusterAPIFacade } from "./ClusterAPIFacade.js";
+import { createRouteReadFacade } from "./RouteReadFacade.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { CatalogVisibilityPolicy } from
   "../property/CatalogVisibilityPolicy.js";
@@ -255,6 +256,9 @@ export class LinkCore {
   configureOwnedRoutes(source, table) {
     return this.hub.configureOwnedRoutes(source, table);
   }
+  inspectRoutes(source, command, input, origin = "user") {
+    return this.hub.inspectRoutes(source, command, input, origin);
+  }
   requestService(source, service, action, payload = {}, options = {}) {
     return this.hub.requestService(source, service, action,
       payload, options);
@@ -304,7 +308,8 @@ if (typeof window !== "undefined") {
     subobject: (path) => linkCore.subobjects(path),
     inheritedProperties: (path) => linkCore.inheritedProperties(path),
     version: () => linkCore.getSnapshot().version,
-    api: createClusterAPIFacade(linkCore)
+    api: createClusterAPIFacade(linkCore),
+    routes: createRouteReadFacade(linkCore)
   });
   Object.defineProperty(window, "Cluster", {
     configurable: false, writable: false, value: methods

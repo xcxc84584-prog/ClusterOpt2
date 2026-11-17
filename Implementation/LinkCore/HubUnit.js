@@ -15,6 +15,8 @@ import { ResponsePipelinePolicy } from
   "../property/ResponsePipelinePolicy.js";
 import { RouteControlPolicy } from
   "../property/RouteControlPolicy.js";
+import { RouteQueryPolicy } from
+  "../property/RouteQueryPolicy.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
   "./AuthorizedCatalogCollection.js";
@@ -292,6 +294,88 @@ export class HubUnit {
     const result = this.configureServiceRoutes(merged);
     this.omu.record(result.ok ? "Log" : "EHU", source,
       "Service.Route.OwnedConfigure", result.status);
+    return result;
+  }
+
+  /**
+   * PR04.09: only route descriptors owned by the registered caller
+   * are enumerated. Preview is a no-execution, no-payload ACL probe.
+   */
+  inspectRoutes(source, command, input, origin = "user") {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", "unknown",
+        "Service.Route.Inspect", 404);
+      return { ok: false, status: 404 };
+    }
+    if (!["user", "agent"].includes(origin)) {
+      this.omu.record("EHU", source,
+        "Service.Route.Inspect", 400);
+      return { ok: false, status: 400 };
+    }
+    const parsed = RouteQueryPolicy.parse(command, input);
+    if (!parsed.ok) {
+      this.omu.record("EHU", source,
+        "Service.Route.Inspect", parsed.status);
+      return parsed;
+    }
+    // An explicit per-caller route may still be host-configured with a
+    // foreign Provider. Do not expose those descriptors to the caller.
+    const owned = this.replaceRoutes.filter(route =>
+      route.sourceFilter.objects.length === 1 &&
+      route.sourceFilter.objects[0] === source &&
+      route.sourceFilter.origins.includes(origin) &&
+      RouteControlPolicy.scoped(
+        source, [route], this.registry).ok);
+    const publicRoute = route => Object.freeze({
+      routeId: route.routeId, service: route.service,
+      action: route.action, mode: route.mode,
+      priority: route.priority
+    });
+    let result;
+    if (command === "list") {
+      const { offset, limit } = parsed.value;
+      result = { ok: true, status: 200, value: Object.freeze({
+        total: owned.length,
+        routes: Object.freeze(
+          owned.slice(offset, offset + limit).map(publicRoute))
+      }) };
+    } else if (command === "describe") {
+      const route = owned.find(item =>
+        item.routeId === parsed.value.routeId);
+      result = route ?
+        { ok: true, status: 200, value: publicRoute(route) } :
+        { ok: false, status: 404 };
+    } else {
+      const { service, action } = parsed.value;
+      const resolved = this.serviceResolver.resolve(
+        service, action, source, origin, this.replaceRoutes);
+      if (!resolved.ok) {
+        result = { ok: false, status: resolved.status };
+      } else {
+        const stages = [
+          ...(resolved.value.stages ?? [resolved.value]),
+          ...(resolved.value.responsePipeline ?? [])
+        ];
+        const api = origin === "user" ? "UserAPI" : "AgentAPI";
+        const allowed = stages.every(stage => {
+          const object = this.registry.objects.get(stage.objectId);
+          return object?.ocda?.[api]?.includes(action) &&
+            AccessPolicy.canUseAction(
+              source, stage.objectId, action, object);
+        });
+        const visible = owned.find(route =>
+          route.routeId === resolved.value.routeId);
+        result = allowed ?
+          { ok: true, status: 200, value: Object.freeze({
+            service, action, mode: resolved.value.mode ?? "direct",
+            routeId: visible?.routeId ?? null,
+            stages: stages.length, executable: true
+          }) } : { ok: false, status: 403 };
+      }
+    }
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Service.Route." + command, result.status);
     return result;
   }
 

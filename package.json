@@ -1,7 +1,7 @@
 {
   "name": "clusteropt2",
   "private": true,
-  "version": "0.0.9-pr9.patch9",
+  "version": "0.0.10",
   "type": "module",
   "scripts": {
     "test": "node --test Implementation/tests/*.test.js",

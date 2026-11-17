@@ -114,3 +114,9 @@ PR1 is not considered accepted based on source code alone.
   Node/Chromium/OCDA/PR02/PR03/Windows checks must PASS before accept.
 - Authenticated browser control still deferred: host-only identity.
 - Real file permission/5GiB and PR05 routeVersion/CAS unresolved.
+
+## PLUGIN PR04.09–10 acceptance gate
+- New read facade Node/VTE/Chromium tests submitted, final exact-head
+  five workflows and restore verification required before merge.
+- Untrusted Worker, routeVersion CAS/draining and physical 5GiB
+  File System Access still deferred; no implied coverage.
