@@ -15,7 +15,7 @@ export const VirtualDocumentPolicy = Object.freeze({
 
   /** All real, Blob-backed selected files use the same slice engine. */
   isUniformSliceFile(file) {
-    return file instanceof Blob &&
+    return !!file && typeof file.slice === "function" &&
       this.isVirtual(file.size) !== null;
   }
 });
