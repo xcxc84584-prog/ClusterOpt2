@@ -11,12 +11,10 @@ test("legacy File menu keeps order and original priority selector", async ({ pag
   await expect(page.locator("#priority")).toHaveValue("internal");
   await expect(page.locator("#pluginBtn")).toBeEnabled();
   await page.locator("#pluginBtn").click();
-  await page.locator("#pluginToolToggle").click();
-  await page.locator("#pluginCategoryBtn").click();
-  await page.locator("#pluginHighlighterBtn").click();
-  await expect(page.locator("#pluginHighlighterState")).toBeVisible();
-  await expect(page.locator("#pluginHighlighterDescription")).toBeVisible();
-  await page.locator("#pluginDone").click();
+  await expect(page.locator(".pm-tabs [role=tab]")).toHaveCount(4);
+  await page.locator(".pm-tabs [role=tab]").nth(3).click();
+  await expect(page.locator("#pluginMaxMiB")).toBeVisible();
+  await page.locator("#tabs .tab[data-tab-kind=tool] .close").click();
   await page.locator("#menuBtn").click();
   await page.locator("#toolBtn").click();
   await expect(page.locator("#blockedTypesBtn")).toBeEnabled();
