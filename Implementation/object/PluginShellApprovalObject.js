@@ -51,7 +51,9 @@ export class PluginShellApprovalObject {
         !this.core.checkPluginPermission(
           this.providerId, "network.request") ||
         !this.core.checkPluginPermission(
-          this.providerId, "local-agent.pair")) {
+          this.providerId, "local-agent.pair") ||
+        !this.core.checkPluginPermission(
+          this.providerId, "shell.execute")) {
       this.audit(403, "Denied");
       return { approved: false };
     }
