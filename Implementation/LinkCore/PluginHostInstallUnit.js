@@ -1,5 +1,6 @@
 import { PluginFolderPackageUnit } from "./PluginFolderPackageUnit.js";
 import { PluginSandboxBridge } from "./PluginSandboxBridge.js";
+import { PluginUIHostUnit } from "./PluginUIHostUnit.js";
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 
@@ -13,6 +14,7 @@ export class PluginHostInstallUnit {
     this.core = core;
     this.doc = doc;
     this.reader = new PluginFolderPackageUnit(core.omu);
+    this.uiHost = new PluginUIHostUnit(core, doc);
     this.bridgeFactory = bridgeFactory ??
       (() => new PluginSandboxBridge(doc, core.omu));
     this.handles = new Map();
@@ -105,11 +107,14 @@ export class PluginHostInstallUnit {
           provider.objectId, provider.providerId, permission, true);
         if (!grant.ok) throw Error("Capability grant");
       }
+      const mounted = this.uiHost.mount(snapshot, provider);
+      if (!mounted.ok) throw Error("Plugin UI mount failed");
       this.handles.set(provider.providerId, bridge);
       this.record(201, "Activated", provider.providerId);
       return { ok: true, status: 201, providerId: provider.providerId };
     } catch {
       if (registered) this.core.unregister(provider.objectId);
+      this.uiHost.unmount(provider.providerId);
       bridge.terminate(500, "Rollback");
       this.record(409, "Rollback", provider.providerId);
       return { ok: false, status: 409,
@@ -160,8 +165,10 @@ export class PluginHostInstallUnit {
     }
     const blocked = this.blocked(providerId);
     if (blocked) return blocked;
-    return this.core.setProviderEnabled(
+    const result = this.core.setProviderEnabled(
       provider.objectId, providerId, false);
+    if (result.ok) this.uiHost.setEnabled(providerId, false);
+    return result;
   }
 
   enable(providerId) {
@@ -177,8 +184,10 @@ export class PluginHostInstallUnit {
           error: "Missing service dependency" };
       }
     }
-    return this.core.setProviderEnabled(
+    const result = this.core.setProviderEnabled(
       provider.objectId, providerId, true);
+    if (result.ok) this.uiHost.setEnabled(providerId, true);
+    return result;
   }
 
   uninstall(providerId) {
@@ -191,6 +200,7 @@ export class PluginHostInstallUnit {
       provider.objectId, providerId);
     if (!result.ok) return result;
     this.core.unregister(provider.objectId);
+    this.uiHost.unmount(providerId);
     bridge.terminate(200, "Uninstalled");
     this.handles.delete(providerId);
     this.record(200, "Uninstalled", providerId);
@@ -248,6 +258,7 @@ export class PluginHostInstallUnit {
     const wasDisabled =
       this.core.uru.disabledProviders.has(providerId);
     const priorObject = this.core.uru.objects.get(previous.objectId);
+    const previousUI = this.uiHost.views.get(providerId);
     const disabled = this.core.setProviderEnabled(
       previous.objectId, providerId, false);
     if (!disabled.ok) return disabled;
@@ -260,10 +271,12 @@ export class PluginHostInstallUnit {
     }
     this.core.unregister(previous.objectId);
     this.handles.delete(providerId);
+    this.uiHost.unmount(providerId);
     const installed = await this.install(snapshot, options);
     if (installed.ok) {
       if (wasDisabled) {
         this.core.setProviderEnabled(previous.objectId, providerId, false);
+        this.uiHost.setEnabled(providerId, false);
       }
       previousBridge.terminate(200, "Upgraded");
       this.record(200, "Upgraded", providerId);
@@ -283,10 +296,15 @@ export class PluginHostInstallUnit {
       if (wasDisabled) this.core.setProviderEnabled(
         previous.objectId, providerId, false);
       this.handles.set(providerId, previousBridge);
+      if (previousUI) {
+        this.uiHost.mount(previousUI.snapshot, previousUI.provider);
+        this.uiHost.setEnabled(providerId, !wasDisabled);
+      }
       this.record(409, "UpgradeRolledBack", providerId);
       return { ok: false, status: installed.status,
         error: "Upgrade failed; previous Provider restored" };
     }
+    this.uiHost.unmount(providerId);
     previousBridge.terminate(500, "RestoreFailed");
     this.record(500, "RestoreFailed", providerId);
     return { ok: false, status: 500,

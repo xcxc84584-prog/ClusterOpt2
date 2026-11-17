@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root { color-scheme:dark; font:13px/1.5 system-ui,sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; display:flex; flex-direction:column;
+  background:var(--plugin-background,#0b1019);
+  color:var(--plugin-text,#dce6f5); }
+header { height:50px; display:flex; align-items:center; gap:12px;
+  padding:0 16px; border-bottom:1px solid var(--plugin-border,#28374e);
+  background:var(--plugin-panel,#101927); }
+header strong { letter-spacing:.06em; font-size:14px; }
+header .state { margin-left:auto; font-size:11px; color:#9eb1cb; }
+button,textarea { font:inherit; }
+button { border:1px solid #34516f; border-radius:6px; padding:7px 10px;
+  background:var(--plugin-control,#1a304a);
+  color:var(--plugin-text,#dcecff); cursor:pointer; }
+button:disabled,textarea:disabled { opacity:.5; cursor:not-allowed; }
+button:focus-visible { outline:2px solid #9bcaff; outline-offset:2px; }
+main { display:grid; grid-template-columns:minmax(220px,270px) minmax(0,1fr);
+  flex:1; min-height:0; }
+aside { padding:20px; background:var(--plugin-panel,#111b2a);
+  border-right:1px solid var(--plugin-border,#28374e); }
+h2 { margin:0 0 12px; font-size:17px; color:#edf5ff; }
+p { color:#9daec3; margin:0 0 12px; }
+.controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
+.feed { display:flex; min-width:0; flex-direction:column; }
+.messages { flex:1; padding:18px 22px; overflow:auto; }
+.notice { border:1px solid #2b4565; padding:14px; border-radius:8px;
+  background:var(--plugin-panel,#132238);
+  color:var(--plugin-text,#c5d8ef); max-width:520px; }
+form { display:flex; gap:10px; padding:14px 18px;
+  border-top:1px solid #28374e; }
+textarea { resize:vertical; min-height:48px; max-height:150px;
+  flex:1; border-radius:7px; padding:10px; background:#121e2e;
+  color:#e4f0ff; border:1px solid #35506e; }
+@media (max-width:660px) {
+  main { grid-template-columns:1fr; overflow:auto; }
+  aside { border-right:0; border-bottom:1px solid #28374e; padding:14px; }
+  .messages { min-height:110px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <strong data-i18n="heading">AI Agent</strong>
+  <span class="state" role="status" aria-live="polite"
+    data-agent-status data-i18n="disconnected">尚未連線</span>
+</header>
+<main>
+  <aside>
+    <h2 data-i18n="setupTitle">連結本地 AI Agent</h2>
+    <p data-i18n="setupNotice">本地 Agent 配對將在 PR14.4 提供。</p>
+    <p data-i18n="features">尚未取得檔案及 PowerShell 權限。</p>
+    <div class="controls">
+      <button type="button" data-model-action="configure"
+        disabled data-i18n="settings">模型設定</button>
+      <button type="button" data-model-action="modelInfo"
+        disabled data-i18n="modelStatus">模型狀態</button>
+      <button type="button" disabled data-i18n="connection">連線教學</button>
+      <button type="button" data-agent-action="pair"
+        data-i18n="connect">配對</button>
+      <button type="button" data-agent-action="ping"
+        disabled data-i18n="ping">測試連線</button>
+      <button type="button" data-agent-action="disconnect"
+        disabled data-i18n="disconnect">斷線</button>
+    </div>
+    <p data-agent-error role="alert"></p>
+  </aside>
+  <section class="feed">
+    <div class="messages" role="log" aria-live="polite">
+      <h2 data-i18n="feed">任務輸出</h2>
+      <div class="notice" data-model-notice data-i18n="modelInactive">
+        配對本地 Agent 並設定模型後即可執行文字任務。
+      </div>
+      <div data-model-output></div>
+    </div>
+    <form>
+      <textarea disabled maxlength="8000" rows="2"
+        data-placeholder="prompt" aria-label="Task prompt"></textarea>
+      <button type="submit" disabled data-i18n="submit">送出</button>
+      <button type="button" data-model-action="cancel"
+        disabled data-i18n="stop">中斷</button>
+    </form>
+  </section>
+</main>
+<script>
+(() => {
+  "use strict";
+  const labels = {};
+  let agentState = "disconnected";
+  let taskActive = false;
+  let taskPending = false;
+  let modelConfigured = false;
+  const messages = document.querySelector("[data-model-output]");
+  const taskInput = document.querySelector("textarea");
+  const submit = document.querySelector('form button[type="submit"]');
+  function renderModelControls() {
+    const connected = agentState === "connected";
+    for (const selector of ["configure", "modelInfo"]) {
+      document.querySelector('[data-model-action="' + selector + '"]')
+        .disabled = !connected;
+    }
+    taskInput.disabled = !connected || taskActive || taskPending;
+    submit.disabled = taskInput.disabled;
+    // Cancellation is available while a request is being queued too;
+    // the host still verifies the exact task ID and live grant.
+    document.querySelector('[data-model-action="cancel"]').disabled =
+      !connected || (!taskActive && !taskPending);
+  }
+  function appendMessage(message, kind = "info") {
+    const item = document.createElement("p");
+    item.className = "model-output model-output-" + kind;
+    item.textContent = String(message).slice(0, 65536);
+    messages.append(item);
+    if (messages.children.length > 40) messages.firstChild.remove();
+    item.scrollIntoView({ block: "nearest" });
+  }
+  function updateAgentState() {
+    const status = document.querySelector("[data-agent-status]");
+    const key = agentState === "connected" ? "connected" :
+      agentState === "connecting" ? "connecting" : "disconnected";
+    status.textContent = labels[key] || key;
+    document.querySelector('[data-agent-action="pair"]').disabled =
+      agentState !== "disconnected";
+    document.querySelector('[data-agent-action="ping"]').disabled =
+      agentState !== "connected";
+    document.querySelector('[data-agent-action="disconnect"]').disabled =
+      agentState === "disconnected";
+    if (agentState === "disconnected") {
+      taskActive = false;
+      taskPending = false;
+      modelConfigured = false;
+    }
+    renderModelControls();
+  }
+  document.querySelectorAll("[data-agent-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.agentAction;
+      if (!["pair", "ping", "disconnect"].includes(action)) return;
+      window.parent.postMessage({
+        type: "cluster-local-agent-" + action
+      }, "*");
+    });
+  });
+  document.querySelectorAll("[data-model-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      if (button.disabled) return;
+      const action = button.dataset.modelAction;
+      const messageType = action === "modelInfo" ?
+        "cluster-model-info" : "cluster-model-" + action;
+      window.parent.postMessage({ type: messageType }, "*");
+    });
+  });
+  function submitTask(event) {
+    event.preventDefault();
+    if (taskPending || taskActive || agentState !== "connected" ||
+        !taskInput.value.trim()) return;
+    const prompt = taskInput.value.trim().slice(0, 8000);
+    taskPending = true;
+    renderModelControls();
+    window.parent.postMessage({
+      type: "cluster-model-submit", prompt
+    }, "*");
+    appendMessage(prompt, "user");
+  }
+  // Some sandboxed browsers do not dispatch submit on a button whose
+  // disabled state changes during click processing. Explicitly handle
+  // the user click as well as keyboard-based form submission.
+  submit.addEventListener("click", submitTask);
+  document.querySelector("form").addEventListener("submit", submitTask);
+  window.addEventListener("message", event => {
+    if (event.source !== window.parent) return;
+    if (event.data?.type === "cluster-model-event") {
+      const update = event.data.update;
+      if (!update || typeof update !== "object") return;
+      if (update.kind === "model") {
+        modelConfigured = update.configured === true;
+        appendMessage(modelConfigured ?
+          (labels.modelReady || "Model ready") + ": " + update.model :
+          (labels.modelNotConfigured || "Model not configured"));
+      } else if (update.kind === "result") {
+        appendMessage(update.text, "assistant");
+      } else if (update.kind === "task") {
+        taskPending = false;
+        taskActive = !["completed", "failed", "interrupted"]
+          .includes(update.status);
+        if (update.status === "queued") taskInput.value = "";
+        appendMessage((labels.taskState || "Task") + ": " +
+          update.status);
+      } else if (update.kind === "reset") {
+        taskActive = false;
+        taskPending = false;
+      }
+      renderModelControls();
+      return;
+    }
+    if (event.data?.type === "cluster-model-response") {
+      const value = event.data;
+      if (value.action === "submit") {
+        taskPending = false;
+        taskActive = value.taskActive === true;
+        if (value.ok && taskActive) taskInput.value = "";
+      }
+      if (value.action === "cancel") {
+        taskActive = value.taskActive === true;
+      }
+      if (value.ok !== true) {
+        appendMessage((labels.connectionError || "Error") +
+          " (" + value.status + ")", "error");
+      }
+      renderModelControls();
+      return;
+    }
+    if (event.data?.type === "cluster-local-agent-status") {
+      const state = event.data.state;
+      if (["connected", "connecting", "disconnected"].includes(state)) {
+        agentState = state;
+        updateAgentState();
+      }
+      return;
+    }
+    if (event.data?.type === "cluster-local-agent-result") {
+      const value = event.data;
+      const status = Number(value.status);
+      if (!value.ok && Number.isInteger(status)) {
+        const field = document.querySelector("[data-agent-error]");
+        field.textContent = (labels.connectionError ||
+          "Connection error") + " (" + status + ")";
+      } else {
+        document.querySelector("[data-agent-error]").textContent = "";
+      }
+      return;
+    }
+    if (event.data?.type === "cluster-plugin-theme") {
+      const names = ["background", "panel", "text", "border", "control"];
+      for (const name of names) {
+        const value = event.data.colors?.[name];
+        if (typeof value === "string" && value.length <= 64 &&
+            (CSS.supports("color", value) || value === "")) {
+          document.documentElement.style.setProperty(
+            "--plugin-" + name, value);
+        }
+      }
+      return;
+    }
+    if (event.data?.type !== "cluster-plugin-locale") return;
+    const locale = event.data.locale;
+    if (locale !== "en" && locale !== "zh-Hant") return;
+    const copy = event.data.labels;
+    if (!copy || typeof copy !== "object") return;
+    Object.assign(labels, copy);
+    document.documentElement.lang = locale;
+    for (const node of document.querySelectorAll("[data-i18n]")) {
+      const value = labels[node.dataset.i18n];
+      if (typeof value === "string") node.textContent = value;
+    }
+    updateAgentState();
+    for (const node of document.querySelectorAll("[data-placeholder]")) {
+      const value = labels[node.dataset.placeholder];
+      if (typeof value === "string") node.placeholder = value;
+    }
+  });
+})();
+</script>
+</body>
+</html>

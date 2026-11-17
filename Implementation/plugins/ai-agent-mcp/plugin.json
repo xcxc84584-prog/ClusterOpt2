@@ -1,0 +1,90 @@
+{
+  "packageVersion": 1,
+  "name": "AI AGENT MCP(ChatGPT)",
+  "entry": "worker.js",
+  "description": "AI AGENT MCP(ChatGPT) OCDA plugin: authorized Local Agent, model tasks, scoped Explorer ToolBox, opt-in shell approval and read-only MCP bridge; local gateways require separate startup.",
+  "provider": {
+    "manifestVersion": 1,
+    "providerId": "cluster.ai-agent-mcp",
+    "objectId": "AIAgentMCP",
+    "provides": [
+      {
+        "service": "cluster.ai-agent.status",
+        "action": "getStatus",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string"
+            },
+            "connected": {
+              "type": "boolean"
+            },
+            "privileged": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "phase",
+            "connected",
+            "privileged"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "service": "cluster.ai-agent.contract",
+        "action": "describe",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "contractVersion": {
+              "type": "integer"
+            },
+            "pluginName": {
+              "type": "string"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "contractVersion",
+            "pluginName",
+            "capabilities"
+          ],
+          "additionalProperties": false
+        }
+      }
+    ],
+    "requires": [],
+    "permissions": [
+      "network.request",
+      "local-agent.pair",
+      "model.configure",
+      "model.task",
+      "shell.execute",
+      "mcp.read"
+    ],
+    "execution": {
+      "isolation": "worker",
+      "concurrency": "parallel"
+    }
+  },
+  "uiEntry": "index.html"
+}
