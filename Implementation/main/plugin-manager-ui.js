@@ -346,7 +346,9 @@ export function mountPluginManagerUI(core,doc,options={}) {
 
   function renderAPIs() {
     const entries=apiEntries();
-    const section=card(t("HubUnit API 列表","HubUnit API List"));
+    const section=dom(doc,"section","pm-api-section");
+    section.append(dom(doc,"h2","pm-resource-heading",
+      t("HubUnit API 列表","HubUnit API List")));
     const body=dom(doc,"div","pm-api-browser");
     section.append(body);
     if(selectedAPI) {
