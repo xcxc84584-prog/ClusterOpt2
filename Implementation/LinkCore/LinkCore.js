@@ -384,6 +384,10 @@ export class LinkCore {
     }
     return result;
   }
+  listActionContracts(source, options = {}) {
+    return this.hub.listActionContracts(source, options);
+  }
+
   listProviderContracts(source, options = {}) {
     return this.hub.listProviderContracts(source, options);
   }
