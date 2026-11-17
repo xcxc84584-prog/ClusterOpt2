@@ -113,6 +113,41 @@ export class HubUnit {
     return result;
   }
 
+  /**
+   * PR13.4: every untrusted RPC invocation must revalidate the live URU
+   * Provider identity, ACL and all explicitly approved capabilities.
+   * The sandbox never receives a HubUnit reference.
+   */
+  async invokeExternalPlugin(source, providerId, action, payload, bridge) {
+    const manifest = this.registry.getProvider(providerId);
+    const service = manifest?.provides.find(item =>
+      item.action === action);
+    let status = 200;
+    if (!manifest || !this.registry.objects.has(source)) status = 404;
+    else if (!service || !this.registry.objects.has(manifest.objectId)) {
+      status = 404;
+    } else if (this.registry.disabledProviders.has(providerId) ||
+        !AccessPolicy.canUseAction(source, manifest.objectId, action,
+          this.registry.objects.get(manifest.objectId))) {
+      status = 403;
+    } else if (!manifest.permissions.every(permission =>
+        this.pluginPermissions.allows(providerId, permission))) {
+      status = 403;
+    } else if (!bridge || typeof bridge.invoke !== "function") {
+      status = 503;
+    }
+    if (status !== 200) {
+      this.omu.record("EHU", source, "Plugin.Invoke." + action,
+        status, providerId);
+      return { ok: false, status };
+    }
+    const result = await bridge.invoke(service.service,
+      action, payload);
+    this.omu.record(result.ok ? "Log" : "EHU",
+      source, "Plugin.Invoke." + action, result.status, providerId);
+    return result;
+  }
+
   unregisterProvider(source, providerId) {
     if (this.providerInflight.get(providerId) > 0) {
       this.omu.record("EHU", source, "Provider.Unregister", 409);
@@ -988,7 +1023,8 @@ export class HubUnit {
         this.omu.dependency(source, target, "request");
         this.omu.record("Log", source, "Request." + action, 200, target);
         try {
-          const value = await receiver.value.receive(action, payload);
+          const value = await receiver.value.receive(action, payload,
+            { source, origin: options.origin ?? null });
           this.omu.dependency(target, source, "response");
           this.omu.record("Log", target, "Response." + action, 200, source);
           return { ok: true, status: 200, value };
