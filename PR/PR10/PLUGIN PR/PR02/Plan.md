@@ -111,3 +111,19 @@ Node and Chromium tests run in dedicated workflow, plus OCDA regression.
 PR02.03 exact-head da2672e: dedicated, PR1, OCDA and Windows workflows
 all passed on 2026-11-17; checkpoint backup/plugin-pr02-sub03-da2672e.
 PR02.04 implementation: pending exact-head CI acceptance.
+
+## PR02.05 — Bounded read-only discovery (GitHub comparisons)
+References: AsyncAPI operation descriptions (separate contract from runtime
+security), Theia plugin-ext host vs main RPC boundary and VS Code extension
+registry. Unlike mutable plugin host indexing, CatalogQuery is an internal
+pure query facade over CatalogCollection's frozen on-demand snapshots.
+API: list(kind, {offset,limit}), describe(kind,id,owner?), and
+query(kind,{owner?,term?},{offset,limit}). Supports API and Property
+kinds only. 1–100 page limit, offset 0–4096; invalid selectors 400,
+unknown 404, ambiguous API id 409. Results are frozen metadata, not
+executable handlers or Property values. No external endpoint before
+PR02.06 authorization/visibility projection; no dynamic plugin execution.
+Runtime cost O(current snapshot size) per operation, bounded 4096
+registry entries and 100 results per page; page drift across concurrent
+registrations is not prevented (PR02.05 uses offset semantics).
+Node and Chromium dedicated workflow added; exact-head CI pending.
