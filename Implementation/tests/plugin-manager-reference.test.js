@@ -44,7 +44,7 @@ test("registered provider API schemas are discoverable from live registry",()=>{
     id:"CatalogPluginOwner",receive:async()=>null,
     ocda:{Request:["run"],Response:[],UserAPI:[],AgentAPI:[],
       Property:[],Program:{},EHU:[],Log:[]}
-  }).ok,true);
+  }),true);
   const manifest={
     manifestVersion:1,providerId:"catalog.plugin",
     objectId:"CatalogPluginOwner",
