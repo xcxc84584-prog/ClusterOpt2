@@ -2,6 +2,8 @@ import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { mountPluginManagerUI } from "./plugin-manager-ui.js";
+import { SyntaxOverlayController } from
+  "./syntax-overlay-controller.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
@@ -41,7 +43,21 @@ workspace.onSaveProgress = doc => {
 };
 new ToolTabManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
-const pluginManager = mountPluginManagerUI(linkCore, document);
+const syntaxOverlay = new SyntaxOverlayController(
+  linkCore, ui.editor, ui.editorSurface);
+const pluginManager = mountPluginManagerUI(linkCore, document, {
+  onPluginInstalled() { syntaxOverlay.enable(); },
+  getActivePreview() {
+    const active = workspace.active;
+    if (!active) return null;
+    const text = ui.editor.value;
+    return {
+      fileName: active.name,
+      text: text.slice(0, 65536),
+      truncated: text.length > 65536
+    };
+  }
+});
 let toolState = { open: false, active: false, position: 0 };
 let observedWorkspaceActiveId = null;
 let legacyPSMUI = null;
@@ -612,6 +628,7 @@ function render() {
   scheduleGuides();
   updateStatus();
   scheduleViewportObservation();
+  syntaxOverlay.setDocument(active.id, active.name);
 }
 
 /**
@@ -917,6 +934,7 @@ ui.editor.addEventListener("wheel", event => {
 }, { passive: false });
 
 ui.editor.addEventListener("input", async () => {
+  syntaxOverlay.onInput();
   virtualWheelConflictId = null;
   guideAnchor = null;
   scheduleGuides();
@@ -957,7 +975,14 @@ ui.editor.addEventListener("input", async () => {
     }
   }
 });
+ui.editor.addEventListener("compositionstart", () => {
+  syntaxOverlay.onCompositionStart();
+});
+ui.editor.addEventListener("compositionend", () => {
+  syntaxOverlay.onCompositionEnd();
+});
 ui.editor.addEventListener("scroll", () => {
+  syntaxOverlay.onScroll();
   const doc = workspace.active;
   if (doc) {
     doc.scrollTop = ui.editor.scrollTop;

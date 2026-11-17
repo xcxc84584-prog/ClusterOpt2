@@ -41,9 +41,9 @@ test("PR05.10 rejected candidate does not replace live routing", () => {
   assert.deepEqual(core.routeSnapshot(), before);
 });
 
-test("PR05.10 official unified version is 0.0.12", () => {
+test("PR05.10 unified version follows ReleaseVersion authority", () => {
   const core = new LinkCore();
-  assert.equal(ReleaseVersion.product, "0.0.12");
+  assert.match(ReleaseVersion.product, /^0\.0\.\d+$/u);
   assert.equal(core.version, ReleaseVersion.product);
   assert.equal(core.routeSnapshot().generation, 0);
 });

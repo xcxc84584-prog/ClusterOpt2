@@ -1,3 +1,4 @@
+import {ReleaseVersion} from "../property/ReleaseVersion.js";
 import { test, expect } from "@playwright/test";
 
 test("PR03.02 real browser Hub validates metadata without execution",
@@ -46,6 +47,6 @@ test("PR03.02 real browser Hub validates metadata without execution",
     expect(result).toEqual({
       status: 200, valid: 200, invalid: 400, immutable: true,
       registered: true, events: 1, dependencies: 0,
-      oldApi: true, version: "0.0.12"
+      oldApi: true, version: ReleaseVersion.product
     });
   });

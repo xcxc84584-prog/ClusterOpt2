@@ -35,7 +35,7 @@ function tabular(doc,header,rows) {
 }
 
 /** Layout is reference-driven; live data has a single URU/OMU authority. */
-export function mountPluginManagerUI(core,doc) {
+export function mountPluginManagerUI(core,doc,options={}) {
   // Old index.html can coexist with a newer JS module after a Pages
   // deployment or browser cache refresh. Recover missing mount nodes.
   const windowNode=doc.getElementById("pluginWindow");
@@ -398,7 +398,9 @@ export function mountPluginManagerUI(core,doc) {
     oldSettings.hidden=active!=="resources";
     if(active==="resources") {
       renderResources(doc,page,{
-        t,settings:migrated,providers,disabled,apiEntries,logs
+        t,settings:migrated,providers,disabled,apiEntries,logs,core,
+        getActivePreview:options.getActivePreview,
+        onPluginInstalled:options.onPluginInstalled
       });
       return;
     }

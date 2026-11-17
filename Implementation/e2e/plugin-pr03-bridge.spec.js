@@ -1,3 +1,4 @@
+import {ReleaseVersion} from "../property/ReleaseVersion.js";
 import { test, expect } from "@playwright/test";
 
 test("PR03.03 real browser URU/Hub registration lifecycle", async ({ page }) => {
@@ -38,6 +39,6 @@ test("PR03.03 real browser URU/Hub registration lifecycle", async ({ page }) => 
   });
   expect(r).toEqual({
     registered: 201, count: 1, cleared: 0, oldAPI: true,
-    logs: true, version: "0.0.12"
+    logs: true, version: ReleaseVersion.product
   });
 });

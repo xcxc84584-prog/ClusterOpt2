@@ -1,3 +1,4 @@
+import {ReleaseVersion} from "../property/ReleaseVersion.js";
 import { test, expect } from "@playwright/test";
 
 test("PR04.09 read-only browser Route facade and no route takeover",
@@ -25,6 +26,6 @@ test("PR04.09 read-only browser Route facade and no route takeover",
       pageKeys: ["describe", "list", "preview"],
       frozen: true, list: 200, preview: 404,
       mutation: "undefined", legacy: "function",
-      version: "0.0.12"
+      version: ReleaseVersion.product
     });
   });
