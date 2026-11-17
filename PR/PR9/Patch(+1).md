@@ -12,3 +12,9 @@ Latest main PR8 Patch25-Fix2 documents unfinished scroll restore, directory oper
 Source implementation written on PR9 branch. Node/Playwright and OCDA relationship tests must be executed before PASS/merge.
 ## Rollback
 main remains unchanged; delete the unmerged PR9 branch or revert its commits to return to PR8 Patch25-Fix2 baseline.
+
+## Additional viewport fix
+- Workspace saves pending viewport restoration independently of cursor.
+- UI restores scrollTop/scrollLeft after the rendered document is ready,
+  compensating for changed line-height caused by zoom.
+- Actual Chromium reload/permission regression remains required.
