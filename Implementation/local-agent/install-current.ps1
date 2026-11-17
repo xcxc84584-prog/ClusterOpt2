@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^\d+\.\d+\.\d+-pr\d+\.patch\d+(?:\.fix\d+)?
+    [ValidatePattern('^\d+\.\d+\.\d+-pr\d+\.patch\d+(?:\.fix\d+)?$')]
+    [string]$ExpectedVersion
+)
 # ClusterOpt2 Local Agent setup. Version comes from LinkCore via CMD.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
