@@ -78,3 +78,15 @@ Commit da2672e8315afb64a8cd8255c0b49acbec587d02:
 | Frozen metadata, no dynamic handler execution | Node + Chromium |
 | Existing Hub Request path and Cluster legacy facade | Chromium |
 | Dedicated Node / Playwright / OCDA / Windows | exact-head CI PENDING |
+
+## PR02.05 acceptance matrix (exact-head CI pending)
+| Scenario | Node | Chromium |
+| --- | --- | --- |
+| Stable owner/name ordering and nextOffset | added | added |
+| Ambiguous id 409, owner-qualified 200, absent 404 | added | added |
+| API owner and term filters | added | browser list |
+| Property owner filter without exposing values | added | not required |
+| Invalid kind, oversized page, invalid selector 400 | added | added |
+| Dynamic removal reflected on next query | added | catalog test |
+| Original Cluster facade and API Request | catalog test | added |
+| Exact-head PR02/OCDA/Windows | pending | pending |
