@@ -3,7 +3,8 @@ import { PluginLocalAgentPolicy as Policy } from
 
 /**
  * Host-owned OCDA Object: one explicitly approved local connection.
- * No model, tool, shell, file or MCP message may transit this bridge.
+ * MCP calls require a registered bridge and trusted ToolBox decisions.
+ * PS commands need a separate browser approval; no ambient privilege.
  * Pairing token exists only in a local function scope during auth.
  */
 export class PluginLocalAgentObject {
