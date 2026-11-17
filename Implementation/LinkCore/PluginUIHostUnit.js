@@ -547,8 +547,11 @@ export class PluginUIHostUnit {
         if (!event.target.closest?.(
           "#tabs .tab, #explorerPowerShell, #pluginBtn"))
           return;
-        if (view.workbenchTab) view.workbenchTab.deactivate();
-        else {
+        if (view.workbenchTab) {
+          if (!event.target.closest?.(".plugin-agent-tab")) {
+            view.workbenchTab.deactivate();
+          }
+        } else {
           panel.hidden = true;
           button.setAttribute("aria-pressed", "false");
         }
