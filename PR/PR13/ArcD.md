@@ -169,3 +169,15 @@ HubUnit before send: RouteContractPolicy.validate(payload, inputSchema).
 HubUnit after reply: RouteContractPolicy.validate(value, outputSchema).
 Malformed Request 400 EHU, malformed Response 502 EHU; neither bypasses
 current Provider/permission checks.
+
+## PR13 Patch(+7) lifecycle EventChain
+```text
+Host lifecycle action -> URU live dependency graph projection
+  -> 409 EHU (active dependent) OR HubUnit disable/unregister
+Upgrade -> validate+consent+current grants -> HubUnit disable/removal
+  -> new sandbox install -> HubUnit/URU register
+  -> success: terminate old bridge
+  -> failure: restore previous Object/Provider + previous active grants
+```
+No parallel registry is introduced. OMU records EHU and Log.
+The cutover is not zero-downtime; adversarial browser tests pending.
