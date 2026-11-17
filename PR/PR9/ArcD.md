@@ -74,3 +74,18 @@ This version read is immutable and central. No new HubUnit Property.
 The installer is an external explicit user action and cannot grant
 browser code OS execution permissions. No outgoing telemetry is
 introduced. Safe port choice does not terminate unrelated processes.
+
+## Patch5 EventChain, dependencies and EHU
+User click old #goLineButton / Ctrl+G
+ -> UI / GoToLinePolicy validation
+ -> HubUnit [ui -> workspace.gotoLine]
+ -> HubUnit [workspace -> VirtualFileDocument.seekLine]
+ -> EDPMU GlobalPageLinePolicy raw bounded scan (no full decode)
+ -> VirtualFileDocument.loadPage / PieceTree + BPlusSliceIndex
+ -> Response [VirtualFileDocument -> workspace -> UI]
+ -> textarea caret + line gutter + SessionRecovery snapshot.
+
+Failures: 400 invalid line or geometry; 416 beyond EOF; 409 external
+fingerprint conflict with unsaved edits; 422 truncated source chunk;
+503 I/O failure. HubUnit logs unsuccessful Request/Response as EHU.
+Document Load/Save authority and the old PS UI are unchanged.
