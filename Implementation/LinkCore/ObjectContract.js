@@ -1,5 +1,7 @@
 import { APIDescriptorPolicy } from
   "../property/APIDescriptorPolicy.js";
+import { CatalogVersionPolicy } from
+  "../property/CatalogVersionPolicy.js";
 
 /** Standard OCDA contract, describing the outward-facing black-box object. */
 const REQUIRED = Object.freeze([
@@ -37,6 +39,9 @@ export function validateObjectContract(object, strict = false) {
           continue;
         }
         const value = result.value;
+        if (!CatalogVersionPolicy.inspect(value).ok) {
+          failures.push("APIDescriptors.version");
+        }
         if (value.owner !== object.id) {
           failures.push("APIDescriptors.owner");
         }
