@@ -19,6 +19,10 @@ export class PluginWorkbenchTabUnit {
       if (!event.target.closest?.(
         "#tabs .tab:not(.plugin-agent-tab), " +
         "#explorerPowerShell, #pluginBtn")) return;
+      if (event.target.closest?.('#tabs .tab[data-tab-kind="tool"]') &&
+          this.column?.classList.contains("psm-mode")) {
+        this.doc.getElementById("explorerPowerShell")?.click();
+      }
       this.deactivate();
     };
   }
@@ -49,7 +53,6 @@ export class PluginWorkbenchTabUnit {
   }
 
   attach() {
-    this.tabs.append(this.ensureTab());
     this.doc.addEventListener("click", this.onClick, true);
     this.observer = new MutationObserver(() => {
       if (this.tab && !this.tabs.contains(this.tab)) {
@@ -84,6 +87,7 @@ export class PluginWorkbenchTabUnit {
     if (this.column?.classList.contains("psm-mode")) {
       this.doc.getElementById("explorerPowerShell")?.click();
     }
+    if (!this.tab) this.tabs.append(this.ensureTab());
     this.active = true;
     this.applyVisibility();
     this.onOpen?.();
