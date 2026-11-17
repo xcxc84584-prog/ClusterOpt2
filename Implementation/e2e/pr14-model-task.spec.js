@@ -23,7 +23,8 @@ async function mountWithMockAgent(page) {
       manifestText, files
     }, { consented: true, approvedPermissions: [
       "network.request", "local-agent.pair",
-      "model.configure", "model.task"
+      "model.configure", "model.task",
+      "shell.execute", "mcp.read"
     ] });
     if (!result.ok) return result;
     const agent = linkCore.pluginHostInstaller.uiHost.views
