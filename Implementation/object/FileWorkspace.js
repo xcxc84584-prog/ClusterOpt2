@@ -378,11 +378,15 @@ export class FileWorkspace {
       return this.removeClosedDocuments([doc]);
     }
     const locale = this.core.readProperty(this.id, "Language").value;
-    const save = typeof decision === "boolean" ? decision :
-      window.confirm(Language.translate(locale,
-        "saveBeforeCloseQuestion", { name: doc.name }));
-    return save ? this.saveBeforeClosing([doc], handles) :
-      this.removeClosedDocuments([doc]);
+    const choice = typeof decision === "boolean" ? decision :
+      typeof this.confirmClose === "function" ?
+        this.confirmClose({ name: doc.name }) :
+        window.confirm(Language.translate(locale,
+          "saveBeforeCloseQuestion", { name: doc.name }));
+    const finish = save => save === null ? false :
+      save ? this.saveBeforeClosing([doc], handles) :
+        this.removeClosedDocuments([doc]);
+    return Promise.resolve(choice).then(finish);
   }
 
   closeMany(ids, decision = null, handles = {}) {
@@ -397,11 +401,15 @@ export class FileWorkspace {
       doc.status !== DocumentStatus.SYNCED);
     if (!dirty.length) return this.removeClosedDocuments(targets);
     const locale = this.core.readProperty(this.id, "Language").value;
-    const save = typeof decision === "boolean" ? decision :
-      window.confirm(Language.translate(locale,
-        "saveBeforeCloseAllQuestion", { count: dirty.length }));
-    return save ? this.saveBeforeClosing(targets, handles) :
-      this.removeClosedDocuments(targets);
+    const choice = typeof decision === "boolean" ? decision :
+      typeof this.confirmClose === "function" ?
+        this.confirmClose({ count: dirty.length }) :
+        window.confirm(Language.translate(locale,
+          "saveBeforeCloseAllQuestion", { count: dirty.length }));
+    const finish = save => save === null ? false :
+      save ? this.saveBeforeClosing(targets, handles) :
+        this.removeClosedDocuments(targets);
+    return Promise.resolve(choice).then(finish);
   }
 
   closeAll(decision = null, handles = {}) {
