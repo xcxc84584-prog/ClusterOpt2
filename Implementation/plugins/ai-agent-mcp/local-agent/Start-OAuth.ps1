@@ -1,11 +1,17 @@
-# PR14.8: externally supplied HTTPS issuer; no automatic public tunnel.
+# OAuth loopback listener; HTTPS proxy must be configured by the user.
 param(
   [Parameter(Mandatory = $true)]
   [ValidatePattern('^https://[^/?#]+$')]
   [string]$Issuer
 )
 $ErrorActionPreference = 'Stop'
-$node = Get-Command node.exe -ErrorAction Stop
+. (Join-Path $PSScriptRoot 'Port-CPO.ps1')
+$ports = Get-ServicePorts
+$selected = Select-ServicePort 'oauth'
+$env:CLUSTER_OAUTH_PORT = [string]$selected
+$env:CLUSTER_MCP_PORT = [string]$ports.mcp
 $env:CLUSTER_OAUTH_ISSUER = $Issuer
+$node = Get-Command node.exe -ErrorAction Stop
+Write-Host ("OAuth port: {0}; MCP port: {1}" -f $selected,$ports.mcp)
 & $node.Source (Join-Path $PSScriptRoot 'oauth-mcp-gateway.cjs')
 if ($LASTEXITCODE -ne 0) { throw 'OAuth gateway failed' }
