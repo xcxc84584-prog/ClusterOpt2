@@ -1,7 +1,7 @@
 'use strict';
 // P3.5 standalone MCP Streamable HTTP bridge. Node >=20. Start with node remote-mcp.cjs.
 // HTTPS termination must be supplied by a trusted reverse proxy / tunnel.
-// Do not expose the terminal service (43879) directly.
+// Do not expose the terminal service (43881) directly.
 const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
@@ -12,7 +12,7 @@ const configDir=path.join(process.env.LOCALAPPDATA||path.join(os.homedir(),'AppD
 const pairingPath=path.join(configDir,'pairing-token');
 const accessPath=path.join(configDir,'remote-mcp-token');
 const host='127.0.0.1',port=Number(process.env.CLUSTER_MCP_PORT||43880);
-const upstream='http://127.0.0.1:'+(process.env.CLUSTER_TERMINAL_PORT||43879);
+const upstream='http://127.0.0.1:'+(process.env.CLUSTER_TERMINAL_PORT||43881);
 fs.mkdirSync(configDir,{recursive:true});
 if(!fs.existsSync(accessPath))fs.writeFileSync(accessPath,crypto.randomBytes(32).toString('hex')+'\n',{mode:0o600,flag:'wx'});
 const accessToken=fs.readFileSync(accessPath,'utf8').trim();
