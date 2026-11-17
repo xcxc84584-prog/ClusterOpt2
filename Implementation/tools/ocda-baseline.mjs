@@ -6,7 +6,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { resolve, relative, join } from "node:path";
 import { pathToFileURL } from "node:url";
 const ROOT = resolve(process.cwd());
-const DIRS = ["LinkCore", "object", "property", "main"];
+const DIRS = ["LinkCore", "object", "property", "main", "plugins"];
 const FIELDS = ["Request", "Response", "UserAPI", "AgentAPI", "Property"];
 const norm = value => value.replaceAll("\\", "/");
 
