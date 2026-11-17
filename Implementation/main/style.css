@@ -966,3 +966,47 @@ header .menu-wrap { margin-left:auto; }
 @media (max-height: 450px) {
   #goToLineDialog[open] { top: 8px; max-height: 60vh; }
 }
+
+
+/* Old ClusterOpt: Go to Line is a flex row, never an editor overlay. */
+#goLineBar {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 5px 12px;
+  background: var(--ui-surface);
+  border-top: 1px solid var(--ui-border);
+  color: var(--ui-text-on-surface);
+  font-size: 12px;
+}
+#goLineInput { width: 92px; max-width: 30vw; }
+#goLineBar button, #goLineInput {
+  border: 1px solid var(--ui-border);
+  border-radius: 4px;
+  background: var(--ui-control);
+  color: var(--ui-text-on-control);
+  padding: 4px 7px;
+  font: inherit;
+}
+#goLineBar button:hover:not(:disabled) {
+  background: var(--ui-hover);
+}
+#goLineBar button:disabled, #goLineInput:disabled {
+  opacity: .55;
+}
+#goLineBar .goLineHint {
+  color: var(--ui-text-on-surface);
+  opacity: .75;
+}
+#goLineBar :focus-visible {
+  outline: 2px solid var(--ui-text-on-surface);
+  outline-offset: 2px;
+}
+@media (max-width: 520px) {
+  #goLineBar { padding: 4px 8px; }
+  #goLineBar .goLineHint { display: none; }
+}
