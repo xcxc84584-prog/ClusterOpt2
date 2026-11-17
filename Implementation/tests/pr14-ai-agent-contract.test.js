@@ -46,7 +46,7 @@ test("PR14.2 manifest passes both existing package contracts", () => {
   assert.equal(parsed.value.provider.objectId, "AIAgentMCP");
   assert.deepEqual(parsed.value.provider.permissions, []);
   assert.deepEqual(parsed.value.provider.requires, []);
-  assert.equal(parsed.value.uiEntry, undefined);
+  assert.equal(parsed.value.uiEntry, "index.html");
   assert.equal(parsed.value.provider.execution.isolation, "worker");
   assert.deepEqual(parsed.value.provider.provides.map(
     service => service.action), ["getStatus", "describe"]);
