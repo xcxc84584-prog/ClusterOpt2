@@ -186,6 +186,33 @@ export class PluginLocalAgentObject {
         }
       }
     } else if (this.mcpReadId && this.explorerId &&
+        message.name === "cluster.find_root_windows_path") {
+      const rootReply = await this.core.request(this.id,
+        this.explorerId, "status", {});
+      const requestedRoot = message.args?.root;
+      if (!rootReply.ok ||
+          rootReply.value?.selected !== true ||
+          rootReply.value?.permissions?.read !== true ||
+          requestedRoot !== rootReply.value.folderName) {
+        result = { error: "Explorer root read permission denied" };
+      } else {
+        const choices = Array.isArray(message.args?.candidates) ?
+          message.args.candidates.filter(item =>
+            typeof item === "string").slice(0, 5) : [];
+        const chosen = this.doc.defaultView.prompt(
+          "確認 Windows 資料夾路徑 / Confirm root path" +
+          "\\n候選位置 / Candidates:\\n" +
+          choices.join("\\n"), choices[0] ?? "");
+        if (typeof chosen === "string" && chosen.trim()) {
+          result = {
+            absolutePath: chosen.trim(),
+            verified: false, confirmedByUser: true
+          };
+        } else {
+          result = { error: "Root path confirmation denied" };
+        }
+      }
+    } else if (this.mcpReadId && this.explorerId &&
         message.name === "cluster.list_roots") {
       const reply = await this.core.request(this.id,
         this.explorerId, "roots", {});
