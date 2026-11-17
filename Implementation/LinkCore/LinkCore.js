@@ -4,6 +4,8 @@ import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
 import { ProviderManifestPolicy } from
   "../property/ProviderManifestPolicy.js";
+import { PluginPackageManifestPolicy } from
+  "../property/PluginPackageManifestPolicy.js";
 import { ProviderSharedPropertyPolicy } from
   "../property/ProviderSharedPropertyPolicy.js";
 import { ProviderFactoryPolicy } from
@@ -85,6 +87,10 @@ export class LinkCore {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     }
+    this.hub.registerProperty("PluginPackageManifestPolicy",
+      PluginPackageManifestPolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
     this.hub.registerProperty("ProviderManifestPolicy",
       ProviderManifestPolicy, {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
