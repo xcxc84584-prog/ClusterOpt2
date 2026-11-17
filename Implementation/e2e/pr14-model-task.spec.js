@@ -113,8 +113,26 @@ test("PR14.5 model credential stays in host, task route and cancel",
           }))
       });
     })).toContain('"task"');
-    await expect(frame.locator('[data-model-action="cancel"]'))
-      .toBeEnabled();
+    const diagnostic = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const view = linkCore.pluginHostInstaller.uiHost.views.get(
+        "cluster.ai-agent-mcp");
+      return {
+        task: view.modelTask.snapshot(),
+        agent: view.localAgent.state,
+        errors: linkCore.getSnapshot().logs.filter(x =>
+          x.kind === "EHU").slice(0,7).map(x => ({
+            action: x.action, status: x.status
+          }))
+      };
+    });
+    diagnostic.ui = await frame.locator("[data-model-output]")
+      .innerText();
+    diagnostic.cancelDisabled = await frame.locator(
+      '[data-model-action="cancel"]').isDisabled();
+    expect(JSON.stringify(diagnostic)).toContain(
+      '"cancelDisabled":false');
     await frame.locator('[data-model-action="cancel"]').click();
     await expect.poll(() => page.evaluate(() =>
       window.__modelSent.some(msg => msg.type === "task_cancel")))
