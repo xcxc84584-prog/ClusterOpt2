@@ -33,3 +33,20 @@ test("PR9 native terminal connection rejects unsafe pairing values", () => {
   assert.throws(() => policy.token("bad"), TypeError);
   assert.equal(policy.token("a".repeat(64)).length, 64);
 });
+
+test("PR9 caps independent native sessions at eight", async () => {
+  const core = new LinkCore();
+  new PowerShellSessionManager(core);
+  for (let i = 0; i < 8; i++) {
+    const result = await core.request("ui",
+      "powershell-session-manager", "create");
+    assert.equal(result.status, 200);
+  }
+  const overflow = await core.request("ui",
+    "powershell-session-manager", "create");
+  assert.equal(overflow.ok, false);
+  assert.equal(overflow.status, 429);
+  const listed = await core.request("ui",
+    "powershell-session-manager", "list");
+  assert.equal(listed.value.sessions.length, 8);
+});
