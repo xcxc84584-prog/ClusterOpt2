@@ -103,12 +103,24 @@ export class PluginUIHostUnit {
       };
       const sync = () => {
         const locale = readLocale(this.core);
-        if (frame.contentWindow) {
-          frame.contentWindow.postMessage({
-            type: "cluster-plugin-locale",
-            locale, labels: labels[locale]
-          }, "*");
-        }
+        if (!frame.contentWindow) return;
+        frame.contentWindow.postMessage({
+          type: "cluster-plugin-locale",
+          locale, labels: labels[locale]
+        }, "*");
+        const root = this.doc.defaultView.getComputedStyle(
+          this.doc.documentElement);
+        const read = key => root.getPropertyValue(key).trim();
+        frame.contentWindow.postMessage({
+          type: "cluster-plugin-theme",
+          colors: {
+            background: read("--ui-editor"),
+            panel: read("--ui-panel"),
+            text: read("--ui-text-on-panel"),
+            border: read("--ui-border"),
+            control: read("--ui-control")
+          }
+        }, "*");
       };
       view.sync = sync;
       const open = () => {
@@ -133,7 +145,7 @@ export class PluginUIHostUnit {
       this.doc.addEventListener("click", closeForWorkbench);
       const localeObserver = new MutationObserver(sync);
       localeObserver.observe(this.doc.documentElement, {
-        attributes: true, attributeFilter: ["lang"]
+        attributes: true, attributeFilter: ["lang", "style", "class"]
       });
       view.dispose = () => {
         localeObserver.disconnect();
