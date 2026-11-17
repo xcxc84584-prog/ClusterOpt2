@@ -21,3 +21,27 @@ temporarily reset scrollTop; after text is painted, requestAnimationFrame
 applies the saved browser pixels with line-height zoom compensation.
 Never interpret caret offset as scroll position. Tests still needed for
 large file restore after delayed permissions and reload.
+
+## Patch(+2): Native PowerShell and line dialog placement
+- Compare legacy ClusterOpt's PowerShellManager, PowerShellClient,
+  PowerShell UI and local-agent/native-terminal.mjs before integration.
+- The browser is an unprivileged UI; an explicitly paired, separately
+  installed loopback agent launches genuine ConPTY PowerShell.
+- PowerShellSessionManager Object owns independent logical sessions;
+  PowerShellConnectionPolicy owns the protocol, 64-char pairing-token
+  validation, loopback port and maximum sessions (8).
+- The pairing token remains only in JS memory, never passed to HubUnit,
+  persisted, exposed in a URL or logged. No HTTP command fallback.
+- Native PowerShell pane uses the existing palette and inherits the
+  old agent's WebSocket protocol. Multiple session tabs get separate
+  WebSocket/ConPTY sessions; closing a tab destroys its socket.
+- Go to Line dialog is constrained above the editor footer, including
+  zoom and short window heights. PR9 Patch1 page-relative limitation
+  remains until real cross-page line-index seek.
+- Resource estimates: O(session count) DOM/PTY objects, capped at 8;
+  browser scrollback per session 10000 lines. Native agent's own
+  server enforces OS process and origin limits.
+- Security: loopback only, explicit pairing, no remote host input,
+  pairing secret not stored, and no implicit local system privilege.
+- Browser tests must exercise native pairing using a synthetic WebSocket,
+  then real Windows ConPTY acceptance separately.

@@ -4,6 +4,9 @@ import { mountPaletteUI } from "./palette-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
+import { PowerShellSessionManager } from
+  "../object/PowerShellSessionManager.js";
+import { mountNativePowerShell } from "./powershell-native-ui.js";
 import { Explorer } from "../object/Explorer.js";
 import { SessionRecovery } from "../object/SessionRecovery.js";
 import { SliceRegistry } from "../object/SliceRegistry.js";
@@ -37,10 +40,12 @@ workspace.onSaveProgress = doc => {
   if (workspace.activeId === doc.id) updateStatus();
 };
 new ToolTabManager(linkCore);
+new PowerShellSessionManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
 let toolState = { open: false, active: false, position: 0 };
 let pluginCategory = "performance";
 let observedWorkspaceActiveId = null;
+let nativePowerShell = null;
 
 function saveToolView() {
   try {
@@ -370,7 +375,7 @@ linkCore.register({
     Response: [], UserAPI: ["new", "open", "save", "close", "closeAll",
       "reorder", "setPriority", "syncExternal"],
     AgentAPI: [], Property: ["DocumentStatus", "SystemVersion",
-      "Language", "EditorInteractionPolicy",
+      "Language", "GoToLinePolicy", "EditorInteractionPolicy",
       "EditorViewportPolicy"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
@@ -402,9 +407,17 @@ function localized(key, args = {}) {
 }
 const notify = message => { ui.statusText.textContent = message; };
 
+nativePowerShell = mountNativePowerShell({
+  core: linkCore,
+  button: document.getElementById("nativePowerShellBtn"),
+  host: document.getElementById("clusterEditorColumn"),
+  translate: key => localized(key)
+});
+
 function render() {
   const active = workspace.active;
   renderPriority();
+  nativePowerShell?.refresh();
   void renderExplorer();
   queueRecovery();
   if (workspace.activeId !== observedWorkspaceActiveId) {
