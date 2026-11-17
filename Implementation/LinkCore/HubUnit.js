@@ -113,6 +113,50 @@ export class HubUnit {
     return result;
   }
 
+  /**
+   * PR13.4: every untrusted RPC invocation must revalidate the live URU
+   * Provider identity, ACL and all explicitly approved capabilities.
+   * The sandbox never receives a HubUnit reference.
+   */
+  async invokeExternalPlugin(source, providerId, action, payload, bridge) {
+    const manifest = this.registry.getProvider(providerId);
+    const service = manifest?.provides.find(item =>
+      item.action === action);
+    let status = 200;
+    if (!manifest || !this.registry.objects.has(source)) status = 404;
+    else if (!service || !this.registry.objects.has(manifest.objectId)) {
+      status = 404;
+    } else if (this.registry.disabledProviders.has(providerId) ||
+        !AccessPolicy.canUseAction(source, manifest.objectId, action,
+          this.registry.objects.get(manifest.objectId))) {
+      status = 403;
+    } else if (!manifest.permissions.every(permission =>
+        this.pluginPermissions.allows(providerId, permission))) {
+      status = 403;
+    } else if (!bridge || typeof bridge.invoke !== "function") {
+      status = 503;
+    } else if (!RouteContractPolicy.validate(payload,
+      service.inputSchema)) {
+      status = 400;
+    }
+    if (status !== 200) {
+      this.omu.record("EHU", source, "Plugin.Invoke." + action,
+        status, providerId);
+      return { ok: false, status };
+    }
+    const result = await bridge.invoke(service.service,
+      action, payload);
+    if (result.ok && !RouteContractPolicy.validate(result.value,
+      service.outputSchema)) {
+      this.omu.record("EHU", source, "Plugin.Invoke." + action,
+        502, providerId, { error: "Invalid Response contract" });
+      return { ok: false, status: 502 };
+    }
+    this.omu.record(result.ok ? "Log" : "EHU",
+      source, "Plugin.Invoke." + action, result.status, providerId);
+    return result;
+  }
+
   unregisterProvider(source, providerId) {
     if (this.providerInflight.get(providerId) > 0) {
       this.omu.record("EHU", source, "Provider.Unregister", 409);
@@ -988,7 +1032,8 @@ export class HubUnit {
         this.omu.dependency(source, target, "request");
         this.omu.record("Log", source, "Request." + action, 200, target);
         try {
-          const value = await receiver.value.receive(action, payload);
+          const value = await receiver.value.receive(action, payload,
+            { source, origin: options.origin ?? null });
           this.omu.dependency(target, source, "response");
           this.omu.record("Log", target, "Response." + action, 200, source);
           return { ok: true, status: 200, value };
@@ -1015,6 +1060,108 @@ export class HubUnit {
    * filtering, NOT a token or substitute for HubUnit.request checks.
    * No source factories are materialized implicitly.
    */
+  /**
+   * Read-only Provider Contract projection. URU remains the sole live
+   * authority. Metadata visibility does not grant invocation permission.
+   */
+  /**
+   * Enumerate declared user/agent-callable Object actions.
+   * Missing legacy schemas are returned as null; never fabricate one.
+   * The source and per-action permission are checked before disclosure.
+   */
+  listActionContracts(source, options = {}) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Object.Action.List", 404);
+      return { ok: false, status: 404 };
+    }
+    const { offset = 0, limit = 100, origin = "user" } = options;
+    if (!["user", "agent"].includes(origin) ||
+        !Number.isSafeInteger(offset) || offset < 0 || offset > 4096 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      this.omu.record("EHU", source, "Object.Action.List", 400);
+      return { ok: false, status: 400 };
+    }
+    const api = origin === "user" ? "UserAPI" : "AgentAPI";
+    const entries = [];
+    for (const [owner, object] of this.registry.objects) {
+      for (const action of object.ocda?.[api] ?? []) {
+        if (!AccessPolicy.canUseAction(source, owner, action, object)) {
+          continue;
+        }
+        const descriptor = object.ocda?.APIDescriptors?.find(item =>
+          item.action === action && item.visibility !== "Private");
+        entries.push(Object.freeze({
+          owner, action, id: descriptor?.id ?? owner + "." + action,
+          version: descriptor?.version ?? null,
+          visibility: descriptor?.visibility ?? null,
+          inputSchema: descriptor?.inputSchema ?? null,
+          outputSchema: descriptor?.outputSchema ?? null,
+          described: Boolean(descriptor)
+        }));
+      }
+    }
+    entries.sort((a,b)=>a.owner.localeCompare(b.owner) ||
+      a.action.localeCompare(b.action));
+    const result = Object.freeze({
+      ok: true, status: 200,
+      value: Object.freeze({
+        items: Object.freeze(entries.slice(offset, offset + limit)),
+        total: entries.length,
+        nextOffset: offset + limit < entries.length ?
+          offset + limit : null
+      })
+    });
+    this.omu.record("Log", source, "Object.Action.List", 200);
+    return result;
+  }
+
+  listProviderContracts(source, options = {}) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Provider.Contract.List", 404);
+      return { ok: false, status: 404 };
+    }
+    const { offset = 0, limit = 100, origin = "user" } = options;
+    if (!["user", "agent"].includes(origin) ||
+        !Number.isSafeInteger(offset) || offset < 0 || offset > 4096 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      this.omu.record("EHU", source, "Provider.Contract.List", 400);
+      return { ok: false, status: 400 };
+    }
+    const entries = [];
+    for (const provider of this.registry.listProviders()) {
+      if (this.registry.disabledProviders.has(provider.providerId) ||
+          !this.registry.objects.has(provider.objectId)) continue;
+      for (const service of provider.provides) {
+        entries.push(Object.freeze({
+          providerId: provider.providerId,
+          owner: provider.objectId,
+          service: service.service, action: service.action,
+          version: service.version,
+          inputSchema: service.inputSchema,
+          outputSchema: service.outputSchema,
+          permissions: provider.permissions
+        }));
+      }
+    }
+    entries.sort((a,b)=>a.service.localeCompare(b.service) ||
+      a.owner.localeCompare(b.owner));
+    const result = Object.freeze({
+      ok: true, status: 200,
+      value: Object.freeze({
+        items: Object.freeze(entries.slice(offset, offset + limit)),
+        total: entries.length,
+        nextOffset: offset + limit < entries.length ?
+          offset + limit : null
+      })
+    });
+    this.omu.record("Log", source, "Provider.Contract.List", 200);
+    return result;
+  }
+
   discoverCatalog(source, command, kind, selector = {}, options = {}) {
     if (typeof source !== "string" ||
         !this.registry.objects.has(source)) {

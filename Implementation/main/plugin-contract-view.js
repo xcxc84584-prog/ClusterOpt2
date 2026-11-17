@@ -96,6 +96,34 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
   overview.append(node(doc,"p","pm-contract-description",
     descriptor.description || t("未提供描述","No description registered")));
   host.append(overview);
+  if (entry.kind === "Request" || entry.kind === "Provider" ||
+      entry.kind === "Protocol" || entry.kind === "Action") {
+    const envelopes=section(doc,t("Request / Response 對稱協議",
+      "Symmetric Request / Response protocol"));
+    const methods=node(doc,"div","pm-contract-fields");
+    const call = entry.kind === "Protocol" ? entry.id + "(...)" :
+      entry.kind === "Provider" ?
+        "HubUnit.requestService(source, service, action, payload, options)" :
+        "HubUnit.request(source, target, action, payload, options)";
+    methods.append(field(doc,"Request",call));
+    methods.append(field(doc,"Response",
+      "{ ok: boolean, status: number, value?: output, error?: string }"));
+    methods.append(field(doc,t("輸入 Payload", "Input payload"),
+      descriptor.inputSchema ?
+        JSON.stringify(descriptor.inputSchema) :
+        t("契約未宣告", "Schema not declared")));
+    methods.append(field(doc,t("輸出 Value", "Output value"),
+      descriptor.outputSchema ?
+        JSON.stringify(descriptor.outputSchema) :
+        t("契約未宣告", "Schema not declared")));
+    envelopes.append(methods);
+    envelopes.append(node(doc,"p","pm-muted",t(
+      "此處為已註冊契約；HubUnit 仍在每次呼叫時檢查權限，" +
+        "失敗結果記錄至 EHU。",
+      "These are registered contracts. HubUnit checks authorization " +
+        "on each call and records failures in EHU.")));
+    host.append(envelopes);
+  }
   if (descriptor.inputSchema || descriptor.outputSchema) {
     const schemas=section(doc,t("輸入與輸出結構","Input and output schemas"));
     if (descriptor.inputSchema) schemas.append(schemaRow(doc,

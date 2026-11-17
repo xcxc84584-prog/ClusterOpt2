@@ -1,3 +1,6 @@
+import { downloadPluginTemplate } from
+  "./plugin-template-download.js";
+
 /**
  * Resources: independent scroll panes and user-initiated data-only exports.
  * Provider Manifests do not contain binary package download URLs. Never
@@ -62,7 +65,40 @@ async function mountReviewedFile(doc, plugin, file, core) {
   // File text is not imported or executed. Only the bundled reviewed
   // module can register an Object and Provider through HubUnit.
   const module = await import("../plugins/multilang-highlighter.js");
-  return module.install(core);
+  const installed = module.install(core);
+  if (installed.ok) await core.rememberReviewedPlugin(plugin.id,true);
+  return installed;
+}
+
+/**
+ * Restore only pre-reviewed, shipped code. Imported user source stays inert
+ * until the untrusted sandbox and per-call ACL are fully validated.
+ */
+export async function restoreReviewedPlugins(core) {
+  const saved = await core.listReviewedPlugins();
+  if (!saved.ok) return saved;
+  let restored = 0;
+  let enabledRestored = 0;
+  for (const entry of saved.value) {
+    if (!PLUGINS.some(plugin=>plugin.id===entry.providerId)) continue;
+    try {
+      const module = await import("../plugins/multilang-highlighter.js");
+      const result = module.install(core);
+      if (!result.ok) continue;
+      const manifest = core.uru.getProvider(entry.providerId);
+      if (!manifest) continue;
+      const enabled = core.setProviderEnabled(
+        manifest.objectId,entry.providerId,entry.enabled);
+      if (enabled.ok) {
+        restored++;
+        if (entry.enabled) enabledRestored++;
+      }
+    } catch {
+      core.omu.record("EHU","ui","Plugin.ReviewedRestore",500,
+        entry.providerId);
+    }
+  }
+  return {ok:true,status:200,value:{restored,enabledRestored}};
 }
 
 export function renderResources(doc, host, options) {
@@ -97,6 +133,101 @@ export function renderResources(doc, host, options) {
         action: item.action, status: item.status
       }))
     })));
+  // Portable multi-file plugin bundles are data, not permission grants.
+  actions.append(button(doc, t("下載插件包", "Export plugin bundle"),
+    async () => {
+      const stored = await core.listStoredPluginBundles();
+      const reviewed = await core.listReviewedPlugins();
+      if (!stored.ok || !reviewed.ok) return;
+      const selection=new Map(reviewed.value.filter(item=>
+        PLUGINS.some(p=>p.id===item.providerId)).map(item=>
+        [item.providerId,item.enabled]));
+      for(const provider of options.providers()) {
+        if(!PLUGINS.some(item=>item.id===provider.providerId))continue;
+        selection.set(provider.providerId,
+          !core.uru.disabledProviders.has(provider.providerId));
+      }
+      downloadJSON(doc, "clusteropt2-plugin-bundle.json", {
+        format: "cluster-plugin-collection", formatVersion: 1,
+        packages: stored.value.map(item => item.snapshot),
+        reviewed: [...selection].map(([providerId,enabled])=>
+          ({providerId,enabled}))
+      });
+    }));
+  const bundlePicker = el(doc, "input", "pm-native-picker");
+  bundlePicker.type = "file";
+  bundlePicker.accept = ".json,application/json";
+  bundlePicker.setAttribute("aria-label", t("導入插件包",
+    "Import plugin bundle"));
+  const importStatus = el(doc, "p", "pm-muted");
+  importStatus.setAttribute("role", "status");
+  bundlePicker.addEventListener("change", async () => {
+    const file = bundlePicker.files?.[0];
+    bundlePicker.value = "";
+    if (!file) return;
+    if (file.size > 25165824) {
+      importStatus.textContent = t("插件包過大。", "Bundle too large.");
+      return;
+    }
+    try {
+      const archive = JSON.parse(await file.text());
+      if (archive?.format !== "cluster-plugin-collection" ||
+          archive.formatVersion !== 1 ||
+          !Array.isArray(archive.packages) ||
+          archive.packages.length > 32) {
+        throw Error("Invalid bundle");
+      }
+      const reviewed=archive.reviewed??[];
+      if(!Array.isArray(reviewed) || reviewed.length>PLUGINS.length ||
+         new Set(reviewed.map(entry=>entry?.providerId)).size!==
+           reviewed.length ||
+         reviewed.some(entry=>!entry ||
+           Object.keys(entry).length!==2 ||
+           typeof entry.enabled!=="boolean" ||
+           !PLUGINS.some(p=>p.id===entry.providerId))) {
+        throw Error("Unrecognized reviewed plugin");
+      }
+      // Validate all packages before persisting any, avoiding partial
+      // imports when one entry is invalid.
+      for (const snapshot of archive.packages) {
+        if (!core.inspectPluginBundle(snapshot).ok) {
+          throw Error("Invalid package contents");
+        }
+      }
+      let saved = 0;
+      for (const snapshot of archive.packages) {
+        const result = await core.savePluginBundle(snapshot);
+        if (!result.ok) break;
+        saved++;
+      }
+      let reviewedSaved=0;
+      if(saved===archive.packages.length) {
+        for(const entry of reviewed) {
+          const result=await core.rememberReviewedPlugin(
+            entry.providerId,entry.enabled);
+          if(!result.ok)break;
+          reviewedSaved++;
+        }
+        if(reviewedSaved===reviewed.length) {
+          await restoreReviewedPlugins(core);
+          options.onPluginInstalled?.();
+        }
+      }
+      importStatus.textContent =
+        saved===archive.packages.length &&
+        reviewedSaved===reviewed.length ?
+        t("插件包已匯入；已審核插件已恢復，自製插件保留待授權。",
+          "Bundle imported: reviewed plugins restored; user code inactive.") :
+        t("部分套件無法儲存，請檢查瀏覽器儲存權限。",
+          "Some packages could not be stored.");
+    } catch {
+      importStatus.textContent = t("插件包格式錯誤，已拒絕導入。",
+        "Invalid bundle; import rejected.");
+    }
+  });
+  actions.append(button(doc, t("導入插件包", "Import plugin bundle"),
+    () => bundlePicker.click()));
+  exports.append(bundlePicker, importStatus);
   exports.append(actions);
   exports.append(el(doc, "p", "pm-muted", t(
     "匯出內容不包含敏感 Payload。",
@@ -118,6 +249,22 @@ export function renderResources(doc, host, options) {
     "Search downloadable plugins...");
   search.setAttribute("aria-label", t("搜尋可下載插件",
     "Search downloadable plugins"));
+  const template=el(doc,"article",
+    "pm-resource-card pm-template-card");
+  template.append(el(doc,"strong","",
+    t("插件製作範本","Plugin development template")));
+  template.append(el(doc,"p","pm-muted",t(
+    "下載完整 HTML／CSS／JS 範本，開發前請先查看 API 列表的" +
+      " Request 輸入與 Response 輸出契約。",
+    "Download a full HTML/CSS/JS project. Read API List Request" +
+      " and Response contracts before writing a plugin.")));
+  const templateDownload=button(doc,t("下載製作範本 ZIP",
+    "Download template ZIP"),()=>{
+    const locale=core.edpmu.get("Language");
+    downloadPluginTemplate(doc,locale==="en"?"en":"zh-Hant");
+  });
+  templateDownload.id="pluginTemplateDownload";
+  template.append(templateDownload);
   const cards = el(doc, "div", "pm-resource-cards");
   const status = el(doc, "p", "pm-market-status");
   status.setAttribute("role", "status");
@@ -196,8 +343,67 @@ export function renderResources(doc, host, options) {
   }
   search.addEventListener("input", renderCards);
   renderCards();
+  // PR13.2–13.4: explicit folder gesture, bounded data intake,
+  // separate consent, then HubUnit/URU-backed sandbox installation.
+  const localPackage = button(doc, t("選擇並裝載自製插件資料夾",
+    "Select and install custom plugin folder"), async event => {
+    // Native click events are trusted; plugin code in an opaque sandbox
+    // cannot synthesize a valid host activation gesture.
+    if (event && event.isTrusted === false) return;
+    status.textContent = t("正在讀取所選插件包...",
+      "Reading selected plugin package...");
+    const result = await core.localPluginPackage.selectAndStage();
+    if (!result.ok || !result.value.snapshot) {
+      status.textContent = result.ok ?
+        t("無法讀取完整資料夾，未執行插件。",
+          "Complete folder access unavailable; plugin not executed.") :
+        t("插件包驗證失敗（狀態 ",
+          "Package validation failed (status ") + result.status + ").";
+      return;
+    }
+    const snapshot = result.value.snapshot;
+    const saved = await core.savePluginBundle(snapshot);
+    if (!saved.ok) {
+      status.textContent = t("插件包未能保存，未進行安裝。",
+        "Package persistence failed; installation aborted.");
+      return;
+    }
+    const provider = result.value.manifest.provider;
+    const summary = t(
+      "確認執行自製插件？\\nProvider: ",
+      "Run this user-authored plugin?\\nProvider: ") +
+      provider.providerId + "\\n" +
+      t("要求權限：", "Requested permissions: ") +
+      (provider.permissions.join(", ") ||
+        t("無", "None")) + "\\n" +
+      t("插件將在隔離環境執行，無主頁權限。",
+        "The plugin runs in an isolated sandbox without host access.");
+    const consented = doc.defaultView.confirm(summary);
+    if (!consented) {
+      status.textContent = t("套件已保存為待審核，未執行。",
+        "Package stored as pending review; not executed.");
+      return;
+    }
+    status.textContent = t("正在啟動隔離插件...",
+      "Starting isolated plugin...");
+    const installed = await core.pluginHostInstaller.install(snapshot,{
+      consented: true,
+      approvedPermissions: [...provider.permissions]
+    });
+    status.textContent = installed.ok ?
+      t("插件已透過 HubUnit／URU 註冊並在隔離環境啟動。",
+        "Plugin registered via HubUnit/URU in isolated sandbox.") :
+      t("安全裝載失敗（狀態 ", "Safe activation failed (status ") +
+      installed.status + ").";
+    if (installed.ok) onPluginInstalled?.();
+  });
+  localPackage.setAttribute("aria-label", t(
+    "選擇資料夾、審核權限並裝載自製插件",
+    "Choose folder, approve capabilities, install custom plugin"));
+  const localGroup = el(doc, "section", "pm-resource-local");
+  localGroup.append(localPackage);
   heading.append(search);
-  right.append(heading, cards, status, filePicker);
+  right.append(heading, template, localGroup, cards, status, filePicker);
   layout.append(left, right);
   host.append(layout);
 }

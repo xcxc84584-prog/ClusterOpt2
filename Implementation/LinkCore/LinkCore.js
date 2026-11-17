@@ -4,6 +4,19 @@ import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
 import { ProviderManifestPolicy } from
   "../property/ProviderManifestPolicy.js";
+import { PluginPackageManifestPolicy } from
+  "../property/PluginPackageManifestPolicy.js";
+import { PluginRPCContractPolicy } from
+  "../property/PluginRPCContractPolicy.js";
+import { HubProtocolPolicy } from "../property/HubProtocolPolicy.js";
+import { PluginCapabilityReviewPolicy } from
+  "../property/PluginCapabilityReviewPolicy.js";
+import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
+import { PluginHostInstallUnit } from "./PluginHostInstallUnit.js";
+import { PluginFolderPackageUnit } from "./PluginFolderPackageUnit.js";
+import { PluginPackageStoreUnit } from "./PluginPackageStoreUnit.js";
+import { PluginFolderPackagePolicy } from
+  "../property/PluginFolderPackagePolicy.js";
 import { ProviderSharedPropertyPolicy } from
   "../property/ProviderSharedPropertyPolicy.js";
 import { ProviderFactoryPolicy } from
@@ -67,9 +80,14 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.services = new ServiceRegistry(this.uru);
     this.omu = new ObjectManagementUnit();
+    this.localPluginPackage = new PluginLocalPackageUnit(this.omu);
+    this.pluginFolderPackage = new PluginFolderPackageUnit(this.omu);
+    this.pluginPackageStore = new PluginPackageStoreUnit(this.omu);
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog, this.services);
+    this.pluginHostInstaller = new PluginHostInstallUnit(this,
+      typeof document === "undefined" ? null : document);
     this.catalogQuery = new CatalogQuery(this.catalog);
     Object.defineProperty(this, "version", {
       value: ReleaseVersion.product, enumerable: true,
@@ -85,6 +103,26 @@ export class LinkCore {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     }
+    for (const [name, value] of [
+      ["PluginRPCContractPolicy", PluginRPCContractPolicy],
+      ["PluginCapabilityReviewPolicy", PluginCapabilityReviewPolicy]
+    ]) {
+      this.hub.registerProperty(name, value, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    }
+    this.hub.registerProperty("HubProtocolPolicy",
+      HubProtocolPolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    this.hub.registerProperty("PluginFolderPackagePolicy",
+      PluginFolderPackagePolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    this.hub.registerProperty("PluginPackageManifestPolicy",
+      PluginPackageManifestPolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
     this.hub.registerProperty("ProviderManifestPolicy",
       ProviderManifestPolicy, {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
@@ -207,6 +245,37 @@ export class LinkCore {
     }), { owners: ["LinkCore"] });
   }
 
+  /** Host-only data import/export. Never auto-registers Providers. */
+  snapshotPluginFolder(directory) {
+    return this.pluginFolderPackage.snapshot(directory);
+  }
+  inspectPluginBundle(snapshot) {
+    return this.pluginFolderPackage.inspectImport(snapshot);
+  }
+  savePluginBundle(snapshot) {
+    return this.pluginPackageStore.save(snapshot);
+  }
+  listStoredPluginBundles() {
+    return this.pluginPackageStore.list();
+  }
+  removeStoredPluginBundle(providerId) {
+    return this.pluginPackageStore.remove(providerId);
+  }
+  rememberReviewedPlugin(providerId, enabled = true) {
+    return this.pluginPackageStore.rememberReviewed(providerId,enabled);
+  }
+  listReviewedPlugins() {
+    return this.pluginPackageStore.listReviewed();
+  }
+  forgetReviewedPlugin(providerId) {
+    return this.pluginPackageStore.forgetReviewed(providerId);
+  }
+
+  /** Host-only file intake: never exposed on the Cluster public API. */
+  stageLocalPluginDirectory(directory) {
+    return this.localPluginPackage.stageDirectory(directory);
+  }
+
   register(object) { return this.hub.register(object); }
   unregister(id) { return this.hub.unregister(id); }
   registerProvider(source, manifest) {
@@ -318,6 +387,14 @@ export class LinkCore {
     }
     return result;
   }
+  listActionContracts(source, options = {}) {
+    return this.hub.listActionContracts(source, options);
+  }
+
+  listProviderContracts(source, options = {}) {
+    return this.hub.listProviderContracts(source, options);
+  }
+
   discover(source, command, kind, selector = {}, options = {}) {
     return this.hub.discoverCatalog(source, command, kind,
       selector, options);

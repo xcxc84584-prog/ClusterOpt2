@@ -48,9 +48,9 @@ test("live Provider manifest publishes inspectable API contract",
     await expect(page.locator(".pm-permission-controls input"))
       .toBeChecked();
     await page.locator(".pm-tabs [role=tab]").nth(1).click();
-    await expect(page.locator(".pm-api-entry")
+    await expect(page.locator(".pm-api-row-link")
       .filter({hasText:"example.render"})).toBeVisible();
-    await page.locator(".pm-api-entry")
+    await page.locator(".pm-api-row-link")
       .filter({hasText:"example.render"}).click();
     await expect(page.locator(".pm-contract-json")).toContainText(
       '"text"');
@@ -216,11 +216,13 @@ test("API explorer presents schema fields and raw contract",
     });
     await page.locator(".pm-tabs [role=tab]").nth(1).click();
     await page.locator("#pluginApiSearch").fill("schema.service");
-    await page.locator(".pm-api-entry").click();
+    await page.locator(".pm-api-row-link").click();
     await expect(page.locator(".pm-contract-heading"))
       .toContainText("schema.service");
     await expect(page.locator(".pm-contract-section"))
-      .toHaveCount(3);
+      .toHaveCount(4);
+    await expect(page.locator(".pm-contract-section"))
+      .toContainText(["契約概覽", "Request / Response", "輸入與輸出", "原始註冊契約"]);
     await expect(page.locator(".pm-schema-row"))
       .toContainText(["輸入","message","輸出"]);
     await expect(page.locator(".pm-contract-json"))
