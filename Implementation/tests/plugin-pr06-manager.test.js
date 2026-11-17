@@ -17,7 +17,7 @@ test("PR06.08 four pages are separate and no inert overview tab", () => {
   assert.match(source, /event\.isTrusted/);
   assert.match(source, /grantPluginPermission\(/);
   assert.match(source, /revokePluginPermission\(/);
-  assert.match(source, /textContent =/);
+  assert.match(source, /textContent=String\(value\)/);
 });
 
 test("PR06.08 real permissions are URU-owned, no simulated fixtures", () => {
