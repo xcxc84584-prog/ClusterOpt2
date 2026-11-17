@@ -102,3 +102,30 @@ test("PR8+25 Fix2: repicking the same file resumes same tab",
     assert.equal((await call("syncExternal")).status, 200);
     assert.equal(doc.accessBlocked, false);
   });
+
+test("PR8+25 Fix2: external-first denied reload restores previous status",
+  async () => {
+    let reads = 0;
+    const handle = {
+      kind: "file", name: "user.txt",
+      async getFile() {
+        reads++;
+        if (reads === 1) {
+          return new File(["updated elsewhere"], "user.txt", {
+            lastModified: 200
+          });
+        }
+        throw new DOMException("Denied", "NotAllowedError");
+      }
+    };
+    const { doc, call } = setup(handle);
+    doc.error = "previous";
+    const result = await call("setPriority", { priority: "external" });
+    assert.equal(result.status, 200);
+    assert.equal((await call("syncExternal")).status, 200);
+    assert.equal(doc.status, "yellow");
+    assert.equal(doc.error, "previous");
+    assert.equal(doc.text, "UNSAVED EDIT");
+    assert.equal(doc.accessBlocked, true);
+    assert.equal(reads, 2);
+  });
