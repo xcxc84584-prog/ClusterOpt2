@@ -95,6 +95,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
   const toolbar=dom(doc,"div","pm-search-row");
   let selected="",active="permissions",query="",pending=null;
   let selectedAPI=null,apiQuery="",sidebarOpen=true;
+  let lastView="",lastLocale="",lastSelected="",lastProviders="";
   search.type="search"; search.id="pluginManagerSearch";
   search.placeholder="Search plugin...";
   toolbar.append(search);
@@ -548,10 +549,25 @@ export function mountPluginManagerUI(core,doc,options={}) {
     page.append(section);
   }
 
-  function render() {
+  function render(force=true) {
     const all=providers();
     if(selected&&!all.some(x=>x.providerId===selected))selected="";
     if(!selected&&all.length)selected=all[0].providerId;
+    const language=locale();
+    const providerState=all.map(p=>p.providerId+":"+
+      (disabled(p)?"off":"on")+":"+
+      p.provides.map(item=>item.version).join(",")).join("|");
+    // Tool-tab refreshes are frequent. Never replace the active page
+    // when its backing state is unchanged: scroll, focus, and caret
+    // belong to the existing DOM instance.
+    if(!force&&lastView===active&&lastLocale===language&&
+        lastSelected===selected&&lastProviders===providerState) {
+      return;
+    }
+    lastView=active;
+    lastLocale=language;
+    lastSelected=selected;
+    lastProviders=providerState;
     renderSidebar();
     sideHeading.querySelector(".pm-side-title").textContent=
       t("插件清單","Plugin List");
@@ -598,5 +614,5 @@ export function mountPluginManagerUI(core,doc,options={}) {
     search.focus();search.setSelectionRange(caret,caret);
   });
   activate("permissions");
-  return Object.freeze({refresh:render,select:activate});
+  return Object.freeze({refresh:()=>render(false),select:activate});
 }
