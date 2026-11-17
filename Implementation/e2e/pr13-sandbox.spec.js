@@ -139,3 +139,35 @@ test("PR13.7 sandbox CSP denies network exfiltration and host storage",
       networkDenied: true, storageDenied: true
     });
   });
+
+test("PR13.7 synchronous infinite loop cannot block host timeout",
+  async ({ page }) => {
+    await page.goto("/");
+    const outcome = await page.evaluate(async manifest => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const raw = JSON.stringify(manifest);
+      const source = `export function transform() {
+        while (true) {}
+      }`;
+      const snapshot = {
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText: raw,
+        files: { "plugin.json": btoa(raw), "entry.js": btoa(source) }
+      };
+      const installed = await linkCore.pluginHostInstaller.install(
+        snapshot, { consented: true });
+      if (!installed.ok) return { installed };
+      const bridge = linkCore.pluginHostInstaller.handles.get(
+        manifest.provider.providerId);
+      const start = performance.now();
+      const result = await bridge.invoke(
+        "example.sandbox.smoke", "transform", {}, 150);
+      const elapsed = performance.now() - start;
+      const terminated = bridge.closed && bridge.frame === null;
+      return { status: result.status, elapsed, terminated };
+    }, manifest("user.sandbox-cpu-loop"));
+    expect(outcome.status).toBe(504);
+    expect(outcome.terminated).toBe(true);
+    expect(outcome.elapsed).toBeLessThan(3000);
+  });
