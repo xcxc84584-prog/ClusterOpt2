@@ -22,7 +22,8 @@ export class PluginExplorerObject {
     this.authorization = {
       default: "Private", status: "Public", roots: "Public",
       list: "Public",
-      read: "Public", create: "Public", update: "Public",
+      read: "Public", readChunk: "Public",
+      create: "Public", update: "Public",
       delete: "Public"
     };
     this.ocda = {
