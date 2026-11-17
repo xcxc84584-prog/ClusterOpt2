@@ -53,7 +53,7 @@ test("PR14.3 AI Agent button, isolated output, language and removal",
     const frame = page.frameLocator(".plugin-extension-frame");
     await expect(frame.getByText("連結本地 AI Agent")).toBeVisible();
     await expect(frame.getByText(
-      "配對本地 Agent 並設定模型後即可執行純文字任務。")).toBeVisible();
+      "完成本地 Agent 配對與 MCP 授權後，可於此查看操作狀態與輸出。")).toBeVisible();
     await expect(frame.locator("textarea")).toHaveCount(0);
 
     const isolation = await page.evaluate(() => {
@@ -81,7 +81,7 @@ test("PR14.3 AI Agent button, isolated output, language and removal",
     await expect(frame.getByText("Connect local AI Agent"))
       .toBeVisible();
     await expect(frame.getByText(
-      "Pair Local Agent and configure a model to run text-only tasks."))
+      "Pair the Local Agent and authorize MCP to view operation status and output here."))
       .toBeVisible();
 
     const result = await page.evaluate(async () => {
