@@ -186,3 +186,24 @@ through HubUnit, but remains pure and cannot grant access. Descriptor
 remains detached/frozen. Complexity O(version length), constant bounded
 memory. Node and Chromium real integration tests added to CI.
 Status: implemented, exact-head CI pending.
+
+## PR02.08 — JSON/Markdown API Docs (GitHub architecture comparison)
+Reviewed [AsyncAPI Generator](https://github.com/asyncapi/generator),
+[AsyncAPI Markdown template](https://github.com/asyncapi/markdown-template),
+and [VS Code extension API guidelines](https://github.com/Microsoft/vscode/wiki/Extension-API-guidelines).
+Reuse the machine-readable authorized Catalog descriptor projection instead
+of maintaining parallel documentation templates, schema registries or a
+third-party templating engine. Pure CatalogDocumentation generates JSON
+(schemaVersion 1) and Markdown from HubUnit-scoped discover calls.
+It filters source permissions BEFORE serialization, uses pagination of
+100, caps data at 4096 entries and UTF-8 output at 64 KiB (413 on
+oversize), and escapes Markdown/HTML-bearing metadata. No links to
+untrusted files, browser DOM insertion, disk writes, or plugin execution.
+The policy is a separate immutable shared LinkCore Property. Code is
+O(visible metadata + serialized text length), bounded by the policy
+and CatalogQuery; repeated paged collection is acceptable for this
+read-only small output. Generation may see dynamic catalog updates
+between pages, but each page is independently authorization-filtered.
+Live browser facade remains unavailable until PR02.10.
+Tests: Node injection/privacy/limit and real Chromium legacy compatibility.
+CI: exact-head dedicated catalog, OCDA, PR1, Windows pending.
