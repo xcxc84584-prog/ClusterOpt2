@@ -1,13 +1,14 @@
+import { Language } from "../property/Language.js";
 /**
  * PLUGIN PR06.08: four separate Plugin Manager pages.
  * Read-only plugin metadata comes from URU and OMU; no sample data.
  * A trusted DOM event can revoke a grant, but cannot self-authorize one.
  */
 const PAGES = Object.freeze([
-  ["list", "插件列表 / Plugins"],
-  ["permissions", "插件權限 / Permissions"],
-  ["api", "API 列表 / API"],
-  ["ehu", "EHU 日誌 / EHU"]
+  ["list", "pluginPageList"],
+  ["permissions", "pluginPagePermissions"],
+  ["api", "pluginPageAPI"],
+  ["ehu", "pluginPageEHU"]
 ]);
 
 function element(doc, tag, className, value) {
@@ -36,7 +37,8 @@ export function mountPluginManagerUI(core, doc) {
   nav.setAttribute("aria-label", "Plugin Manager pages");
   const content = element(doc, "div", "plugin-manager-page");
   const tabs = new Map();
-  const headings = new Map();
+  const t = key => Language.translate(
+    core.readProperty("ui", "Language").value, key);
   let active = "list";
   let selected = "";
   let searchText = "";
@@ -70,12 +72,12 @@ export function mountPluginManagerUI(core, doc) {
     content.append(element(doc, "p", "plugin-manager-muted", message));
 
   function listPage() {
-    const head = title("插件列表", "已註冊的 Provider，沒有自動安裝功能");
+    const head = title(t("pluginPageList"), t("pluginListDesc"));
     const search = element(doc, "input", "plugin-manager-search");
     search.type = "search";
     search.value = searchText;
-    search.placeholder = "搜尋插件 ID / Object";
-    search.setAttribute("aria-label", "搜尋插件");
+    search.placeholder = t("pluginListSearch");
+    search.setAttribute("aria-label", t("pluginListSearch"));
     search.addEventListener("input", () => {
       const position = search.selectionStart;
       searchText = search.value;
@@ -85,9 +87,10 @@ export function mountPluginManagerUI(core, doc) {
       replacement.setSelectionRange(position, position);
     });
     const chooser = element(doc, "select", "plugin-manager-filter");
-    chooser.setAttribute("aria-label", "插件狀態篩選");
+    chooser.setAttribute("aria-label", t("pluginListFilter"));
     for (const [value, caption] of [
-      ["all", "全部"], ["enabled", "啟用"], ["disabled", "停用"]
+      ["all", t("pluginAll")], ["enabled", t("pluginEnabled")],
+      ["disabled", t("pluginDisabled")]
     ]) {
       const item = element(doc, "option", "", caption);
       item.value = value;
@@ -103,7 +106,7 @@ export function mountPluginManagerUI(core, doc) {
       (p.providerId.toLowerCase().includes(searchText.toLowerCase()) ||
         p.objectId.toLowerCase().includes(searchText.toLowerCase())) &&
       (filter === "all" || status(p).toLowerCase() === filter));
-    if (!shown.length) return empty("目前沒有符合條件的插件。");
+    if (!shown.length) return empty(t("pluginListEmpty"));
     for (const provider of shown) {
       const row = card();
       const line = element(doc, "div", "plugin-manager-line");
@@ -113,7 +116,7 @@ export function mountPluginManagerUI(core, doc) {
         element(doc, "div", "plugin-manager-muted",
           provider.objectId + " · " + status(provider) +
           " · " + provider.execution.isolation));
-      line.append(details, button("權限", () => {
+      line.append(details, button(t("pluginPermissionsShort"), () => {
         selected = provider.providerId;
         activate("permissions");
       }));
@@ -122,9 +125,9 @@ export function mountPluginManagerUI(core, doc) {
   }
 
   function permissionsPage() {
-    title("插件權限", "只顯示 Manifest 申請與實際 Grant；禁止由頁面自行提升權限");
+    title(t("pluginPagePermissions"), t("pluginPermissionDesc"));
     const providers = data();
-    if (!providers.length) return empty("尚無已註冊插件可供授權。");
+    if (!providers.length) return empty(t("pluginPermissionEmpty"));
     const ordered = [...providers].sort((a, b) =>
       Number(b.providerId === selected) - Number(a.providerId === selected));
     for (const provider of ordered) {
@@ -133,15 +136,17 @@ export function mountPluginManagerUI(core, doc) {
         provider.providerId));
       if (!provider.permissions.length) {
         section.append(element(doc, "p", "plugin-manager-muted",
-          "未申請任何權限"));
+          t("pluginPermissionNone")));
       }
       for (const permission of provider.permissions) {
         const granted = core.checkPluginPermission(
           provider.providerId, permission);
         const row = element(doc, "div", "plugin-manager-line");
         row.append(element(doc, "span", "",
-          permission + " · " + (granted ? "已授權" : "未授權")));
-        const revoke = button(granted ? "撤銷" : "需經安全審核",
+          permission + " · " + (granted ? t("pluginPermissionGranted") :
+            t("pluginPermissionDenied"))));
+        const revoke = button(granted ? t("pluginPermissionRevoke") :
+          t("pluginPermissionReview"),
           () => {
             const result = core.revokePluginPermission(
               provider.objectId, provider.providerId, permission);
@@ -151,13 +156,13 @@ export function mountPluginManagerUI(core, doc) {
         section.append(row);
       }
     }
-    empty("授予權限需由可信的明確同意流程完成，不能透過 Manifest 自行取得。");
+    empty(t("pluginPermissionNotice"));
   }
 
   function apiPage() {
-    title("API 列表", "由 URU Provider Manifest 即時產生");
+    title(t("pluginPageAPI"), t("pluginAPIDesc"));
     const providers = data();
-    if (!providers.length) return empty("目前沒有 Provider API。");
+    if (!providers.length) return empty(t("pluginAPIEmpty"));
     const section = card();
     const table = element(doc, "table", "plugin-manager-table");
     const head = element(doc, "thead");
@@ -179,15 +184,16 @@ export function mountPluginManagerUI(core, doc) {
   }
 
   function ehuPage() {
-    title("EHU 日誌", "只讀取 OMU 錯誤記錄，不顯示原始敏感 Payload");
+    title(t("pluginPageEHU"), t("pluginEHUDesc"));
     const logs = core.getSnapshot().logs.filter(event =>
       event.kind === "EHU").slice(-100).reverse();
-    if (!logs.length) return empty("目前沒有 EHU 錯誤紀錄。");
+    if (!logs.length) return empty(t("pluginEHUEmpty"));
     const section = card();
     const table = element(doc, "table", "plugin-manager-table");
     const head = element(doc, "thead");
     const tr = element(doc, "tr");
-    for (const label of ["時間", "來源", "事件", "狀態"]) {
+    for (const label of [t("pluginTime"), t("pluginSource"),
+      t("pluginEvent"), t("pluginState")]) {
       tr.append(element(doc, "th", "", label));
     }
     head.append(tr);
@@ -209,6 +215,7 @@ export function mountPluginManagerUI(core, doc) {
     content.replaceChildren();
     views[active]();
     for (const [id, item] of tabs) {
+      item.textContent = t(PAGES.find(p => p[0] === id)[1]);
       if (id === active) item.setAttribute("aria-current", "page");
       else item.removeAttribute("aria-current");
     }
@@ -222,8 +229,8 @@ export function mountPluginManagerUI(core, doc) {
     legacyMenu.hidden = true;
     draw();
   }
-  for (const [id, label] of PAGES) {
-    const item = button(label, () => activate(id));
+  for (const [id, key] of PAGES) {
+    const item = button(t(key), () => activate(id));
     tabs.set(id, item);
     nav.append(item);
   }
