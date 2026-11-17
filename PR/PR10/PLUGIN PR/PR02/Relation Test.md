@@ -161,3 +161,16 @@ New full exact-head CI status pending.
 | Real provider execution during discover | none | no dependency edges |
 | Legacy Cluster API | unchanged | Chromium |
 | Windows / full Node / browser exact SHA | pending | Actions |
+
+## PR02.10 — external facade acceptance (exact-head CI required)
+| Scenario | Expected | Source |
+| --- | --- | --- |
+| Browser Cluster.api list/describe/query/docs | 200 | Chromium facade spec |
+| Existing Cluster.version/log/rep/objectlist/propertylist | unchanged | Chromium facade spec |
+| Facade Object frozen, no request/register | no mutation | Node + Chromium |
+| Browser origin fixed to user, UI identity fixed | no source spoofing | Node test |
+| Hidden Private descriptor / unknown entry | 404 EHU | Node test |
+| Invalid page / docs format | 400 EHU | Node test |
+| No metadata lookup executes provider | no dependencies | Node test |
+| Dedicated, OCDA, PR1, Windows | exact-head required | GitHub Actions |
+| Real 5GiB editor/save/physical File System Access | out of scope | NOT TESTED |
