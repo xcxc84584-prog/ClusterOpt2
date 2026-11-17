@@ -1,4 +1,4 @@
-import { validateObjectContract } from "./ObjectContract.js";
+import { describeObjectAPIs, validateObjectContract } from "./ObjectContract.js";
 
 /**
  * Volatile runtime registry. No localStorage: registrations expire on reload.
@@ -29,6 +29,16 @@ export class UnifiedRegistrationUnit {
     }
     this.objects.set(object.id, object);
     return { ok: true, status: 200, value: object };
+  }
+
+  /**
+   * Internal metadata projection; never implicitly invoke an unknown
+   * factory or grant an external caller a HubUnit permission.
+   */
+  describeAPI(id) {
+    const object = this.objects.get(id);
+    if (!object) return { ok: false, status: 404 };
+    return describeObjectAPIs(object);
   }
 
   addFactory(id, factory) {

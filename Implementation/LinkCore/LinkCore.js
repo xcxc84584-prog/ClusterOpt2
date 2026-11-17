@@ -1,3 +1,16 @@
+import { CatalogCollection } from "./CatalogCollection.js";
+import { createClusterAPIFacade } from "./ClusterAPIFacade.js";
+import { CatalogQuery } from "./CatalogQuery.js";
+import { CatalogVisibilityPolicy } from
+  "../property/CatalogVisibilityPolicy.js";
+import { CatalogVersionPolicy } from
+  "../property/CatalogVersionPolicy.js";
+import { CatalogDocumentation } from
+  "../property/CatalogDocumentation.js";
+import { PropertyDescriptorPolicy } from
+  "../property/PropertyDescriptorPolicy.js";
+import { APIDescriptorPolicy } from
+  "../property/APIDescriptorPolicy.js";
 import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
 import { Language } from "../property/Language.js";
 import { StoragePriority } from "../property/StoragePriority.js";
@@ -39,8 +52,30 @@ export class LinkCore {
     this.edpmu = new EntireDomainPropertyManagementUnit();
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
-    this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
+    this.catalog = new CatalogCollection(this.uru, this.edpmu);
+    this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
+      undefined, this.catalog);
+    this.catalogQuery = new CatalogQuery(this.catalog);
     this.version = "0.0.9-pr9.patch9";
+    this.hub.registerProperty("CatalogDocumentation",
+      CatalogDocumentation, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
+    this.hub.registerProperty("CatalogVersionPolicy",
+      CatalogVersionPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
+    this.hub.registerProperty("CatalogVisibilityPolicy",
+      CatalogVisibilityPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
+    this.hub.registerProperty("PropertyDescriptorPolicy",
+      PropertyDescriptorPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
+    this.hub.registerProperty("APIDescriptorPolicy", APIDescriptorPolicy, {
+      owners: ["LinkCore"], visibility: "Public"
+    });
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -142,6 +177,23 @@ export class LinkCore {
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
   }
+  generateCatalogDocs(source, format, options = {}) {
+    const result = CatalogDocumentation.render(
+      (caller, command, kind, selector, context) =>
+        this.hub.discoverCatalog(caller, command, kind, selector, context),
+      source, format, options);
+    // Pure rendering has no OMU access. Record failed public boundary
+    // operations here without changing authorization or exposing content.
+    if (!result.ok) {
+      this.omu.record("EHU", source ?? "unknown", "Catalog.Document",
+        result.status, format ?? "");
+    }
+    return result;
+  }
+  discover(source, command, kind, selector = {}, options = {}) {
+    return this.hub.discoverCatalog(source, command, kind,
+      selector, options);
+  }
   readProperty(source, name) {
     return this.hub.readProperty(source, name);
   }
@@ -169,7 +221,8 @@ if (typeof window !== "undefined") {
     rep: () => linkCore.getSnapshot().dependencies,
     subobject: (path) => linkCore.subobjects(path),
     inheritedProperties: (path) => linkCore.inheritedProperties(path),
-    version: () => linkCore.getSnapshot().version
+    version: () => linkCore.getSnapshot().version,
+    api: createClusterAPIFacade(linkCore)
   });
   Object.defineProperty(window, "Cluster", {
     configurable: false, writable: false, value: methods

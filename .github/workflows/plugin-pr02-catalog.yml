@@ -1,0 +1,81 @@
+name: PLUGIN PR02 API Catalog
+on:
+  pull_request:
+    paths:
+      - "Implementation/LinkCore/LinkCore.js"
+      - "Implementation/LinkCore/CatalogCollection.js"
+      - "Implementation/LinkCore/CatalogQuery.js"
+      - "Implementation/LinkCore/AuthorizedCatalogCollection.js"
+      - "Implementation/LinkCore/HubUnit.js"
+      - "Implementation/property/CatalogVisibilityPolicy.js"
+      - "Implementation/property/CatalogVersionPolicy.js"
+      - "Implementation/property/CatalogDocumentation.js"
+      - "Implementation/LinkCore/ObjectContract.js"
+      - "Implementation/LinkCore/UnifiedRegistrationUnit.js"
+      - "Implementation/property/APIDescriptorPolicy.js"
+      - "Implementation/property/PropertyDescriptorPolicy.js"
+      - "Implementation/LinkCore/EntireDomainPropertyManagementUnit.js"
+      - "Implementation/tests/property-descriptor.test.js"
+      - "Implementation/e2e/plugin-pr02-property.spec.js"
+      - "Implementation/tests/catalog-collection.test.js"
+      - "Implementation/tests/catalog-query.test.js"
+      - "Implementation/tests/catalog-visibility.test.js"
+      - "Implementation/tests/catalog-version.test.js"
+      - "Implementation/tests/catalog-documentation.test.js"
+      - "Implementation/tests/catalog-negative-vte.test.js"
+      - "Implementation/e2e/plugin-pr02-docs.spec.js"
+      - "Implementation/e2e/plugin-pr02-negative.spec.js"
+      - "Implementation/e2e/plugin-pr02-version.spec.js"
+      - "Implementation/e2e/plugin-pr02-visibility.spec.js"
+      - "Implementation/e2e/plugin-pr02-query.spec.js"
+      - "Implementation/e2e/plugin-pr02-catalog.spec.js"
+      - "Implementation/tests/api-descriptor.test.js"
+      - "Implementation/tests/object-api-descriptors.test.js"
+      - "Implementation/e2e/plugin-pr02-descriptor.spec.js"
+      - "Implementation/e2e/plugin-pr02-object-api.spec.js"
+      - "PR/PR10/PLUGIN PR/**"
+      - ".github/workflows/plugin-pr02-catalog.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  catalog-unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: >
+          node --test Implementation/tests/catalog-negative-vte.test.js
+          Implementation/tests/catalog-documentation.test.js
+          Implementation/tests/catalog-version.test.js
+          Implementation/tests/catalog-visibility.test.js
+          Implementation/tests/catalog-query.test.js
+          Implementation/tests/catalog-collection.test.js
+          Implementation/tests/api-descriptor.test.js
+          Implementation/tests/object-api-descriptors.test.js
+          Implementation/tests/property-descriptor.test.js
+      - run: npm run check
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: >
+          npx playwright test
+          Implementation/e2e/plugin-pr02-negative.spec.js
+          Implementation/e2e/plugin-pr02-docs.spec.js
+          Implementation/e2e/plugin-pr02-version.spec.js
+          Implementation/e2e/plugin-pr02-visibility.spec.js
+          Implementation/e2e/plugin-pr02-query.spec.js
+          Implementation/e2e/plugin-pr02-catalog.spec.js
+          Implementation/e2e/plugin-pr02-descriptor.spec.js
+          Implementation/e2e/plugin-pr02-object-api.spec.js
+          Implementation/e2e/plugin-pr02-property.spec.js
+          --config Implementation/e2e/playwright.config.js
