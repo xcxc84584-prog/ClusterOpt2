@@ -11,6 +11,10 @@ import { PluginRPCContractPolicy } from
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
+import { PluginFolderPackageUnit } from "./PluginFolderPackageUnit.js";
+import { PluginPackageStoreUnit } from "./PluginPackageStoreUnit.js";
+import { PluginFolderPackagePolicy } from
+  "../property/PluginFolderPackagePolicy.js";
 import { ProviderSharedPropertyPolicy } from
   "../property/ProviderSharedPropertyPolicy.js";
 import { ProviderFactoryPolicy } from
@@ -75,6 +79,8 @@ export class LinkCore {
     this.services = new ServiceRegistry(this.uru);
     this.omu = new ObjectManagementUnit();
     this.localPluginPackage = new PluginLocalPackageUnit(this.omu);
+    this.pluginFolderPackage = new PluginFolderPackageUnit(this.omu);
+    this.pluginPackageStore = new PluginPackageStoreUnit(this.omu);
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog, this.services);
@@ -101,6 +107,10 @@ export class LinkCore {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     }
+    this.hub.registerProperty("PluginFolderPackagePolicy",
+      PluginFolderPackagePolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
     this.hub.registerProperty("PluginPackageManifestPolicy",
       PluginPackageManifestPolicy, {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
@@ -225,6 +235,23 @@ export class LinkCore {
       SYNCED: "green", DIRTY: "yellow",
       ERROR: "red", LOADING: "blue"
     }), { owners: ["LinkCore"] });
+  }
+
+  /** Host-only data import/export. Never auto-registers Providers. */
+  snapshotPluginFolder(directory) {
+    return this.pluginFolderPackage.snapshot(directory);
+  }
+  inspectPluginBundle(snapshot) {
+    return this.pluginFolderPackage.inspectImport(snapshot);
+  }
+  savePluginBundle(snapshot) {
+    return this.pluginPackageStore.save(snapshot);
+  }
+  listStoredPluginBundles() {
+    return this.pluginPackageStore.list();
+  }
+  removeStoredPluginBundle(providerId) {
+    return this.pluginPackageStore.remove(providerId);
   }
 
   /** Host-only file intake: never exposed on the Cluster public API. */
