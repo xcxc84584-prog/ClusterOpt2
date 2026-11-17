@@ -58,3 +58,33 @@ export async function downloadAgentPackage(doc) {
     win.setTimeout(() => win.URL.revokeObjectURL(url), 1000);
   }
 }
+
+/**
+ * Quick setup is a single Windows CMD entrypoint, independent of the
+ * full plugin ZIP. Its pinned helper retrieves only reviewed assets.
+ */
+export async function downloadAgentQuickSetup(doc) {
+  const win = doc.defaultView;
+  const path = PACKAGE_ROOT + "local-agent/Quick-Setup.cmd";
+  const response = await win.fetch(path, { cache: "no-store" });
+  if (!response.ok) throw Error("Quick setup asset unavailable");
+  const content = await response.text();
+  if (content.length < 500 || content.length > 16384 ||
+      !content.startsWith("@echo off")) {
+    throw Error("Invalid quick setup CMD");
+  }
+  const blob = new win.Blob([content], {
+    type: "application/octet-stream"
+  });
+  const url = win.URL.createObjectURL(blob);
+  const link = doc.createElement("a");
+  link.download = "AI-Agent-MCP-Quick-Setup.cmd";
+  link.href = url;
+  doc.body.append(link);
+  try {
+    link.click();
+  } finally {
+    link.remove();
+    win.setTimeout(() => win.URL.revokeObjectURL(url), 1000);
+  }
+}
