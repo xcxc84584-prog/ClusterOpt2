@@ -278,18 +278,18 @@ flex-basis:100%
   class="cai-setup"
   id="caiSetup">
 <h2 data-i18n="setupTitle">連結本地 AI Agent</h2>
-<p>沿用 Cluster PowerShell 的本地 Agent；初次使用請下載完整插件包、解壓縮並執行快速配置 CMD。
+<p>沿用 Cluster PowerShell 本地 Agent；初次使用只需下載單一 Quick-Setup.cmd，並依提示完成配置。
 </p>
 <p data-i18n="modelInactive">配對本地 Agent 並設定模型後即可執行純文字任務。
 </p>
 <div
   class="cai-step">
 <strong>01 · QUICK SETUP</strong>
-<p>下載 AI Agent MCP 完整 ZIP，解壓後執行 local-agent/Quick-Setup.cmd。
-Windows 視窗會顯示連接埠與 64 字元 Token。
+<p>下載 Quick-Setup.cmd 後直接執行；會自動取得必要檔案。
+ 若 43879 被占用，可選擇 P／C／O。
 </p>
 <button
-  type="button" data-quick-setup>下載 Windows 快速配置包 ZIP</button>
+  type="button" data-quick-setup>下載 Quick-Setup.cmd</button>
 </div>
 <div
   class="cai-step">
@@ -310,7 +310,7 @@ Windows 視窗會顯示連接埠與 64 字元 Token。
 <div
   class="cai-step">
 <strong>03 · VERIFY</strong>
-<p>配對成功後會自動切換至運行狀態；使用「模型設定」配置 API。
+<p>配對成功後切換至運行狀態；若使用 P 模式，請填入選擇的新埠。
 </p>
 </div>
 <p data-agent-error
@@ -337,11 +337,11 @@ Windows 視窗會顯示連接埠與 64 字元 Token。
 <div
   class="cai-guide-steps">
 <ol>
-<li>從「資源」下載完整 AI Agent MCP ZIP 並解壓縮。
+<li>點選「下載 Quick-Setup.cmd」，不需下載整個插件 ZIP。
 </li>
-<li>執行 local-agent/Quick-Setup.cmd，依提示安裝 Node.js 20+ 與依賴。
+<li>執行 Quick-Setup.cmd，依提示安裝依賴。埠占用時可選 P 改埠、C 取消、O 驗證後強制停止。
 </li>
-<li>將本機 Agent 顯示的 Token 填入主頁可信任配對視窗。
+<li>將 CMD 顯示的 Token 與埠號填入主頁可信任配對視窗。
 </li>
 <li>點選「模型設定」，在可信任視窗設定 OpenAI API Key 與模型。
 </li>
