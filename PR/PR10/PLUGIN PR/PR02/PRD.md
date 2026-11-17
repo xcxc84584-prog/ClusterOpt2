@@ -43,3 +43,7 @@ Registered-caller HubUnit discovery with CatalogVisibilityPolicy;
 uses existing AccessPolicy and OCDA UserAPI/AgentAPI as authority,
 EDPMU Property owner/readability constraints, and filters before counts.
 Internal-only until PR02.10 facade; status IMPLEMENTED / CI PENDING.
+
+PR02.06 regression repair: strict descriptor collection now excludes
+legacy objects with no APIDescriptors, rather than failing a whole
+source-scoped query. Previous CI failure acknowledged; new CI pending.
