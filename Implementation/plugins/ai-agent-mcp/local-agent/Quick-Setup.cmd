@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title ClusterOpt2 AI AGENT MCP(ChatGPT) - Quick Setup
-set "REV=1b83c7edba0113ea313736291f32c149fbb3e820"
+set "REV=7d74d83d4ec8431b177ea4e3f588eb8fd6122c7d"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "URI=https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/%REV%/Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
 echo AI AGENT MCP(ChatGPT) - standalone setup
