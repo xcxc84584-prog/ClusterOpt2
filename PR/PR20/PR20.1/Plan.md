@@ -26,3 +26,9 @@
 - OAuth read-only security fix: `cluster.read` filters `tools/list` and rejects any `tools/call` outside the five-tool allowlist. No `cluster.control` is granted.
 - HTTPS termination still user-provided; 43879/43880 are loopback-only.
 - Source pins and code audit are necessary; Windows live E2E remains pending.
+
+## Patch(+3) control scope
+- Add opt-in OAuth `cluster.control` with a distinct consent notice, token-bound scope and full 14-tool catalogue.
+- Keep `cluster.read` restricted to the five original read-only tools, without privilege promotion.
+- Route via 43881 OAuth → 43880 MCP → 43879 paired Local Agent → browser ToolBox rights → user confirmation for each PowerShell command.
+- Core business logic unchanged; only plugin-local OAuth gateway modified.
