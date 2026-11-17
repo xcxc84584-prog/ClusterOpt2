@@ -130,10 +130,21 @@ export function renderResources(doc, host, options) {
   actions.append(button(doc, t("下載插件包", "Export plugin bundle"),
     async () => {
       const stored = await core.listStoredPluginBundles();
-      if (!stored.ok) return;
+      const reviewed = await core.listReviewedPlugins();
+      if (!stored.ok || !reviewed.ok) return;
+      const selection=new Map(reviewed.value.filter(item=>
+        PLUGINS.some(p=>p.id===item.providerId)).map(item=>
+        [item.providerId,item.enabled]));
+      for(const provider of options.providers()) {
+        if(!PLUGINS.some(item=>item.id===provider.providerId))continue;
+        selection.set(provider.providerId,
+          !core.uru.disabledProviders.has(provider.providerId));
+      }
       downloadJSON(doc, "clusteropt2-plugin-bundle.json", {
         format: "cluster-plugin-collection", formatVersion: 1,
-        packages: stored.value.map(item => item.snapshot)
+        packages: stored.value.map(item => item.snapshot),
+        reviewed: [...selection].map(([providerId,enabled])=>
+          ({providerId,enabled}))
       });
     }));
   const bundlePicker = el(doc, "input", "pm-native-picker");
@@ -159,6 +170,16 @@ export function renderResources(doc, host, options) {
           archive.packages.length > 32) {
         throw Error("Invalid bundle");
       }
+      const reviewed=archive.reviewed??[];
+      if(!Array.isArray(reviewed) || reviewed.length>PLUGINS.length ||
+         new Set(reviewed.map(entry=>entry?.providerId)).size!==
+           reviewed.length ||
+         reviewed.some(entry=>!entry ||
+           Object.keys(entry).length!==2 ||
+           typeof entry.enabled!=="boolean" ||
+           !PLUGINS.some(p=>p.id===entry.providerId))) {
+        throw Error("Unrecognized reviewed plugin");
+      }
       // Validate all packages before persisting any, avoiding partial
       // imports when one entry is invalid.
       for (const snapshot of archive.packages) {
@@ -172,9 +193,24 @@ export function renderResources(doc, host, options) {
         if (!result.ok) break;
         saved++;
       }
-      importStatus.textContent = saved === archive.packages.length ?
-        t("插件包已匯入待審核儲存區，未啟用或授權。",
-          "Bundle imported as inactive packages; no grants.") :
+      let reviewedSaved=0;
+      if(saved===archive.packages.length) {
+        for(const entry of reviewed) {
+          const result=await core.rememberReviewedPlugin(
+            entry.providerId,entry.enabled);
+          if(!result.ok)break;
+          reviewedSaved++;
+        }
+        if(reviewedSaved===reviewed.length) {
+          await restoreReviewedPlugins(core);
+          options.onPluginInstalled?.();
+        }
+      }
+      importStatus.textContent =
+        saved===archive.packages.length &&
+        reviewedSaved===reviewed.length ?
+        t("插件包已匯入；已審核插件已恢復，自製插件保留待授權。",
+          "Bundle imported: reviewed plugins restored; user code inactive.") :
         t("部分套件無法儲存，請檢查瀏覽器儲存權限。",
           "Some packages could not be stored.");
     } catch {
