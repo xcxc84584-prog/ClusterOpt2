@@ -47,3 +47,8 @@ Internal-only until PR02.10 facade; status IMPLEMENTED / CI PENDING.
 PR02.06 regression repair: strict descriptor collection now excludes
 legacy objects with no APIDescriptors, rather than failing a whole
 source-scoped query. Previous CI failure acknowledged; new CI pending.
+
+## PR02.07 implementation scope
+API version comparison and deprecation metadata policy. No automatic
+migration, command routing, access grant or stateful compatibility
+cache. Full exact-head CI pending; main unchanged.
