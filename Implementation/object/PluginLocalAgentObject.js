@@ -222,6 +222,13 @@ export class PluginLocalAgentObject {
         const path = full === rootName ? "" :
           full.slice(rootName.length + 1);
         const fileName = args.name;
+        if (message.name === "cluster.create_file" &&
+            (typeof fileName !== "string" ||
+             fileName.length === 0 || fileName.length > 255 ||
+             fileName === "." || fileName === ".." ||
+             /[\\\\/\\u0000-\\u001f]/.test(fileName))) {
+          result = { error: "Invalid Explorer file name" };
+        } else {
         const combined = message.name === "cluster.create_file" ?
           (path ? path + "/" : "") + String(fileName ?? "") : path;
         const reply = await this.core.request(this.id,
@@ -244,6 +251,7 @@ export class PluginLocalAgentObject {
           result = { updated: true, path: full };
         } else {
           result = { deleted: true, path: full };
+        }
         }
       }
     } else if (this.mcpReadId && [
