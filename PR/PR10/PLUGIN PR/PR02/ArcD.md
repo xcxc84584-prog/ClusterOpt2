@@ -205,3 +205,22 @@ PR02.06/07 CI repair: input contract remains
 LinkCore.discover(source,command,kind,selector,options), with origin
 in options. Correcting the AgentAPI test does not change HubUnit,
 AccessPolicy, execution routing, or any registry dependency.
+
+## PR02.09 — failure EventChain and authority
+```mermaid
+flowchart LR
+  Source[Registered caller] --> Hub[HubUnit Discover]
+  Hub --> Auth[AccessPolicy projection]
+  Auth --> Query[CatalogQuery]
+  Query -->|400/404/409| OMU[OMU EHU]
+  Source --> Docs[LinkCore generateCatalogDocs]
+  Docs --> Pure[CatalogDocumentation pure renderer]
+  Pure -->|400/413| Docs
+  Docs --> OMU
+  Source -->|protected action| Req[HubUnit Request]
+  Req -->|403| OMU
+```
+No new Object, Property or dependency link; internal catalog metadata
+reads do not execute provider handlers. Hub request authorization remains
+the only gate for protected actions. Separate Event IDs preserved per EHU,
+including duplicate errors. Recovery and SaveTask are untouched.

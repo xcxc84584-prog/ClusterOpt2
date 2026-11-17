@@ -147,3 +147,17 @@ PR1 run 44025525397: browser passed, Node failed same test.
 PowerShell parse passed. Fix: move origin to fifth options argument;
 no widening of the CatalogQuery filter schema, no privilege bypass.
 New full exact-head CI status pending.
+
+## PR02.09 — negative VTE and browser regression (pending exact-head CI)
+| Case | Expected | Evidence |
+| --- | --- | --- |
+| Invalid command/page/context | 400 EHU | Detached VTE + Chromium |
+| Protected actual Request | 403 EHU | Detached VTE |
+| Missing caller / hidden descriptor | 404 EHU | Detached VTE |
+| Ambiguous visible ID | 409 EHU | Detached VTE |
+| Oversized generated manifest | 413 EHU, no payload | Detached VTE |
+| Failed docs format | 400 EHU | VTE + Chromium |
+| Event ID uniqueness and failure retention | no omission | VTE |
+| Real provider execution during discover | none | no dependency edges |
+| Legacy Cluster API | unchanged | Chromium |
+| Windows / full Node / browser exact SHA | pending | Actions |

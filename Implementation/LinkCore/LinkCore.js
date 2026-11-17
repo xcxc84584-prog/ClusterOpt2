@@ -177,10 +177,17 @@ export class LinkCore {
     return this.hub.request(source, target, action, payload, options);
   }
   generateCatalogDocs(source, format, options = {}) {
-    return CatalogDocumentation.render(
+    const result = CatalogDocumentation.render(
       (caller, command, kind, selector, context) =>
         this.hub.discoverCatalog(caller, command, kind, selector, context),
       source, format, options);
+    // Pure rendering has no OMU access. Record failed public boundary
+    // operations here without changing authorization or exposing content.
+    if (!result.ok) {
+      this.omu.record("EHU", source ?? "unknown", "Catalog.Document",
+        result.status, format ?? "");
+    }
+    return result;
   }
   discover(source, command, kind, selector = {}, options = {}) {
     return this.hub.discoverCatalog(source, command, kind,

@@ -217,3 +217,16 @@ argument; CatalogQuery correctly rejected unknown selector fields.
 Updated the test to use selector={} and options={origin:"agent"}.
 The invalid-origin case now also targets actual HubUnit validation.
 Re-run all exact-head jobs before marking PR02.06/07 PASS.
+
+## PR02.09 — Hub EHU negative-path VTE audit
+Upstream review: Theia plugin-ext (main/ext RPC isolation) and VS Code
+extension-host testing (real integration, not mock-only) reinforce a single
+host-controlled boundary. No new permissions or second logging registry.
+Catalog describe intentionally maps invisible and missing entries to 404
+instead of 403 to prevent existence disclosure. A protected real Request
+produces 403 through existing HubUnit AccessPolicy. Ambiguity is 409;
+bad selectors 400; oversized documentation 413. Failed documentation
+rendering now records EHU at the trusted LinkCore boundary; the pure
+CatalogDocumentation Property remains side-effect-free.
+Complexity: O(1) per failure log, existing 2000-event bounded OMU history.
+Tests: detached real LinkCore VTE, Node and Chromium; exact-head CI gate.
