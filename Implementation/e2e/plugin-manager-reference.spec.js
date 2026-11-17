@@ -46,6 +46,8 @@ test("live Provider manifest publishes inspectable API contract",
       document.querySelector("#pluginToolToggle").click();
     });
     await expect(page.locator(".pm-provider")).toHaveCount(1);
+    await expect(page.locator(".pm-permission-controls input"))
+      .toBeChecked();
     await page.locator(".pm-tabs [role=tab]").nth(1).click();
     await expect(page.locator(".pm-api-entry")
       .filter({hasText:"example.render"})).toBeVisible();
