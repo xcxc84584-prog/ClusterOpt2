@@ -38,6 +38,7 @@ export class PluginLocalAgentObject {
     this.cancelPrompt = null;
     this.modelTaskId = null;
     this.generation = 0;
+    this.modelReplyQueue = Promise.resolve();
   }
 
   audit(status, action) {
@@ -58,6 +59,7 @@ export class PluginLocalAgentObject {
 
   close() {
     this.generation++;
+    this.modelReplyQueue = Promise.resolve();
     this.cancelPrompt?.();
     this.pendingPing?.({ ok: false, status: 503 });
     this.state = "disconnected";
@@ -250,8 +252,20 @@ export class PluginLocalAgentObject {
         if (["provider_info", "task_status", "task_result"]
         .includes(checked.value.type) &&
           this.state === "connected" && this.modelTaskId) {
-          void this.core.request(this.id, this.modelTaskId,
-            "ingest", checked.value);
+          const target = this.modelTaskId;
+          const message = checked.value;
+          const observedGeneration = this.generation;
+          // Delay ingestion one event-loop turn: the originating task
+          // Request must release its HubUnit lock before its reply.
+          this.modelReplyQueue = this.modelReplyQueue.then(() =>
+            new Promise(resolve => setTimeout(resolve, 0))).then(() => {
+              if (observedGeneration !== this.generation ||
+                  this.state !== "connected") return null;
+              return this.core.request(this.id, target,
+                "ingest", message);
+            }).catch(() => {
+              this.audit(500, "ModelDispatchFailed");
+            });
         } else if (checked.value.type === "ready" &&
             this.state === "connecting") {
           this.state = "connected";
