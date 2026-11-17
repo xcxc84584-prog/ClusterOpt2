@@ -49,6 +49,42 @@ export const VirtualPageLinePolicy = Object.freeze({
   },
 
   /**
+   * Textarea normalizes CRLF to LF; restore original line endings only
+   * for the edited span. Untouched mixed LF/CRLF bytes remain exact.
+   */
+  sourceTextFromEditor(source, editorText) {
+    if (typeof source !== "string" ||
+        typeof editorText !== "string") {
+      const error = new TypeError("Invalid editor page text");
+      error.status = 400;
+      throw error;
+    }
+    if (source === editorText) return source;
+    const canonical = source.replace(/\r\n/g, "\n");
+    if (canonical === editorText) return source;
+    if (canonical === source) return editorText;
+    const edit = this.change(canonical, editorText);
+    const rawOffset = target => {
+      let offset = 0;
+      let normalized = 0;
+      while (offset < source.length && normalized < target) {
+        if (source[offset] === "\r" && source[offset + 1] === "\n") {
+          offset += 2;
+        } else {
+          offset++;
+        }
+        normalized++;
+      }
+      return offset;
+    };
+    const first = rawOffset(edit.start);
+    const last = rawOffset(edit.end);
+    // Original untouched spans retain their exact original encoding.
+    const addition = edit.text.replace(/\r?\n/g, "\r\n");
+    return source.slice(0, first) + addition + source.slice(last);
+  },
+
+  /**
    * Calculate a minimal splice for the entire bounded visible page.
    * This converts textarea selection (UTF-16) into PieceTree edits.
    */

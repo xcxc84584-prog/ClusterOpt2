@@ -305,9 +305,12 @@ export class VirtualFileDocument extends FileDocument {
     }
     const policy = this.property("SliceTransactionPolicy");
     policy.checkText(text);
-    if (text === this.text) return this.describePage();
+    const sourceText = this.property("VirtualPageLinePolicy")
+      .sourceTextFromEditor(this.text, text);
+    policy.checkText(sourceText);
+    if (sourceText === this.text) return this.describePage();
     const change = this.property("VirtualPageLinePolicy")
-      .change(this.text, text);
+      .change(this.text, sourceText);
     let seed = this.prioritySeed;
     const priority = () => {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
@@ -327,15 +330,15 @@ export class VirtualFileDocument extends FileDocument {
     this.prioritySeed = seed;
     this.pieceIndex = this.property("BPlusSliceIndex")
       .build(tree.pieces(candidate));
-    this.text = text;
+    this.text = sourceText;
     this.editRevision = persisted.revision;
     this.dirtyPages.set(this.virtualPageIndex, {
       id: this.editSliceId, index: this.virtualPageIndex,
-      revision: persisted.revision, text,
+      revision: persisted.revision, text: sourceText,
       start: this.pageStart, end: this.pageEnd,
       sourceHash: this.sourceHash,
       baselineLineBreaks: this.pageOriginalLineBreaks,
-      editedLineBreaks: this.countLines(text)
+      editedLineBreaks: this.countLines(sourceText)
     });
     this.revision++;
     this.status = DocumentStatus.DIRTY;

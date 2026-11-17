@@ -231,11 +231,15 @@ export class FileWorkspace {
         continue;
       }
       const file = await handle.getFile();
-      // FileDocument still uses its bounded legacy path for small files.
-      // Large files are opened as read-only, page-backed documents.
-      const large = this.core.readProperty(this.id,
-        "VirtualDocumentPolicy").value.isVirtual(file.size);
-      const doc = large ?
+      // Every native Blob-backed selected file uses the same bounded
+      // PieceTree + MVCC virtual-page pipeline, regardless of size.
+      // Legacy FileDocument is retained only for non-Blob compatibility
+      // handles and newly created unsaved buffers without an OS handle.
+      const sliced = this.core.readProperty(this.id,
+        "VirtualDocumentPolicy").value.isUniformSliceFile(file) &&
+        this.core.getSnapshot().objects.includes(
+          "slice-edit-transaction");
+      const doc = sliced ?
         new VirtualFileDocument(handle.name, handle, this.core) :
         new FileDocument(handle.name, handle);
       if (!this.core.register(doc)) throw new Error("Registration failed");

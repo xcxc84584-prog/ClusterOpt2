@@ -634,3 +634,15 @@ this limit currently applies only to the independent registry.
   creating duplicate tabs; recovery state remains untouched.
 - Add Node/VTE tests and update LinkCore version centrally.
 - No new Property needed; uses existing Workspace/Document objects.
+
+## Patch26 unified all-size slice routing
+- All selected real file handles whose source supports bounded slice()
+  use VirtualFileDocument when the OCDA transaction backend exists;
+  retain FileDocument only for unbacked new buffers and compatible
+  restored legacy documents. Original ClusterOpt DOM is not replaced.
+- Preserve source newline bytes on textarea normalization by mapping
+  minimal normalized UTF-16 edits to original CRLF source coordinates.
+- Verify every read/write via existing journal, source SHA-256 and
+  multi-page batch writeback. No raw whole-file load for selected files.
+- Acceptance: small UTF-8 and CRLF save readback, 64KiB boundary,
+  existing 65MiB paging and dirty recovery; Windows 1/5GiB pending.

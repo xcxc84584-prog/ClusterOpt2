@@ -557,3 +557,14 @@ HubUnit.Response -> OMU Log.
 keep edits, no repeated EHU 500.
 Unexpected read error -> EHU 500, existing error handling retained.
 Manual Open/Save remains user-initiated and never silently ignored.
+
+## Patch26 all-size route and preservation
+File picker -> Workspace.open -> VirtualDocumentPolicy.isUniformSliceFile
+ -> VirtualFileDocument -> UTF8SlicePolicy/VirtualPageLinePolicy
+ -> PieceTreePolicy/BPlusSliceIndex -> SliceEditTransaction
+ -> SliceBatchWritebackUnit -> OS file + verified checkpoint retirement.
+
+The same HubUnit EventChain now serves both small and large selected
+files. Unbacked/new and restored legacy FileDocument buffers remain
+valid compatibility objects. Lossless source CRLF reconstruction is
+performed before the durable transaction; no bypass of MVCC/CAStoken.
