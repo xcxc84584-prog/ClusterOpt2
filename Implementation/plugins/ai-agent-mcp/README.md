@@ -1,47 +1,51 @@
-# AI AGENT MCP(ChatGPT) — PR14.4
+# AI AGENT MCP(ChatGPT) — PR14.5
 
-This is an installable, sandbox-isolated plugin for ClusterOpt2.
+Install this entire local plugin folder using ClusterOpt2 Resources.
+Review and approve the four requested privileged capabilities:
+`network.request`, `local-agent.pair`, `model.configure`,
+`model.task`. Each is separately revocable.
 
-## Installation
-In Resources, select and install this local plugin folder. Review both
-requested capabilities before approving the installation:
-- `network.request`: privileged network request declaration.
-- `local-agent.pair`: separately privileged Local Agent pairing.
+## Current UI and protocols
+The installed plugin adds an AI Agent button beside PowerShell.
+Its isolated UI supports Traditional Chinese / English, palette
+sharing, host-mediated Local Agent pairing, connectivity check,
+model setup, text-only prompts, task output and cancellation.
 
-Both are required for any Local Agent interaction. Approval is
-explicit, session-scoped, and revocable in Plugin Permissions.
+To pair, start the legacy Windows Cluster Terminal Agent configured
+for the exact browser Origin. Enter its 64-character token in the
+trusted host dialog. Only the host sends it to the local loopback
+WebSocket. Never enter the token or model key in an untrusted iframe.
 
-## Current functionality
-- Independent AI Agent button next to PowerShell.
-- Isolated output UI, bilingual zh-Hant/en labels, palette integration.
-- Host-owned pairing dialog. Token input stays in the host and is
-  never sent to the plugin Worker or its iframe.
-- Pinned local WebSocket `ws://127.0.0.1:43879/agent` supporting only
-  `auth -> ready`, `ping -> pong`, and disconnect.
-- Per-call HubUnit/URU permission checks and OMU Log/EHU.
-- Worker Provider contracts `getStatus({})` and `describe({})`.
-  Worker status still describes its **own** contract-only capabilities;
-  the separate host UI displays live Local Agent connection state.
+The model settings button opens a **trusted host dialog**. The API key
+is delivered only to the already authenticated Windows Local Agent.
+The browser does not save it. The **existing legacy Agent** persists
+the model configuration on the Windows machine; protection of the
+key at rest has not yet been verified. Only use a trusted machine and
+a key appropriate to that environment.
 
-## Required local setup
-Start the *legacy Cluster Local Agent* on Windows with its origin
-configuration matching the exact origin of the deployed ClusterOpt2
-page. Use the pairing token printed by that Local Agent in the
-**trusted host pairing dialog**. The token is not saved by the plugin.
+The current model transport uses the legacy Agent OpenAI API path.
+All tasks are text-only. Every task receives an ID and may be
+cancelled. The model's file/PowerShell tool calls are not supported.
+No `bridge_register`, filesystem modification, OS command or
+MCP/OAuth execution is enabled.
 
-## Security boundaries
-This PR deliberately does not send `bridge_register` and does not
-process any `tool_call` messages. Unsolicited tool messages cause a
-connection shutdown. The local connection does **not** grant permission
-to access files, execute PowerShell, configure models, create tasks,
-or expose MCP/OAuth endpoints.
+Worker `getStatus` and `describe` report the sandbox Worker's
+own read-only contract. Live pairing, model and tasks are handled by
+separate trusted host OCDA Objects, not by access to host globals
+inside the Worker.
 
-## Deferred
-- PR14.5: model provider and task pipeline.
-- PR14.6: Explorer CRUD with granular file capabilities.
-- PR14.7: approved PowerShell execution.
-- PR14.8: scoped MCP/OAuth gateway.
-- PR14.9–10: lifecycle and final real-machine security acceptance.
+## Architecture
+- Plugin package: plugin.json, worker.js, index.html, locale JSON.
+- Host `PluginUIHostUnit`: isolated frame and capability-bound events.
+- `PluginLocalAgentObject`: host credential dialogs, authenticated socket.
+- `PluginModelTaskObject`: task IDs, transient state, cancellation.
+- `PluginModelTaskPolicy`: bounded payload and result validation.
+- HubUnit routes every inter-Object Request/Response, OMU records
+  EHU/Log, URU owns live registrations. No persistent keys in UI.
 
-No API keys, machine-specific absolute paths or development-only
-prompts are written into user-facing UI.
+## Remaining PRs
+14.6 authorized Explorer CRUD; 14.7 approved PowerShell execution;
+14.8 MCP/OAuth; 14.9 lifecycle, 14.10 full security, real-machine
+and end-to-end integration acceptance.
+
+Do not treat a mock WebSocket test as proof of a real model connection.
