@@ -136,3 +136,26 @@ test("PR13.6 dependency check prevents broken activation", async () => {
   assert.equal(h.booted, false);
   assert.equal(h.env.core.uru.listProviders().length, 0);
 });
+
+test("PR13.4 rejects mismatched Request and Response schemas", async () => {
+  const h = harness();
+  assert.equal((await h.installer.install(specimen(), {
+    consented: true
+  })).status, 201);
+  const badInput = await h.env.core.request(
+    "VTE", "Author.Sandbox", "transform", "not an object",
+    { origin: "user" });
+  assert.equal(badInput.status, 400);
+  assert.equal(h.invoked, 0);
+  const bridge = h.installer.handles.get("author.sandbox");
+  bridge.invoke = async () => ({
+    ok: true, status: 200, value: "invalid output"
+  });
+  const badOutput = await h.env.core.request(
+    "VTE", "Author.Sandbox", "transform", {},
+    { origin: "user" });
+  assert.equal(badOutput.status, 502);
+  assert.ok(h.env.log().some(entry => entry.kind === "EHU" &&
+    entry.action === "Plugin.Invoke.transform" &&
+    entry.status === 502));
+});
