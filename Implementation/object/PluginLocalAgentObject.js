@@ -77,7 +77,9 @@ export class PluginLocalAgentObject {
   async receive(action, payload, context = {}) {
     if (context.source !== "ui" ||
         !this.core.checkPluginPermission(
-          this.providerId, "network.request")) {
+          this.providerId, "network.request") ||
+        !this.core.checkPluginPermission(
+          this.providerId, "local-agent.pair")) {
       return this.fail(403, "Denied");
     }
     if (action === "status") {
