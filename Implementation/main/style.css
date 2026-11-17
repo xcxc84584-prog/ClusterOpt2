@@ -952,3 +952,17 @@ header .menu-wrap { margin-left:auto; }
 @media (max-height: 560px) {
   .native-ps-pane { height: 45vh; min-height: 180px; }
 }
+
+/* PR9 line navigation floats near the upper editor edge, not the footer. */
+#goToLineDialog[open] {
+  position: fixed;
+  top: max(56px, 12vh);
+  bottom: auto;
+  margin: 0 auto;
+  max-width: min(400px, calc(100vw - 24px));
+  max-height: min(240px, 45vh);
+  overflow-y: auto;
+}
+@media (max-height: 450px) {
+  #goToLineDialog[open] { top: 8px; max-height: 60vh; }
+}
