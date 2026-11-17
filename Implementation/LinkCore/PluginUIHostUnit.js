@@ -152,7 +152,7 @@ export class PluginUIHostUnit {
           }
           try {
             const handle = await this.doc.defaultView.showDirectoryPicker({
-              mode: "readwrite"
+              mode: "read"
             });
             // User-supplied absolute path is descriptive only. Authority
             // comes exclusively from this browser-selected handle.
@@ -188,11 +188,21 @@ export class PluginUIHostUnit {
           checkbox.type = "checkbox";
           checkbox.dataset.right = name;
           checkbox.disabled = name === "ps";
-          checkbox.addEventListener("change", () => {
+          checkbox.addEventListener("change", async () => {
             try {
+              if (checkbox.checked && name !== "read") {
+                const selected = access.root;
+                if (!selected ||
+                    await selected.requestPermission({
+                      mode: "readwrite"
+                    }) !== "granted") {
+                  throw Error("Write permission denied");
+                }
+              }
               access.setRight(name, checkbox.checked);
             } catch {
               checkbox.checked = false;
+              access.audit("PermissionRejected", 403);
             }
           });
           row.append(checkbox, this.doc.createTextNode(label));
@@ -262,6 +272,30 @@ export class PluginUIHostUnit {
           };
           const modelAction = Object.hasOwn(modelActions, kind) ?
             modelActions[kind] : null;
+          if (kind === "cluster-explorer-request" &&
+              view.explorerAccess) {
+            const allowed = ["status", "list", "read", "create",
+              "update", "delete"];
+            const operation = event.data?.action;
+            if (!allowed.includes(operation)) return;
+            const data = event.data?.payload;
+            if (!data || typeof data !== "object" ||
+                Array.isArray(data)) return;
+            const requestId = event.data?.requestId;
+            if (typeof requestId !== "string" ||
+                requestId.length > 64) return;
+            const response = await this.core.request("ui",
+              view.explorerAccess.id, operation, {
+                path: data.path, content: data.content
+              }, { origin: "user" });
+            frame.contentWindow?.postMessage({
+              type: "cluster-explorer-response", requestId,
+              action: operation, ok: response.ok,
+              status: response.status,
+              value: response.ok ? response.value : null
+            }, "*");
+            return;
+          }
           if (!action && !modelAction) return;
           const target = modelAction ? view.modelTask : agent;
           if (!target) return;
