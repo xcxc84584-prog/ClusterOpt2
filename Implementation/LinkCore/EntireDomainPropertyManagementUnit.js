@@ -31,7 +31,8 @@ export class EntireDomainPropertyManagementUnit {
       }
     }
     this.properties.set(name, {
-      value, owners: new Set(owners), visibility, descriptor
+      value, owners: new Set(owners), visibility, descriptor,
+      readOnly: options.readOnly === true
     });
     return { ok: true, status: 201 };
   }
@@ -58,6 +59,8 @@ export class EntireDomainPropertyManagementUnit {
   update(name, value) {
     const property = this.properties.get(name);
     if (!property) return { ok: false, status: 404 };
+    if (property.readOnly) return { ok: false, status: 403,
+      error: "Read-only Property" };
     property.value = value;
     return { ok: true, status: 200 };
   }
