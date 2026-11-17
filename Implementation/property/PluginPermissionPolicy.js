@@ -10,7 +10,9 @@ const LEVELS = Object.freeze({
   "route.configure": "core",
   "storage.write": "core",
   "network.request": "privileged",
-  "local-agent.pair": "privileged"
+  "local-agent.pair": "privileged",
+  "model.configure": "privileged",
+  "model.task": "privileged"
 });
 const ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
 
