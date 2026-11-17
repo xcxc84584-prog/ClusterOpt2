@@ -74,10 +74,11 @@ export function mountPowerShellUI({host,button,language,version,
  syncTerminalPalette();
  let nativeLoading=null;
  async function loadNativeTerminal(){
-   if(window.Terminal)return;
+   if(window.Terminal&&window.FitAddon?.FitAddon)return;
    if(!nativeLoading)nativeLoading=(async()=>{
      const css=document.createElement('link');css.rel='stylesheet';css.href='https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css';document.head.append(css);
      await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js';script.onload=resolve;script.onerror=()=>reject(Error('XTERM_LOAD_FAILED'));document.head.append(script);});
+     await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js';script.onload=resolve;script.onerror=()=>reject(Error('XTERM_FIT_LOAD_FAILED'));document.head.append(script);});
    })().catch(error=>{nativeLoading=null;throw error;});
    return nativeLoading;
  }
@@ -111,17 +112,16 @@ export function mountPowerShellUI({host,button,language,version,
      nativeWrap.hidden=false;
      showNative(sessions.find(x=>x.id===selected)||session);
      term.open(container);
-     requestAnimationFrame(()=>{if(generation===session.generation)session.resize?.();});
      const ws=remote.openNativeTerminal();session.socket=ws;
      ws.addEventListener('message',event=>{
        if(generation!==session.generation)return;
        let message;try{message=JSON.parse(event.data);}catch{return;}
        if(message.type==='data')term.write(message.data);
-       if(message.type==='ready')term.write('\r\n[ConPTY connected]\\r\\n');
+       if(message.type==='ready')term.write('\r\n[ConPTY connected]\r\n');
        if(message.type==='error')term.write('\r\n'+message.message+'\r\n');
-       if(message.type==='exit')term.write('\r\n[Shell exited: '+message.exitCode+']\\r\\n');
+       if(message.type==='exit')term.write('\r\n[Shell exited: '+message.exitCode+']\r\n');
      });
-     ws.addEventListener('close',()=>{if(generation===session.generation){session.socket=null;term.write('\r\n[Native terminal disconnected]\\r\\n');}});
+     ws.addEventListener('close',()=>{if(generation===session.generation){session.socket=null;term.write('\r\n[Native terminal disconnected]\r\n');}});
      term.onData(data=>{if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'input',data}));});
      const resize=()=>{
        if(generation!==session.generation||ws.readyState!==WebSocket.OPEN||session.id!==selected)return;
@@ -137,6 +137,7 @@ export function mountPowerShellUI({host,button,language,version,
      session.resizeObserver=new ResizeObserver(()=>requestAnimationFrame(resize));
      session.resizeObserver.observe(nativeWrap);
      session.resizeObserver.observe(container);
+     requestAnimationFrame(resize);
      if(session.id===selected)term.focus();
    }catch(e){
      if(generation===session.generation){
