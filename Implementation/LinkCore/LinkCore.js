@@ -6,6 +6,11 @@ import { ProviderManifestPolicy } from
   "../property/ProviderManifestPolicy.js";
 import { PluginPackageManifestPolicy } from
   "../property/PluginPackageManifestPolicy.js";
+import { PluginRPCContractPolicy } from
+  "../property/PluginRPCContractPolicy.js";
+import { PluginCapabilityReviewPolicy } from
+  "../property/PluginCapabilityReviewPolicy.js";
+import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
 import { ProviderSharedPropertyPolicy } from
   "../property/ProviderSharedPropertyPolicy.js";
 import { ProviderFactoryPolicy } from
@@ -69,6 +74,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.services = new ServiceRegistry(this.uru);
     this.omu = new ObjectManagementUnit();
+    this.localPluginPackage = new PluginLocalPackageUnit(this.omu);
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog, this.services);
@@ -82,6 +88,14 @@ export class LinkCore {
       ["ProviderFactoryPolicy", ProviderFactoryPolicy],
       ["ProviderCompatibilityPolicy", ProviderCompatibilityPolicy],
       ["ProviderHealthPolicy", ProviderHealthPolicy]
+    ]) {
+      this.hub.registerProperty(name, value, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    }
+    for (const [name, value] of [
+      ["PluginRPCContractPolicy", PluginRPCContractPolicy],
+      ["PluginCapabilityReviewPolicy", PluginCapabilityReviewPolicy]
     ]) {
       this.hub.registerProperty(name, value, {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
@@ -211,6 +225,11 @@ export class LinkCore {
       SYNCED: "green", DIRTY: "yellow",
       ERROR: "red", LOADING: "blue"
     }), { owners: ["LinkCore"] });
+  }
+
+  /** Host-only file intake: never exposed on the Cluster public API. */
+  stageLocalPluginDirectory(directory) {
+    return this.localPluginPackage.stageDirectory(directory);
   }
 
   register(object) { return this.hub.register(object); }
