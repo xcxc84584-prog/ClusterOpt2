@@ -544,6 +544,32 @@ function render() {
     active.viewportLineHeight = lineHeight;
   }
   renderLines();
+  // A restored virtual page can finish loading after its first render.
+  // Apply saved browser pixels only after the textarea has real content.
+  if (active.pendingViewportRestore &&
+      active.status !== DocumentStatus.LOADING &&
+      !active.viewportRestoreScheduled) {
+    active.viewportRestoreScheduled = true;
+    window.requestAnimationFrame(() => {
+      active.viewportRestoreScheduled = false;
+      if (workspace.active !== active || toolState.active) return;
+      const saved = active.pendingViewportRestore;
+      if (!saved) return;
+      const measured = parseFloat(
+        window.getComputedStyle(ui.editor).lineHeight) || 22;
+      const ratio = saved.lineHeight ? measured / saved.lineHeight : 1;
+      ui.editor.scrollTop = Math.max(0, saved.top * ratio);
+      ui.editor.scrollLeft = Math.max(0, saved.left);
+      ui.lineNumbers.scrollTop = ui.editor.scrollTop;
+      active.scrollTop = ui.editor.scrollTop;
+      active.scrollLeft = ui.editor.scrollLeft;
+      active.viewportLineHeight = measured;
+      active.pendingViewportRestore = null;
+      scheduleGuides();
+      queueRecovery();
+      scheduleViewportObservation();
+    });
+  }
   scheduleGuides();
   updateStatus();
   scheduleViewportObservation();
