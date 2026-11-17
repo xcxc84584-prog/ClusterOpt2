@@ -133,7 +133,7 @@ test("PR20 path lookup requires read grant and user confirmation", async () => {
   };
   const doc = {
     defaultView: {
-      prompt() { prompts++; return "X:\\\\Projects\\\\Workspace"; }
+      prompt() { prompts++; return "mock-user-confirmed-path"; }
     }
   };
   const agent = new PluginLocalAgentObject(
