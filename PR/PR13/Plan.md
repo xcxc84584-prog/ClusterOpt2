@@ -140,3 +140,12 @@ not declare APIDescriptors. Never infer input/output from live data.
   old Provider, Object, sandbox and previously active grants on failure.
 - VTE tests added; browser, CI and recovery checks pending. Upgrade UI,
   uninterrupted cutover and persisted package update are not yet done.
+
+## PR13 Patch(+8) — lifecycle and persistence follow-up
+- Deny cutover while active dependents have no alternative Provider.
+- Persist upgraded package snapshot only after successful activation;
+  remove saved package after successful uninstall.
+- Add VTE dependency-cutover test and Chromium CSP/network adversarial
+  test. All tests must pass again at final commit.
+- Full web-folder execution and complete PR13.7/13.8 remain release
+  blockers; do not merge until accepted.
