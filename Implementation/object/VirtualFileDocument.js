@@ -258,19 +258,24 @@ export class VirtualFileDocument extends FileDocument {
     const pending = [...this.pendingRecoveries.values()];
     if (this.pendingRecovery) pending.push(this.pendingRecovery);
     for (const record of pending) {
+      if (this.dirtyPages.has(record.index)) continue;
+      const restored = await this.invoke("restoreDurable", {
+        id: record.id
+      });
+      const text = await this.invoke("read", {
+        id: record.id, start: 0, end: restored.length
+      });
       edits.set(record.index, {
-        editedLineBreaks: record.editedLineBreaks,
-        endsWithLF: record.editedEndsWithLF
+        editedLineBreaks: this.countLines(text),
+        endsWithLF: text.endsWith("\n")
       });
     }
     for (const record of this.dirtyPages.values()) {
       edits.set(record.index, {
         editedLineBreaks: record.editedLineBreaks,
-        endsWithLF: record.text.endsWith("\\n")
+        endsWithLF: record.text.endsWith("\n")
       });
     }
-    // Recovered checkpoints may not have a terminal LF flag. Their
-    // actual text must be loaded before resolving the exact edge.
     const located = await this.property("GlobalPageLinePolicy").locate({
       file, targetLine: line,
       pageBytes: this.property("UTF8SlicePolicy").defaultChunkBytes,
