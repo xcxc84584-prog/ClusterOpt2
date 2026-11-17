@@ -1,5 +1,7 @@
 import { CatalogCollection } from "./CatalogCollection.js";
 import { CatalogQuery } from "./CatalogQuery.js";
+import { CatalogVisibilityPolicy } from
+  "../property/CatalogVisibilityPolicy.js";
 import { PropertyDescriptorPolicy } from
   "../property/PropertyDescriptorPolicy.js";
 import { APIDescriptorPolicy } from
@@ -50,6 +52,10 @@ export class LinkCore {
       undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
     this.version = "0.0.9-pr9.patch9";
+    this.hub.registerProperty("CatalogVisibilityPolicy",
+      CatalogVisibilityPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
     this.hub.registerProperty("PropertyDescriptorPolicy",
       PropertyDescriptorPolicy, {
         owners: ["LinkCore"], visibility: "Public"
