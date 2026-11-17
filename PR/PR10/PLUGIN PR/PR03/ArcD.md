@@ -26,3 +26,27 @@ EventChain:
 Relation matrix: audit caller -> HubUnit 10 Request; result 01 Response;
 HubUnit-URU/EDPMU/OMU relationships unchanged, zero new dependencies.
 No route changes, no MVCC/writeback locks, no test-only user UI.
+
+## PR03.02 — Provider Manifest validation
+New Property: ProviderManifestPolicy, owner LinkCore, Public.
+New Object: none. ServiceRegistry and Provider registration remain TODO.
+```mermaid
+flowchart LR
+  Manifest[Provider Manifest DATA] --> Policy[ProviderManifestPolicy]
+  Policy --> CID[CapabilityIdPolicy]
+  Policy --> API[APIDescriptorPolicy]
+  Policy --> Version[CatalogVersionPolicy]
+  Link[LinkCore] --> Hub[HubUnit]
+  Hub --> EDPMU[ProviderManifestPolicy single registration]
+  Hub --> OMU[EHU and Log]
+```
+EventChain: LinkCore init -> Hub.registerProperty -> URU/EDPMU -> OMU.
+A registered audit caller -> Hub.readProperty -> AccessPolicy ->
+EDPMU returns shared pure validator (200, Log). Local validate
+returns immutable data snapshot (200) or 400; pure validation is not a
+cross-Object Request and does not write an EHU for every rejected datum.
+Relation: registered caller -> Hub controlled Property read, existing
+10 Request / 01 Response pattern, no new REQ routes. Validation never
+triggers factories, provider execution, change of shared Property, or
+extra Object dependency. Manifest permission strings are descriptive
+claims awaiting later URU/AccessPolicy checks, NOT tokens or grants.
