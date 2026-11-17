@@ -612,3 +612,14 @@ this limit currently applies only to the independent registry.
 - Preserve file row Open, directory arrow Expand, existing 4/6
   right-click toolbar geometry and language translation keys.
 - Run OPFS Playwright context-creation and legacy PR6 menu tests.
+
+
+## Patch(+25-Fix1) release asset verification
+- Keep centralized version definition in LinkCore only.
+- Add a project-relative favicon reference to avoid implicit missing
+  root icon fetches on GitHub Pages.
+- Audit static index.html links for existence with automated tests.
+- Do not attribute an unknown HTTP 404 to a specific URL without a
+  Network tab failure record.
+- Minimal static-byte cost, no runtime API or privilege changes.
+- BC requires backup SHA and both workflows PASS.

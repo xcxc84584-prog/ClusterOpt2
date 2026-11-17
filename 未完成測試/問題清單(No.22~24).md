@@ -46,3 +46,11 @@ PR8 remains NOT PASS.
 
 - 25.2: directory/root right-click new-file action implemented,
   Playwright test added; pending final CI/browser PASS.
+
+
+## Patch25 Fix1 follow-ups
+- 25.7 Centralized version after Patch25: corrected by LinkCore.
+- 25.8 Missing declared icon request: added local favicon.svg.
+- 25.9 Exact browser 404 source URL still UNKNOWN; request URL
+  needed if the console message persists after the Pages build.
+- 25.10 Verify Pages deployed SHA and cache after CI merge.
