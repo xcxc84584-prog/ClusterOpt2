@@ -125,3 +125,16 @@ catalog-collection regression. Re-run full workflow; PASS pending.
 | deprecated flag | reported, no execution permission change |
 | Real Chromium descriptor and legacy Cluster | verified by e2e source |
 | Dedicated Node/Chromium/OCDA/Windows | pending exact-head CI |
+
+## PR02.08 documentation acceptance (CI pending)
+| Test | Expected |
+| --- | --- |
+| Registered guest Public/Private APIs | only Public documented |
+| Authorized private owner | Public + own Private visible |
+| JSON schemaVersion, deterministic order | stable, parsed content |
+| Markdown description injection | escaped HTML and heading delimiters |
+| Unknown caller | 404 with Hub EHU |
+| Unsupported format/context | 400 |
+| Output above 64 KiB UTF-8 | 413, no truncated content |
+| Legacy window.Cluster facade | intact; no .docs exposure |
+| Node, Chromium, full OCDA and Windows | exact-head CI pending |
