@@ -47,3 +47,18 @@ interacting with LinkCore internals. No secrets enter OMU.
 | Native socket connect | ready | unavailable/unauthorized | sanitized UI EHU |
 Parallelism: independently keyed sessions may run in parallel at the
 external native agent; no synchronous shell operation in browser main.
+
+## Patch3 compatibility architecture
+UI toolbar #explorerPowerShell -> legacy mountPowerShellUI
+ -> legacy PowerShellManager -> legacy PowerShellClient
+ -> browser WS ws://127.0.0.1:43881/terminal/ws
+ -> original ClusterOpt Local Agent -> native ConPTY
+
+Current LanguageManager -> read-only locale subscribe adapter
+Current UI_COLOR palette -> CSS tokens / MutationObserver adapter
+Current FileWorkspace document render -> PSM syncTabs() (separate tabs)
+
+Removed Patch2 PowerShellSessionManager and PowerShellConnectionPolicy;
+no second native terminal, no duplicate OS execution path.
+Security contract: browser retains no local privilege, all terminal
+commands require explicit existing agent pairing and native socket.
