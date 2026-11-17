@@ -22,3 +22,12 @@
 committable complete feature with real Node/Chromium acceptance.
 One merge to main after ALL PR02 integration gates PASS.
 No custom route, Provider injection, or browser file write in PR02.01.
+
+## PR02.03 status refinement (2026-11-17)
+At exact head da2672e, four CI workflows passed; recovery checkpoint
+backup/plugin-pr02-sub03-da2672e exists. PR02.03 = PASS.
+
+## PR02.04 deliverable
+Live internal CatalogCollection built from URU/EDPMU, bounded immutable
+snapshots, no shared mutable index, no plugin-facing unauthorized API.
+Implementation committed; exact-head CI acceptance pending.
