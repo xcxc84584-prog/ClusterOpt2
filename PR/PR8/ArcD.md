@@ -537,3 +537,11 @@ Explorer.Response.pasteEntry -> OMU Log / EHU.
 EHU: 400 invalid destination, 409 byte mismatch,
 503 failed file API and separate PasteCleanup EHU on cleanup failure.
 No new Object/Property; existing Explorer and ExplorerEntryPolicy reused.
+
+
+## Patch(+25-Fix1) release and network diagnostics
+Cluster.version() -> LinkCore.getSnapshot() ->
+EDPMU.SystemVersion -> Cluster.version response.
+Browser -> GitHub Pages -> relative ./favicon.svg -> static asset.
+Static 404 is outside HubUnit; OMU EHU may legitimately remain empty.
+No new Object, Property or non-Hub Request/Response introduced.
