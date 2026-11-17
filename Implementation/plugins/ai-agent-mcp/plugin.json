@@ -78,5 +78,6 @@
       "isolation": "worker",
       "concurrency": "parallel"
     }
-  }
+  },
+  "uiEntry": "index.html"
 }
