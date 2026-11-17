@@ -51,11 +51,13 @@ test("PR15.1 AI Agent is searchable and publishes the full ZIP",
       files.set(name, bytes.subarray(start, start + size));
       cursor = start + size;
     }
-    expect(files.size).toBe(15);
+    expect(files.size).toBe(17);
     expect(JSON.parse(files.get("plugin.json").toString("utf8"))
       .provider.providerId).toBe("cluster.ai-agent-mcp");
     expect(files.has("local-agent/server.cjs")).toBe(true);
     expect(files.has("local-agent/Start-OAuth.ps1")).toBe(true);
+    expect(files.has("local-agent/Quick-Setup.cmd")).toBe(true);
+    expect(files.has("local-agent/Setup-Quick.ps1")).toBe(true);
 
     await panel.locator("#pluginAgentMount").click();
     await expect(panel.locator(".pm-market-status"))
