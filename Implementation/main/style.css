@@ -1479,3 +1479,39 @@ header .menu-wrap { margin-left:auto; }
 	color: color-mix(in srgb, var(--ui-accent) 40%,
 		var(--ui-text-on-panel));
 }
+
+/* PR11: native textarea owns edits; decorative viewport syntax layer. */
+#editorPane { position: relative; }
+#pr11SyntaxOverlay {
+	position: absolute;
+	z-index: 2;
+	pointer-events: none;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	white-space: pre;
+	tab-size: 4;
+	color: var(--ui-text);
+	background: transparent;
+}
+#pr11SyntaxOverlay[hidden] { display: none !important; }
+#pr11SyntaxOverlay .syntax-visible-lines {
+	box-sizing: border-box;
+	position: relative;
+	width: max-content;
+	min-width: 100%;
+	white-space: pre;
+}
+#editorPane #editor {
+	position: relative;
+	z-index: 3;
+}
+#editorPane #editor.syntax-overlay-active {
+	color: transparent !important;
+	-webkit-text-fill-color: transparent;
+	caret-color: var(--ui-text);
+}
+#editorPane #editor.syntax-overlay-active::selection {
+	background: color-mix(in srgb, var(--ui-accent) 38%, transparent);
+}
