@@ -152,3 +152,8 @@ counts to avoid pagination-based disclosure. EventChain:
 4. Query filtered metadata; 200 Log, 404/409/400 EHU on failure.
 5. Actual invocations still require normal HubUnit.request authorization.
 EHU errors are metadata only, no handler called on deny.
+
+PR02.06 repair: CatalogCollection checks Object.ocda.APIDescriptors
+before invoking strict URU.describeAPI. Legacy Objects lacking the
+contract produce zero API metadata but still participate as registered
+Hub callers. No new registry and no change to actual Request routing.
