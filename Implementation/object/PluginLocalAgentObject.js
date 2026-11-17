@@ -185,8 +185,10 @@ export class PluginLocalAgentObject {
         "cluster.delete_path": "delete"
       };
       const args = message.args ?? {};
-      const explorer = this.core.getObject?.(this.explorerId);
-      const rootName = explorer?.root?.name;
+      const rootReply = await this.core.request(
+        this.id, this.explorerId, "status", {});
+      const rootName = rootReply.ok &&
+        rootReply.value?.selected ? rootReply.value.folderName : null;
       const full = args.path;
       if (!rootName || typeof full !== "string" ||
           (full !== rootName &&
