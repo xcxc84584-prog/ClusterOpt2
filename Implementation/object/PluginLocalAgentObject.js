@@ -136,7 +136,8 @@ export class PluginLocalAgentObject {
 
   async dispatchShellTool(message) {
     const requestId = message.requestId;
-    let result = { error: "Tool access denied" };
+    let result = message.name === "cluster.powershell_request" ?
+      { approved: false } : { error: "Tool access denied" };
     if (message.name === "cluster.powershell_request" &&
         this.shellApprovalId) {
       const reply = await this.core.request(this.id,
