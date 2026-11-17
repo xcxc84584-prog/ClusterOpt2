@@ -89,12 +89,6 @@ export function mountLanguageUI(core, doc, storage, onLocaleChange) {
             }
             select.setAttribute("title", t("priorityHeading"));
             select.setAttribute("aria-label", t("priorityHeading"));
-            const activeCategory = doc.querySelector(
-              "#pluginCategoryMenu [aria-checked=true]");
-            if (activeCategory) {
-              $("pluginCategoryLabel").textContent =
-                activeCategory.textContent.trim();
-            }
             onLocaleChange?.(locale);
 		}
 	});
