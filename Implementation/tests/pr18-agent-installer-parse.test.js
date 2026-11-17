@@ -8,7 +8,7 @@ const root = new URL("../plugins/ai-agent-mcp/local-agent/",
 test("PR18 pinned CMD fetches corrected complete setup helper", async () => {
   const cmd = await readFile(new URL("Quick-Setup.cmd", root), "utf8");
   const ps = await readFile(new URL("Setup-Quick.ps1", root), "utf8");
-  assert.match(cmd, /set "REV=7d74d83d4ec8431b177ea4e3f588eb8fd6122c7d"/);
+  assert.match(cmd, /set "REV=079110435ef499f87774c064da4bd6eff750af77"/);
   assert.match(cmd, /-SourceRevision "%REV%"/);
   assert.equal((ps.match(/\btry\s*\{/g) || []).length,
     (ps.match(/\}\s*finally\s*\{/g) || []).length +
