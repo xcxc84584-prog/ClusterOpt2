@@ -7,6 +7,7 @@
  * bounded to one source page and yields cooperatively.
  */
 export const GlobalPageLinePolicy = Object.freeze({
+  readBatchBytes: 1024 * 1024,
   async locate({ file, targetLine, pageBytes, edits = new Map(),
     onProgress = () => {} }) {
     if (!(file instanceof Blob) ||
@@ -19,6 +20,8 @@ export const GlobalPageLinePolicy = Object.freeze({
     }
     const pages = Math.max(1, Math.ceil(file.size / pageBytes));
     let firstLine = 1;
+    let batch = new Uint8Array(0);
+    let batchStart = 0;
     for (let index = 0; index < pages; index++) {
       const start = index * pageBytes;
       const end = Math.min(file.size, start + pageBytes);
@@ -28,8 +31,15 @@ export const GlobalPageLinePolicy = Object.freeze({
       if (!Number.isSafeInteger(lineBreaks) || lineBreaks < 0 ||
           typeof endsWithLF !== "boolean") {
         // Do not decode file contents or materialize the whole Blob.
-        const bytes = new Uint8Array(
-          await file.slice(start, end).arrayBuffer());
+        if (start < batchStart ||
+            end > batchStart + batch.length) {
+          batchStart = start;
+          batch = new Uint8Array(await file.slice(start,
+            Math.min(file.size, start +
+              Math.max(pageBytes, this.readBatchBytes))).arrayBuffer());
+        }
+        const bytes = batch.subarray(
+          start - batchStart, end - batchStart);
         if (bytes.length !== end - start) {
           const error = new Error("Incomplete page-line scan");
           error.status = 422;
