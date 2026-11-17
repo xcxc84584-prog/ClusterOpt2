@@ -3,6 +3,8 @@ import {test, expect} from "@playwright/test";
 
 async function openResources(page) {
   await page.goto("/");
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
   await page.locator("#pluginBtn").click();
   await expect(page.locator("#pluginWindow")).toBeVisible();
   await page.locator("#pluginManagerPages .pm-tab").nth(3).click();
