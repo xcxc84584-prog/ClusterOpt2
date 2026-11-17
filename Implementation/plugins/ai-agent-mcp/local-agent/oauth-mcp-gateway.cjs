@@ -56,8 +56,16 @@ const server=http.createServer(async(req,res)=>{
    if(!client||!client.redirects.includes(uri))return fail(res,400,'invalid_request','Unregistered client or redirect URI');
    const state=q.get('state')||'',challenge=q.get('code_challenge')||'';
    if(q.get('response_type')!=='code'||q.get('code_challenge_method')!=='S256'||!/^[A-Za-z0-9_-]{43,128}$/.test(challenge)||!state||state.length>512)return oauthErrorRedirect(res,uri,state,'invalid_request');
-   const scope=q.get('scope')||'cluster.read';
-   if(!['cluster.read','cluster.control'].includes(scope))return oauthErrorRedirect(res,uri,state,'invalid_scope');
+   const requested=(q.get('scope')||'cluster.read').trim()
+    .split(/\\s+/);
+   const permitted=new Set(['cluster.read','cluster.control']);
+   if(requested.length<1||requested.length>2||
+      new Set(requested).size!==requested.length||
+      requested.some(value=>!permitted.has(value))){
+    return oauthErrorRedirect(res,uri,state,'invalid_scope');
+   }
+   const scope=requested.includes('cluster.control') ?
+    'cluster.control' : 'cluster.read';
    const ticket=random();
    pending.set(ticket,{id,uri,state,challenge,scope,expires:now()+300000});
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action "+issuer+" "+new URL(uri).origin+"; base-uri 'none'; frame-ancestors 'none'",'Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'});
