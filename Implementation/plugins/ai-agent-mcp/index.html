@@ -1,92 +1,104 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-:root { color-scheme:dark; font:13px/1.5 system-ui,sans-serif; }
-* { box-sizing:border-box; }
-body { margin:0; min-height:100vh; display:flex; flex-direction:column;
-  background:var(--plugin-background,#0b1019);
-  color:var(--plugin-text,#dce6f5); }
-header { height:50px; display:flex; align-items:center; gap:12px;
-  padding:0 16px; border-bottom:1px solid var(--plugin-border,#28374e);
-  background:var(--plugin-panel,#101927); }
-header strong { letter-spacing:.06em; font-size:14px; }
-header .state { margin-left:auto; font-size:11px; color:#9eb1cb; }
-button,textarea { font:inherit; }
-button { border:1px solid #34516f; border-radius:6px; padding:7px 10px;
-  background:var(--plugin-control,#1a304a);
-  color:var(--plugin-text,#dcecff); cursor:pointer; }
-button:disabled,textarea:disabled { opacity:.5; cursor:not-allowed; }
-button:focus-visible { outline:2px solid #9bcaff; outline-offset:2px; }
-main { display:grid; grid-template-columns:minmax(220px,270px) minmax(0,1fr);
-  flex:1; min-height:0; }
-aside { padding:20px; background:var(--plugin-panel,#111b2a);
-  border-right:1px solid var(--plugin-border,#28374e); }
-h2 { margin:0 0 12px; font-size:17px; color:#edf5ff; }
-p { color:#9daec3; margin:0 0 12px; }
-.controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
-.feed { display:flex; min-width:0; flex-direction:column; }
-.messages { flex:1; padding:18px 22px; overflow:auto; }
-.notice { border:1px solid #2b4565; padding:14px; border-radius:8px;
-  background:var(--plugin-panel,#132238);
-  color:var(--plugin-text,#c5d8ef); max-width:520px; }
-form { display:flex; gap:10px; padding:14px 18px;
-  border-top:1px solid #28374e; }
-textarea { resize:vertical; min-height:48px; max-height:150px;
-  flex:1; border-radius:7px; padding:10px; background:#121e2e;
-  color:#e4f0ff; border:1px solid #35506e; }
-@media (max-width:660px) {
-  main { grid-template-columns:1fr; overflow:auto; }
-  aside { border-right:0; border-bottom:1px solid #28374e; padding:14px; }
-  .messages { min-height:110px; }
-}
-</style>
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>:root{color-scheme:dark;font:13px system-ui,sans-serif}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;min-height:0;color:var(--plugin-text,#ececec);background:var(--plugin-background,#000)}
+[hidden]{display:none!important}
+button,textarea,input{font:inherit}button{cursor:pointer}
+button:disabled,textarea:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #80a9d8;outline-offset:2px}
+#clusterAiPanel{display:flex;flex-direction:column;flex:1;min-height:0;height:100%;background:var(--plugin-background,#000);color:var(--plugin-text,#eee)}
+.cai-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--plugin-panel,#111);border-bottom:1px solid var(--plugin-border,#333);min-height:59px;flex-wrap:wrap}
+.cai-bar strong{font-size:14px;white-space:nowrap}
+.cai-bar [data-agent-status]{margin-right:auto;color:var(--plugin-text,#aaa);opacity:.75}
+.cai-bar button,.cai-setup button,.cai-workspace button{background:var(--plugin-control,#202020);color:var(--plugin-text,#eee);border:1px solid var(--plugin-border,#555);border-radius:6px;padding:9px 14px}
+.cai-bar button:hover,.cai-setup button:hover,.cai-workspace button:hover{filter:brightness(1.15)}
+.cai-setup{padding:30px;overflow:auto;max-width:740px;line-height:1.8}
+.cai-setup h2{font-size:20px}.cai-setup p{color:var(--plugin-text,#aaa);opacity:.75}
+.cai-setup input:not([type=checkbox]){display:block;background:var(--plugin-background,#0c0c0c);color:var(--plugin-text,#fff);border:1px solid var(--plugin-border,#444);border-radius:6px;padding:12px;width:100%}
+.cai-setup label{display:block;margin-top:18px}
+.cai-step{border-left:2px solid var(--plugin-border,#39485b);padding-left:14px;margin:18px 0}
+.cai-step strong{font-size:13px}
+.cai-setup .cai-primary{margin-top:14px;background:var(--plugin-control,#243b5a)}
+.cai-workspace{display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto}
+.cai-feed{flex:1;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:12px;font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
+.cai-feed h2{font:600 14px system-ui,sans-serif}
+.cai-feed .notice{padding:12px 15px;border:1px solid var(--plugin-border,#333);border-radius:7px;max-width:620px}
+.cai-msg{display:flex;flex-direction:column;gap:5px;padding:12px 15px;background:var(--plugin-panel,#111);border:1px solid var(--plugin-border,#2b2b2b);border-radius:10px;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 10px}
+.cai-user{align-self:flex-end;background:var(--plugin-control,#1d1d1d)}
+.cai-error{border-color:#653838;color:#ffb7b7}
+.cai-time{font:11px ui-monospace,monospace;color:#91a1b7}
+.cai-workspace form{display:flex;align-items:flex-end;gap:10px;padding:14px;border-top:1px solid var(--plugin-border,#333);margin-top:auto}
+.cai-workspace textarea{resize:vertical;min-height:64px;flex:1;padding:12px;background:var(--plugin-background,#0c0c0c);color:var(--plugin-text,#fff);border:1px solid var(--plugin-border,#444);border-radius:6px}
+.cai-guide{margin:12px 24px 18px;padding:14px 16px;border:1px solid var(--plugin-border,#354358);border-radius:8px;background:var(--plugin-panel,#0e131c);line-height:1.6;max-height:230px;overflow:auto}
+.cai-guide-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.cai-guide-steps{font-size:12px;line-height:1.65}
+.cai-guide-steps ol{margin:6px 0;padding-left:20px}
+.cai-guide-steps li{padding:3px 0}
+.cai-guide .cai-guide-dismiss{min-width:30px;padding:3px}
+.cai-bar .cai-danger{background:#251719;color:#f2b7bc;border-color:#71383f}
+#caiError{color:#ffb7b7}
+@media(max-width:740px){.cai-bar{gap:6px;padding:9px}.cai-bar button{padding:6px 8px}.cai-setup{padding:18px}.cai-feed{padding:13px}.cai-guide{margin:8px;padding:10px}.cai-workspace form{flex-wrap:wrap}.cai-workspace textarea{flex-basis:100%}}</style></head>
 <body>
-<header>
-  <strong data-i18n="heading">AI Agent</strong>
-  <span class="state" role="status" aria-live="polite"
-    data-agent-status data-i18n="disconnected">尚未連線</span>
-</header>
-<main>
-  <aside>
+<section id="clusterAiPanel">
+  <div class="cai-bar">
+    <strong>✧ AI Agent</strong>
+    <span data-agent-status role="status" aria-live="polite">尚未連線</span>
+    <button type="button" data-model-action="configure" data-i18n="settings" disabled>模型設定</button>
+    <button type="button" data-model-action="modelInfo" data-i18n="modelStatus" disabled>模型狀態</button>
+    <button type="button" data-model-action="cancel" data-i18n="stop" disabled>中斷</button>
+    <button type="button" data-legacy-guide data-i18n="connection">連線教學</button>
+    <button type="button" data-agent-action="ping" data-i18n="ping" disabled>測試連線</button>
+    <button type="button" data-agent-action="disconnect" class="cai-danger" data-i18n="disconnect" disabled>移除本地權限</button>
+    <button type="button" data-legacy-close aria-label="Close AI Agent">×</button>
+  </div>
+  <div class="cai-setup" id="caiSetup">
     <h2 data-i18n="setupTitle">連結本地 AI Agent</h2>
-    <p data-i18n="setupNotice">本地 Agent 配對將在 PR14.4 提供。</p>
-    <p data-i18n="features">尚未取得檔案及 PowerShell 權限。</p>
-    <div class="controls">
-      <button type="button" data-model-action="configure"
-        disabled data-i18n="settings">模型設定</button>
-      <button type="button" data-model-action="modelInfo"
-        disabled data-i18n="modelStatus">模型狀態</button>
-      <button type="button" disabled data-i18n="connection">連線教學</button>
-      <button type="button" data-agent-action="pair"
-        data-i18n="connect">配對</button>
-      <button type="button" data-agent-action="ping"
-        disabled data-i18n="ping">測試連線</button>
-      <button type="button" data-agent-action="disconnect"
-        disabled data-i18n="disconnect">斷線</button>
+    <p>沿用 Cluster PowerShell 的本地 Agent；初次使用請下載完整插件包、解壓縮並執行快速配置 CMD。</p>
+    <div class="cai-step">
+      <strong>01 · QUICK SETUP</strong>
+      <p>下載 AI Agent MCP 完整 ZIP，解壓後執行 local-agent/Quick-Setup.cmd。Windows 視窗會顯示連接埠與 64 字元 Token。</p>
+      <button type="button" data-quick-setup>下載 Windows 快速配置包 ZIP</button>
     </div>
-    <p data-agent-error role="alert"></p>
-  </aside>
-  <section class="feed">
-    <div class="messages" role="log" aria-live="polite">
-      <h2 data-i18n="feed">任務輸出</h2>
-      <div class="notice" data-model-notice data-i18n="modelInactive">
-        配對本地 Agent 並設定模型後即可執行文字任務。
+    <div class="cai-step">
+      <strong>02 · PS BIND / PAIRING TOKEN</strong>
+      <p data-i18n="setupNotice">請在可信任的主頁配對視窗輸入 64 字元 Token，金鑰不交給插件。</p>
+      <label for="caiTokenPreview">Pairing Token</label>
+      <input id="caiTokenPreview" readonly placeholder="Trusted host pairing dialog" aria-label="Host-managed pairing token">
+      <button class="cai-primary" data-agent-action="pair" data-i18n="connect" type="button">連線</button>
+    </div>
+    <div class="cai-step">
+      <strong>03 · VERIFY</strong>
+      <p>配對成功後會自動切換至運行狀態；使用「模型設定」配置 API。</p>
+    </div>
+    <p data-agent-error id="caiError" role="alert"></p>
+  </div>
+  <div id="caiWorkspace" class="cai-workspace" hidden>
+    <div class="cai-guide" id="caiConnectGuide" hidden>
+      <div class="cai-guide-head">
+        <strong>連接 ChatGPT / Connect ChatGPT</strong>
+        <button type="button" class="cai-guide-dismiss" data-guide-dismiss aria-label="Close guide">×</button>
       </div>
+      <div class="cai-guide-steps"><ol>
+        <li>從「資源」下載完整 AI Agent MCP ZIP 並解壓縮。</li>
+        <li>執行 local-agent/Quick-Setup.cmd，依提示安裝 Node.js 20+ 與依賴。</li>
+        <li>將本機 Agent 顯示的 Token 填入主頁可信任配對視窗。</li>
+        <li>點選「模型設定」，在可信任視窗設定 OpenAI API Key 與模型。</li>
+        <li>MCP／OAuth 需個別啟動並完成本機及 HTTPS 安全授權；不會自動啟用。</li>
+      </ol></div>
+    </div>
+    <div class="cai-feed" id="caiFeed" role="log" aria-live="polite">
+      <h2 data-i18n="feed">任務輸出</h2>
+      <div class="notice" data-model-notice data-i18n="modelInactive">配對本地 Agent 並設定模型後即可執行純文字任務。</div>
       <div data-model-output></div>
     </div>
-    <form>
-      <textarea disabled maxlength="8000" rows="2"
-        data-placeholder="prompt" aria-label="Task prompt"></textarea>
-      <button type="submit" disabled data-i18n="submit">送出</button>
-      <button type="button" data-model-action="cancel"
-        disabled data-i18n="stop">中斷</button>
+    <form id="caiForm">
+      <textarea disabled maxlength="8000" rows="3" data-placeholder="prompt" aria-label="Task prompt"></textarea>
+      <button type="submit" data-i18n="submit" disabled>送出</button>
     </form>
-  </section>
-</main>
+  </div>
+</section>
 <script>
 (() => {
   "use strict";
@@ -112,9 +124,17 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
       !connected || (!taskActive && !taskPending);
   }
   function appendMessage(message, kind = "info") {
-    const item = document.createElement("p");
-    item.className = "model-output model-output-" + kind;
-    item.textContent = String(message).slice(0, 65536);
+    const item = document.createElement("div");
+    item.className = "cai-msg cai-" + kind;
+    const time = document.createElement("time");
+    time.className = "cai-time";
+    time.dateTime = new Date().toISOString();
+    time.textContent = new Date().toLocaleString(
+      document.documentElement.lang === "en" ? "en-US" : "zh-TW",
+      { hour12: false });
+    const text = document.createElement("span");
+    text.textContent = String(message).slice(0, 65536);
+    item.append(time, text);
     messages.append(item);
     if (messages.children.length > 40) messages.firstChild.remove();
     item.scrollIntoView({ block: "nearest" });
@@ -135,8 +155,26 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
       taskPending = false;
       modelConfigured = false;
     }
+    document.getElementById("caiSetup").hidden =
+      agentState === "connected";
+    document.getElementById("caiWorkspace").hidden =
+      agentState !== "connected";
     renderModelControls();
   }
+  document.querySelector("[data-quick-setup]").addEventListener(
+    "click", () => window.parent.postMessage({
+      type: "cluster-plugin-quick-setup" }, "*"));
+  document.querySelector("[data-legacy-close]").addEventListener(
+    "click", () => window.parent.postMessage({
+      type: "cluster-plugin-panel-close" }, "*"));
+  document.querySelector("[data-legacy-guide]").addEventListener(
+    "click", () => {
+      const guide = document.getElementById("caiConnectGuide");
+      guide.hidden = !guide.hidden;
+    });
+  document.querySelector("[data-guide-dismiss]").addEventListener(
+    "click", () => document.getElementById(
+      "caiConnectGuide").hidden = true);
   document.querySelectorAll("[data-agent-action]").forEach(button => {
     button.addEventListener("click", () => {
       const action = button.dataset.agentAction;
