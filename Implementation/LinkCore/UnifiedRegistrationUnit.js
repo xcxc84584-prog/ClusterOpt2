@@ -15,6 +15,8 @@ export class UnifiedRegistrationUnit {
     this.providerServices = new Map();
     this.providerFactories = new Map();
     this.providerInstances = new Map();
+    this.disabledProviders = new Set();
+    this.disabledServices = new Map();
   }
 
   register(object) {
@@ -113,6 +115,9 @@ export class UnifiedRegistrationUnit {
     if (!this.providers.has(providerId)) {
       return { ok: false, status: 404 };
     }
+    if (this.disabledProviders.has(providerId)) {
+      return { ok: false, status: 409, error: "Provider disabled" };
+    }
     if (this.providerInstances.has(providerId)) {
       return { ok: true, status: 200,
         value: this.providerInstances.get(providerId) };
@@ -149,6 +154,8 @@ export class UnifiedRegistrationUnit {
     if (!provider) return false;
     this.disposeProvider(providerId);
     this.providerFactories.delete(providerId);
+    this.disabledProviders.delete(providerId);
+    this.disabledServices.delete(providerId);
     for (const item of provider.provides) {
       const list = this.providerServices.get(item.service);
       list?.delete(providerId);
@@ -159,12 +166,48 @@ export class UnifiedRegistrationUnit {
 
   providersForService(serviceId) {
     const ids = this.providerServices.get(serviceId) ?? new Set();
-    return Object.freeze([...ids].map(id =>
+    return Object.freeze([...ids].filter(id =>
+      this.isServiceEnabled(id, serviceId)).map(id =>
       this.providers.get(id)).filter(Boolean));
   }
 
   listServices() {
     return Object.freeze([...this.providerServices.keys()].sort());
+  }
+
+  /**
+   * PR03.07 provider and per-service availability is separate from
+   * registration. No route table exists until PR04.
+   */
+  setProviderEnabled(providerId, enabled) {
+    if (!this.providers.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    if (enabled) this.disabledProviders.delete(providerId);
+    else {
+      this.disabledProviders.add(providerId);
+      this.disposeProvider(providerId);
+    }
+    return { ok: true, status: 200 };
+  }
+
+  setServiceEnabled(providerId, serviceId, enabled) {
+    const manifest = this.providers.get(providerId);
+    if (!manifest) return { ok: false, status: 404 };
+    if (!manifest.provides.some(item => item.service === serviceId)) {
+      return { ok: false, status: 404 };
+    }
+    const disabled = this.disabledServices.get(providerId) ?? new Set();
+    if (enabled) disabled.delete(serviceId);
+    else disabled.add(serviceId);
+    if (disabled.size) this.disabledServices.set(providerId, disabled);
+    else this.disabledServices.delete(providerId);
+    return { ok: true, status: 200 };
+  }
+
+  isServiceEnabled(providerId, serviceId) {
+    return !this.disabledProviders.has(providerId) &&
+      !this.disabledServices.get(providerId)?.has(serviceId);
   }
 
   getProvider(providerId) {
