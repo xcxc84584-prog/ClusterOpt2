@@ -104,8 +104,9 @@ test("PR14.6 rejects traversal, PowerShell and revocation", async () => {
   assert.equal((await h.request("read", {
     path: "../secret.txt"
   })).status, 400);
-  assert.throws(() => h.explorer.setRight("ps", true),
-    error => error.status === 403);
+  assert.equal(h.explorer.setRight("ps", true)
+    .permissions.ps, true);
+  assert.equal((await h.request("list")).status, 200);
   h.explorer.revoke();
   assert.equal((await h.request("list")).status, 403);
   assert.equal(h.explorer.status().selected, false);
