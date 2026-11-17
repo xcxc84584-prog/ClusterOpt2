@@ -103,3 +103,17 @@ test("minimal performance shows only bounded text loading controls",
     await page.locator("#pluginApply").click();
     await expect(page.locator("#pluginMaxMiB")).toHaveValue("16");
   });
+
+test("startup and language restore never access removed category controls",
+  async ({page})=>{
+    const errors=[];
+    page.on("pageerror",error=>errors.push(error.message));
+    await page.goto("/");
+    await expect(page.locator("#menuBtn")).toBeVisible();
+    await expect(page.locator("#pluginCategoryMenu")).toHaveCount(0);
+    await expect(page.locator("#pluginCategoryBtn")).toHaveCount(0);
+    await openManager(page);
+    await expect(page.locator(".pm-tabs [role=tab]")).toHaveCount(4);
+    expect(errors.filter(message=>message.includes(
+      "Cannot set properties of null"))).toEqual([]);
+  });
