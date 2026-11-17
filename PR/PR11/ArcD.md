@@ -48,3 +48,18 @@ flowchart LR
   H --> M[ObjectManagementUnit]
   H --> R
 ```
+
+## Editor display adapter (Patch +4)
+SyntaxOverlayController is a presentation-only helper, not a new Object,
+Property registry, editor content owner or security authority.
+- Native textarea remains the edit, caret, IME and undo/redo authority.
+- Mount action invokes plugin.install(core); URU registers the Provider.
+- Controller calls core.requestService("ui", "editor.syntax.highlight",
+  "highlight", {text, fileName}, {origin:"user"}), always through HubUnit.
+- Token payload is rendered as textContent only, never as innerHTML.
+- Event generation ticket rejects stale queued responses after edits
+  or viewport changes; no writeback, file handles or FileWorkspace edits.
+- No shared Property added: UI_COLOR and Language remain centralized.
+- Cache: line offsets only for loaded pages up to 1 MiB; visible lines
+  capped at 160 and per-request source at 65,536 UTF-16 code units.
+- Failure path: hide overlay and display unchanged native text.
