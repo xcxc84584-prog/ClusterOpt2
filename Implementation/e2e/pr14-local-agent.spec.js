@@ -76,6 +76,9 @@ test("PR14.4 local pairing is host-owned, authorized and revocable",
       .toHaveText("已連線");
     await frame.locator('[data-agent-action="ping"]').click();
     await expect(frame.locator("[data-agent-error]")).toBeEmpty();
+    await expect.poll(() => page.evaluate(() =>
+      window.__agentSent.map(item => item.type)))
+      .toEqual(["auth", "ping"]);
     const recorded = await page.evaluate(() => ({
       sent: window.__agentSent.map(x => x.type),
       iframeCannotReadHost: (() => {
