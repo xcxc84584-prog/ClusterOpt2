@@ -7,26 +7,31 @@
 :root { color-scheme:dark; font:13px/1.5 system-ui,sans-serif; }
 * { box-sizing:border-box; }
 body { margin:0; min-height:100vh; display:flex; flex-direction:column;
-  background:#0b1019; color:#dce6f5; }
+  background:var(--plugin-background,#0b1019);
+  color:var(--plugin-text,#dce6f5); }
 header { height:50px; display:flex; align-items:center; gap:12px;
-  padding:0 16px; border-bottom:1px solid #28374e; background:#101927; }
+  padding:0 16px; border-bottom:1px solid var(--plugin-border,#28374e);
+  background:var(--plugin-panel,#101927); }
 header strong { letter-spacing:.06em; font-size:14px; }
 header .state { margin-left:auto; font-size:11px; color:#9eb1cb; }
 button,textarea { font:inherit; }
 button { border:1px solid #34516f; border-radius:6px; padding:7px 10px;
-  background:#1a304a; color:#dcecff; cursor:pointer; }
+  background:var(--plugin-control,#1a304a);
+  color:var(--plugin-text,#dcecff); cursor:pointer; }
 button:disabled,textarea:disabled { opacity:.5; cursor:not-allowed; }
 button:focus-visible { outline:2px solid #9bcaff; outline-offset:2px; }
 main { display:grid; grid-template-columns:minmax(220px,270px) minmax(0,1fr);
   flex:1; min-height:0; }
-aside { padding:20px; background:#111b2a; border-right:1px solid #28374e; }
+aside { padding:20px; background:var(--plugin-panel,#111b2a);
+  border-right:1px solid var(--plugin-border,#28374e); }
 h2 { margin:0 0 12px; font-size:17px; color:#edf5ff; }
 p { color:#9daec3; margin:0 0 12px; }
 .controls { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
 .feed { display:flex; min-width:0; flex-direction:column; }
 .messages { flex:1; padding:18px 22px; overflow:auto; }
 .notice { border:1px solid #2b4565; padding:14px; border-radius:8px;
-  background:#132238; color:#c5d8ef; max-width:520px; }
+  background:var(--plugin-panel,#132238);
+  color:var(--plugin-text,#c5d8ef); max-width:520px; }
 form { display:flex; gap:10px; padding:14px 18px;
   border-top:1px solid #28374e; }
 textarea { resize:vertical; min-height:48px; max-height:150px;
@@ -74,8 +79,20 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
   "use strict";
   const labels = {};
   window.addEventListener("message", event => {
-    if (event.source !== window.parent ||
-        event.data?.type !== "cluster-plugin-locale") return;
+    if (event.source !== window.parent) return;
+    if (event.data?.type === "cluster-plugin-theme") {
+      const names = ["background", "panel", "text", "border", "control"];
+      for (const name of names) {
+        const value = event.data.colors?.[name];
+        if (typeof value === "string" && value.length <= 64 &&
+            (CSS.supports("color", value) || value === "")) {
+          document.documentElement.style.setProperty(
+            "--plugin-" + name, value);
+        }
+      }
+      return;
+    }
+    if (event.data?.type !== "cluster-plugin-locale") return;
     const locale = event.data.locale;
     if (locale !== "en" && locale !== "zh-Hant") return;
     const copy = event.data.labels;
