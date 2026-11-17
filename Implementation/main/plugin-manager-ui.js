@@ -34,10 +34,54 @@ function tabular(doc,header,rows) {
 
 /** Layout is reference-driven; live data has a single URU/OMU authority. */
 export function mountPluginManagerUI(core,doc) {
-  const root=doc.getElementById("pluginManagerPages");
-  const oldSettings=doc.getElementById("pluginLegacySettings");
-  if(!root||!oldSettings)
-    throw Error("Missing Plugin Manager DOM");
+  // Old index.html can coexist with a newer JS module after a Pages
+  // deployment or browser cache refresh. Recover missing mount nodes.
+  const windowNode=doc.getElementById("pluginWindow");
+  if(!windowNode) {
+    throw Error("Missing pluginWindow: refresh the page HTML");
+  }
+  let root=doc.getElementById("pluginManagerPages");
+  let oldSettings=doc.getElementById("pluginLegacySettings");
+  let workbench=windowNode.querySelector(".plugin-workbench-body");
+  if(!workbench) {
+    workbench=dom(doc,"div","plugin-workbench-body");
+    windowNode.append(workbench);
+  }
+  if(!root) {
+    root=dom(doc,"div");
+    root.id="pluginManagerPages";
+    workbench.prepend(root);
+  }
+  if(!oldSettings) {
+    oldSettings=dom(doc,"div","plugin-dialog-content");
+    oldSettings.id="pluginLegacySettings";
+    oldSettings.hidden=true;
+    const performance=dom(doc,"section");
+    performance.id="pluginPerformanceOptions";
+    performance.dataset.pluginPanel="performance";
+    const controls=dom(doc,"div","pm-budget-inline");
+    const label=dom(doc,"label","",
+      "最大文本載入量（MiB）");
+    label.id="pluginMaxLabel";
+    label.htmlFor="pluginMaxMiB";
+    const input=dom(doc,"input");
+    input.id="pluginMaxMiB";
+    input.type="number";
+    input.min="1";input.max="1024";input.step="1";
+    input.value="8";
+    const apply=dom(doc,"button","","套用");
+    apply.type="button";
+    apply.id="pluginApply";
+    const note=dom(doc,"p","",
+      "此設定目前僅控制切片快取容量。");
+    note.id="pluginLimitNote";
+    note.setAttribute("role","status");
+    note.setAttribute("aria-live","polite");
+    controls.append(label,input,apply);
+    performance.append(controls,note);
+    oldSettings.append(performance);
+    workbench.append(oldSettings);
+  }
   const shell=dom(doc,"div","pm-shell");
   const sidebar=dom(doc,"aside","pm-sidebar");
   const main=dom(doc,"main","pm-main");
@@ -82,7 +126,7 @@ export function mountPluginManagerUI(core,doc) {
   });
   footer.append(reject,approve);
   modal.append(heading,explanation,footer);
-  doc.getElementById("pluginWindow").append(modal);
+  windowNode.append(modal);
   modal.addEventListener("close",()=>{pending=null;});
   function closeModal() {
     pending=null;
@@ -309,7 +353,7 @@ export function mountPluginManagerUI(core,doc) {
     if(!selected&&all.length)selected=all[0].providerId;
     renderSidebar();
     sideHeading.textContent=t("插件清單","Plugin List");
-    doc.getElementById("pluginWindow").setAttribute("aria-label",
+    windowNode.setAttribute("aria-label",
       t("插件管理","Plugin Manager"));
     const p=current();
     nav.replaceChildren();
