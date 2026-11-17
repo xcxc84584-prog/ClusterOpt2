@@ -1,0 +1,13 @@
+{
+  "name": "clusteropt2-local-agent",
+  "version": "0.0.9",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0"
+  }
+}
