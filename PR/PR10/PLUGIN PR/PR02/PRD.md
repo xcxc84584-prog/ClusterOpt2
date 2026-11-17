@@ -52,3 +52,9 @@ source-scoped query. Previous CI failure acknowledged; new CI pending.
 API version comparison and deprecation metadata policy. No automatic
 migration, command routing, access grant or stateful compatibility
 cache. Full exact-head CI pending; main unchanged.
+
+## PR02.08 implementation scope
+Automatic bounded JSON and Markdown documentation generated through
+source-filtered HubUnit discovery, never from raw registries. Returns
+immutable in-memory text; no public browser facade or file write.
+Status IMPLEMENTED / exact-head CI PENDING.
