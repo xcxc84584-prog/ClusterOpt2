@@ -95,6 +95,22 @@ async function mountWithMockAgent(page) {
   });
 }
 
+/**
+ * PR20 migrated the UI to a read-only event viewer.
+ * Keep task transport coverage by invoking the trusted host OCDA API,
+ * not by reintroducing a chat composer in the plugin frame.
+ */
+async function submitFromTrustedHost(page, prompt) {
+  return page.evaluate(async value => {
+    const { linkCore } = await import(
+      "/Implementation/LinkCore/LinkCore.js");
+    const view = linkCore.pluginHostInstaller.uiHost.views.get(
+      "cluster.ai-agent-mcp");
+    return linkCore.request("ui", view.modelTask.id,
+      "submit", { prompt: value }, { origin: "user" });
+  }, prompt);
+}
+
 test("PR14.5 model credential stays in host, task route and cancel",
   async ({ page }) => {
     await page.goto("/");
@@ -116,8 +132,10 @@ test("PR14.5 model credential stays in host, task route and cancel",
     await modelDialog.locator('button[type="submit"]').click();
     await expect(frame.locator("[data-model-output]"))
       .toContainText("模型已設定");
-    await frame.locator("textarea").fill("Explain a function");
-    await frame.locator('form button[type="submit"]').click();
+    await expect(frame.locator("textarea")).toHaveCount(0);
+    const submit = await submitFromTrustedHost(
+      page, "Explain a function");
+    expect(submit.status).toBe(200);
     await expect.poll(() => page.evaluate(() =>
       window.__modelSent.map(item => item.type)))
       .toContain("task");
@@ -201,8 +219,10 @@ test("PR14.5 full authenticated model result reaches isolated UI",
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(frame.locator("[data-agent-status]"))
       .toHaveText("已連線");
-    await frame.locator("textarea").fill("Explain one function");
-    await frame.locator('form button[type="submit"]').click();
+    await expect(frame.locator("textarea")).toHaveCount(0);
+    const submit = await submitFromTrustedHost(
+      page, "Explain one function");
+    expect(submit.status).toBe(200);
     await expect.poll(() => page.evaluate(() =>
       window.__modelSent.find(item => item.type === "task")
         ?.requestId ?? null)).not.toBeNull();
