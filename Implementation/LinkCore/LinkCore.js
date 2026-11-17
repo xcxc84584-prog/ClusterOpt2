@@ -12,6 +12,7 @@ import { HubProtocolPolicy } from "../property/HubProtocolPolicy.js";
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
+import { PluginHostInstallUnit } from "./PluginHostInstallUnit.js";
 import { PluginFolderPackageUnit } from "./PluginFolderPackageUnit.js";
 import { PluginPackageStoreUnit } from "./PluginPackageStoreUnit.js";
 import { PluginFolderPackagePolicy } from
@@ -85,6 +86,8 @@ export class LinkCore {
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog, this.services);
+    this.pluginHostInstaller = new PluginHostInstallUnit(this,
+      typeof document === "undefined" ? null : document);
     this.catalogQuery = new CatalogQuery(this.catalog);
     Object.defineProperty(this, "version", {
       value: ReleaseVersion.product, enumerable: true,
