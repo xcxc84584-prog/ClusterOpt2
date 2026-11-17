@@ -6,7 +6,9 @@ import { PluginModelTaskPolicy } from "./PluginModelTaskPolicy.js";
  */
 const HEX = /^[a-f0-9]{64}$/i;
 const SAFE = new Set(["ready", "pong", "error",
-  "provider_info", "task_status", "task_result"]);
+  "provider_info", "task_status", "task_result",
+  "bridge_registered", "tool_call",
+  "powershell_execution_result"]);
 export const PluginLocalAgentPolicy = Object.freeze({
   address: "ws://127.0.0.1:43879/agent",
   maxMessageBytes: 65536,
@@ -29,6 +31,15 @@ export const PluginLocalAgentPolicy = Object.freeze({
     if (["provider_info", "task_status", "task_result"]
       .includes(message.type) &&
         !PluginModelTaskPolicy.taskMessage(message)) {
+      return { ok: false, status: 400 };
+    }
+    if (message.type === "tool_call" && (
+        typeof message.requestId !== "string" ||
+        !/^[a-zA-Z0-9-]{1,100}$/.test(message.requestId) ||
+        typeof message.name !== "string" ||
+        message.name.length > 100 ||
+        !message.args || typeof message.args !== "object" ||
+        Array.isArray(message.args))) {
       return { ok: false, status: 400 };
     }
     if (message.type === "pong" &&
