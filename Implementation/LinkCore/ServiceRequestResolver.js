@@ -51,21 +51,31 @@ export class ServiceRequestResolver {
         return { ok: false, status: 409,
           error: "Ambiguous replace route priority" };
       }
-      const selected = sorted[0].providers[0];
-      const provider = matches.find(item =>
-        item.providerId === selected);
-      if (!provider) {
-        return { ok: false, status: 404,
-          error: "Configured Provider unavailable" };
-      }
-      if (!this.registry.objects.has(provider.objectId)) {
-        return { ok: false, status: 404,
-          error: "Provider Object unavailable" };
+      const declaration = sorted[0];
+      const stages = [];
+      for (const id of declaration.providers) {
+        const provider = matches.find(item =>
+          item.providerId === id);
+        if (!provider || !this.registry.objects.has(provider.objectId)) {
+          return { ok: false, status: 404,
+            error: "Configured Provider unavailable" };
+        }
+        const contract = provider.provides.find(item =>
+          item.service === service && item.action === action);
+        stages.push(Object.freeze({
+          providerId: id, objectId: provider.objectId,
+          inputSchema: contract.inputSchema,
+          outputSchema: contract.outputSchema
+        }));
       }
       return { ok: true, status: 200,
         value: Object.freeze({
-          service, action, providerId: selected,
-          objectId: provider.objectId
+          service, action,
+          providerId: stages[0].providerId,
+          objectId: stages[0].objectId,
+          mode: declaration.mode,
+          routeId: declaration.routeId,
+          stages: Object.freeze(stages)
         }) };
     }
     if (matches.length > 1) {

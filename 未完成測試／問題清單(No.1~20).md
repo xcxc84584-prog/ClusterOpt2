@@ -95,3 +95,10 @@ PR1 is not considered accepted based on source code alone.
 - Exact-head CI and restore proof: pending; no PASS until confirmed.
 - External route ACL (PR04.08), routeVersion/CAS (PR05) outstanding.
 - Real 5GiB and browser file permission manual tests remain open.
+
+## PLUGIN PR04.04–05 checkpoints
+- Node/VTE and Chromium exact-head CI: unverified until workflows finish.
+- Runtime Receive cancellation/timeout and transactional routeVersion
+  remain deferred; timeoutMs does not force running Provider termination.
+- External route-config ACL remains PR04.08, no public mutation API.
+- Physical 5GiB and file permissions remain unverified.

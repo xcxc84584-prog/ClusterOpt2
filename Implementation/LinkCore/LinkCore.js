@@ -248,6 +248,9 @@ export class LinkCore {
   configureReplaceRoutes(table) {
     return this.hub.configureReplaceRoutes(table);
   }
+  configureServiceRoutes(table) {
+    return this.hub.configureServiceRoutes(table);
+  }
   requestService(source, service, action, payload = {}, options = {}) {
     return this.hub.requestService(source, service, action,
       payload, options);

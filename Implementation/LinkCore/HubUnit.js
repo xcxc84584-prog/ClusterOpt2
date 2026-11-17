@@ -9,6 +9,8 @@ import { ServiceRegistry } from "./ServiceRegistry.js";
 import { ServiceRequestResolver } from "./ServiceRequestResolver.js";
 import { RouteTablePolicy } from
   "../property/RouteTablePolicy.js";
+import { RouteContractPolicy } from
+  "../property/RouteContractPolicy.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
   "./AuthorizedCatalogCollection.js";
@@ -245,30 +247,52 @@ export class HubUnit {
    * Neither invalid entries nor inactive Providers can partially apply.
    */
   configureReplaceRoutes(candidate) {
+    return this.configureServiceRoutes(candidate, true);
+  }
+
+  /**
+   * Trusted declarative route activation. PR04.04/05: chain/fanout
+   * cannot bypass HubUnit.request or mint a caller identity.
+   */
+  configureServiceRoutes(candidate, replaceOnly = false) {
     const parsed = RouteTablePolicy.validate(candidate);
     if (!parsed.ok) {
       this.omu.record("EHU", "LinkCore", "Service.Route.Configure",
         parsed.status);
       return parsed;
     }
-    if (!parsed.value.routes.every(route => route.mode === "replace")) {
+    if (!parsed.value.routes.every(route =>
+      route.mode === "replace" ||
+      (!replaceOnly && ["chain", "fanout"].includes(route.mode)))) {
       this.omu.record("EHU", "LinkCore", "Service.Route.Configure", 400);
       return { ok: false, status: 400,
-        error: "Only replace routes are executable in PR04.03" };
+        error: "Unsupported executable route mode" };
     }
     for (const route of parsed.value.routes) {
       const found = this.serviceResolver.services.resolve(route.service);
-      const target = found.ok && found.value.find(provider =>
-        provider.providerId === route.providers[0] &&
-        provider.provides.some(item =>
+      const contracts = [];
+      for (const id of route.providers) {
+        const provider = found.ok && found.value.find(item =>
+          item.providerId === id &&
+          this.registry.objects.has(item.objectId));
+        const contract = provider && provider.provides.find(item =>
           item.service === route.service &&
-          item.action === route.action) &&
-        this.registry.objects.has(provider.objectId));
-      if (!target) {
+          item.action === route.action);
+        if (!contract) {
+          this.omu.record("EHU", "LinkCore",
+            "Service.Route.Configure", 404, route.routeId);
+          return { ok: false, status: 404,
+            error: "Route Provider unavailable" };
+        }
+        contracts.push(contract);
+      }
+      if (route.mode === "chain" && contracts.some((item, index) =>
+        index > 0 && !RouteContractPolicy.compatible(
+          contracts[index - 1].outputSchema, item.inputSchema))) {
         this.omu.record("EHU", "LinkCore",
-          "Service.Route.Configure", 404, route.routeId);
-        return { ok: false, status: 404,
-          error: "Replace Provider unavailable" };
+          "Service.Route.Configure", 409, route.routeId);
+        return { ok: false, status: 409,
+          error: "Chain contract mismatch" };
       }
     }
     // Existing in-flight requests hold their already resolved Object.
@@ -315,8 +339,85 @@ export class HubUnit {
         service: route.value.service,
         providerId: route.value.providerId
       });
+    if (route.value.mode === "chain") {
+      return this.executeChain(source, route.value,
+        payload, options);
+    }
+    if (route.value.mode === "fanout") {
+      return this.executeFanout(source, route.value,
+        payload, options);
+    }
     return this.request(source, route.value.objectId,
       route.value.action, payload, options);
+  }
+
+
+  /**
+   * Each hop invokes the pre-existing guarded Hub request. Every
+   * successful output is checked before becoming the next input.
+   */
+  async executeChain(source, route, payload, options) {
+    let current = payload;
+    for (const [index, stage] of route.stages.entries()) {
+      if (!RouteContractPolicy.validate(
+        current, stage.inputSchema)) {
+        return this.routeFailure(source, route, 422,
+          "Chain input contract failed", index);
+      }
+      const result = await this.request(
+        source, stage.objectId, route.action, current, options);
+      if (!result.ok) return result;
+      if (!RouteContractPolicy.validate(
+        result.value, stage.outputSchema)) {
+        return this.routeFailure(source, route, 502,
+          "Chain output contract failed", index);
+      }
+      current = result.value;
+    }
+    return { ok: true, status: 200, value: current };
+  }
+
+  /**
+   * Bounded async fanout. Output order follows the declared providers,
+   * independent of completion order. Fail closed on any failed branch.
+   * Cancellation of executing tasks belongs to the later runtime gate.
+   */
+  async executeFanout(source, route, payload, options) {
+    for (const [index, stage] of route.stages.entries()) {
+      if (!RouteContractPolicy.validate(
+        payload, stage.inputSchema)) {
+        return this.routeFailure(source, route, 422,
+          "Fanout input contract failed", index);
+      }
+    }
+    const results = await Promise.all(route.stages.map(stage =>
+      this.request(source, stage.objectId,
+        route.action, payload, options)));
+    const values = [];
+    for (const [index, result] of results.entries()) {
+      if (!result.ok) {
+        return this.routeFailure(source, route, result.status,
+          "Fanout Provider failure", index);
+      }
+      if (!RouteContractPolicy.validate(result.value,
+        route.stages[index].outputSchema)) {
+        return this.routeFailure(source, route, 502,
+          "Fanout output contract failed", index);
+      }
+      values.push(Object.freeze({
+        providerId: route.stages[index].providerId,
+        value: result.value
+      }));
+    }
+    return { ok: true, status: 200,
+      value: Object.freeze(values) };
+  }
+
+  routeFailure(source, route, status, error, stage) {
+    this.omu.record("EHU", source,
+      "Service.Route.Execute", status, route.routeId,
+      { stage, error });
+    return { ok: false, status, error };
   }
 
   async request(source, target, action, payload = {}, options = {}) {

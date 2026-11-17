@@ -36,3 +36,14 @@ No real 5GiB editor or physical file-permission acceptance is claimed.
 - VTE runtime route state isolated from a second LinkCore instance.
 - New browser privilege surface and untrusted plugin control absent.
 - Existing exact-head Node, Chromium and release CI required for PASS.
+
+## PR04.04–05 Relation Tests
+- Chain executes ordered stages, forwarding only validated outputs.
+- Adjacent incompatible schema fails configure 409 atomically.
+- Runtime mismatched output yields 502 EHU without later chain hops.
+- Fanout preserves declaration order regardless of completion timing.
+- Fanout rejects partial output on failed/schema-invalid branch.
+- Every stage still uses HubUnit.request ACL and dependency edges.
+- Disabled Provider fails at resolution (404); no silent fallback.
+- Existing PR04.03 replace and legacy target-ID tests stay in suite.
+- No route configuration exposed through Cluster.api.

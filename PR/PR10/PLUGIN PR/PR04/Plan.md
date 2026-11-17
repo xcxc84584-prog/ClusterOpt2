@@ -74,3 +74,16 @@ scheduler and authorization stay with existing HubUnit.request().
 Priority picks the highest matching declaration; origin/object filters
 are exact, origin never inferred. timeoutMs is metadata only until
 bounded execution support in PR04.04–05.
+
+## PR04.04 Chain and PR04.05 Fan-out
+Reviewed VS Code extensionsRegistry contribution contract and existing
+ClusterOpt2 ProviderCompatibilityPolicy/HubUnit scheduler. Route execution
+remains centralized; no plugin-specific runner. Chain passes the checked
+output to the next stage after structural schema validation, with
+adjacent schema equality verified before route activation. Fan-out uses
+Promise.all over existing HubUnit.request slots and deterministic
+declaration-order aggregation. Any branch failure fails closed without
+returning partial data. Provider limits are eight, the scheduler remains
+the concurrency authority, and runtime output is bounded to 1 MiB per
+stage. timeoutMs remains metadata (no pretense of hard cancellation
+for running receive calls). No new browser or agent mutation API.

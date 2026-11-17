@@ -35,3 +35,9 @@ execution; these are gated on PR04.03–08.
 Replace one logical Service/action Provider under a trusted, validated
 in-process route table. No external route editor, agent route mutation,
 manual File I/O, full transaction CAS, fanout or chain execution.
+
+## PR04.04–05 implementation
+Chain: sequential Provider route with strict per-step schema check.
+Fan-out: bounded asynchronous Provider routes with deterministic
+all-or-nothing aggregation. Use HubUnit authorization at every call.
+Timeout metadata does not promise hard termination of running calls.

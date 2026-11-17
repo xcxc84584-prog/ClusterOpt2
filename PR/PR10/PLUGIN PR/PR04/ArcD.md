@@ -96,3 +96,27 @@ No new Event ID allocator or independent route authority.
 Separate future PR05 routeVersion/CAS/draining and PR04.08 external
 permission gate; this is a trusted in-process configuration, not a
 sandbox boundary or untrusted plugin administration API.
+
+## PR04.04–05 Dataflow and ownership
+```mermaid
+flowchart TD
+  R[HubUnit.requestService] --> S[ServiceRequestResolver]
+  S --> U[URU live Provider index]
+  S --> M{Configured mode}
+  M -->|chain| C[Sequential contract gates]
+  M -->|fanout| F[Bounded parallel requests]
+  C --> H[Existing HubUnit.request]
+  F --> H
+  H --> ACL[UserAPI AgentAPI AccessPolicy]
+  H --> OMU[EHU Log Dependency]
+  C --> V[Validated final output]
+  F --> A[Ordered all-or-nothing results]
+```
+
+No new Object registry or shared EDPMU Property. RouteContractPolicy
+is pure and local to LinkCore. Each hop is a full request+response;
+the registered original caller remains the source, never an arbitrary
+Provider-supplied identity. Chain validates per-hop input/output; fanout
+checks each input before dispatch and each output after results.
+Failures 422/502 record EHU; ACL failures retain original 403.
+The scheduler is unchanged, so concurrency is asynchronous only.
