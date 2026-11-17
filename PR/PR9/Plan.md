@@ -13,3 +13,11 @@ No key or machine-specific paths, no text eval, line integer and geometry valida
 Check viewport coordinate post-load clamping; sparse-index latency; close/save/reopen with browser permission revoke; Explorer directory actions 501; large-file crash and readback. Record findings rather than claim PASS.
 ## Remaining patches
 Full-file virtual line seek, scroll coordinate lifecycle browser test, legacy Explorer parity, native PowerShell lifecycle, and PR8 independent acceptance.
+
+## Viewport restoration refinement
+Preserve saved scrollTop/scrollLeft/lineHeight in a one-shot pending
+snapshot separate from cursor. A virtual file's async page load may
+temporarily reset scrollTop; after text is painted, requestAnimationFrame
+applies the saved browser pixels with line-height zoom compensation.
+Never interpret caret offset as scroll position. Tests still needed for
+large file restore after delayed permissions and reload.
