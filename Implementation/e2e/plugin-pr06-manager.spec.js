@@ -7,19 +7,15 @@ test("PR06.08 four separate Plugin Manager pages in original tool tab",
     await page.locator("#toolBtn").click();
     await page.locator("#pluginBtn").click();
     await expect(page.locator("#pluginManagerPages")).toBeVisible();
-    const nav = page.locator(".plugin-manager-nav button");
-    await expect(nav).toHaveCount(4);
-    await expect(page.locator(".plugin-manager-page h3"))
-      .toHaveText("插件列表");
+    const nav = page.locator(".pm-tabs [role=tab]");
+    await expect(nav).toHaveCount(6);
+    await expect(page.locator(".pm-page")).toBeVisible();
     await nav.nth(1).click();
-    await expect(page.locator(".plugin-manager-page h3"))
-      .toHaveText("插件權限");
+    await expect(nav.nth(1)).toHaveAttribute("aria-selected","true");
     await nav.nth(2).click();
-    await expect(page.locator(".plugin-manager-page h3"))
-      .toHaveText("API 列表");
+    await expect(nav.nth(2)).toHaveAttribute("aria-selected","true");
     await nav.nth(3).click();
-    await expect(page.locator(".plugin-manager-page h3"))
-      .toHaveText("EHU 日誌");
+    await expect(nav.nth(3)).toHaveAttribute("aria-selected","true");
     await page.locator("#pluginToolToggle").click();
     await expect(page.locator("#pluginLegacySettings")).toBeVisible();
     await page.locator("#pluginToolToggle").click();
@@ -52,13 +48,13 @@ test("PR06.08 permission management is fail-closed, no direct Grant",
     await page.locator("#menuBtn").click();
     await page.locator("#toolBtn").click();
     await page.locator("#pluginBtn").click();
-    await page.locator(".plugin-manager-nav button").nth(0).click();
-    await expect(page.locator(".plugin-manager-page"))
+    await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await expect(page.locator(".pm-page"))
       .toContainText("preview.plugin");
-    await page.locator(".plugin-manager-nav button").nth(1).click();
-    await expect(page.locator(".plugin-manager-page"))
+    await page.locator(".pm-tabs [role=tab]").nth(2).click();
+    await expect(page.locator(".pm-page"))
       .toContainText("document.slice.read");
-    await page.getByRole("button", { name: "需經安全審核" }).click();
+    await page.getByRole("button", { name: "授予" }).click();
     await expect(page.locator(".plugin-consent-dialog")).toBeVisible();
     await page.locator(".plugin-consent-dialog").getByRole("button",
       { name: "拒絕" }).click();
@@ -70,15 +66,15 @@ test("PR06.08 permission management is fail-closed, no direct Grant",
         "preview.plugin", "document.slice.read");
     });
     expect(denied).toBe(false);
-    await page.getByRole("button", { name: "需經安全審核" }).click();
+    await page.getByRole("button", { name: "授予" }).click();
     await page.locator(".plugin-consent-dialog").getByRole("button",
       { name: "同意此權限" }).click();
     await expect(page.getByRole("button", { name: "撤銷" }))
       .toBeVisible();
     await page.getByRole("button", { name: "撤銷" }).click();
-    await expect(page.getByRole("button", { name: "需經安全審核" }))
+    await expect(page.getByRole("button", { name: "授予" }))
       .toBeVisible();
-    await page.locator(".plugin-manager-nav button").nth(2).click();
-    await expect(page.locator(".plugin-manager-page"))
+    await page.locator(".pm-tabs [role=tab]").nth(3).click();
+    await expect(page.locator(".pm-page"))
       .toContainText("test.preview");
   });
