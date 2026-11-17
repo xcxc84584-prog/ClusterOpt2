@@ -1141,3 +1141,106 @@ header .menu-wrap { margin-left:auto; }
   border-radius: 0;
   box-shadow: none;
 }
+
+/* Reference Plugin Manager — replaces old four-page manager with a true
+ * sidebar, plugin details, overview cards and migrated settings. */
+#pluginManagerPages {display:flex;flex:1;min-height:0}
+#pluginManagerPages[hidden] {display:none!important}
+#pluginWindow .plugin-workbench-header {padding:14px 23px;align-items:center}
+#pluginWindow .plugin-workbench-identity h2 {margin:0;font-size:25px;font-weight:700}
+#pluginWindow .plugin-workbench-identity p {margin:4px 0;font-size:12px}
+#pluginWindow .plugin-workbench-body {display:flex;flex:1;min-height:0}
+#pluginWindow .plugin-workbench-footer {display:none}
+#pluginWindow .plugin-workbench-body>#pluginLegacySettings {display:none!important}
+.pm-shell {display:flex;width:100%;min-height:0;min-width:0;
+  background:var(--ui-surface);color:var(--ui-text-on-surface)}
+.pm-sidebar {width:228px;min-width:190px;display:flex;flex-direction:column;
+  background:var(--ui-panel);border-right:1px solid var(--ui-border)}
+.pm-side-heading {padding:13px 12px;border-bottom:1px solid var(--ui-border);
+  font-size:13px;font-weight:700}
+.pm-search-row {display:flex;padding:9px;gap:5px}
+.pm-search {flex:1;min-width:0;padding:8px;border:1px solid var(--ui-border);
+  border-radius:6px;background:var(--ui-control);color:var(--ui-text-on-control)}
+.pm-filter {max-width:60px;border:1px solid var(--ui-border);
+  border-radius:6px;background:var(--ui-control);color:var(--ui-text-on-control)}
+.pm-list {flex:1;min-height:0;overflow-y:auto;padding:0 7px}
+.pm-provider {display:flex;align-items:center;width:100%;gap:9px;padding:11px 8px;
+  margin-bottom:5px;border:0;border-radius:7px;cursor:pointer;
+  text-align:left;color:var(--ui-text-on-panel);background:transparent}
+.pm-provider[aria-pressed=true] {background:color-mix(in srgb,var(--ui-accent) 16%,var(--ui-panel))}
+.pm-provider-label {display:flex;flex-direction:column;gap:4px;min-width:0;
+  flex:1;font-size:12px;overflow-wrap:anywhere}
+.pm-provider-label small {font-size:10px;opacity:.75}
+.pm-cube {font-size:27px}
+.pm-dot {font-size:10px}.pm-dot.off{opacity:.35}
+.pm-install {margin:10px;padding:10px 6px;border:1px solid var(--ui-border);
+  border-radius:6px;background:var(--ui-control);color:var(--ui-text-on-control);
+  cursor:pointer}
+.pm-main {flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
+.pm-hero {display:flex;align-items:center;gap:16px;min-height:115px;
+  padding:18px 20px;flex-shrink:0}
+.pm-hero-cube {width:62px;height:62px;display:grid;place-items:center;
+  font-size:34px;border:1px solid var(--ui-border);border-radius:7px}
+.pm-hero-info {flex:1;min-width:0;overflow-wrap:anywhere}
+.pm-hero-info h2 {font-size:22px;margin:0 0 7px}
+.pm-hero-info p {font-size:12px;margin:0 0 5px}
+.pm-muted {font-size:12px;opacity:.72}
+.pm-hero-actions {display:flex;flex-direction:column;align-items:flex-end;gap:15px}
+.pm-switch {display:flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap}
+.pm-switch input {appearance:none;width:36px;height:21px;border-radius:20px;
+  background:var(--ui-border);position:relative;cursor:pointer}
+.pm-switch input:checked {background:var(--ui-accent)}
+.pm-switch input:after {content:"";position:absolute;left:3px;top:3px;
+  width:15px;height:15px;border-radius:50%;background:#fff}
+.pm-switch input:checked:after {transform:translateX(15px)}
+.pm-action-buttons {display:flex;gap:8px}
+.pm-button,.pm-mini {padding:7px 10px;border:1px solid var(--ui-border);
+  border-radius:6px;background:var(--ui-control);
+  color:var(--ui-text-on-control);cursor:pointer;font:inherit}
+.pm-mini {font-size:11px;padding:5px 7px}
+.pm-mini:disabled {opacity:.4;cursor:not-allowed}
+.pm-tabs {display:flex;overflow-x:auto;flex-shrink:0;padding:0 10px;
+  border-block:1px solid var(--ui-border)}
+.pm-tab {flex:none;border:0;border-bottom:2px solid transparent;
+  background:transparent;color:var(--ui-text-on-surface);
+  cursor:pointer;padding:12px 11px;font-size:12px}
+.pm-tab[aria-selected=true] {background:color-mix(in srgb,var(--ui-accent) 13%,var(--ui-panel));
+  border-bottom-color:var(--ui-accent);font-weight:700}
+.pm-page {flex:1;min-height:0;overflow:auto;padding:16px}
+.pm-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.pm-card {min-width:0;border:1px solid var(--ui-border);
+  border-radius:7px;background:var(--ui-panel);overflow:hidden}
+.pm-card-heading {display:flex;align-items:center;justify-content:space-between;
+  gap:8px;padding:10px 12px;border-bottom:1px solid var(--ui-border);
+  font-size:13px}
+.pm-card-body {padding:10px}
+.pm-table {width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px}
+.pm-table th,.pm-table td {padding:8px;text-align:left;overflow-wrap:anywhere;
+  border-bottom:1px solid var(--ui-border)}
+.pm-table tr:last-child td {border:0}
+.pm-permission-row {display:flex;justify-content:space-between;
+  align-items:center;gap:7px;font-size:11px;margin:7px 0}
+.pm-permission-label {display:flex;gap:7px;align-items:center;min-width:0;
+  overflow-wrap:anywhere}
+.pm-permission-label input {accent-color:var(--ui-accent)}
+.pm-migrated-settings #pluginLegacySettings {display:block!important;
+  width:100%;max-width:none;box-sizing:border-box}
+.pm-migrated-settings .plugin-setting-card {max-width:none!important}
+#pluginWindow .plugin-consent-dialog {z-index:1000}
+@media(max-width:900px) {
+  .pm-sidebar{width:180px;min-width:150px}
+  .pm-hero{flex-wrap:wrap}
+  .pm-hero-actions{width:100%;align-items:flex-start}
+  .pm-grid{grid-template-columns:1fr}
+}
+@media(max-width:620px) {
+  .pm-shell{flex-direction:column}
+  .pm-sidebar{width:100%;min-width:0;max-height:160px;border-right:0;
+    border-bottom:1px solid var(--ui-border)}
+  .pm-list{display:flex;overflow-x:auto}
+  .pm-provider{min-width:140px}
+  .pm-install{display:none}
+  .pm-hero{padding:9px}
+  .pm-hero-cube{width:38px;height:38px}
+  .pm-page{padding:10px}
+}
