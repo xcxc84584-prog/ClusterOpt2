@@ -158,3 +158,15 @@ test("PR14.4 revoked permission blocks new ping", async () => {
   assert.equal((await h.request("ping")).status, 403);
   h.agent.close();
 });
+
+test("PR14.4 generic network permission cannot authorize Local Agent",
+  async () => {
+    const h = harness();
+    h.grant();
+    assert.equal(h.env.core.revokePluginPermission(
+      manifest.provider.objectId, manifest.provider.providerId,
+      "local-agent.pair").status, 200);
+    const rejected = await h.request("pair");
+    assert.equal(rejected.status, 403);
+    assert.equal(h.socket, undefined);
+  });
