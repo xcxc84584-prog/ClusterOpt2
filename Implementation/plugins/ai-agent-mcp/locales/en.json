@@ -19,7 +19,7 @@
   "disconnect": "Disconnect",
   "connectionError": "Local Agent connection failed",
   "modelStatus": "Model status",
-  "modelInactive": "Pair Local Agent and configure a model to run text-only tasks.",
+  "modelInactive": "Pair the Local Agent and authorize MCP to view operation status and output here.",
   "modelReady": "Model ready",
   "modelNotConfigured": "Model not configured",
   "taskState": "Task",
