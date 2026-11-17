@@ -62,3 +62,15 @@ Removed Patch2 PowerShellSessionManager and PowerShellConnectionPolicy;
 no second native terminal, no duplicate OS execution path.
 Security contract: browser retains no local privilege, all terminal
 commands require explicit existing agent pairing and native socket.
+
+## Patch(+4) version consistency chain
+LinkCore.SystemVersion -> UI injection -> legacy PowerShell setup
+ -> createSetupCmd(version) -> ClusterOpt2 install-current.ps1
+ -> CLUSTEROPT_AGENT_VERSION environment -> native agent /status
+ -> PowerShellManager.checkConnection expectedVersion
+ -> Connected only if matching version + correct pairing.
+
+This version read is immutable and central. No new HubUnit Property.
+The installer is an external explicit user action and cannot grant
+browser code OS execution permissions. No outgoing telemetry is
+introduced. Safe port choice does not terminate unrelated processes.
