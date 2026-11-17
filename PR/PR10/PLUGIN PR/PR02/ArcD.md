@@ -110,3 +110,20 @@ collect -> live lookup -> immutable snapshot; runtime unregister ->
 next collect excludes removed entries. Lookup errors return status and
 never synthesize metadata. No asynchronous shared snapshot cache or
 scheduler dependence; read-only, linear work bounded to 4096 entries.
+
+## PR02.05 — Internal Discovery
+```mermaid
+flowchart LR
+  Internal[Trusted internal caller] --> Query[CatalogQuery]
+  Query --> Collect[CatalogCollection.collect]
+  Collect --> URU[URU authoritative Objects]
+  Collect --> EDPMU[EDPMU authoritative Properties]
+  Query --> Result[Frozen filtered paged metadata]
+  Result --> Future[PR02.06 permission filtered HubUnit adapter]
+```
+CatalogQuery has no register/update/execute API. No second mutable index.
+EventChain: internal selector -> validation 400 -> collect 200/413 ->
+filter stable sort -> list/query page 200, describe 200/404/409.
+No direct HubUnit crossing or EHU for pure local search; external caller
+must use PR02.06 authorized HubUnit route to trigger EHU on 403.
+No new Object/Property registration or Dependency edge.
