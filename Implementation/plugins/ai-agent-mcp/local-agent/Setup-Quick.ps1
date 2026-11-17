@@ -1,54 +1,150 @@
-# Plugin-local one-click setup, designed for an extracted ZIP.
-# No automatic elevation, network listener exposure or token upload.
+# AI Agent MCP(ChatGPT) standalone CMD bootstrap helper.
+param(
+  [ValidatePattern('^[a-f0-9]{40}$|^main$')]
+  [string]$SourceRevision = 'main'
+)
 $ErrorActionPreference = 'Stop'
-$agentDir = $PSScriptRoot
-$expectedOrigin = 'https://xcxc84584-prog.github.io'
-
-function Find-Node20 {
+$origin = 'https://xcxc84584-prog.github.io'
+$agentDir = Join-Path $env:LOCALAPPDATA 'ClusterOpt2\AI-Agent-MCP'
+$remoteRoot = 'https://raw.githubusercontent.com/' +
+  'xcxc84584-prog/ClusterOpt2/' + $SourceRevision +
+  '/Implementation/plugins/ai-agent-mcp/local-agent/'
+$protected = @('System','Registry','Idle','smss.exe','csrss.exe',
+  'wininit.exe','winlogon.exe','services.exe','lsass.exe',
+  'svchost.exe','dwm.exe')
+function Listeners([int]$port) {
+  return @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
+}
+function Release-Port([int]$port, [object[]]$listeners) {
+  $owners = @()
+  $ancestorIds = @()
+  $ancestor = Get-CimInstance Win32_Process -Filter "ProcessId=$PID"
+  while ($ancestor -and $ancestor.ParentProcessId -gt 0) {
+    $parentId = [int]$ancestor.ParentProcessId
+    if ($ancestorIds -contains $parentId) { break }
+    $ancestorIds += $parentId
+    $ancestor = Get-CimInstance Win32_Process -Filter "ProcessId=$parentId"
+  }
+  foreach ($ownerPid in @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)) {
+    if ($ownerPid -le 4 -or $ownerPid -eq $PID -or $ancestorIds -contains $ownerPid) {
+      throw 'Refusing to terminate system, current or parent process'
+    }
+    $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$ownerPid" -ErrorAction SilentlyContinue
+    if (-not $owner -or -not $owner.CreationDate -or
+        $protected -contains $owner.Name) {
+      throw 'Cannot verify process identity'
+    }
+    $owners += $owner
+  }
+  if ($owners.Count -eq 0) { throw 'Cannot identify listener process' }
+  Write-Warning 'Override can terminate an unrelated application.'
+  foreach ($owner in $owners) {
+    Write-Host ('PID ' + $owner.ProcessId + ': ' + $owner.Name)
+    Write-Host ('Path: ' + $owner.ExecutablePath)
+  }
+  if ((Read-Host 'Type OVERRIDE to stop listed PID(s)') -cne 'OVERRIDE') {
+    throw 'Override declined; no processes stopped'
+  }
+  foreach ($owner in $owners) {
+    $current = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $owner.ProcessId)
+    $activePids = @(Listeners $port | Select-Object -ExpandProperty OwningProcess -Unique)
+    if (-not $current -or $current.CreationDate -ne $owner.CreationDate -or
+        $current.Name -ne $owner.Name -or
+        $activePids -notcontains [int]$owner.ProcessId) {
+      throw 'Process identity/port listener changed'
+    }
+  }
+  foreach ($owner in $owners) { Stop-Process -Id $owner.ProcessId -Force }
+  for ($i = 0; $i -lt 20; $i++) {
+    if (@(Listeners $port).Count -eq 0) { return }
+    Start-Sleep -Milliseconds 250
+  }
+  throw 'Port still occupied'
+}
+function Select-Port {
+  $port = 43879
+  while ($true) {
+    $listeners = @(Listeners $port)
+    if ($listeners.Count -eq 0) { return $port }
+    Write-Host ('Port ' + $port + ' is in use.') -ForegroundColor Yellow
+    $choice = (Read-Host '[P]ick port / [C]ancel / [O]verride').Trim().ToUpperInvariant()
+    switch ($choice) {
+      'C' { throw 'Cancelled; no process stopped' }
+      'P' {
+        $inputPort = Read-Host 'New port (1024-65535)'
+        $candidate = 0
+        if (-not [int]::TryParse($inputPort, [ref]$candidate) -or
+            $candidate -lt 1024 -or $candidate -gt 65535) {
+          Write-Warning 'Invalid port'
+          continue
+        }
+        $port = $candidate
+      }
+      'O' { Release-Port $port $listeners }
+      default { Write-Warning 'Choose P, C or O' }
+    }
+  }
+}
+function Find-Node {
   $node = Get-Command node.exe -ErrorAction SilentlyContinue
   if (-not $node) { return $null }
-  $version = & $node.Source -p "process.versions.node"
+  $version = & $node.Source -p 'process.versions.node'
   if ($LASTEXITCODE -ne 0) { return $null }
-  $major = [int]($version.Split('.')[0])
-  if ($major -lt 20) { return $null }
+  if ([int]($version.Split('.')[0]) -lt 20) { return $null }
   return $node
 }
-
-if (-not (Test-Path -LiteralPath (Join-Path $agentDir 'server.cjs'))) {
-  throw 'Missing server.cjs: extract the full plugin ZIP first.'
-}
-$node = Find-Node20
-if (-not $node) {
-  Write-Host 'Node.js 20+ is required.' -ForegroundColor Yellow
+function Ensure-Node {
+  $node = Find-Node
+  if ($node) { return $node }
   $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-  if (-not $winget) {
-    throw 'Install Node.js LTS and reopen this installer.'
-  }
-  $consent = Read-Host 'Install Node.js LTS using winget? [Y/N]'
-  if ($consent -notmatch '^[Yy]$') {
-    throw 'Node.js installation was declined.'
+  if (-not $winget) { throw 'Install Node.js 20+ and reopen CMD.' }
+  if ((Read-Host 'Install Node.js LTS using winget? [Y/N]') -notmatch '^[Yy]$') {
+    throw 'Node.js installation declined'
   }
   & $winget.Source install --id OpenJS.NodeJS.LTS --exact --accept-package-agreements --accept-source-agreements
-  if ($LASTEXITCODE -ne 0) { throw 'Node.js install failed.' }
-  $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') +
-    ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
-  $node = Find-Node20
-  if (-not $node) {
-    throw 'Node.js is not available. Reopen CMD and run Quick-Setup.cmd.'
+  if ($LASTEXITCODE -ne 0) { throw 'Node.js installation failed' }
+  $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') +
+    ';' + [Environment]::GetEnvironmentVariable('Path','User')
+  $node = Find-Node
+  if (-not $node) { throw 'Reopen CMD after Node.js installation' }
+  return $node
+}
+function Ensure-Files {
+  New-Item -ItemType Directory -Path $agentDir -Force | Out-Null
+  foreach ($name in @('server.cjs','package.json')) {
+    $target = Join-Path $agentDir $name
+    if (Test-Path -LiteralPath $target) { continue }
+    $temp = $target + '.download'
+    try {
+      Invoke-WebRequest -UseBasicParsing -Uri ($remoteRoot + $name) -OutFile $temp -TimeoutSec 45
+      if ((Get-Item -LiteralPath $temp).Length -lt 20) { throw 'Incomplete file download' }
+      Move-Item -LiteralPath $temp -Destination $target -Force
+    } finally {
+      Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+    }
   }
 }
+Write-Host 'AI AGENT MCP(ChatGPT) - local setup'
+Write-Host ('Source: ' + $SourceRevision)
+$node = Ensure-Node
+Ensure-Files
+$port = Select-Port
 $npm = Get-Command npm.cmd -ErrorAction Stop
-Write-Host 'Installing local Agent dependencies in plugin folder...'
 Push-Location $agentDir
 try {
   & $npm.Source install --omit=dev --no-audit --no-fund
-  if ($LASTEXITCODE -ne 0) { throw 'npm install failed.' }
-  $env:CLUSTER_TERMINAL_ORIGIN = $expectedOrigin
-  Write-Host 'Local agent port: 43879 (127.0.0.1 only)'
-  Write-Host 'Copy the pairing token printed by the Agent into ClusterOpt2.'
-  Write-Host 'Keep this window open to keep the Agent running.'
+  if ($LASTEXITCODE -ne 0) { throw 'npm install failed' }
+  & $node.Source -e "require('node-pty'); require('ws')"
+  if ($LASTEXITCODE -ne 0) {
+    throw 'node-pty blocked: review npm warnings and approve native build scripts.'
+  }
+  $env:CLUSTER_TERMINAL_ORIGIN = $origin
+  $env:CLUSTER_TERMINAL_PORT = [string]$port
+  Write-Host ('Agent port: ' + $port)
+  Write-Host 'Copy this port and the pairing token into ClusterOpt2.'
+  Write-Host 'Keep the CMD window open while using AI Agent.'
   & $node.Source (Join-Path $agentDir 'server.cjs')
-  if ($LASTEXITCODE -ne 0) { throw 'Agent exited unexpectedly.' }
+  if ($LASTEXITCODE -ne 0) { throw 'Agent terminated unexpectedly' }
 } finally {
   Pop-Location
 }
