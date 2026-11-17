@@ -14,7 +14,8 @@ test("PR06.08 four pages are separate and no inert overview tab", () => {
   assert.match(source, /"permissions", "pluginPagePermissions/);
   assert.match(source, /"api", "pluginPageAPI/);
   assert.match(source, /"ehu", "pluginPageEHU/);
-  assert.doesNotMatch(source, /grantPluginPermission\(/);
+  assert.match(source, /event\.isTrusted/);
+  assert.match(source, /grantPluginPermission\(/);
   assert.match(source, /revokePluginPermission\(/);
   assert.match(source, /textContent =/);
 });
