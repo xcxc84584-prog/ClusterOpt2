@@ -86,10 +86,12 @@ export async function runRuntimeAudit() {
     authorization: { default: "Public" },
     receive: async () => core.request("Audit.Right", "Audit.Left", "loop")
   }), "right registration");
-  record("circular REQ wait rejected",
-    await core.request("Audit.Caller", "Audit.Left", "loop"),
-    r => r.ok && r.value?.ok &&
-      r.value.value?.status === 423);
+  const circular = await core.request(
+    "Audit.Caller", "Audit.Left", "loop");
+  record("circular REQ wait rejected", {
+    ...circular, status: circular.value?.value?.status
+  }, r => r.ok && r.value?.ok &&
+    r.value.value?.status === 423);
   const snapshot = core.getSnapshot();
   assertAudit(snapshot.logs.some(item =>
     item.kind === "Log" && item.action === "Request.echo" &&

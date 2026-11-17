@@ -41,3 +41,6 @@ Commit `117307604e83cf0cd4cf3a50f285f08f44b21f19`:
 
 ## Patch(+4) additional runtime cases
 400 invalid contract, 409 duplicate ID and 423 cyclic wait, including explicit EHU preservation checks. **Pending latest SHA CI**. No assertion of user gesture, 1GiB/5GiB real file performance, or hardware-specific permission success.
+
+## Patch(+4) CI failure and Patch(+5) correction
+Commit `82e66d3b82f19639c1b926a89fb7d16506adfb7d`：`npm run check` FAIL，Runtime Audit 的 cycle case 原始 nested response 已正確包含 423，但輸出列的 status 誤用 outer 200，測試無法在報告中找到 423。Patch(+5) 改以 inner status 作為報告觀測碼，並保留完整 Response，重新跑 exact-head CI 才能標 PASS。此錯誤屬測試輸出，不表示 HubUnit 的 cycle EHU 失效。

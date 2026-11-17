@@ -47,3 +47,6 @@ A：真實 Node LinkCore 路由、EHU、VTE；B：Chromium Playwright；C：Wind
 Reviewed [VS Code extension service](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/extensions/common/extensions.ts) and [Theia plugin-ext](https://github.com/eclipse-theia/theia/tree/master/packages/plugin-ext): extension boundaries depend on explicit contracts and lifecycle, not wildcard routing. Audit tooling therefore executes **real HubUnit rules** and refuses to treat static code relationships as permissions.
 
 Node runtime audit now covers 200 / 400 / 403 / 404 / 409 / 423 with real URU registration, Hub request scheduling, EHU, OMU Dependency, and isolated VTE. It does not mutate production HubUnit or alter version. Final merged PR requires CI on **exact final commit**, plus disclosure of manual browser prompts and 1GiB/5GiB testing limitations. Existing 65MiB OPFS E2E covers bounded pages but not a 5GiB real-machine acceptance.
+
+## Patch(+5) — GitHub 參考、巢狀回應正確性
+檢視 VS Code [extension service](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/extensions/common/extensions.ts) 的工作階段結果與控制界線，避免將巢狀動作的外層成功與內層失敗混為一談。OCDA 的 Runtime Audit 在返回 outer 200 時仍應突出 inner EHU 423。這次只調整稽核結果投影，不更改 HubUnit 的執行或錯誤傳遞語義。

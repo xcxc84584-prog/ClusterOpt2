@@ -79,3 +79,6 @@ flowchart TD
   Z -->|423 cyclic wait EHU| O
 ```
 All tests run against a newly created `LinkCore` instance; EHU is not suppressed. The existing Hub scheduler remains untouched; only **observability** is extended. Duplicate object registration yields status 409 via OMU, while invalid strict OCDA contracts yield 400.
+
+## Patch(+5) — 巢狀 Response 狀態投影
+`Audit.Caller → Audit.Left (200 outer) → Audit.Right (200 intermediate) → Audit.Left (423 inner)`。Node Runtime Audit 保留原始巢狀 Response，輸出事件的 `status` 使用最內層拒絕碼 423，以利機器驗證；OMU 仍保留真正 EHU 423。禁止將 outer 200 當成整個 EventChain 成功。
