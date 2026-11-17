@@ -75,6 +75,7 @@ export function mountPluginManagerUI(core,doc) {
   // Migrate existing configured controls and event listeners unchanged.
   const migrated=dom(doc,"div","pm-migrated-settings");
   migrated.append(oldSettings);
+  page.append(migrated);
   const modal=dom(doc,"dialog","plugin-consent-dialog");
   const heading=dom(doc,"h3");
   heading.id="pluginConsentTitle";
@@ -276,12 +277,12 @@ export function mountPluginManagerUI(core,doc) {
       nav.append(item);
     }
     page.replaceChildren();
+    // Keep settings connected: main.js resolves existing elements by ID.
+    page.append(migrated);
+    migrated.hidden=active!=="performance";
     legacyMenu.hidden=active!=="performance";
     oldSettings.hidden=active!=="performance";
-    if(active==="performance") {
-      page.append(migrated);
-      return;
-    }
+    if(active==="performance")return;
     if(!p){page.append(dom(doc,"p","pm-muted",
       t("目前沒有註冊插件","No registered plugins")));return;}
     if(active==="overview")overview(p);
