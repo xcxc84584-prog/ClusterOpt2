@@ -48,6 +48,17 @@ const PLUGINS = Object.freeze([{
   url: "./Implementation/plugins/multilang-highlighter.js",
   service: "editor.syntax.highlight",
   version: "1.1.0"
+}, {
+  id: "cluster.template.plugin-author",
+  kind: "template",
+  nameZh: "插件製作範本",
+  nameEn: "Plugin Development Template",
+  descriptionZh: "HTML／CSS／JS 範本。製作前請查看 API 列表中的" +
+    " Request 輸入與 Response 輸出契約。",
+  descriptionEn: "HTML/CSS/JS project scaffold. Check API List" +
+    " Request inputs and Response outputs before development.",
+  service: "plugin.author.template",
+  version: "1.0.0"
 }]);
 
 async function mountReviewedFile(doc, plugin, file, core) {
@@ -80,7 +91,7 @@ export async function restoreReviewedPlugins(core) {
   let restored = 0;
   let enabledRestored = 0;
   for (const entry of saved.value) {
-    if (!PLUGINS.some(plugin=>plugin.id===entry.providerId)) continue;
+    if (!PLUGINS.some(plugin=>plugin.kind!=="template"&&plugin.id===entry.providerId)) continue;
     try {
       const module = await import("../plugins/multilang-highlighter.js");
       const result = module.install(core);
@@ -140,7 +151,7 @@ export function renderResources(doc, host, options) {
       const reviewed = await core.listReviewedPlugins();
       if (!stored.ok || !reviewed.ok) return;
       const selection=new Map(reviewed.value.filter(item=>
-        PLUGINS.some(p=>p.id===item.providerId)).map(item=>
+        PLUGINS.some(p=>p.kind!=="template"&&p.id===item.providerId)).map(item=>
         [item.providerId,item.enabled]));
       for(const provider of options.providers()) {
         if(!PLUGINS.some(item=>item.id===provider.providerId))continue;
@@ -184,7 +195,7 @@ export function renderResources(doc, host, options) {
          reviewed.some(entry=>!entry ||
            Object.keys(entry).length!==2 ||
            typeof entry.enabled!=="boolean" ||
-           !PLUGINS.some(p=>p.id===entry.providerId))) {
+           !PLUGINS.some(p=>p.kind!=="template"&&p.id===entry.providerId))) {
         throw Error("Unrecognized reviewed plugin");
       }
       // Validate all packages before persisting any, avoiding partial
@@ -249,22 +260,6 @@ export function renderResources(doc, host, options) {
     "Search downloadable plugins...");
   search.setAttribute("aria-label", t("搜尋可下載插件",
     "Search downloadable plugins"));
-  const template=el(doc,"article",
-    "pm-resource-card pm-template-card");
-  template.append(el(doc,"strong","",
-    t("插件製作範本","Plugin development template")));
-  template.append(el(doc,"p","pm-muted",t(
-    "下載完整 HTML／CSS／JS 範本，開發前請先查看 API 列表的" +
-      " Request 輸入與 Response 輸出契約。",
-    "Download a full HTML/CSS/JS project. Read API List Request" +
-      " and Response contracts before writing a plugin.")));
-  const templateDownload=button(doc,t("下載製作範本 ZIP",
-    "Download template ZIP"),()=>{
-    const locale=core.edpmu.get("Language");
-    downloadPluginTemplate(doc,locale==="en"?"en":"zh-Hant");
-  });
-  templateDownload.id="pluginTemplateDownload";
-  template.append(templateDownload);
   const cards = el(doc, "div", "pm-resource-cards");
   const status = el(doc, "p", "pm-market-status");
   status.setAttribute("role", "status");
@@ -326,17 +321,27 @@ export function renderResources(doc, host, options) {
       summary.append(el(doc, "small", "pm-market-meta",
         plugin.service + " · v" + plugin.version));
       const buttons = el(doc, "div", "pm-market-actions");
-      const download = el(doc, "a", "pm-mini pm-market-download",
-        t("下載", "Download"));
-      download.href = plugin.url;
-      download.download = plugin.file;
-      const mount = button(doc, t("裝載", "Mount"), () => {
-        pendingPlugin = plugin;
-        filePicker.click();
-      });
-      mount.setAttribute("aria-label", t("從本地檔案裝載 ",
-        "Mount local file for ") + t(plugin.nameZh, plugin.nameEn));
-      buttons.append(download, mount);
+      if(plugin.kind==="template") {
+        const download=button(doc,t("下載 ZIP","Download ZIP"),()=>{
+          const language=core.edpmu.get("Language");
+          downloadPluginTemplate(doc,language==="en"?"en":"zh-Hant");
+        });
+        download.id="pluginTemplateDownload";
+        download.classList.add("pm-market-download");
+        buttons.append(download);
+      } else {
+        const download=el(doc,"a","pm-mini pm-market-download",
+          t("下載","Download"));
+        download.href=plugin.url;
+        download.download=plugin.file;
+        const mount=button(doc,t("裝載","Mount"),()=>{
+          pendingPlugin=plugin;
+          filePicker.click();
+        });
+        mount.setAttribute("aria-label",t("從本地檔案裝載 ",
+          "Mount local file for ")+t(plugin.nameZh,plugin.nameEn));
+        buttons.append(download,mount);
+      }
       card.append(summary, buttons);
       cards.append(card);
     }
@@ -403,7 +408,7 @@ export function renderResources(doc, host, options) {
   const localGroup = el(doc, "section", "pm-resource-local");
   localGroup.append(localPackage);
   heading.append(search);
-  right.append(heading, template, localGroup, cards, status, filePicker);
+  right.append(heading, localGroup, cards, status, filePicker);
   layout.append(left, right);
   host.append(layout);
 }

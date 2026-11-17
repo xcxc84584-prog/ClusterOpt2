@@ -13,8 +13,8 @@ async function openResources(page) {
 
 test("PR12 resources show searchable downloadable packages, not paths", async ({page}) => {
   await openResources(page);
-  await expect(page.locator(".pm-market-card")).toHaveCount(1);
-  await expect(page.locator(".pm-market-download")).toHaveAttribute(
+  await expect(page.locator(".pm-market-card")).toHaveCount(2);
+  await expect(page.locator("a.pm-market-download")).toHaveAttribute(
     "download", "multilang-highlighter.js");
   await expect(page.locator(".pm-sample-editor")).toHaveCount(0);
   await expect(page.locator(".pm-sample-preview")).toHaveCount(0);
@@ -28,7 +28,7 @@ test("PR12 resources show searchable downloadable packages, not paths", async ({
 test("PR12 local chooser mounts only an exact reviewed download", async ({page}) => {
   await openResources(page);
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.locator(".pm-market-actions button").click();
+  await page.locator(".pm-market-actions button:not(#pluginTemplateDownload)").click();
   const chooser = await chooserPromise;
   await chooser.setFiles({
     name: "multilang-highlighter.js",
@@ -49,7 +49,7 @@ test("PR12 local chooser mounts only an exact reviewed download", async ({page})
 test("PR12 altered local JavaScript is blocked without execution", async ({page}) => {
   await openResources(page);
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.locator(".pm-market-actions button").click();
+  await page.locator(".pm-market-actions button:not(#pluginTemplateDownload)").click();
   const chooser = await chooserPromise;
   await chooser.setFiles({
     name: "multilang-highlighter.js",

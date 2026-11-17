@@ -203,3 +203,14 @@ Deferred multi-file UI/import/auto-resume -> future implementation
 ```
 This release gate does not authorize executing arbitrary archived HTML,
 relative JavaScript modules or auto-replaying stored capability grants.
+
+## PR13 Patch(+13) — UI refresh EventChain
+```text
+Tool view update -> PluginManager.refresh -> compare local render state
+  -> unchanged: preserve DOM (scroll/focus/search)
+  -> changed: render from live URU/HUB, no duplicate registration
+User input -> catalogue filter -> ordinary plugin/template cards
+Template click -> bilingual ZIP generator -> download only
+```
+No new EHU status, HubUnit API, Property or Provider. Downloading a
+development scaffold never invokes install, URU or capability approval.
