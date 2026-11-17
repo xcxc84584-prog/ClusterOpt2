@@ -108,6 +108,12 @@ export class FileWorkspace {
         doc.scrollTop = state.scrollTop;
         doc.scrollLeft = state.scrollLeft ?? 0;
         doc.viewportLineHeight = state.viewportLineHeight ?? null;
+        // This one-shot snapshot is separate from the caret and cannot
+        // be replaced by an early scroll event during asynchronous load.
+        doc.pendingViewportRestore = {
+          top: state.scrollTop, left: state.scrollLeft ?? 0,
+          lineHeight: state.viewportLineHeight ?? null
+        };
         doc.revision = state.revision ?? 0;
         doc.diskRevision = state.diskRevision ?? null;
         doc.lineEnding = state.lineEnding === "\\r\\n" ?
@@ -138,6 +144,10 @@ export class FileWorkspace {
         if (result.ok) {
           doc.scrollTop = viewport.top;
           doc.scrollLeft = viewport.left;
+          doc.pendingViewportRestore = {
+            top: viewport.top, left: viewport.left,
+            lineHeight: doc.pendingViewportRestore?.lineHeight ?? null
+          };
         }
         this.onChange();
       });
