@@ -102,16 +102,26 @@ function Install-Dependencies {
         if ($LASTEXITCODE -ne 0) {
             throw 'Native node-pty dependencies failed to install'
         }
-        # npm can skip native lifecycle scripts; a successful npm exit
-        # alone is not proof that the ConPTY binary can load.
-        $probe = 'import("node-pty").then(m => ' +
-            'process.exit(typeof m.spawn === "function" ? 0 : 1))' +
-            '.catch(() => process.exit(1))'
-        & $NodePath -e $probe
+        # Existing npm installs may have skipped the native lifecycle.
+        # Rebuild explicitly under the version-pinned allowScripts policy.
+        if (Test-Path $npmCmd) {
+            & $npmCmd rebuild node-pty --no-audit --no-fund
+        } else {
+            & $NodePath $npmCli rebuild node-pty --no-audit --no-fund
+        }
         if ($LASTEXITCODE -ne 0) {
-            throw ('node-pty native binary unavailable. Review and ' +
-                'approve the node-pty install script with ' +
-                'npm install-scripts approve node-pty, then rerun setup.')
+            throw 'node-pty native rebuild failed'
+        }
+        # A real .mjs file prevents PowerShell from stripping quotes in
+        # native command-line JavaScript and also checks ConPTY spawn.
+        $probeFile = Join-Path $agentDir 'probe-native.mjs'
+        if (-not (Test-Path -LiteralPath $probeFile)) {
+            throw 'Missing local ConPTY probe file'
+        }
+        & $NodePath $probeFile
+        if ($LASTEXITCODE -ne 0) {
+            throw ('ConPTY native probe failed. Ensure node-pty was ' +
+                'built for this Node.js version and Windows system.')
         }
     } finally {
         Pop-Location
@@ -225,7 +235,7 @@ if (-not $node) { $node = Install-PortableNode }
 $env:PATH = (Split-Path $node) + ';' + $env:PATH
 
 Write-Host '[2/5] Downloading compatible agent files...'
-foreach ($name in @('server.mjs', 'native-terminal.mjs', 'package.json')) {
+foreach ($name in @('server.mjs', 'native-terminal.mjs', 'probe-native.mjs', 'package.json')) {
     $target = Join-Path $agentDir $name
     Download-AgentFile -Uri ($base + $name) -Destination $target
 }
