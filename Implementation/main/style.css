@@ -1515,3 +1515,182 @@ header .menu-wrap { margin-left:auto; }
 #editorPane #editor.syntax-overlay-active::selection {
 	background: color-mix(in srgb, var(--ui-accent) 38%, transparent);
 }
+
+
+/* PR12: docked plugin management, no overlapping panels or absolute cards. */
+#pluginWindow,
+#pluginWindow .plugin-workbench-body,
+#pluginWindow .pm-shell,
+#pluginWindow .pm-main,
+#pluginWindow .pm-page {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+}
+#pluginWindow .plugin-workbench-header {
+  gap: 12px;
+  padding: 9px 14px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+#pluginWindow .plugin-workbench-identity h2 {
+  font-size: clamp(15px, 1.5vw, 19px);
+}
+#pluginWindow .plugin-workbench-identity p {
+  margin-top: 2px;
+}
+#pluginWindow .plugin-window-categories {
+  position: static;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+  justify-content: flex-end;
+  align-items: center;
+}
+#pluginWindow .pm-shell {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+#pluginWindow .pm-sidebar {
+  position: relative;
+  flex-shrink: 0;
+  max-width: min(240px, 28%);
+  overflow: hidden;
+}
+#pluginWindow .pm-main {
+  overflow: hidden;
+  flex: 1 1 0;
+}
+#pluginWindow .pm-tabs {
+  justify-content: flex-start;
+  gap: 2px;
+  max-width: 100%;
+}
+#pluginWindow .pm-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+#pluginWindow .pm-page {
+  overflow-x: hidden;
+}
+#pluginWindow .pm-resources {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.85fr) minmax(280px, 1.15fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+#pluginWindow .pm-resource-pane {
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+}
+#pluginWindow .pm-market-header {
+  display: grid;
+  gap: 10px;
+}
+#pluginWindow .pm-market-header p {
+  margin: 3px 0 0;
+}
+#pluginWindow .pm-resource-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 10px;
+}
+#pluginWindow .pm-market-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  min-width: 0;
+}
+#pluginWindow .pm-market-summary {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+#pluginWindow .pm-market-summary p {
+  margin: 7px 0;
+}
+#pluginWindow .pm-market-meta {
+  display: block;
+  overflow-wrap: anywhere;
+  opacity: .75;
+  font-size: 11px;
+}
+#pluginWindow .pm-market-actions {
+  flex: 0 1 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#pluginWindow .pm-market-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+#pluginWindow .pm-market-status {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+#pluginWindow .pm-native-picker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+#pluginWindow .pm-market-actions :focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 940px) {
+  #pluginWindow .pm-sidebar {
+    flex-basis: 165px;
+  }
+  #pluginWindow .pm-resources {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    overflow: hidden;
+  }
+  #pluginWindow .pm-resource-pane {
+    height: 100%;
+    max-height: none;
+  }
+  #pluginWindow .pm-resource-tools {
+    border-right: 0;
+    border-bottom: 1px solid var(--ui-border);
+  }
+}
+@media (max-width: 580px) {
+  #pluginWindow .plugin-workbench-header {
+    padding: 8px;
+  }
+  #pluginWindow .pm-sidebar:not(.pm-sidebar-collapsed) {
+    flex-basis: 115px;
+    min-width: 115px;
+  }
+  #pluginWindow .pm-sidebar-collapsed {
+    flex-basis: 39px;
+    min-width: 39px;
+  }
+  #pluginWindow .pm-tab {
+    font-size: 11px;
+    padding: 8px 5px;
+  }
+  #pluginWindow .pm-resource-pane {
+    padding: 10px;
+  }
+}
