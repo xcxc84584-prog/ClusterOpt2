@@ -1,0 +1,50 @@
+name: AI Agent Quick Setup Parser
+
+on:
+  pull_request:
+    paths:
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Quick-Setup.cmd"
+      - ".github/workflows/ai-agent-setup-parser.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Quick-Setup.cmd"
+      - ".github/workflows/ai-agent-setup-parser.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  parse-windows:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Setup-Quick.ps1 in Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $file = Join-Path $env:GITHUB_WORKSPACE "Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
+          $tokens = $null
+          $parseErrors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            $file, [ref]$tokens, [ref]$parseErrors)
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Host $_.ToString() }
+            exit 1
+          }
+          Write-Host "Windows PowerShell 5.1 parse PASS"
+      - name: Parse Setup-Quick.ps1 in PowerShell 7
+        shell: pwsh
+        run: |
+          $file = Join-Path $env:GITHUB_WORKSPACE "Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
+          $tokens = $null
+          $parseErrors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            $file, [ref]$tokens, [ref]$parseErrors)
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Host $_.ToString() }
+            exit 1
+          }
+          Write-Host "PowerShell 7 parse PASS"
