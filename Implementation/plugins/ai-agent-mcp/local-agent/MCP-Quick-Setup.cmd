@@ -46,27 +46,23 @@ if errorlevel 1 (
 start "ClusterOpt2 MCP Gateway" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\Start-MCP.ps1"
 echo.
 echo [3/3] Optional OAuth Gateway setup
-echo A trusted, stable HTTPS reverse proxy to 127.0.0.1:43881
-echo must be configured separately. Never expose ports 43879 or 43880.
-echo Enter the issuer ORIGIN only, e.g. https://mcp.example.com
-echo Leave empty to skip OAuth startup.
-set "ISSUER="
-set /p "ISSUER=Public HTTPS issuer (optional): "
-if not defined ISSUER goto finish
-set "CLUSTER_OAUTH_ISSUER=%ISSUER%"
-powershell.exe -NoProfile -Command "if($env:CLUSTER_OAUTH_ISSUER -notmatch '^https://[^/?#]+$'){exit 1}"
-if errorlevel 1 (
-  echo Invalid issuer; OAuth was not started.
-  goto failed
-)
+echo Configure a trusted, stable HTTPS reverse proxy only to 127.0.0.1:43881.
+echo Never expose ports 43879 or 43880 to the Internet.
+choice /M "Start interactive OAuth configuration"
+if errorlevel 2 goto finish
+if errorlevel 1 goto oauth
+goto failed
+
+:oauth
 powershell.exe -NoProfile -Command "if(Get-NetTCPConnection -LocalPort 43881 -State Listen -ErrorAction SilentlyContinue){exit 1}"
 if errorlevel 1 (
   echo Port 43881 is busy. OAuth was not started.
   goto failed
 )
-start "ClusterOpt2 OAuth Gateway" powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '%ROOT%\Start-OAuth.ps1' -Issuer $env:CLUSTER_OAUTH_ISSUER"
-echo OAuth loopback: http://127.0.0.1:43881/mcp
-echo Public MCP URL (only after HTTPS proxy setup): %ISSUER%/mcp
+start "ClusterOpt2 OAuth Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "$issuer=Read-Host 'Trusted public HTTPS issuer (origin only)'; if($issuer -notmatch '^https://[^/?#]+$'){throw 'Invalid issuer origin'}; & (Join-Path $env:ROOT 'Start-OAuth.ps1') -Issuer $issuer"
+echo In the new OAuth window enter an exact HTTPS origin.
+echo Connect ChatGPT with the same origin plus /mcp.
+
 :finish
 echo.
 echo MCP local setup initiated. Verify both spawned windows.
