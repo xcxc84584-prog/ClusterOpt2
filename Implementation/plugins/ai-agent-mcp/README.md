@@ -80,3 +80,6 @@ PowerShell execution, browser permissions and OAuth end-to-end checks
 remain required before production acceptance.
 
 Do not treat a mock WebSocket test as proof of a real model connection.
+
+## Separate OAuth control scope
+When explicitly requested, `cluster.control` advertises all 14 legacy MCP tools after a distinct authorization-page warning. Requests still pass through the already paired Local Agent, browser ToolBox grants and per-command PowerShell user confirmation; it is **not** a direct shell endpoint. Ordinary `cluster.read` tokens remain five-tool read-only. See MCP-SETUP.md.
