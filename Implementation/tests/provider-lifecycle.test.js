@@ -127,6 +127,7 @@ test("PR03.10 real VTE cross-Object REQ/REP and 00/10/01/11", async () => {
   const env = new VirtualTestEnvironment();
   env.create("a");
   env.create("b");
+  env.create("idle");
   assert.equal(env.core.uru.listProviders().length, 0);
   assert.equal(env.snapshot().dependencies.length, 0);
   const output = await env.act("a", "b", "ping", { n: 3 });
@@ -141,6 +142,13 @@ test("PR03.10 real VTE cross-Object REQ/REP and 00/10/01/11", async () => {
     event.action === "Request.ping" && event.status === 200));
   assert.ok(env.log().some(event =>
     event.action === "Response.ping" && event.status === 200));
-  assert.equal(env.core.getSnapshot().dependencies.some(edge =>
-    edge.code === "11"), false);
+  assert.equal(edges.some(edge => edge.link.includes("VTE.idle")), false,
+    "Unrelated Object remains 00");
+  const reversed = await env.act("b", "a", "pong", { n: 4 });
+  assert.equal(reversed.status, 200);
+  const both = env.snapshot().dependencies;
+  assert.ok(both.some(edge => edge.link === "VTE.a->VTE.b" &&
+    edge.code === "11"));
+  assert.ok(both.some(edge => edge.link === "VTE.b->VTE.a" &&
+    edge.code === "11"));
 });
