@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title ClusterOpt2 - ChatGPT MCP Quick Setup
-set "REV=01aaaec3f0654886d0cd8b45542a33f74ba9b728"
+set "REV=079110435ef499f87774c064da4bd6eff750af77"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "BASE=https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/%REV%/Implementation/plugins/ai-agent-mcp/local-agent"
 echo ====================================================
@@ -33,32 +33,24 @@ if not exist "%ROOT%" (
   if errorlevel 1 goto failed
 )
 echo [1/3] Downloading pinned MCP and OAuth files...
-for %%F in (remote-mcp.cjs oauth-mcp-gateway.cjs Start-MCP.ps1 Start-OAuth.ps1) do (
+for %%F in (remote-mcp.cjs oauth-mcp-gateway.cjs Start-MCP.ps1 Start-OAuth.ps1 Port-CPO.ps1) do (
   powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $url=$env:BASE+'/%%F'; $target=Join-Path $env:ROOT '%%F'; $temp=$target+'.download'; try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $temp -TimeoutSec 45; if((Get-Item -LiteralPath $temp).Length -lt 100){throw 'Incomplete download'}; Move-Item -LiteralPath $temp -Destination $target -Force } finally { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue }"
   if errorlevel 1 goto failed
 )
 echo [2/3] Starting local bearer-protected MCP on 127.0.0.1:43880...
-powershell.exe -NoProfile -Command "if(Get-NetTCPConnection -LocalPort 43880 -State Listen -ErrorAction SilentlyContinue){exit 1}"
-if errorlevel 1 (
-  echo Port 43880 is busy. No process will be stopped.
-  goto failed
-)
+echo If MCP port is occupied, the new window prompts C/P/O.
 start "ClusterOpt2 MCP Gateway" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\Start-MCP.ps1"
 echo.
 echo [3/3] Optional OAuth Gateway setup
-echo Configure a trusted, stable HTTPS reverse proxy only to 127.0.0.1:43881.
-echo Never expose ports 43879 or 43880 to the Internet.
+echo Configure a trusted, stable HTTPS reverse proxy only to 127.0.0.1:43879.
+echo Never expose ports 43881 or 43880 to the Internet.
 choice /M "Start interactive OAuth configuration"
 if errorlevel 2 goto finish
 if errorlevel 1 goto oauth
 goto failed
 
 :oauth
-powershell.exe -NoProfile -Command "if(Get-NetTCPConnection -LocalPort 43881 -State Listen -ErrorAction SilentlyContinue){exit 1}"
-if errorlevel 1 (
-  echo Port 43881 is busy. OAuth was not started.
-  goto failed
-)
+echo If OAuth port is occupied, the new window prompts C/P/O.
 start "ClusterOpt2 OAuth Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "$issuer=Read-Host 'Trusted public HTTPS issuer (origin only)'; if($issuer -notmatch '^https://[^/?#]+$'){throw 'Invalid issuer origin'}; & (Join-Path $env:ROOT 'Start-OAuth.ps1') -Issuer $issuer"
 echo In the new OAuth window enter an exact HTTPS origin.
 echo Connect ChatGPT with the same origin plus /mcp.
