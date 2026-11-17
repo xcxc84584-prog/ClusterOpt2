@@ -54,7 +54,10 @@ test("PR20 bundled MCP retains all 14 legacy remote tool names", () => {
     assert.ok(stdio.includes("'cluster." + action + "'"),
       "Missing stdio MCP tool: " + action);
   }
-  assert.match(oauth, /scopes_supported:\['cluster\.read'\]/);
-  assert.match(oauth, /readonlyTools\.has\(rpc\.params\?\.name\)/);
-  assert.match(oauth, /value\.result\.tools\.filter/);
+  assert.match(oauth, /cluster\\.control/);
+  assert.match(oauth, /scope:entry\\.scope/);
+  assert.match(oauth, /scopeNotice/);
+  assert.match(oauth, /readonlyTools\\.has\\(rpc\\.params\\.name\\)/);
+  assert.match(oauth, /session\\.scope==='cluster\\.control'/);
+  assert.match(oauth, /value\\.result\\.tools\\.filter/);
 });
