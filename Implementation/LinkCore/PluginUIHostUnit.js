@@ -1,5 +1,6 @@
 import { PluginWorkbenchTabUnit } from "./PluginWorkbenchTabUnit.js";
-import { downloadAgentPackage } from "../main/plugin-agent-download.js";
+import { downloadAgentQuickSetup } from
+  "../main/plugin-agent-download.js";
 import { PluginMCPReadOnlyObject } from
   "../object/PluginMCPReadOnlyObject.js";
 import { PluginShellApprovalObject } from
@@ -604,7 +605,7 @@ export class PluginUIHostUnit {
             return;
           }
           if (event.data?.type !== "cluster-plugin-quick-setup") return;
-          void downloadAgentPackage(this.doc).catch(() =>
+          void downloadAgentQuickSetup(this.doc).catch(() =>
             this.core.omu.record("EHU","PluginUIHost",
               "Plugin.QuickSetupDownload",503,provider.providerId));
         };
