@@ -582,8 +582,12 @@ export class PluginUIHostUnit {
       view.workbenchTab.attach();
       if (provider.providerId === "cluster.ai-agent-mcp") {
         const onQuickSetup = event => {
-          if (event.source !== frame.contentWindow ||
-              event.data?.type !== "cluster-plugin-quick-setup") return;
+          if (event.source !== frame.contentWindow) return;
+          if (event.data?.type === "cluster-plugin-panel-close") {
+            view.workbenchTab?.close();
+            return;
+          }
+          if (event.data?.type !== "cluster-plugin-quick-setup") return;
           void downloadAgentPackage(this.doc).catch(() =>
             this.core.omu.record("EHU","PluginUIHost",
               "Plugin.QuickSetupDownload",503,provider.providerId));
