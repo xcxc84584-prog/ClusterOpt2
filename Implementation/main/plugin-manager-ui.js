@@ -91,12 +91,6 @@ export function mountPluginManagerUI(core,doc) {
     if(modal.open) modal.close();
     approve.hidden=false;
   }
-  function info(text) {
-    if(modal.open) return;
-    heading.textContent="Plugin Manager";
-    explanation.textContent=text;
-    approve.hidden=true;modal.showModal();
-  }
   function ask(p,permission) {
     if(modal.open || PluginPermissionPolicy.level(permission)==="core")
       return;
@@ -157,12 +151,6 @@ export function mountPluginManagerUI(core,doc) {
     }
     section.append(body);return section;
   }
-  function apiCard(p) {
-    const section=card(t("插件 API","Plugin APIs"));
-    section.append(tabular(doc,["Service","Action","Version"],
-      (p.provides??[]).map(x=>[x.service,x.action,x.version])));
-    return section;
-  }
   function logCard(p) {
     const section=card("EHU Log（EHU 記錄 / 歷史）",
       btn(doc,t("查看全部","View All")+" ↗",()=>activate("ehu"),"pm-mini"));
@@ -172,19 +160,6 @@ export function mountPluginManagerUI(core,doc) {
       events.map(x=>[
         x.timestamp,x.kind,x.action])));
     return section;
-  }
-  function overview(p) {
-    const grid=dom(doc,"div","pm-grid");
-    const info=card("Basic Information（基本資訊）");
-    info.append(tabular(doc,[],[
-      ["Plugin Name",p.providerId],
-      ["Version",p.provides?.[0]?.version],
-      ["Status",disabled(p)?"Disabled":"Enabled"],
-      ["Description",(p.provides??[]).map(x=>x.service).join(", ")],
-      ["Provider",p.providerId],["Owner Object",p.objectId]
-    ]));
-    grid.append(info,permissionCard(p),apiCard(p),logCard(p));
-    page.append(grid);
   }
   function renderSidebar() {
     search.placeholder=t("搜尋插件...","Search plugin...");
