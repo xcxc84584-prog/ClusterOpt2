@@ -137,6 +137,7 @@ export function renderResources(doc,host,options) {
     try {
       const module=await import("../plugins/multilang-highlighter.js");
       const result=module.install(core);
+      if(result.ok) renderCards();
       mountStatus.textContent=result.ok?t(
         "201：插件已裝載並向 HubUnit 註冊。",
         "201: Plugin mounted and registered with HubUnit.") :
