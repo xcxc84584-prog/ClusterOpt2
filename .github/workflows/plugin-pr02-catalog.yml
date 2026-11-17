@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "Implementation/LinkCore/LinkCore.js"
+      - "Implementation/LinkCore/CatalogCollection.js"
       - "Implementation/LinkCore/ObjectContract.js"
       - "Implementation/LinkCore/UnifiedRegistrationUnit.js"
       - "Implementation/property/APIDescriptorPolicy.js"
@@ -10,6 +11,8 @@ on:
       - "Implementation/LinkCore/EntireDomainPropertyManagementUnit.js"
       - "Implementation/tests/property-descriptor.test.js"
       - "Implementation/e2e/plugin-pr02-property.spec.js"
+      - "Implementation/tests/catalog-collection.test.js"
+      - "Implementation/e2e/plugin-pr02-catalog.spec.js"
       - "Implementation/tests/api-descriptor.test.js"
       - "Implementation/tests/object-api-descriptors.test.js"
       - "Implementation/e2e/plugin-pr02-descriptor.spec.js"
@@ -29,7 +32,8 @@ jobs:
           node-version: "22"
       - run: npm install --no-audit --no-fund
       - run: >
-          node --test Implementation/tests/api-descriptor.test.js
+          node --test Implementation/tests/catalog-collection.test.js
+          Implementation/tests/api-descriptor.test.js
           Implementation/tests/object-api-descriptors.test.js
           Implementation/tests/property-descriptor.test.js
       - run: npm run check
@@ -44,6 +48,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: >
           npx playwright test
+          Implementation/e2e/plugin-pr02-catalog.spec.js
           Implementation/e2e/plugin-pr02-descriptor.spec.js
           Implementation/e2e/plugin-pr02-object-api.spec.js
           Implementation/e2e/plugin-pr02-property.spec.js
