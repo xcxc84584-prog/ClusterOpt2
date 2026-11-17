@@ -310,17 +310,23 @@ export function mountPluginManagerUI(core,doc,options={}) {
       const descriptor=item.descriptor;
       add("Property",item.name,descriptor.owners.join(", "),descriptor);
     }
-    for(const provider of providers()) {
-      if(disabled(provider))continue;
-      for(const service of provider.provides??[]) {
-        add("Provider",service.service,provider.objectId,{
-          id:service.service,owner:provider.objectId,
+    let providerOffset=0;
+    while(providerOffset<4096) {
+      const result=core.listProviderContracts("ui",{
+        origin:"user",offset:providerOffset,limit:100
+      });
+      if(!result.ok)break;
+      for(const service of result.value.items) {
+        add("Provider",service.service,service.owner,{
+          id:service.service,owner:service.owner,
           action:service.action,version:service.version,
           visibility:"Public",inputSchema:service.inputSchema,
           outputSchema:service.outputSchema,
-          permissions:provider.permissions??[]
-        },provider.providerId);
+          permissions:service.permissions
+        },service.providerId);
       }
+      if(result.value.nextOffset===null)break;
+      providerOffset=result.value.nextOffset;
     }
     return [...entries.values()].sort((a,b)=>
       a.kind.localeCompare(b.kind)||a.id.localeCompare(b.id)||
