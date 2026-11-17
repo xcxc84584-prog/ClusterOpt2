@@ -1,0 +1,18 @@
+{
+  "heading": "AI Agent",
+  "disconnected": "Disconnected",
+  "setupTitle": "Connect local AI Agent",
+  "setupNotice": "Local Agent pairing will be provided in PR14.4.",
+  "settings": "Model settings",
+  "connection": "Connection guide",
+  "ping": "Test connection",
+  "stop": "Stop",
+  "close": "Close",
+  "prompt": "Describe a task…",
+  "submit": "Send",
+  "feed": "Task output",
+  "unavailable": "AI models and task execution are not enabled yet.",
+  "status": "Current phase: UI preview",
+  "workspace": "Workspace",
+  "features": "No file or PowerShell permissions have been granted."
+}
