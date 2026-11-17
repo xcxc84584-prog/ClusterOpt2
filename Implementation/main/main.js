@@ -427,7 +427,7 @@ paletteObserver.observe(document.documentElement, {
 });
 const legacyPalette = Object.freeze({
   get mode() {
-    return document.documentElement.dataset.theme === "light" ?
+    return document.documentElement.style.colorScheme === "light" ?
       "light" : "dark";
   },
   subscribe(listener) {
