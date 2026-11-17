@@ -5,6 +5,7 @@ async function openPlugin(page) {
   await page.locator("#toolBtn").click();
   await page.locator("#pluginBtn").click();
   await expect(page.locator("#pluginWindow")).toBeVisible();
+  await page.locator("#pluginToolToggle").click();
 }
 
 test("PR8 Plugin opens as a single file-style TAB, not a modal", async ({ page }) => {

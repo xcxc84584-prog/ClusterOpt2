@@ -77,8 +77,12 @@ export function mountPluginManagerUI(core, doc) {
     search.placeholder = "搜尋插件 ID / Object";
     search.setAttribute("aria-label", "搜尋插件");
     search.addEventListener("input", () => {
+      const position = search.selectionStart;
       searchText = search.value;
       draw();
+      const replacement = content.querySelector(".plugin-manager-search");
+      replacement.focus();
+      replacement.setSelectionRange(position, position);
     });
     const chooser = element(doc, "select", "plugin-manager-filter");
     chooser.setAttribute("aria-label", "插件狀態篩選");

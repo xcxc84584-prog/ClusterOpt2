@@ -3,6 +3,8 @@ import { test, expect } from "@playwright/test";
 test("PR06.08 four separate Plugin Manager pages in original tool tab",
   async ({ page }) => {
     await page.goto("/");
+    await page.locator("#menuBtn").click();
+    await page.locator("#toolBtn").click();
     await page.locator("#pluginBtn").click();
     await expect(page.locator("#pluginManagerPages")).toBeVisible();
     const nav = page.locator(".plugin-manager-nav button");
@@ -47,6 +49,8 @@ test("PR06.08 permission management is fail-closed, no direct Grant",
         execution: { isolation: "worker", concurrency: "serial" }
       });
     });
+    await page.locator("#menuBtn").click();
+    await page.locator("#toolBtn").click();
     await page.locator("#pluginBtn").click();
     await page.locator(".plugin-manager-nav button").nth(0).click();
     await expect(page.locator(".plugin-manager-page"))
