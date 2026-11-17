@@ -121,3 +121,14 @@ sandboxed UI runtime is audited; no raw HTML is injected into main DOM.
 Expose only caller-authorized UserAPI/AgentAPI actions via
 HubUnit.listActionContracts, with schema absent where legacy Objects do
 not declare APIDescriptors. Never infer input/output from live data.
+
+## PR13 Patch(+6) isolated host activation milestone
+- User-confirmed local folder activation with independent capability
+  review and Hub/URU registration transaction.
+- Opaque-origin iframe with strict CSP and authenticated MessagePort,
+  self-contained ES Module named Action exports only (initial slice).
+- Every invocation passes through live HubUnit ACL, URU Provider state,
+  and the ephemeral PluginPermissionUnit grant ledger.
+- Timeout and failed RPC terminate sandbox and emit EHU; stop removes
+  runtime handles and URU registration without a parallel registry.
+- Browser security and CPU starvation gates remain pending before PASS.
