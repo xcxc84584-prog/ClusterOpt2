@@ -52,8 +52,7 @@ export class PluginHostInstallUnit {
           error: "Missing service dependency" };
       }
     }
-    const parsed = checked.value;
-    const entry = parsed.manifest.entry;
+    const entry = JSON.parse(snapshot.manifestText).entry;
     let source;
     try {
       const binary = atob(snapshot.files[entry]);
