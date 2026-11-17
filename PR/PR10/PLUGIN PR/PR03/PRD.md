@@ -13,3 +13,12 @@ Source: PLUGIN DESIGN PR LIST.md, PR03.01–03.10.
 PR03.01 is intentionally only a pure identifier validator, not a
 registration or runtime capability. Runtime routing belongs to PR04/05,
 untrusted plugin isolation belongs to PR06.
+
+## PR03 acceptance boundary
+PR03 only introduces metadata registration, trusted local Factory
+laziness, service candidates, claim checking, version negotiation
+and health state. No dynamic route replacement, untrusted plugin
+isolation, or editor/FileSystem Access integration is claimed.
+PR03 completes only when ten implementation scopes and 5 exact-head
+workflows are verified; PR03 release version changes only at major
+BC gate, then package mirror/Runtime/UI/Git tag must match.
