@@ -78,5 +78,5 @@ test("PR9 Patch6: native installer is unique and parser protected", () => {
   assert.ok(nativeInstaller.includes("Start-Process @start"));
   assert.ok(nativeInstaller.includes("Select-LoopbackPort"));
   assert.ok(nativeInstaller.includes("npm.cmd"));
-  assert.equal(nativeInstaller.includes("Stop-Process"), false);
+  assert.ok(nativeInstaller.includes("Stop-Process -Id $owner.ProcessId"));
 });
