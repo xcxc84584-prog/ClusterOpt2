@@ -6,7 +6,7 @@
   "settings": "Model settings",
   "connection": "Connection guide",
   "ping": "Test connection",
-  "stop": "Stop",
+  "stop": "Cancel task",
   "close": "Close",
   "prompt": "Describe a task…",
   "submit": "Send",
@@ -19,5 +19,10 @@
   "connected": "Connected",
   "connecting": "Connecting…",
   "disconnect": "Disconnect",
-  "connectionError": "Local Agent connection failed"
+  "connectionError": "Local Agent connection failed",
+  "modelStatus": "Model status",
+  "modelInactive": "Pair Local Agent and configure a model to run text-only tasks.",
+  "modelReady": "Model ready",
+  "modelNotConfigured": "Model not configured",
+  "taskState": "Task"
 }
