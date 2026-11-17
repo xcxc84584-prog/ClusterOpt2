@@ -190,8 +190,10 @@ export class FileWorkspace {
     if (action === "page") return this.page(payload);
     if (action === "gotoLine") return this.gotoLine(payload);
     if (action === "activate") return this.activate(payload.id);
-    if (action === "close") return this.close(payload.id);
-    if (action === "closeAll") return this.closeAll();
+    if (action === "close") return this.close(payload.id,
+      payload.saveDecision, payload.saveHandles);
+    if (action === "closeAll") return this.closeAll(
+      payload.saveDecision, payload.saveHandles);
     if (action === "reorder") return this.reorder(payload.from, payload.to);
     if (action === "setPriority") return this.setPriority(payload.priority);
     if (action === "syncExternal") return this.syncExternal();
@@ -306,69 +308,10 @@ export class FileWorkspace {
     return true;
   }
 
-  close(id = this.activeId) {
-    const index = this.documents.findIndex(doc => doc.id === id);
-    if (index < 0) return false;
-    const doc = this.documents[index];
-    if (doc.virtualReadOnly && doc.status === DocumentStatus.DIRTY) {
-      // Closing an edited large file offers Save rather than an
-      // unconditional 409. Cancel leaves the journal and tab intact.
-      const locale = this.core.readProperty(this.id, "Language").value;
-      if (!window.confirm(Language.translate(locale,
-        "virtualSaveBeforeClose", { name: doc.name }))) return false;
-      return this.saveVirtualBeforeClose(doc, id);
-    }
-    if (doc.status !== DocumentStatus.SYNCED &&
-        !window.confirm(Language.translate(
-          this.core.readProperty(this.id, "Language").value,
-          "confirmClose", { name: doc.name }))) {
-      return false;
-    }
-    this.documents.splice(index, 1);
-    this.core.unregister(id);
-    if (this.activeId === id) {
-      this.activeId = this.documents[Math.min(index,
-        this.documents.length - 1)]?.id ?? null;
-    }
-    this.onChange();
-    return true;
-  }
-
-  /**
-   * Keep the original synchronous Close contract for clean files.
-   * Only a confirmed dirty virtual file needs asynchronous writeback.
-   */
-  async saveVirtualBeforeClose(doc, id) {
-    if (doc.savePromise) await doc.savePromise;
-    else await this.writeVirtualDocument(doc);
-    // A successful file commit is the only point at which the
-    // document may be unregistered from the workspace.
-    return this.close(id);
-  }
-
-  /**
-   * Close a related group atomically: no tab is removed if the user
-   * refuses to discard any unsaved changes.
-   */
-  closeMany(ids) {
-    if (!Array.isArray(ids)) {
-      const error = new TypeError("Document IDs must be an array");
-      error.status = 400;
-      throw error;
-    }
-    const targets = this.documents.filter(doc => ids.includes(doc.id));
-    if (targets.some(doc => doc.virtualReadOnly &&
-        doc.status === DocumentStatus.DIRTY)) {
-      return this.saveVirtualGroupBeforeClose(targets, () =>
-        this.closeMany(ids));
-    }
-    const dirty = targets.filter(doc =>
-      doc.status !== DocumentStatus.SYNCED);
-    if (dirty.length && !window.confirm(Language.translate(
-      this.core.readProperty(this.id, "Language").value,
-      "confirmCloseAll", { count: dirty.length }))) return false;
-    const selected = new Set(targets.map(doc => doc.id));
-    this.documents = this.documents.filter(doc => !selected.has(doc.id));
+  /** Remove only after the caller has chosen Save or Discard. */
+  removeClosedDocuments(targets) {
+    const ids = new Set(targets.map(doc => doc.id));
+    this.documents = this.documents.filter(doc => !ids.has(doc.id));
     for (const doc of targets) this.core.unregister(doc.id);
     if (!this.documents.some(doc => doc.id === this.activeId)) {
       this.activeId = this.documents[0]?.id ?? null;
@@ -377,46 +320,101 @@ export class FileWorkspace {
     return true;
   }
 
-  /** One confirmation protects all unsaved documents as one operation. */
-  closeAll() {
-    if (this.documents.some(doc => doc.virtualReadOnly &&
-        doc.status === DocumentStatus.DIRTY)) {
-      return this.saveVirtualGroupBeforeClose(
-        [...this.documents], () => this.closeAll());
+  /** Save each selected document before closing; failures preserve tabs. */
+  async saveBeforeClosing(targets, handles = {}) {
+    for (const doc of targets) {
+      if (doc.status === DocumentStatus.SYNCED) continue;
+      if (doc.virtualReadOnly) {
+        if (doc.savePromise) await doc.savePromise;
+        else await this.writeVirtualDocument(doc);
+      } else {
+        // A new unsaved document needs an explicit OS destination.
+        let handle = handles[doc.id] ?? doc.handle;
+        if (!handle) {
+          if (typeof window.showSaveFilePicker !== "function") {
+            const error = new Error("Save file picker unavailable");
+            error.status = 409;
+            throw error;
+          }
+          handle = await window.showSaveFilePicker({
+            suggestedName: doc.name
+          });
+        }
+        // Respect existing external/internal reconciliation policy.
+        if (doc.handle && handle === doc.handle) {
+          const priority = this.core.readProperty(
+            this.id, "StoragePriority").value;
+          const check = await this.core.request(this.id, doc.id,
+            "reconcile", { priority });
+          if (!check.ok || (check.value &&
+              priority === StoragePriority.EXTERNAL)) {
+            const error = new Error(check.error ||
+              "External changes require manual review");
+            error.status = check.status ?? 409;
+            throw error;
+          }
+        }
+        const result = await this.core.request(this.id, doc.id,
+          "save", { handle });
+        if (!result.ok || doc.status !== DocumentStatus.SYNCED) {
+          const error = new Error(result.error ||
+            "Document changed during save");
+          error.status = result.ok ? 409 : result.status;
+          throw error;
+        }
+      }
     }
-    const dirty = this.documents.filter(doc =>
-      doc.status !== DocumentStatus.SYNCED);
-    if (dirty.length && !window.confirm(Language.translate(
-      this.core.readProperty(this.id, "Language").value,
-      "confirmCloseAll", { count: dirty.length }))) {
-      return false;
-    }
-    for (const doc of this.documents) this.core.unregister(doc.id);
-    this.documents = [];
-    this.activeId = null;
-    this.onChange();
-    return true;
+    return this.removeClosedDocuments(targets);
   }
 
   /**
-   * Bulk close may be asynchronous only when durable virtual edits
-   * require a disk write. No tab is removed until all writes verify.
-   * A failure preserves the remaining journals and workspace tabs.
+   * Yes = persist before closing; No = discard and close.
+   * Failed/cancelled Save leaves the affected document open.
    */
-  async saveVirtualGroupBeforeClose(targets, finish) {
-    const pending = targets.filter(doc => doc.virtualReadOnly &&
-      doc.status === DocumentStatus.DIRTY);
-    if (!pending.length) return finish();
+  close(id = this.activeId, decision = null, handles = {}) {
+    const doc = this.documents.find(item => item.id === id);
+    if (!doc) return false;
+    if (doc.status === DocumentStatus.SYNCED) {
+      return this.removeClosedDocuments([doc]);
+    }
     const locale = this.core.readProperty(this.id, "Language").value;
-    if (!window.confirm(Language.translate(locale,
-      "virtualSaveBeforeCloseAll", { count: pending.length }))) {
-      return false;
+    const choice = typeof decision === "boolean" ? decision :
+      typeof this.confirmClose === "function" ?
+        this.confirmClose({ name: doc.name }) :
+        window.confirm(Language.translate(locale,
+          "saveBeforeCloseQuestion", { name: doc.name }));
+    const finish = save => save === null ? false :
+      save ? this.saveBeforeClosing([doc], handles) :
+        this.removeClosedDocuments([doc]);
+    return Promise.resolve(choice).then(finish);
+  }
+
+  closeMany(ids, decision = null, handles = {}) {
+    if (!Array.isArray(ids)) {
+      const error = new TypeError("Document IDs must be an array");
+      error.status = 400;
+      throw error;
     }
-    for (const doc of pending) {
-      if (doc.savePromise) await doc.savePromise;
-      else await this.writeVirtualDocument(doc);
-    }
-    return finish();
+    const targets = this.documents.filter(doc => ids.includes(doc.id));
+    if (!targets.length) return true;
+    const dirty = targets.filter(doc =>
+      doc.status !== DocumentStatus.SYNCED);
+    if (!dirty.length) return this.removeClosedDocuments(targets);
+    const locale = this.core.readProperty(this.id, "Language").value;
+    const choice = typeof decision === "boolean" ? decision :
+      typeof this.confirmClose === "function" ?
+        this.confirmClose({ count: dirty.length }) :
+        window.confirm(Language.translate(locale,
+          "saveBeforeCloseAllQuestion", { count: dirty.length }));
+    const finish = save => save === null ? false :
+      save ? this.saveBeforeClosing(targets, handles) :
+        this.removeClosedDocuments(targets);
+    return Promise.resolve(choice).then(finish);
+  }
+
+  closeAll(decision = null, handles = {}) {
+    return this.closeMany(this.documents.map(doc => doc.id),
+      decision, handles);
   }
 
   /** Preserve document identity and active selection while reordering. */

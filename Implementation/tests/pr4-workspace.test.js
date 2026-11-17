@@ -25,7 +25,7 @@ test("PR4 reorder preserves active document identity and unsaved content", () =>
   assert.throws(() => workspace.reorder(0, 10), RangeError);
 });
 
-test("PR4 Close All cancellation never discards dirty files", () => {
+test("PR12 Close All No discards unsaved files", async () => {
   const { workspace, core } = createFixture();
   const previousWindow = globalThis.window;
   let confirms = 0;
@@ -33,26 +33,38 @@ test("PR4 Close All cancellation never discards dirty files", () => {
   try {
     workspace.create();
     workspace.create();
-    assert.equal(workspace.closeAll(), false);
+    assert.equal(await workspace.closeAll(), true);
     assert.equal(confirms, 1);
-    assert.equal(workspace.documents.length, 2);
+    assert.equal(workspace.documents.length, 0);
     assert.equal(core.getSnapshot().objects.filter(item =>
-      item.startsWith("document-")).length, 2);
+      item.startsWith("document-")).length, 0);
   } finally {
     globalThis.window = previousWindow;
   }
 });
 
-test("PR4 Close All unregisters files only after confirmation", () => {
+test("PR12 Close All Yes requires durable writes before unregister", () => {
   const { workspace } = createFixture();
   const previousWindow = globalThis.window;
   globalThis.window = { confirm: () => true };
   try {
     workspace.create();
     workspace.create();
-    assert.equal(workspace.closeAll(), true);
-    assert.deepEqual(workspace.documents, []);
-    assert.equal(workspace.activeId, null);
+    const first = workspace.documents[0];
+    const second = workspace.documents[1];
+    const handles = Object.fromEntries([first, second].map(doc =>
+      [doc.id, {
+        name: doc.name,
+        async getFile() { return { size: 0, lastModified: 1 }; },
+        async createWritable() { return {
+          async write() {}, async close() {}
+        }; }
+      }]));
+    return workspace.closeAll(true, handles).then(closed => {
+      assert.equal(closed, true);
+      assert.deepEqual(workspace.documents, []);
+      assert.equal(workspace.activeId, null);
+    });
   } finally {
     globalThis.window = previousWindow;
   }

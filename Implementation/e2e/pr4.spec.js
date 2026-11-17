@@ -1,19 +1,20 @@
 import { test, expect } from "@playwright/test";
 
-test("PR4 Close All cancels safely and supports bilingual menu", async ({ page }) => {
+test("PR12 Close All Escape cancels, No discards, bilingual menu", async ({ page }) => {
   await page.goto("/");
   await page.locator("#menuBtn").click();
   await page.locator("#newFile").click();
   await page.locator("#editor").fill("unsaved");
   await page.locator("#menuBtn").click();
   await expect(page.locator("#closeAllMain")).toBeVisible();
-  page.once("dialog", dialog => dialog.dismiss());
   await page.locator("#closeAllMain").click();
+  await expect(page.locator(".save-close-dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.locator("#tabs .tab")).toHaveCount(1);
 
   await page.locator("#menuBtn").click();
-  page.once("dialog", dialog => dialog.accept());
   await page.locator("#closeAllMain").click();
+  await page.locator(".save-close-dialog .save-close-no").click();
   await expect(page.locator("#tabs .tab")).toHaveCount(0);
 
   await page.locator("#menuBtn").click();

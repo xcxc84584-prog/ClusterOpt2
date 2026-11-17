@@ -108,15 +108,16 @@ test("Patch19 fix: closing dirty large file saves only on confirmation",
     await editor.fill("MODIFIED" + original.slice(8));
     await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
 
-    // Cancel must keep the editor and journal intact.
-    page.once("dialog", dialog => dialog.dismiss());
+    // Escape cancels the save/discard choice and keeps the journal.
     await page.locator(".tab.active .close").click();
+    await expect(page.locator(".save-close-dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(page.locator(".tab.active")).toHaveCount(1);
     await expect(editor).toHaveValue(/^MODIFIED/);
 
-    // Confirm must perform a verified writeback before removing tab.
-    page.once("dialog", dialog => dialog.accept());
+    // Yes performs a verified writeback before removing the tab.
     await page.locator(".tab.active .close").click();
+    await page.locator(".save-close-dialog .save-close-yes").click();
     await expect(page.locator(".tab.active"))
       .toHaveCount(0, { timeout: 90000 });
     const disk = await page.evaluate(async () => {

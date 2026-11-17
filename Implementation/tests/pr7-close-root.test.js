@@ -4,9 +4,9 @@ import { LinkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { Explorer } from "../object/Explorer.js";
 
-test("PR7 root close removes contained tabs after confirmation", async () => {
+test("PR12 root close No discards contained unsaved tabs", async () => {
   const previous = globalThis.window;
-  globalThis.window = { confirm: () => true };
+  globalThis.window = { confirm: () => false };
   try {
     const core = new LinkCore();
     const ws = new FileWorkspace(core, () => {});
@@ -33,9 +33,9 @@ test("PR7 root close removes contained tabs after confirmation", async () => {
   }
 });
 
-test("PR7 cancelled root close preserves tabs and root", async () => {
+test("PR12 root close Yes with failed save retains tabs and root", async () => {
   const previous = globalThis.window;
-  globalThis.window = { confirm: () => false };
+  globalThis.window = { confirm: () => true };
   try {
     const core = new LinkCore();
     const ws = new FileWorkspace(core, () => {});
@@ -53,7 +53,7 @@ test("PR7 cancelled root close preserves tabs and root", async () => {
     ws.active.handle = handle;
     const result = await core.request("tester", "explorer",
       "closeRoot", { id: imported.value });
-    assert.equal(result.value, false);
+    assert.equal(result.ok, false);
     assert.equal(ws.documents.length, 1);
     const list = await core.request("tester", "explorer", "list");
     assert.equal(list.value.length, 1);

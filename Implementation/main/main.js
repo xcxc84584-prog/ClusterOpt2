@@ -2,6 +2,7 @@ import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { mountPluginManagerUI } from "./plugin-manager-ui.js";
+import { askSaveBeforeClose } from "./save-close-dialog.js";
 import { SyntaxOverlayController } from
   "./syntax-overlay-controller.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
@@ -423,6 +424,17 @@ function localized(key, args = {}) {
   return Language.translate(locale, key, args);
 }
 const notify = message => { ui.statusText.textContent = message; };
+function confirmSaveChoice({name, count}) {
+  const description = name ?
+    localized("saveBeforeCloseOne", {name}) :
+    localized("saveBeforeCloseCount", {count});
+  return askSaveBeforeClose(document,
+    localized("saveBeforeCloseTitle"), description, {
+      yes: localized("saveBeforeCloseYes"),
+      no: localized("saveBeforeCloseNo")
+    });
+}
+workspace.confirmClose = confirmSaveChoice;
 
 // Compatibility adapters preserve the old PSM UI and its two shared
 // domain properties without copying mutable global locale/palette state.
@@ -1057,13 +1069,50 @@ async function grantVirtualWriteAccess(action, payload) {
 
 async function perform(action, payload = {}) {
   closeMenu();
+  // Closing the Plugin Manager tool must never prompt for an editor tab.
+  if (action === "close" && !payload.id && toolState.active) {
+    await requestTool("close");
+    return;
+  }
   // Do not await anything for Open or legacy Save As: file
   // pickers require an uninterrupted user activation.
   const targets = action === "closeAll" ? workspace.documents :
     [action === "close" && payload.id ?
       workspace.documents.find(doc => doc.id === payload.id) :
       workspace.active];
+  // Ask while still inside the click/keyboard user gesture. No = discard.
+  // Yes = save, then close. A cancelled picker leaves tabs untouched.
+  if (["close", "closeAll"].includes(action)) {
+    const dirty = targets.filter(doc => doc &&
+      doc.status !== DocumentStatus.SYNCED);
+    if (dirty.length) {
+      const choice = await confirmSaveChoice(action === "close" ?
+        {name: dirty[0].name} : {count: dirty.length});
+      if (choice === null) return;
+      payload.saveDecision = choice;
+      if (payload.saveDecision) {
+        const handles = {};
+        try {
+          for (const doc of dirty) {
+            if (doc.handle || doc.virtualReadOnly) continue;
+            if (!window.showSaveFilePicker) {
+              notify(localized("saveUnavailable"));
+              return;
+            }
+            handles[doc.id] = await window.showSaveFilePicker({
+              suggestedName: doc.name
+            });
+          }
+        } catch (error) {
+          if (error.name !== "AbortError") notify(String(error));
+          return;
+        }
+        payload.saveHandles = handles;
+      }
+    }
+  }
   const needsGrant = ["save", "close", "closeAll"].includes(action) &&
+    (action === "save" || payload.saveDecision !== false) &&
     targets.some(doc => doc?.virtualReadOnly &&
       doc.status === DocumentStatus.DIRTY &&
       typeof doc.handle?.requestPermission === "function");
@@ -1079,10 +1128,6 @@ async function perform(action, payload = {}) {
       notify(localized("virtualWritePermissionDenied"));
       return;
     }
-  }
-  if (action === "close" && !payload.id && toolState.active) {
-    await requestTool("close");
-    return;
   }
   if (action === "save" && toolState.active) return;
   if (["new", "open", "activate"].includes(action) &&
