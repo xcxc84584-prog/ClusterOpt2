@@ -2,14 +2,12 @@ name: PLUGIN PR03 Provider Registry
 on:
   pull_request:
     paths:
-      - "Implementation/property/CapabilityIdPolicy.js"
-      - "Implementation/property/ProviderManifestPolicy.js"
-      - "Implementation/LinkCore/LinkCore.js"
-      - "Implementation/tests/capability-id.test.js"
-      - "Implementation/tests/provider-manifest.test.js"
-      - "Implementation/e2e/plugin-pr03-capability.spec.js"
-      - "Implementation/e2e/plugin-pr03-manifest.spec.js"
+      - "Implementation/property/**"
+      - "Implementation/LinkCore/**"
+      - "Implementation/tests/**"
+      - "Implementation/e2e/plugin-pr03-*.spec.js"
       - "PR/PR10/PLUGIN PR/PR03/**"
+      - "package.json"
       - ".github/workflows/plugin-pr03-provider.yml"
   workflow_dispatch:
 permissions:
@@ -26,7 +24,8 @@ jobs:
       - run: npm run check
       - run: >-
           node --test Implementation/tests/capability-id.test.js
-          Implementation/tests/provider-manifest.test.js
+          Implementation/tests/provider-*.test.js
+          Implementation/tests/release-version.test.js
   capability-browser:
     runs-on: ubuntu-24.04
     steps:
@@ -40,4 +39,5 @@ jobs:
           npx playwright test
           Implementation/e2e/plugin-pr03-capability.spec.js
           Implementation/e2e/plugin-pr03-manifest.spec.js
+          Implementation/e2e/plugin-pr03-bridge.spec.js
           --config Implementation/e2e/playwright.config.js
