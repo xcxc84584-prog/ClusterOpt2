@@ -5,6 +5,7 @@ async function openPlugin(page) {
   await page.locator("#toolBtn").click();
   await page.locator("#pluginBtn").click();
   await expect(page.locator("#pluginWindow")).toBeVisible();
+  await page.locator("#pluginToolToggle").click();
 }
 
 test("PR8 Plugin opens as a single file-style TAB, not a modal", async ({ page }) => {
@@ -56,6 +57,7 @@ test("PR8 tool TAB and selected category survive reload independently", async ({
   await page.reload();
   await expect(page.locator("#pluginWindow")).toBeVisible();
   await expect(page.locator("#tabs .tab[data-tab-kind=tool]")).toHaveCount(1);
+  await page.locator("#pluginToolToggle").click();
   await expect(page.locator("#pluginProcessorOptions")).toBeVisible();
   await page.locator("#tabs .tab[data-tab-kind=tool] .close").click();
   await expect(page.locator("#pluginWindow")).toBeHidden();

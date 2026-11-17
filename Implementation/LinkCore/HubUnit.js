@@ -10,6 +10,9 @@ import { ServiceRequestResolver } from "./ServiceRequestResolver.js";
 import { RouteTablePolicy } from
   "../property/RouteTablePolicy.js";
 import { RouteTransactionUnit } from "./RouteTransactionUnit.js";
+import { PluginPermissionUnit } from "./PluginPermissionUnit.js";
+import { PluginSourcePolicy } from "../property/PluginSourcePolicy.js";
+import { TrustedPluginWorkerUnit } from "./TrustedPluginWorkerUnit.js";
 import { RouteContractPolicy } from
   "../property/RouteContractPolicy.js";
 import { ResponsePipelinePolicy } from
@@ -47,6 +50,8 @@ export class HubUnit {
     this.providerInflight = new Map();
     this.providerDrainWaiters = new Map();
     this.routeTransactions = new RouteTransactionUnit(this);
+    this.pluginPermissions = new PluginPermissionUnit(registry, omu);
+    this.trustedWorker = new TrustedPluginWorkerUnit(omu);
   }
 
   register(object) {
@@ -63,7 +68,11 @@ export class HubUnit {
         return false;
       }
     }
+    const owned = this.registry.listProviders().filter(item =>
+      item.objectId === id).map(item => item.providerId);
     const removed = this.registry.unregister(id);
+    if (removed) owned.forEach(providerId =>
+      this.pluginPermissions.forget(providerId));
     this.omu.record(removed ? "Log" : "EHU", id, "Unregister",
       removed ? 200 : 404);
     return removed;
@@ -123,8 +132,43 @@ export class HubUnit {
       return { ok: false, status: 403 };
     }
     this.registry.unregisterProvider(providerId);
+    this.pluginPermissions.forget(providerId);
     this.omu.record("Log", source, "Provider.Unregister", 200, providerId);
     return { ok: true, status: 200 };
+  }
+
+  /** Explicitly authorized runtime grants; not part of browser APIs. */
+  grantPluginPermission(source, id, permission, approved = false) {
+    return this.pluginPermissions.grant(source, id,
+      permission, approved);
+  }
+
+  revokePluginPermission(source, id, permission) {
+    return this.pluginPermissions.revoke(source, id, permission);
+  }
+
+  checkPluginPermission(id, permission) {
+    return this.pluginPermissions.allows(id, permission);
+  }
+
+  /** Host-only bounded RPC. Never run untrusted supplied source. */
+  async invokeTrustedPluginWorker(source, providerId, operation,
+    payload, options = {}) {
+    const manifest = this.registry.getProvider(providerId);
+    const code = !manifest || !this.registry.objects.has(source) ?
+      404 : manifest.objectId !== source ? 403 :
+        manifest.execution.isolation !== "worker" ||
+        this.registry.disabledProviders.has(providerId) ? 403 : 200;
+    const sourceCheck = PluginSourcePolicy.inspect(
+      options?.source ?? { kind: "builtin" });
+    const status = code !== 200 ? code : sourceCheck.status;
+    if (status !== 200) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Plugin.Worker.Denied", status, providerId);
+      return { ok: false, status };
+    }
+    const args = { timeoutMs: options?.timeoutMs };
+    return this.trustedWorker.invoke(operation, payload, args);
   }
 
   /**

@@ -1,0 +1,84 @@
+import { test, expect } from "@playwright/test";
+
+test("PR06.08 four separate Plugin Manager pages in original tool tab",
+  async ({ page }) => {
+    await page.goto("/");
+    await page.locator("#menuBtn").click();
+    await page.locator("#toolBtn").click();
+    await page.locator("#pluginBtn").click();
+    await expect(page.locator("#pluginManagerPages")).toBeVisible();
+    const nav = page.locator(".plugin-manager-nav button");
+    await expect(nav).toHaveCount(4);
+    await expect(page.locator(".plugin-manager-page h3"))
+      .toHaveText("插件列表");
+    await nav.nth(1).click();
+    await expect(page.locator(".plugin-manager-page h3"))
+      .toHaveText("插件權限");
+    await nav.nth(2).click();
+    await expect(page.locator(".plugin-manager-page h3"))
+      .toHaveText("API 列表");
+    await nav.nth(3).click();
+    await expect(page.locator(".plugin-manager-page h3"))
+      .toHaveText("EHU 日誌");
+    await page.locator("#pluginToolToggle").click();
+    await expect(page.locator("#pluginLegacySettings")).toBeVisible();
+    await page.locator("#pluginToolToggle").click();
+    await expect(page.locator("#pluginManagerPages")).toBeVisible();
+    await expect(page.locator("#pluginLegacySettings")).toBeHidden();
+  });
+
+test("PR06.08 permission management is fail-closed, no direct Grant",
+  async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      linkCore.register({
+        id: "PreviewOwner", receive: async () => null,
+        ocda: { Request: ["run"], Response: [],
+          UserAPI: ["run"], AgentAPI: [], Property: [],
+          Program: {}, EHU: [], Log: [] }
+      });
+      linkCore.registerProvider("PreviewOwner", {
+        manifestVersion: 1, providerId: "preview.plugin",
+        objectId: "PreviewOwner", provides: [{
+          service: "test.preview", action: "run",
+          version: "1.0.0", inputSchema: { type: "object" },
+          outputSchema: { type: "object" }
+        }], requires: [], permissions: ["document.slice.read"],
+        execution: { isolation: "worker", concurrency: "serial" }
+      });
+    });
+    await page.locator("#menuBtn").click();
+    await page.locator("#toolBtn").click();
+    await page.locator("#pluginBtn").click();
+    await page.locator(".plugin-manager-nav button").nth(0).click();
+    await expect(page.locator(".plugin-manager-page"))
+      .toContainText("preview.plugin");
+    await page.locator(".plugin-manager-nav button").nth(1).click();
+    await expect(page.locator(".plugin-manager-page"))
+      .toContainText("document.slice.read");
+    await page.getByRole("button", { name: "需經安全審核" }).click();
+    await expect(page.locator(".plugin-consent-dialog")).toBeVisible();
+    await page.locator(".plugin-consent-dialog").getByRole("button",
+      { name: "拒絕" }).click();
+    await expect(page.locator(".plugin-consent-dialog")).toBeHidden();
+    const denied = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      return linkCore.checkPluginPermission(
+        "preview.plugin", "document.slice.read");
+    });
+    expect(denied).toBe(false);
+    await page.getByRole("button", { name: "需經安全審核" }).click();
+    await page.locator(".plugin-consent-dialog").getByRole("button",
+      { name: "同意此權限" }).click();
+    await expect(page.getByRole("button", { name: "撤銷" }))
+      .toBeVisible();
+    await page.getByRole("button", { name: "撤銷" }).click();
+    await expect(page.getByRole("button", { name: "需經安全審核" }))
+      .toBeVisible();
+    await page.locator(".plugin-manager-nav button").nth(2).click();
+    await expect(page.locator(".plugin-manager-page"))
+      .toContainText("test.preview");
+  });

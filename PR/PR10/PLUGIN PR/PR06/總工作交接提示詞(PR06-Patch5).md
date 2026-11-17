@@ -1,0 +1,3 @@
+# ClusterOpt2 PR10 / PLUGIN PR06 Patch5 Handoff
+
+Base main bf622427d92a564478e593006b70894a56ec6f33; PR #47 major Draft branch plugin/pr06-security-runtime. Current work Patch5 adds session-only explicit consent modal and updates legacy browser tests and CSS stacking. Verify final exact-head five-workflow CI. PR06 is NOT yet fully complete: untrusted plugin source is fail-closed; no independent opaque-origin sandbox, no third-party arbitrary code execution. Do not claim that a trusted browser UI provides isolation from same-origin malicious scripts. Before merging, review release version mirror, Plan, ArcD, Relation Test, global property list, latest handoff, restore branch. Product version currently 0.0.11.
