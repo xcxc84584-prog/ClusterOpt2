@@ -25,17 +25,21 @@ test("PR8+25 legacy folder context creates a real local file",
     await expect(toolbar.locator("button")).toHaveCount(4);
     await expect(toolbar.locator('[data-action="file"]')).toBeEnabled();
     await toolbar.locator('[data-action="file"]').click();
-    const file = await page.evaluate(async () => {
-      const storage = await navigator.storage.getDirectory();
-      const folder = await storage.getDirectoryHandle(
-        "pr8-patch25-folder");
-      const handle = await folder.getFileHandle(
-        "created-from-context.txt");
-      return { name: handle.name, size: (await handle.getFile()).size };
-    });
-    expect(file).toEqual({
-      name: "created-from-context.txt", size: 0
-    });
+    // The Explorer file-create action is asynchronous. Poll the actual
+    // OPFS state rather than racing the file-system transaction.
+    await expect.poll(async () => page.evaluate(async () => {
+      try {
+        const storage = await navigator.storage.getDirectory();
+        const folder = await storage.getDirectoryHandle(
+          "pr8-patch25-folder");
+        const handle = await folder.getFileHandle(
+          "created-from-context.txt");
+        return { name: handle.name, size: (await handle.getFile()).size };
+      } catch (error) {
+        if (error?.name === "NotFoundError") return null;
+        throw error;
+      }
+    })).toEqual({ name: "created-from-context.txt", size: 0 });
     await expect(page.locator(".explorer-entry").filter({
       hasText: "created-from-context.txt"
     })).toHaveCount(1);
