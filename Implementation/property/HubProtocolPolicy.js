@@ -82,6 +82,20 @@ const DEFINITIONS = [
     outputSchema: rep
   },
   {
+    id: "HubUnit.listActionContracts",
+    action: "listActionContracts",
+    description: "List explicitly exposed Object UserAPI/AgentAPI actions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: { type: "string" },
+        options: { type: "object" }
+      },
+      required: ["source"]
+    },
+    outputSchema: rep
+  },
+  {
     id: "HubUnit.listProviderContracts",
     action: "listProviderContracts",
     description: "Read live URU Provider service input/output contracts.",
