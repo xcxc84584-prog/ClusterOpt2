@@ -55,3 +55,20 @@ large file restore after delayed permissions and reload.
   palette interfaces. Real Windows acceptance remains a separate gate.
 - Risk: legacy PSM bypasses internal LinkCore Request/Response in its
   OS boundary; document as compatibility seam pending future formal wrapper.
+
+## Patch(+4): final acceptance and versioned native installer
+- Compare PR8 and PR9 PRD lists against actual editor, Explorer,
+  native agent and CI tests. Record open P0/P1 items in dedicated
+  FinalAcceptance reports, not as green status.
+- Source of truth: LinkCore.SystemVersion. UI and generated CMD accept
+  that value through explicit dependency injection.
+- CMD loads current ClusterOpt2 install-current.ps1; local agent files
+  are now vendored in the current repository, not ClusterOpt.
+- Reject mismatched agent versions before native terminal connection.
+- Preserve unrelated listener when port 43881 is occupied; choose
+  another port or cancel.
+- Security: loopback auth origin and token validation, no secret in repo.
+- New tests: version/string/CMD download, loopback handshake rejection,
+  regression and release-doc checklist.
+- Windows native dependency install and 1/5 GiB benchmarks are manual
+  acceptance gates beyond Linux CI; document them as NOT TESTED.
