@@ -1063,7 +1063,41 @@ async function perform(action, payload = {}) {
     [action === "close" && payload.id ?
       workspace.documents.find(doc => doc.id === payload.id) :
       workspace.active];
+  // Ask while still inside the click/keyboard user gesture. No = discard.
+  // Yes = save, then close. A cancelled picker leaves tabs untouched.
+  if (["close", "closeAll"].includes(action)) {
+    const dirty = targets.filter(doc => doc &&
+      doc.status !== DocumentStatus.SYNCED);
+    if (dirty.length) {
+      const locale = linkCore.readProperty("ui", "Language").value;
+      const key = action === "close" ?
+        "saveBeforeCloseQuestion" : "saveBeforeCloseAllQuestion";
+      payload.saveDecision = window.confirm(Language.translate(
+        locale, key, action === "close" ?
+          { name: dirty[0].name } : { count: dirty.length }));
+      if (payload.saveDecision) {
+        const handles = {};
+        try {
+          for (const doc of dirty) {
+            if (doc.handle || doc.virtualReadOnly) continue;
+            if (!window.showSaveFilePicker) {
+              notify(localized("saveUnavailable"));
+              return;
+            }
+            handles[doc.id] = await window.showSaveFilePicker({
+              suggestedName: doc.name
+            });
+          }
+        } catch (error) {
+          if (error.name !== "AbortError") notify(String(error));
+          return;
+        }
+        payload.saveHandles = handles;
+      }
+    }
+  }
   const needsGrant = ["save", "close", "closeAll"].includes(action) &&
+    (action === "save" || payload.saveDecision !== false) &&
     targets.some(doc => doc?.virtualReadOnly &&
       doc.status === DocumentStatus.DIRTY &&
       typeof doc.handle?.requestPermission === "function");
