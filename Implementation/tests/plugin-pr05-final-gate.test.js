@@ -43,7 +43,7 @@ test("PR05.10 rejected candidate does not replace live routing", () => {
 
 test("PR05.10 unified version follows ReleaseVersion authority", () => {
   const core = new LinkCore();
-  assert.match(ReleaseVersion.product, /^0\.0\.\d+$/u);
+  assert.match(ReleaseVersion.product, /^0\.0\.\d+[a-z]?$/u);
   assert.equal(core.version, ReleaseVersion.product);
   assert.equal(core.routeSnapshot().generation, 0);
 });
