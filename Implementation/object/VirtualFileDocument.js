@@ -29,6 +29,7 @@ export class VirtualFileDocument extends FileDocument {
     this.pendingRecoveries = new Map();
     this.pendingRecovery = null; // compatible with Patch19 restore
     this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+    this.pageLineCountCache = new Map();
     this.prioritySeed = 0;
     this.ocda = Object.freeze({
       Request: ["load", "page", "seekLine", "describePage", "save",
@@ -140,6 +141,7 @@ export class VirtualFileDocument extends FileDocument {
         this.failure("External virtual file changed", 409);
       }
       this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+      this.pageLineCountCache.clear();
       this.fileFingerprint = null;
       this.diskRevision = null;
     }
@@ -279,7 +281,7 @@ export class VirtualFileDocument extends FileDocument {
     const located = await this.property("GlobalPageLinePolicy").locate({
       file, targetLine: line,
       pageBytes: this.property("UTF8SlicePolicy").defaultChunkBytes,
-      edits, onProgress
+      edits, cache: this.pageLineCountCache, onProgress
     });
     if (located.index !== this.virtualPageIndex) {
       await this.loadPage(located.index);
@@ -427,6 +429,7 @@ export class VirtualFileDocument extends FileDocument {
     this.status = DocumentStatus.SYNCED;
     this.fileFingerprint = null;
     this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+    this.pageLineCountCache.clear();
     this.virtualEditable = false; // force a fresh byte-aligned load
     const viewport = {
       top: this.scrollTop, left: this.scrollLeft ?? 0
