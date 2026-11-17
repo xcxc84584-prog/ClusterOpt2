@@ -1,3 +1,5 @@
+import { PluginShellApprovalObject } from
+  "../object/PluginShellApprovalObject.js";
 import { PluginExplorerObject } from
   "../object/PluginExplorerObject.js";
 import { PluginModelTaskObject } from
@@ -109,7 +111,7 @@ export class PluginUIHostUnit {
       const view = {
         button, panel, frame, labels, enabled: true,
         snapshot, provider, localAgent: null, modelTask: null,
-        explorerAccess: null
+        explorerAccess: null, shellApproval: null
       };
 
       // Trusted host-side ToolBox; never run a file picker in a sandbox.
@@ -180,6 +182,8 @@ export class PluginUIHostUnit {
               access.audit("PathConfirmationRejected", 400);
               return;
             }
+            view.shellApproval?.revoke();
+            view.localAgent?.disableShellBridge();
             access.setRoot(handle, path);
             rootStatus.textContent =
               "已取得所選資料夾授權：" + access.label;
@@ -207,10 +211,11 @@ export class PluginUIHostUnit {
           const checkbox = this.doc.createElement("input");
           checkbox.type = "checkbox";
           checkbox.dataset.right = name;
-          checkbox.disabled = name === "ps";
+          checkbox.disabled = false;
           checkbox.addEventListener("change", async () => {
             try {
-              if (checkbox.checked && name !== "read") {
+              if (checkbox.checked && name !== "read" &&
+                  name !== "ps") {
                 const selected = access.root;
                 if (!selected ||
                     await selected.requestPermission({
@@ -219,9 +224,27 @@ export class PluginUIHostUnit {
                   throw Error("Write permission denied");
                 }
               }
-              access.setRight(name, checkbox.checked);
+              const enabled = checkbox.checked;
+              if (name === "ps") {
+                if (!view.shellApproval || !view.localAgent) {
+                  throw Error("Shell adapter unavailable");
+                }
+                if (enabled) {
+                  const bridge = view.localAgent.registerShellBridge(
+                    view.shellApproval.id);
+                  if (!bridge.ok) throw Error("Bridge unavailable");
+                } else {
+                  view.localAgent.disableShellBridge();
+                }
+                view.shellApproval.setEnabled(enabled);
+              }
+              access.setRight(name, enabled);
             } catch {
               checkbox.checked = false;
+              if (name === "ps") {
+                view.shellApproval?.revoke();
+                view.localAgent?.disableShellBridge();
+              }
               access.audit("PermissionRejected", 403);
             }
           });
@@ -233,6 +256,8 @@ export class PluginUIHostUnit {
         revoke.textContent = "撤銷全部 / Revoke all";
         revoke.addEventListener("click", () => {
           access.revoke();
+          view.shellApproval?.revoke();
+          view.localAgent?.disableShellBridge();
           rootStatus.textContent = "";
           for (const checkbox of menu.querySelectorAll(
             'input[type="checkbox"]')) checkbox.checked = false;
@@ -257,6 +282,15 @@ export class PluginUIHostUnit {
         }
         view.localAgent = agent;
         pendingAgent = agent;
+        if (view.explorerAccess) {
+          const shell = new PluginShellApprovalObject(
+            this.core, provider.providerId, agent.id,
+            view.explorerAccess, this.doc);
+          if (!this.core.register(shell)) {
+            throw Error("Shell approval registration failed");
+          }
+          view.shellApproval = shell;
+        }
         if (provider.permissions.includes("model.configure") &&
             provider.permissions.includes("model.task")) {
           const task = new PluginModelTaskObject(
@@ -398,6 +432,11 @@ export class PluginUIHostUnit {
         this.doc.removeEventListener("click", closeForWorkbench);
         view.unlistenAgent?.();
         view.localAgent?.close();
+        view.shellApproval?.revoke();
+        view.localAgent?.disableShellBridge();
+        if (view.shellApproval) {
+          this.core.unregister(view.shellApproval.id);
+        }
         view.explorerAccess?.revoke();
         if (view.explorerAccess) {
           this.core.unregister(view.explorerAccess.id);
@@ -433,6 +472,8 @@ export class PluginUIHostUnit {
     if (!enabled) {
       view.localAgent?.close();
       view.explorerAccess?.revoke();
+      view.shellApproval?.revoke();
+      view.localAgent?.disableShellBridge();
       view.resetToolBox?.();
       view.panel.hidden = true;
       view.button.setAttribute("aria-pressed", "false");
