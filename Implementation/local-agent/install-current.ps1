@@ -43,6 +43,16 @@ if (-not $node) {
 $env:PATH = (Split-Path $node)+';'+$env:PATH
 Write-Host '[2/5] Downloading agent files...'
 foreach($file in @('server.mjs','native-terminal.mjs','package.json')) {Download ($base+$file) (Join-Path $dir $file)}
+# Refuse a moving-main payload that does not match the UI release.
+$manifestPath = Join-Path $dir 'package.json'
+$manifest = Get-Content -Path $manifestPath -Raw |
+  ConvertFrom-Json
+if ($manifest.name -ne 'clusteropt2-local-agent' -or
+    $manifest.version -ne $ExpectedVersion) {
+  throw ('Agent release mismatch: expected ' + $ExpectedVersion +
+    ', received ' + $manifest.version +
+    '. Download a fresh CMD from the matching ClusterOpt2 release.')
+}
 Write-Host '[3/5] Installing terminal dependencies...'
 Push-Location $dir
 try {
