@@ -236,7 +236,9 @@ export class FileWorkspace {
       // Legacy FileDocument is retained only for non-Blob compatibility
       // handles and newly created unsaved buffers without an OS handle.
       const sliced = this.core.readProperty(this.id,
-        "VirtualDocumentPolicy").value.isUniformSliceFile(file);
+        "VirtualDocumentPolicy").value.isUniformSliceFile(file) &&
+        this.core.getSnapshot().objects.includes(
+          "slice-edit-transaction");
       const doc = sliced ?
         new VirtualFileDocument(handle.name, handle, this.core) :
         new FileDocument(handle.name, handle);
