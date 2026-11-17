@@ -132,6 +132,44 @@ export class HubUnit {
     return result;
   }
 
+  setProviderEnabled(source, providerId, enabled) {
+    const provider = this.registry.getProvider(providerId);
+    const result = !provider || !this.registry.objects.has(source) ?
+      { ok: false, status: 404 } :
+      provider.objectId !== source || typeof enabled !== "boolean" ?
+        { ok: false, status: 403 } :
+        this.registry.setProviderEnabled(providerId, enabled);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      enabled ? "Provider.Enable" : "Provider.Disable",
+      result.status, providerId);
+    return result;
+  }
+
+  setServiceEnabled(source, providerId, serviceId, enabled) {
+    const provider = this.registry.getProvider(providerId);
+    const result = !provider || !this.registry.objects.has(source) ?
+      { ok: false, status: 404 } :
+      provider.objectId !== source || typeof enabled !== "boolean" ?
+        { ok: false, status: 403 } :
+        this.registry.setServiceEnabled(providerId, serviceId, enabled);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      enabled ? "Provider.Service.Enable" : "Provider.Service.Disable",
+      result.status, serviceId);
+    return result;
+  }
+
+  disposeProvider(source, providerId) {
+    const provider = this.registry.getProvider(providerId);
+    const result = !provider || !this.registry.objects.has(source) ?
+      { ok: false, status: 404 } :
+      provider.objectId !== source ?
+        { ok: false, status: 403 } :
+        this.registry.disposeProvider(providerId);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Dispose", result.status, providerId);
+    return result;
+  }
+
   // Active wait-for edges are used only for deadlock detection.
   hasWaitPath(start, destination, visited = new Set()) {
     if (start === destination) return true;
