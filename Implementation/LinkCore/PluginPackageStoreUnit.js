@@ -7,7 +7,8 @@ import { PluginFolderPackageUnit } from
  */
 const DB_NAME = "clusteropt2-plugin-packages";
 const STORE = "packages";
-const VERSION = 1;
+const REVIEWED = "reviewed";
+const VERSION = 2;
 
 function fail(status, error) {
   return { ok: false, status, error };
@@ -34,18 +35,21 @@ export class PluginPackageStoreUnit {
         if (!db.objectStoreNames.contains(STORE)) {
           db.createObjectStore(STORE, { keyPath: "providerId" });
         }
+        if (!db.objectStoreNames.contains(REVIEWED)) {
+          db.createObjectStore(REVIEWED, { keyPath: "providerId" });
+        }
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
   }
 
-  async transaction(mode, operation) {
+  async transaction(mode, operation, storeName = STORE) {
     const db = await this.open();
     try {
       return await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, mode);
-        const store = tx.objectStore(STORE);
+        const tx = db.transaction(storeName, mode);
+        const store = tx.objectStore(storeName);
         let result;
         const request = operation(store);
         request.onsuccess = () => { result = request.result; };
@@ -113,4 +117,49 @@ export class PluginPackageStoreUnit {
       return fail(503, "Package storage unavailable");
     }
   }
+  /**
+   * Store reviewed built-in Provider selection separately from user bytes.
+   * A persisted ID is NOT a registration or capability grant.
+   */
+  async rememberReviewed(providerId) {
+    if (typeof providerId !== "string" || !providerId ||
+        providerId.length > 128) return fail(400, "Invalid ID");
+    try {
+      await this.transaction("readwrite",store=>
+        store.put({providerId}),REVIEWED);
+      this.record(200,"ReviewedRemember");
+      return {ok:true,status:200};
+    } catch {
+      this.record(503,"ReviewedRemember");
+      return fail(503,"Storage unavailable");
+    }
+  }
+
+  async listReviewed() {
+    try {
+      const entries=await this.transaction("readonly",
+        store=>store.getAll(),REVIEWED);
+      return {ok:true,status:200,
+        value:entries.map(entry=>entry.providerId)};
+    } catch {
+      this.record(503,"ReviewedList");
+      return fail(503,"Storage unavailable");
+    }
+  }
+
+  async forgetReviewed(providerId) {
+    if (typeof providerId !== "string" || !providerId) {
+      return fail(400,"Invalid ID");
+    }
+    try {
+      await this.transaction("readwrite",store=>
+        store.delete(providerId),REVIEWED);
+      this.record(200,"ReviewedForget");
+      return {ok:true,status:200};
+    } catch {
+      this.record(503,"ReviewedForget");
+      return fail(503,"Storage unavailable");
+    }
+  }
+
 }
