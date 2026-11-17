@@ -85,3 +85,23 @@ test("PR03.03 VTE preserves existing Request/REP/EventChain behavior",
       link.code === "10" || link.code === "01" || link.code === "11"));
     assert.equal(env.core.uru.listProviders().length, 0);
   });
+
+test("PR03.10 global Service dependency cycles fail without partial index",
+  () => {
+    const core = new LinkCore();
+    core.register(object("PluginA"));
+    core.register(object("PluginB"));
+    const a = provider("vendor.a", "service.first");
+    a.requires = ["service.second"];
+    assert.equal(core.registerProvider("PluginA", a).status, 201);
+    const b = provider("vendor.b", "service.second");
+    b.objectId = "PluginB";
+    b.requires = ["service.first"];
+    assert.equal(core.registerProvider("PluginB", b).status, 409);
+    assert.equal(core.uru.getProvider("vendor.b"), null);
+    assert.equal(core.services.resolve("service.second").status, 404);
+    assert.equal(core.services.resolve("service.first").status, 200);
+    assert.ok(core.getSnapshot().logs.some(event =>
+      event.kind === "EHU" && event.action === "Provider.Register" &&
+      event.status === 409));
+  });
