@@ -37,3 +37,9 @@ Internal CatalogQuery list, describe and query with bounded pagination,
 validated selectors and ambiguity detection. Uses one current immutable
 CatalogCollection result per call. No external discovery before PR02.06.
 CI pending; PR02 large PR must remain Draft.
+
+## PR02.06 scope
+Registered-caller HubUnit discovery with CatalogVisibilityPolicy;
+uses existing AccessPolicy and OCDA UserAPI/AgentAPI as authority,
+EDPMU Property owner/readability constraints, and filters before counts.
+Internal-only until PR02.10 facade; status IMPLEMENTED / CI PENDING.
