@@ -170,6 +170,28 @@ export class HubUnit {
     return result;
   }
 
+  reportProviderHealth(source, providerId, outcome, now) {
+    const provider = this.registry.getProvider(providerId);
+    if (!provider || !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Health", 404,
+        providerId);
+      return { ok: false, status: 404 };
+    }
+    if (provider.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Health", 403,
+        providerId);
+      return { ok: false, status: 403 };
+    }
+    const result = this.registry.updateProviderHealth(
+      providerId, outcome, now);
+    const status = result.ok && outcome === "timeout" ? 504 :
+      result.ok && outcome === "failure" ? 503 : result.status;
+    this.omu.record(status >= 400 ? "EHU" : "Log",
+      source, "Provider.Health", status, providerId,
+      { outcome: typeof outcome === "string" ? outcome : "invalid" });
+    return result;
+  }
+
   // Active wait-for edges are used only for deadlock detection.
   hasWaitPath(start, destination, visited = new Set()) {
     if (start === destination) return true;
