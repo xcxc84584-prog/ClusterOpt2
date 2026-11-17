@@ -138,3 +138,12 @@ catalog-collection regression. Re-run full workflow; PASS pending.
 | Output above 64 KiB UTF-8 | 413, no truncated content |
 | Legacy window.Cluster facade | intact; no .docs exposure |
 | Node, Chromium, full OCDA and Windows | exact-head CI pending |
+
+## PR02.06/07 shared exact-head CI diagnosis
+Run 44025525379 dedicated: browser passed, Node failed one assertion
+0 !== 1 (AgentAPI origin incorrectly passed as query filter in test).
+OCDA run 44025525504: browser passed, Node check failed same test.
+PR1 run 44025525397: browser passed, Node failed same test.
+PowerShell parse passed. Fix: move origin to fifth options argument;
+no widening of the CatalogQuery filter schema, no privilege bypass.
+New full exact-head CI status pending.
