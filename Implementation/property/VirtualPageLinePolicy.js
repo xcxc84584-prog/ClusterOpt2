@@ -59,6 +59,7 @@ export const VirtualPageLinePolicy = Object.freeze({
       error.status = 400;
       throw error;
     }
+    if (source === editorText) return source;
     const canonical = source.replace(/\r\n/g, "\n");
     if (canonical === editorText) return source;
     if (canonical === source) return editorText;
