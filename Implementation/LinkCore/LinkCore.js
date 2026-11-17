@@ -1,3 +1,5 @@
+import { APIDescriptorPolicy } from
+  "../property/APIDescriptorPolicy.js";
 import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
 import { Language } from "../property/Language.js";
 import { StoragePriority } from "../property/StoragePriority.js";
@@ -41,6 +43,9 @@ export class LinkCore {
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
     this.version = "0.0.9-pr9.patch9";
+    this.hub.registerProperty("APIDescriptorPolicy", APIDescriptorPolicy, {
+      owners: ["LinkCore"], visibility: "Public"
+    });
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
