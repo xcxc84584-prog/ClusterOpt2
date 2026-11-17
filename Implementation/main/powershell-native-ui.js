@@ -159,13 +159,17 @@ export function mountNativePowerShell({ core, button, host, translate }) {
     session.socket.send(JSON.stringify({ type: "resize", cols, rows }));
   }
 
-  function paint() {
+  function applyLabels() {
     content.querySelector('label[for="nativePsPort"]').textContent =
       translate("powerShellPort");
     content.querySelector('label[for="nativePsToken"]').textContent =
       translate("powerShellToken");
     select("nativePsPair").textContent = translate("powerShellConnect");
     select("nativePsSetupLink").textContent = translate("powerShellSetup");
+  }
+
+  function paint() {
+    applyLabels();
     content.hidden = !visible;
     tabs.replaceChildren();
     for (const item of state.sessions) {
@@ -244,5 +248,5 @@ export function mountNativePowerShell({ core, button, host, translate }) {
     const selected = records.get(state.activeId);
     if (selected) resize(selected);
   });
-  return Object.freeze({ hide, show, refresh: paint });
+  return Object.freeze({ hide, show, refresh: applyLabels });
 }
