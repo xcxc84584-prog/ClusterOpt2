@@ -113,3 +113,15 @@ APIDescriptors, so CatalogCollection returned 400 rather than empty
 metadata, causing protected query tests to fail. Repair: skip these
 legacy objects in catalog, retain their URU registration and add
 catalog-collection regression. Re-run full workflow; PASS pending.
+
+## PR02.07 acceptance tests (exact-head CI pending)
+| Scenario | Expected |
+| --- | --- |
+| 2.3.1 provides >=2.1.0 in stable major | compatible |
+| 2.3.1 vs 2.4.0, 3.0.0 | incompatible |
+| 0.4.7 vs 0.4.2 / 0.5.0 | compatible / incompatible |
+| since newer than descriptor version | registration EHU 400 |
+| oversized/noncanonical/unsafe numeric versions | invalid 400 |
+| deprecated flag | reported, no execution permission change |
+| Real Chromium descriptor and legacy Cluster | verified by e2e source |
+| Dedicated Node/Chromium/OCDA/Windows | pending exact-head CI |
