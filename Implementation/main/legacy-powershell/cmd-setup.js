@@ -7,7 +7,7 @@ export const PLA_SOURCE =
   "ClusterOpt2/main/Implementation/local-agent/install-current.ps1";
 
 export function setupFilename(version) {
-  if (!/^0\\.0\\.\\d+-pr\\d+\\.patch\\d+(?:\\.fix\\d+)?$/u.test(version)) {
+  if (!/^0\.0\.\d+-pr\d+\.patch\d+(?:\.fix\d+)?$/u.test(version)) {
     throw new TypeError("Invalid release version");
   }
   return "ClusterOpt2-PLA-Setup-" + version + ".cmd";
@@ -20,7 +20,7 @@ export function createSetupCmd({ version } = {}) {
     "setlocal EnableExtensions DisableDelayedExpansion",
     "title ClusterOpt2 PowerShell Local Agent " + version,
     "echo ClusterOpt2 PowerShell Local Agent " + version,
-    "set \"AGENT_DIR=%USERPROFILE%\\\\ClusterOpt2-Agent\"",
+    "set \"AGENT_DIR=%USERPROFILE%\\ClusterOpt2-Agent\"",
     "if not exist \"%AGENT_DIR%\" mkdir \"%AGENT_DIR%\"",
     "if errorlevel 1 goto failed",
     "echo [1/2] Downloading version-compatible setup helper...",
@@ -34,7 +34,7 @@ export function createSetupCmd({ version } = {}) {
     "if errorlevel 1 goto failed",
     "echo [2/2] Installing native agent...",
     "powershell.exe -NoProfile -ExecutionPolicy Bypass " +
-      "-File \"%AGENT_DIR%\\\\install-current.ps1\" " +
+      "-File \"%AGENT_DIR%\\install-current.ps1\" " +
       "-ExpectedVersion \"" + version + "\"",
     "if errorlevel 1 goto failed",
     "echo ClusterOpt2 agent setup complete.",
