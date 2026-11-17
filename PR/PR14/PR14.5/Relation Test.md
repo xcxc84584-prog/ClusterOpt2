@@ -11,6 +11,7 @@
 | Submit task through Hub | 200, UUID, short dispatch | VTE/Chromium added |
 | Duplicate pending task | 409 EHU | VTE test added |
 | Task_status/task_result matched | 200, UI output | VTE test added |
+| Browser complete result lifecycle | task frame, text output, cleared activeId | Chromium case added |
 | Forged ingest UI source | 403 EHU | VTE test added |
 | Cancel current task | task_cancel via Hub | VTE/Chromium added |
 | Reset on disconnection | Active cleared | VTE case added |
