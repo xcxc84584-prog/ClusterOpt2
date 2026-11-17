@@ -200,3 +200,8 @@ never expose live Property values or privileged Object handlers.
 Flow: validate format -> authorized paged discovery of APIs and
 Properties -> deterministic canonical order -> escape/render -> byte
 budget -> immutable result 200. No mixed-visibility raw snapshot.
+
+PR02.06/07 CI repair: input contract remains
+LinkCore.discover(source,command,kind,selector,options), with origin
+in options. Correcting the AgentAPI test does not change HubUnit,
+AccessPolicy, execution routing, or any registry dependency.
