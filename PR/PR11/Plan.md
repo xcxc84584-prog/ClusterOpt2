@@ -44,3 +44,23 @@ budgeting and background execution to avoid editing stalls.
 4. Repeated mount is idempotent; conflicts and failed registration roll back.
 5. UI preview uses safe textContent and palette-aligned token styles.
 6. Verify browser E2E, VTE event chain and CI before merging.
+
+## PR11 completion scope (Patch +4 / +5)
+- A native-textarea decorative viewport overlay is implemented.
+- When the trusted Provider is mounted, Resources activates highlighting
+  for the active document without changing the edit or save path.
+- Scroll, input, IME composition and document switching invalidate stale
+  generations before token results are displayed.
+- Loaded pages above 1 MiB, token windows over 65,536 code units or
+  unavailable services revert to plain text without blocking input.
+- Standalone Node tests and Playwright browser regression tests cover
+  token correctness, HubUnit Request/Response/EHU and overlay invalidation.
+- Full GitHub Actions CI is the required merge gate for PR11.
+- Release product version must update only via ReleaseVersion.js, with
+  package.json as the distribution mirror after all checks pass.
+
+## Deferred capability boundaries
+- Arbitrary third-party code loading and untrusted Worker execution are
+  deliberately out of scope: the host imports only a reviewed local file.
+- Fully incremental grammar state across arbitrary multi-GiB files is
+  out of scope. Large pages safely revert to uncolored native text.
