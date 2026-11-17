@@ -59,9 +59,7 @@ export class PluginPackageStoreUnit {
   async save(snapshot) {
     const checked = this.reader.inspectImport(snapshot);
     if (!checked.ok) return checked;
-    const providerId = checked.value.manifestText ?
-      checked.value : snapshot;
-    const id = JSON.parse(providerId.manifestText).provider.providerId;
+    const id = JSON.parse(snapshot.manifestText).provider.providerId;
     try {
       await this.transaction("readwrite", store =>
         store.put({ providerId: id, snapshot,
