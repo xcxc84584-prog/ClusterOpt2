@@ -118,3 +118,20 @@ test("PR03.03 revoked Proxy Manifest fails closed with EHU 400", () => {
     event.kind === "EHU" && event.action === "Provider.Register" &&
     event.status === 400));
 });
+
+test("PR03.08 Provider must agree with declared Object API contract", () => {
+  const core = new LinkCore();
+  const existing = object();
+  existing.ocda.APIDescriptors = [{
+    apiVersion: 1, id: "editor.highlight", owner: "PluginA",
+    action: "highlight", version: "2.0.0", visibility: "Public",
+    sideEffect: "none", inputSchema: { type: "object" },
+    outputSchema: { type: "array", items: { type: "string" } }
+  }];
+  assert.equal(core.register(existing), true);
+  assert.equal(core.registerProvider("PluginA",
+    provider("vendor.a")).status, 400);
+  const compatible = provider("vendor.a");
+  compatible.provides[0].version = "2.0.0";
+  assert.equal(core.registerProvider("PluginA", compatible).status, 201);
+});
