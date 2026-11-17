@@ -544,7 +544,8 @@ export class PluginUIHostUnit {
       button.addEventListener("click", open);
       frame.addEventListener("load", sync);
       const closeForWorkbench = event => {
-        if (!event.target.closest?.("#explorerPowerShell, #pluginBtn"))
+        if (!event.target.closest?.(
+          "#tabs .tab, #explorerPowerShell, #pluginBtn"))
           return;
         if (view.workbenchTab) view.workbenchTab.deactivate();
         else {
