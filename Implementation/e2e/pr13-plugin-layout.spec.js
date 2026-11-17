@@ -38,6 +38,8 @@ test("PR13 resources separate search, chooser, and catalogue cards",
 
 test("PR13 API heading and search do not collide with table columns",
   async ({ page }) => {
+    // Horizontal scrolling is needed only when the host is narrow.
+    await page.setViewportSize({ width: 800, height: 720 });
     await openTab(page, 1);
     const result = await page.locator(".pm-api-browser").evaluate(
       browser => {
