@@ -117,3 +117,16 @@ test("startup and language restore never access removed category controls",
     expect(errors.filter(message=>message.includes(
       "Cannot set properties of null"))).toEqual([]);
   });
+
+test("Plugin Manager mounts without missing-DOM errors on startup",
+  async ({page})=>{
+    const errors=[];
+    page.on("pageerror",error=>errors.push(error.message));
+    await page.goto("/");
+    await expect(page.locator("#pluginManagerPages")).toHaveCount(1);
+    await expect(page.locator("#pluginLegacySettings")).toHaveCount(1);
+    await openManager(page);
+    await expect(page.locator(".pm-shell")).toBeVisible();
+    expect(errors.filter(x=>/Missing Plugin Manager DOM/.test(x)))
+      .toHaveLength(0);
+  });
