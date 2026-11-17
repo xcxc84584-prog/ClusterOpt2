@@ -20,3 +20,12 @@
 - `tools/list` exposes all existing 14 tools only to `cluster.control`; `cluster.read` stays filtered to five.
 - `tools/call` denies write/shell tools for `cluster.read`. Actual execution is still enforced by trusted Local Agent and browser ToolBox/PS approval.
 - Automated contract coverage updated. Real Windows and OAuth browser security tests remain pending.
+
+## Patch(+4) — complete host route integration
+- PluginLocalAgentObject now routes legacy Explorer tools through registered PluginExplorerObject and HubUnit rather than returning Tool access denied.
+- PluginExplorerObject adds bounded readChunk and trusted Agent caller authorization with existing ToolBox rights; the old UI origin remains supported.
+- PluginUIHostUnit plugin interface associates trusted Agent and Explorer instances on mount.
+- Restored legacy response shapes for list_directory, read_path, create_file, write_path and delete_path; blocked cross-root paths and invalid filenames.
+- Existing PowerShell tab open action now checks PS ToolBox grant; shell execution still demands per-command approval.
+- New tests cover Hub route selection, unauthorized Agent, root isolation and PS permission denial.
+- E2E real host gates remain pending; PR stays Draft.
