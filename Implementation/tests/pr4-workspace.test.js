@@ -25,7 +25,7 @@ test("PR4 reorder preserves active document identity and unsaved content", () =>
   assert.throws(() => workspace.reorder(0, 10), RangeError);
 });
 
-test("PR12 Close All No discards unsaved files", () => {
+test("PR12 Close All No discards unsaved files", async () => {
   const { workspace, core } = createFixture();
   const previousWindow = globalThis.window;
   let confirms = 0;
@@ -33,7 +33,7 @@ test("PR12 Close All No discards unsaved files", () => {
   try {
     workspace.create();
     workspace.create();
-    assert.equal(workspace.closeAll(), true);
+    assert.equal(await workspace.closeAll(), true);
     assert.equal(confirms, 1);
     assert.equal(workspace.documents.length, 0);
     assert.equal(core.getSnapshot().objects.filter(item =>
