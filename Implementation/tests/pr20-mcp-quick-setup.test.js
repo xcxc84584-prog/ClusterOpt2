@@ -15,7 +15,7 @@ test("PR20 MCP standalone setup is explicit and loopback-only", () => {
   assert.match(cmd, /set "REV=[a-f0-9]{40}"/);
   assert.match(cmd, /choice \/M "Continue"/);
   assert.match(cmd, /127\.0\.0\.1:43880/);
-  assert.match(cmd, /127\.0\.0\.1:43881/);
+  assert.match(cmd, /127\.0\.0\.1:43879/);
   assert.match(cmd, /Start-MCP\.ps1/);
   assert.match(cmd, /Start-OAuth\.ps1/);
   assert.match(cmd, /cluster\.read is READ ONLY/);
