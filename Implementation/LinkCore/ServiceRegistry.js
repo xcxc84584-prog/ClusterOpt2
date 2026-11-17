@@ -1,4 +1,6 @@
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
+import { ProviderCompatibilityPolicy } from
+  "../property/ProviderCompatibilityPolicy.js";
 
 /**
  * PR03.05: read-only, live projection of URU's authoritative index.
@@ -26,5 +28,16 @@ export class ServiceRegistry {
 
   candidates(serviceId) {
     return this.resolve(serviceId);
+  }
+
+  negotiate(requirement) {
+    const result = this.resolve(requirement?.service);
+    if (!result.ok) return result;
+    const available = result.value.filter(manifest =>
+      manifest.provides.some(item =>
+        ProviderCompatibilityPolicy.inspect(item, requirement).ok));
+    return available.length ?
+      { ok: true, status: 200, value: Object.freeze(available) } :
+      { ok: false, status: 409, error: "No compatible Provider" };
   }
 }
