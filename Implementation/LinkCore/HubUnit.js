@@ -1,18 +1,23 @@
 import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
 import { ExecutionScheduler } from "./ExecutionScheduler.js";
+import { CatalogQuery } from "./CatalogQuery.js";
+import { AuthorizedCatalogCollection } from
+  "./AuthorizedCatalogCollection.js";
 
 /**
  * Hub-only request/response crossing, registration and event observation.
  * A missing target may be registered only from a trusted predeclared factory.
  */
 export class HubUnit {
-  constructor(registry, properties, omu, scheduler = new ExecutionScheduler()) {
+  constructor(registry, properties, omu,
+    scheduler = new ExecutionScheduler(), catalog = null) {
     this.registry = registry;
     this.properties = properties;
     this.omu = omu;
     this.scheduler = scheduler;
     this.waitEdges = new Map();
+    this.catalog = catalog;
   }
 
   register(object) {
@@ -132,6 +137,44 @@ export class HubUnit {
     } finally {
       if (nested) this.removeWaitEdge(source, target);
     }
+  }
+
+  /**
+   * Trusted LinkCore-only discovery entry point. This is metadata
+   * filtering, NOT a token or substitute for HubUnit.request checks.
+   * No source factories are materialized implicitly.
+   */
+  discoverCatalog(source, command, kind, selector = {}, options = {}) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source ?? "unknown", "Catalog.Discover",
+        404, kind);
+      return { ok: false, status: 404, error: "Unknown caller" };
+    }
+    if (!this.catalog || !["user", "agent"].includes(
+      options?.origin ?? "user")) {
+      this.omu.record("EHU", source, "Catalog.Discover", 400, kind);
+      return { ok: false, status: 400, error: "Invalid discovery context" };
+    }
+    const collection = new AuthorizedCatalogCollection(
+      this.catalog, this.registry, this.properties,
+      source, options.origin ?? "user");
+    const query = new CatalogQuery(collection);
+    let result;
+    if (command === "list") {
+      result = query.list(kind, selector);
+    } else if (command === "query") {
+      result = query.query(kind, selector, options);
+    } else if (command === "describe") {
+      result = query.describe(kind, selector?.id,
+        selector?.owner ?? null);
+    } else {
+      result = { ok: false, status: 400,
+        error: "Unsupported catalog command" };
+    }
+    this.omu.record(result.ok ? "Log" : "EHU",
+      source, "Catalog." + command, result.status, kind);
+    return result;
   }
 
   registerProperty(name, value, options = {}) {
