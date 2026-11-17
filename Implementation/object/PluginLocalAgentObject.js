@@ -341,7 +341,7 @@ export class PluginLocalAgentObject {
           return;
         }
         if (checked.value.type === "bridge_registered" &&
-            this.shellApprovalId &&
+            (this.shellApprovalId || this.mcpReadId) &&
             this.state === "connected") {
           this.bridgeRegistered = true;
           this.audit(200, "BridgeRegistered");
