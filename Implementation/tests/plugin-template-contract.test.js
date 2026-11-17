@@ -68,10 +68,11 @@ test("PR13 HubUnit has immutable symmetric Request/Response contracts",
     const read = env.core.readProperty("VTE", "HubProtocolPolicy");
     assert.equal(read.status, 200);
     const contracts = read.value.descriptions;
-    assert.ok(contracts.length >= 5);
+    assert.ok(contracts.length >= 6);
     assert.deepEqual(contracts.map(item => item.action), [
       "request", "requestService", "readProperty",
-      "discoverCatalog", "listProviderContracts"
+      "discoverCatalog", "listActionContracts",
+      "listProviderContracts"
     ]);
     for (const contract of contracts) {
       assert.equal(contract.inputSchema.type, "object");
