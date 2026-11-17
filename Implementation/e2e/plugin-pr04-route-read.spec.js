@@ -28,4 +28,3 @@ test("PR04.09 read-only browser Route facade and no route takeover",
       version: "0.0.10"
     });
   });
-});

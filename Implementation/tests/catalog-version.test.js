@@ -65,7 +65,7 @@ test("PR02.07 since and deprecation never authorize execution", async () => {
   const result = await core.request("guest", "Editor", "render",
     { text: "hello" }, { origin: "user" });
   assert.equal(result.status, 200, "deprecated is informational only");
-  assert.equal(core.getSnapshot().version, "0.0.9-pr9.patch9");
+  assert.equal(core.getSnapshot().version, core.version);
 });
 
 test("PR02.07 rejects contradictory since and unsafe versions", () => {
