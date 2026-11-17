@@ -1,0 +1,38 @@
+name: Unified Major-PR Release
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Verify canonical stable release
+        run: >-
+          node --input-type=module -e
+          "import { ReleaseVersion } from
+          './Implementation/property/ReleaseVersion.js';
+          if (ReleaseVersion.channel !== 'stable')
+          throw Error('Only stable main commits may publish releases');"
+      - name: Publish tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node --input-type=module -e             "import { ReleaseVersion } from './Implementation/property/ReleaseVersion.js'; console.log(ReleaseVersion.product)")
+          TAG="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}"; then
+            echo "Release tag already exists: ${TAG}"
+            exit 1
+          fi
+          gh release create "${TAG}" --target "${GITHUB_SHA}"             --title "ClusterOpt2 ${TAG}" --generate-notes

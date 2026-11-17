@@ -72,3 +72,15 @@ PR1 is not considered accepted based on source code alone.
 - Code conventions: 30 source files PASS.
 - Native Windows browser visual comparison and file permission dialogs:
   manual acceptance pending; does not negate automated pass.
+
+## PLUGIN major PR03 gate — separate from original UI PR3
+- PLUGIN PR03.01: PASS on exact-head f501dc6a; restore verified.
+- PLUGIN PR03.02: PASS on exact-head c21032a; restore created.
+- PLUGIN PR03.03–03.10: code and Relation Tests committed;
+  exact-head Node/Chromium/PR02/OCDA/PR1/Windows gate pending.
+- ReleaseVersion.js is canonical product version; npm CI checks
+  package.json mirror. No product bump before guarded major release.
+- Untrusted Worker sandbox, remote plugin factories, route unbinding,
+  inflight draining and real File I/O are deferred to PR04–06.
+- PR03 major merge forbidden until exact-head PASS and final
+  rollback snapshot; original editor large-file manual tests remain open.

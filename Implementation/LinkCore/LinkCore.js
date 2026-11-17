@@ -1,4 +1,17 @@
 import { CatalogCollection } from "./CatalogCollection.js";
+import { ServiceRegistry } from "./ServiceRegistry.js";
+import { ReleaseVersion } from "../property/ReleaseVersion.js";
+import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
+import { ProviderManifestPolicy } from
+  "../property/ProviderManifestPolicy.js";
+import { ProviderSharedPropertyPolicy } from
+  "../property/ProviderSharedPropertyPolicy.js";
+import { ProviderFactoryPolicy } from
+  "../property/ProviderFactoryPolicy.js";
+import { ProviderCompatibilityPolicy } from
+  "../property/ProviderCompatibilityPolicy.js";
+import { ProviderHealthPolicy } from
+  "../property/ProviderHealthPolicy.js";
 import { createClusterAPIFacade } from "./ClusterAPIFacade.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { CatalogVisibilityPolicy } from
@@ -51,12 +64,33 @@ export class LinkCore {
   constructor() {
     this.edpmu = new EntireDomainPropertyManagementUnit();
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
+    this.services = new ServiceRegistry(this.uru);
     this.omu = new ObjectManagementUnit();
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
-    this.version = "0.0.9-pr9.patch9";
+    Object.defineProperty(this, "version", {
+      value: ReleaseVersion.product, enumerable: true,
+      writable: false, configurable: false
+    });
+    for (const [name, value] of [
+      ["ProviderSharedPropertyPolicy", ProviderSharedPropertyPolicy],
+      ["ProviderFactoryPolicy", ProviderFactoryPolicy],
+      ["ProviderCompatibilityPolicy", ProviderCompatibilityPolicy],
+      ["ProviderHealthPolicy", ProviderHealthPolicy]
+    ]) {
+      this.hub.registerProperty(name, value, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    }
+    this.hub.registerProperty("ProviderManifestPolicy",
+      ProviderManifestPolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    this.hub.registerProperty("CapabilityIdPolicy", CapabilityIdPolicy, {
+      owners: ["LinkCore"], visibility: "Public", readOnly: true
+    });
     this.hub.registerProperty("CatalogDocumentation",
       CatalogDocumentation, {
         owners: ["LinkCore"], visibility: "Public"
@@ -77,7 +111,7 @@ export class LinkCore {
       owners: ["LinkCore"], visibility: "Public"
     });
     this.hub.registerProperty("SystemVersion", this.version, {
-      owners: ["LinkCore"], visibility: "Public"
+      owners: ["LinkCore"], visibility: "Public", readOnly: true
     });
     this.hub.registerProperty("ParallelExecutionPolicy",
       ParallelExecutionPolicy, { owners: ["LinkCore"] });
@@ -174,6 +208,36 @@ export class LinkCore {
 
   register(object) { return this.hub.register(object); }
   unregister(id) { return this.hub.unregister(id); }
+  registerProvider(source, manifest) {
+    return this.hub.registerProvider(source, manifest);
+  }
+  unregisterProvider(source, providerId) {
+    return this.hub.unregisterProvider(source, providerId);
+  }
+  attachProviderFactory(source, providerId, factory) {
+    return this.hub.attachProviderFactory(source, providerId, factory);
+  }
+  materializeProvider(source, providerId) {
+    return this.hub.materializeProvider(source, providerId);
+  }
+  setProviderEnabled(source, providerId, enabled) {
+    return this.hub.setProviderEnabled(source, providerId, enabled);
+  }
+  setServiceEnabled(source, providerId, serviceId, enabled) {
+    return this.hub.setServiceEnabled(
+      source, providerId, serviceId, enabled);
+  }
+  disposeProvider(source, providerId) {
+    return this.hub.disposeProvider(source, providerId);
+  }
+  reportProviderHealth(source, providerId, outcome, now) {
+    return this.hub.reportProviderHealth(
+      source, providerId, outcome, now);
+  }
+  publishProviderProperty(source, providerId, name, value) {
+    return this.hub.publishProviderProperty(
+      source, providerId, name, value);
+  }
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
   }

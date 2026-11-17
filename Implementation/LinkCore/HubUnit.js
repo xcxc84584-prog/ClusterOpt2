@@ -1,5 +1,9 @@
 import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
+import { ProviderSharedPropertyPolicy } from
+  "../property/ProviderSharedPropertyPolicy.js";
+import { ProviderManifestPolicy } from
+  "../property/ProviderManifestPolicy.js";
 import { ExecutionScheduler } from "./ExecutionScheduler.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
@@ -32,6 +36,169 @@ export class HubUnit {
     this.omu.record(removed ? "Log" : "EHU", id, "Unregister",
       removed ? 200 : 404);
     return removed;
+  }
+
+  /**
+   * Trusted in-process provider declaration. An Object may declare
+   * only its own existing actions; no external Cluster.api mutation.
+   */
+  registerProvider(source, manifest) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Provider.Register", 404);
+      return { ok: false, status: 404, error: "Unknown caller" };
+    }
+    let parsed;
+    try {
+      parsed = ProviderManifestPolicy.validate(manifest);
+    } catch (_error) {
+      parsed = { ok: false, status: 400,
+        error: "Invalid provider Manifest" };
+    }
+    if (!parsed.ok) {
+      this.omu.record("EHU", source, "Provider.Register", parsed.status);
+      return parsed;
+    }
+    if (source !== parsed.value.objectId) {
+      this.omu.record("EHU", source, "Provider.Register", 403);
+      return { ok: false, status: 403, error: "Provider owner mismatch" };
+    }
+    const claims = ProviderSharedPropertyPolicy.inspect(
+      parsed.value, this.properties);
+    const result = claims.ok ?
+      this.registry.registerProvider(parsed.value) : claims;
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Register", result.status, parsed.value.providerId);
+    return result;
+  }
+
+  unregisterProvider(source, providerId) {
+    if (!this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Unregister", 404);
+      return { ok: false, status: 404 };
+    }
+    const provider = this.registry.getProvider(providerId);
+    if (!provider) {
+      this.omu.record("EHU", source, "Provider.Unregister", 404);
+      return { ok: false, status: 404 };
+    }
+    if (provider.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Unregister", 403);
+      return { ok: false, status: 403 };
+    }
+    this.registry.unregisterProvider(providerId);
+    this.omu.record("Log", source, "Provider.Unregister", 200, providerId);
+    return { ok: true, status: 200 };
+  }
+
+  /**
+   * Explicit trusted Provider Property write: object ownership AND
+   * Provider declaration AND EDPMU policy must all agree.
+   */
+  publishProviderProperty(source, providerId, name, value) {
+    const provider = this.registry.getProvider(providerId);
+    if (!provider || !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Property.Write",
+        404, name);
+      return { ok: false, status: 404 };
+    }
+    if (provider.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Property.Write",
+        403, name);
+      return { ok: false, status: 403 };
+    }
+    const allowed = ProviderSharedPropertyPolicy.canWrite(
+      provider, name, this.properties);
+    const result = allowed.ok ?
+      this.properties.update(name, value) : allowed;
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Property.Write", result.status, name);
+    return result;
+  }
+
+  attachProviderFactory(source, providerId, factory) {
+    const manifest = this.registry.getProvider(providerId);
+    const result = !this.registry.objects.has(source) || !manifest ?
+      { ok: false, status: 404 } :
+      manifest.objectId !== source ?
+        { ok: false, status: 403 } :
+        this.registry.attachProviderFactory(providerId, factory);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Factory.Attach", result.status, providerId);
+    return result;
+  }
+
+  materializeProvider(source, providerId) {
+    const manifest = this.registry.getProvider(providerId);
+    const result = !this.registry.objects.has(source) || !manifest ?
+      { ok: false, status: 404 } :
+      manifest.objectId !== source ?
+        { ok: false, status: 403 } :
+        this.registry.materializeProvider(providerId);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Factory.Materialize", result.status, providerId);
+    return result;
+  }
+
+  setProviderEnabled(source, providerId, enabled) {
+    const provider = this.registry.getProvider(providerId);
+    const result = !provider || !this.registry.objects.has(source) ?
+      { ok: false, status: 404 } :
+      provider.objectId !== source || typeof enabled !== "boolean" ?
+        { ok: false, status: 403 } :
+        this.registry.setProviderEnabled(providerId, enabled);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      enabled ? "Provider.Enable" : "Provider.Disable",
+      result.status, providerId);
+    return result;
+  }
+
+  setServiceEnabled(source, providerId, serviceId, enabled) {
+    const provider = this.registry.getProvider(providerId);
+    const result = !provider || !this.registry.objects.has(source) ?
+      { ok: false, status: 404 } :
+      provider.objectId !== source || typeof enabled !== "boolean" ?
+        { ok: false, status: 403 } :
+        this.registry.setServiceEnabled(providerId, serviceId, enabled);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      enabled ? "Provider.Service.Enable" : "Provider.Service.Disable",
+      result.status, serviceId);
+    return result;
+  }
+
+  disposeProvider(source, providerId) {
+    const provider = this.registry.getProvider(providerId);
+    const result = !provider || !this.registry.objects.has(source) ?
+      { ok: false, status: 404 } :
+      provider.objectId !== source ?
+        { ok: false, status: 403 } :
+        this.registry.disposeProvider(providerId);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Dispose", result.status, providerId);
+    return result;
+  }
+
+  reportProviderHealth(source, providerId, outcome, now) {
+    const provider = this.registry.getProvider(providerId);
+    if (!provider || !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Health", 404,
+        providerId);
+      return { ok: false, status: 404 };
+    }
+    if (provider.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Health", 403,
+        providerId);
+      return { ok: false, status: 403 };
+    }
+    const result = this.registry.updateProviderHealth(
+      providerId, outcome, now);
+    const status = result.ok && outcome === "timeout" ? 504 :
+      result.ok && outcome === "failure" ? 503 : result.status;
+    this.omu.record(status >= 400 ? "EHU" : "Log",
+      source, "Provider.Health", status, providerId,
+      { outcome: typeof outcome === "string" ? outcome : "invalid" });
+    return result;
   }
 
   // Active wait-for edges are used only for deadlock detection.

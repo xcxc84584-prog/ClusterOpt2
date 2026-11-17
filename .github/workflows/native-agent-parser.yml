@@ -1,4 +1,7 @@
 name: Local Agent PowerShell Parse
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 on:
   push:
     branches: [main, "pr9/**"]
