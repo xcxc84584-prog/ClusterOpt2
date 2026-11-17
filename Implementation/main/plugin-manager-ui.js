@@ -36,9 +36,7 @@ function tabular(doc,header,rows) {
 export function mountPluginManagerUI(core,doc) {
   const root=doc.getElementById("pluginManagerPages");
   const oldSettings=doc.getElementById("pluginLegacySettings");
-  const legacyMenu=doc.getElementById("pluginLegacyMenu");
-  const tool=doc.getElementById("pluginToolToggle");
-  if(!root||!oldSettings||!tool||!legacyMenu)
+  if(!root||!oldSettings)
     throw Error("Missing Plugin Manager DOM");
   const shell=dom(doc,"div","pm-shell");
   const sidebar=dom(doc,"aside","pm-sidebar");
@@ -311,6 +309,8 @@ export function mountPluginManagerUI(core,doc) {
     if(!selected&&all.length)selected=all[0].providerId;
     renderSidebar();
     sideHeading.textContent=t("插件清單","Plugin List");
+    doc.getElementById("pluginWindow").setAttribute("aria-label",
+      t("插件管理","Plugin Manager"));
     const p=current();
     nav.replaceChildren();
     for(const key of VIEWS) {
@@ -322,7 +322,6 @@ export function mountPluginManagerUI(core,doc) {
     page.replaceChildren();
     page.append(migrated);
     migrated.hidden=active!=="performance";
-    legacyMenu.hidden=active!=="performance";
     oldSettings.hidden=active!=="performance";
     if(active==="performance")return;
     if(active==="api")return renderAPIs();
@@ -337,7 +336,6 @@ export function mountPluginManagerUI(core,doc) {
   function activate(key) {
     if(!VIEWS.includes(key))return;
     active=key;selectedAPI=null;
-    tool.setAttribute("aria-pressed",String(key==="performance"));
     root.hidden=false;render();
   }
   search.addEventListener("input",()=>{
@@ -347,8 +345,6 @@ export function mountPluginManagerUI(core,doc) {
     search.focus();search.setSelectionRange(caret,caret);
   });
   filter.addEventListener("change",()=>{mode=filter.value;renderSidebar();});
-  tool.addEventListener("click",()=>activate(active==="performance"?
-    "overview":"performance"));
   activate("permissions");
   return Object.freeze({refresh:render,select:activate});
 }
