@@ -36,3 +36,32 @@ Node detached VTE and Chromium integration plus global regressions.
 Main baseline 5191ffc8d1ae7996526b8808bd535a330c1f6269.
 Before merge, all 10 subPR gates must pass at exact head; branch restore
 must point to pre-PR03 main and latest PR03 head. No early merge.
+
+## PR03.02 — Provider Manifest v1 (upstream design review)
+Reviewed GitHub source:
+- VS Code extension metadata/manifest and extension identity:
+  https://github.com/microsoft/vscode/blob/main/src/vs/platform/extensions/common/extensions.ts
+- Theia plugin host protocol/metadata separation:
+  https://github.com/eclipse-theia/theia/blob/master/packages/plugin-ext/src/common/plugin-protocol.ts
+- AsyncAPI operation/contract metadata:
+  https://github.com/asyncapi/spec/blob/master/spec/asyncapi.md
+
+Design improvement: separate declarative Provider Manifest from the future
+authoritative URU registration, ServiceRegistry, routing, and execution
+sandbox. A validated manifest is DATA only, never an authorization grant.
+Each providerId and service uses PR03.01 canonical ID policy; objectId is
+separate URU identity. SemVer uses existing CatalogVersionPolicy.
+Manifest v1 declares manifestVersion, providerId, objectId,
+provides (service/action/version/inputSchema/outputSchema),
+requires, permissions, execution (isolation/concurrency).
+No executable handlers or string-based factories allowed.
+Strict known keys, max 32 provided services, max 64 requirements and
+permissions, max 32 KiB UTF-8, finite JSON plain data, no cycles,
+functions, getters, symbol keys or prototype pollution.
+Use PR02 APIDescriptorPolicy schema subset for each provided contract.
+Reject duplicate service within one Provider and direct self-dependency;
+multiple different providers may advertise the same service in PR03.05.
+Bounded O(total JSON bytes + N) validation; deeply detached frozen value.
+One new Property file, registered once via LinkCore/HubUnit/EDPMU.
+No browser-facing registration, no service execution, no Route Table.
+Node real VTE, Chromium, OCDA, legacy API and Windows CI gates.
