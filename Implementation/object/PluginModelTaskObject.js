@@ -67,7 +67,7 @@ export class PluginModelTaskObject {
 
   receive(action, payload = {}, context = {}) {
     if (context.source !== "ui" &&
-        !(action === "ingest" &&
+        !(["ingest", "reset"].includes(action) &&
           context.source === this.localAgentId)) {
       return this.fail(403, "SourceDenied");
     }
