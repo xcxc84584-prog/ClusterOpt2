@@ -94,3 +94,14 @@ isolated origin/channel and browser adversarial tests exist.
 Package Manifest may declare `uiEntry: "index.html"` alongside its JS
 service entry. HTML/CSS/JS assets are preserved as inert data until the
 sandboxed UI runtime is audited; no raw HTML is injected into main DOM.
+
+## PR13 Patch(+4) — API Catalog + reviewed reload
+- Replace API cards with a flat, six-column searchable API table.
+- Derive Request payload / Response value from registered OCDA and
+  Provider Contract schemas; missing legacy descriptors remain unknown.
+- Route API, Property, Provider discovery through HubUnit with source
+  checks and bounded pages, URU/EDPMU remain sole authorities.
+- Retain trusted pre-reviewed shipped plugin state across reloads using
+  separate IndexedDB reviewed records; do not auto-execute user code.
+- Bundle exports include valid reviewed provider IDs + enabled flags.
+- Add browser tests for table and reviewed-plugin reload.
