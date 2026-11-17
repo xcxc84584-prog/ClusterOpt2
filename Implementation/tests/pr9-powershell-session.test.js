@@ -43,7 +43,7 @@ test("PR9 caps independent native sessions at eight", async () => {
   const core = vte.core;
   new PowerShellSessionManager(core);
   for (let i = 0; i < 8; i++) {
-    const result = await core.request("ui",
+    const result = await core.request("VTE.actor",
       "powershell-session-manager", "create");
     assert.equal(result.status, 200);
   }
