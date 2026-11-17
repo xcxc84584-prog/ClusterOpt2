@@ -32,3 +32,11 @@
 - Keep `cluster.read` restricted to the five original read-only tools, without privilege promotion.
 - Route via 43881 OAuth → 43880 MCP → 43879 paired Local Agent → browser ToolBox rights → user confirmation for each PowerShell command.
 - Core business logic unchanged; only plugin-local OAuth gateway modified.
+
+## Patch(+4): actual legacy CRUD and PS routes
+- Route Explorer tools via `PluginLocalAgentObject` → HubUnit → `PluginExplorerObject`; no direct disk path access from the plugin iframe.
+- Expose scoped directory listing, bounded UTF-8 file chunks, create/update/delete with existing individual ToolBox rights, and legacy response compatibility.
+- Restore explicit PS UI request only after verifying ToolBox PS rights. Actual command execution continues to require separate `PluginShellApprovalObject.approve` per call.
+- Restore legacy root-path confirmation as an unverified Windows path label; does not grant access to new roots.
+- Deny cross-root paths and handle rejected Hub calls by EHU + error response.
+- Windows real Agent / ChatGPT OAuth / 14-tool E2E and browser matrix not yet PASS.
