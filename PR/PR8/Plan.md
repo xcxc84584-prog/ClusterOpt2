@@ -623,3 +623,14 @@ this limit currently applies only to the independent registry.
   Network tab failure record.
 - Minimal static-byte cost, no runtime API or privilege changes.
 - BC requires backup SHA and both workflows PASS.
+
+
+## Patch(+25-Fix2) — permission-safe external synchronization
+- Use the browser File System Access read permission state to gate
+  background checks; never prompt from timer/hidden tab.
+- NotAllowedError is not an indicator of data corruption: preserve
+  the unsaved buffer/status and pause redundant read attempts.
+- Explicit repick of same file restores handle identity without
+  creating duplicate tabs; recovery state remains untouched.
+- Add Node/VTE tests and update LinkCore version centrally.
+- No new Property needed; uses existing Workspace/Document objects.
