@@ -181,3 +181,15 @@ Upgrade -> validate+consent+current grants -> HubUnit disable/removal
 ```
 No parallel registry is introduced. OMU records EHU and Log.
 The cutover is not zero-downtime; adversarial browser tests pending.
+
+## PR13 Patch(+8) — dependency and persistence EventChain
+```text
+Upgrade -> URU dependents projection -> 409 EHU or replacement
+  -> confirmed install -> IndexedDB package save
+Uninstall -> URU unregister -> sandbox terminate
+  -> IndexedDB package delete
+Sandbox script -> CSP connect-src 'none' -> failed network fetch
+  -> cross-origin parent storage access denied
+```
+No additional registration authority. IndexedDB stores inert bytes,
+not active Providers or permission grants.
