@@ -199,6 +199,16 @@ export class LinkCore {
   materializeProvider(source, providerId) {
     return this.hub.materializeProvider(source, providerId);
   }
+  setProviderEnabled(source, providerId, enabled) {
+    return this.hub.setProviderEnabled(source, providerId, enabled);
+  }
+  setServiceEnabled(source, providerId, serviceId, enabled) {
+    return this.hub.setServiceEnabled(
+      source, providerId, serviceId, enabled);
+  }
+  disposeProvider(source, providerId) {
+    return this.hub.disposeProvider(source, providerId);
+  }
   publishProviderProperty(source, providerId, name, value) {
     return this.hub.publishProviderProperty(
       source, providerId, name, value);
