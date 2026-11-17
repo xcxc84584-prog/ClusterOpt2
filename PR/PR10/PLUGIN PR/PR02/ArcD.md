@@ -127,3 +127,28 @@ filter stable sort -> list/query page 200, describe 200/404/409.
 No direct HubUnit crossing or EHU for pure local search; external caller
 must use PR02.06 authorized HubUnit route to trigger EHU on 403.
 No new Object/Property registration or Dependency edge.
+
+## PR02.06 — Authorized Catalog Projection
+```mermaid
+flowchart LR
+  Caller[Registered source Object] --> Hub[HubUnit.discoverCatalog]
+  Hub -->|identity| URU[URU registered ID]
+  Hub --> Scope[AuthorizedCatalogCollection]
+  Scope --> Raw[CatalogCollection live snapshot]
+  Scope --> Policy[CatalogVisibilityPolicy]
+  Policy --> AP[AccessPolicy + OCDA UserAPI/AgentAPI]
+  Policy --> EDP[EDPMU owners/visibility/readable]
+  Scope --> Query[CatalogQuery list/describe/query]
+  Query --> Result[Authorized frozen metadata page]
+  Hub --> OMU[OMU Log and EHU]
+```
+Relation: no new remote Object API; LinkCore -> HubUnit internal call,
+HubUnit -> URU and EDPMU existing dependencies and Policy read.
+No new execution route or Property mutation. Filter precedes query
+counts to avoid pagination-based disclosure. EventChain:
+1. Caller source lookup registered: 404 EHU if absent (no factory).
+2. Validate origin user/agent, command; 400 EHU if invalid.
+3. Collect live bounded metadata, enforce AccessPolicy and exposure.
+4. Query filtered metadata; 200 Log, 404/409/400 EHU on failure.
+5. Actual invocations still require normal HubUnit.request authorization.
+EHU errors are metadata only, no handler called on deny.
