@@ -4,14 +4,16 @@ import { LinkCore } from "../LinkCore/LinkCore.js";
 import { createClusterAPIFacade } from
   "../LinkCore/ClusterAPIFacade.js";
 
-const descriptor = (owner, visibility = "Public") => ({
+const descriptor = (owner, visibility = "Public", agentOnly = false) => ({
   id: owner,
   strictOCDA: true,
   authorization: { default: visibility },
   receive: async () => { throw Error("Catalog executed provider"); },
   ocda: {
-    Request: ["run"], Response: ["run"], UserAPI: ["run"],
-    AgentAPI: [], Property: [], Program: "Catalog fixture",
+    Request: ["run"], Response: ["run"],
+    UserAPI: agentOnly ? [] : ["run"],
+    AgentAPI: agentOnly ? ["run"] : [],
+    Property: [], Program: "Catalog fixture",
     EHU: "LinkCore.OMU", Log: "LinkCore.OMU",
     APIDescriptors: [{
       apiVersion: 1, owner, id: owner + ".run", action: "run",
@@ -33,6 +35,7 @@ test("PR02.10 facade is readonly, Hub-scoped and non-impersonating", () => {
   core.register({ id: "ui", receive: async () => null });
   core.register(descriptor("PublicProvider"));
   core.register(descriptor("PrivateProvider", "Private"));
+  core.register(descriptor("AgentOnly", "Public", true));
   assert.equal(api.list("api").status, 200);
   assert.equal(api.list("api").value.total, 1);
   assert.equal(api.describe("api", "PrivateProvider.run",
@@ -40,7 +43,10 @@ test("PR02.10 facade is readonly, Hub-scoped and non-impersonating", () => {
   assert.equal(api.describe("api", "PublicProvider.run",
     "PublicProvider").status, 200);
   assert.equal(api.query("api", { term: "Public" }).value.total, 1);
-  assert.equal(api.query("api", {}, { origin: "agent" }).value.total, 1);
+  assert.equal(api.query("api", {}, { origin: "agent" }).value.total, 1,
+    "Public API cannot select agent-origin private projection");
+  assert.equal(api.describe("api", "AgentOnly.run",
+    "AgentOnly").status, 404);
   assert.equal(api.list("api", { limit: 101 }).status, 400);
   const json = api.docs("json");
   assert.equal(json.status, 200);
