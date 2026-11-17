@@ -264,6 +264,9 @@ export class PluginHostInstallUnit {
     this.handles.delete(providerId);
     const installed = await this.install(snapshot, options);
     if (installed.ok) {
+      if (wasDisabled) {
+        this.core.setProviderEnabled(previous.objectId, providerId, false);
+      }
       previousBridge.terminate(200, "Upgraded");
       this.record(200, "Upgraded", providerId);
       return installed;
