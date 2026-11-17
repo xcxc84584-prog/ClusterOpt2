@@ -12,3 +12,8 @@ Permission checks O(1); message validation O(bytes) bounded to 64 KiB, depth 8 a
 ## Upstream reviewed
 - https://github.com/GoogleChromeLabs/comlink/blob/main/README.md
 - https://github.com/eclipse-theia/theia/blob/master/README.md
+
+## Patch2 — Worker transport and budget
+- TrustedPluginWorkerUnit creates only the fixed bundled worker module. One request per Worker and a global active limit of 8; timeout range 10–5000ms; terminate on success, error, malformed reply, or timeout. No user code, Worker URL, or dynamic import.
+- PluginSourcePolicy denies any non-builtin source. This fail-closed policy is NOT a secure third-party sandbox; same-origin Workers can access fetch and are unsafe for arbitrary code.
+- Compare GoogleChromeLabs/comlink message RPC and Theia plugin host boundaries. Keep Hub ownership/URU Provider authority; only registered worker isolation manifests can enter this trusted execution path. Avoid affecting file pipeline.

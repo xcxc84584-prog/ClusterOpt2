@@ -225,6 +225,11 @@ export class LinkCore {
   checkPluginPermission(id, permission) {
     return this.hub.checkPluginPermission(id, permission);
   }
+  invokeTrustedPluginWorker(source, id, operation,
+    payload, options = {}) {
+    return this.hub.invokeTrustedPluginWorker(source, id,
+      operation, payload, options);
+  }
   attachProviderFactory(source, providerId, factory) {
     return this.hub.attachProviderFactory(source, providerId, factory);
   }
