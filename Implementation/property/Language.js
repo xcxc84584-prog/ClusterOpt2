@@ -5,6 +5,10 @@
 const CATALOG = Object.freeze({
 	"zh-Hant": Object.freeze({
 		goToLine: "跳轉行",
+        powerShell: "PowerShell",
+        powerShellUnavailable: "本機 PowerShell 代理未連線",
+        powerShellConnecting: "正在連線本機代理",
+        powerShellPairInvalid: "請輸入有效的連接埠與 64 字元配對碼",
         goToLineHint: "輸入目前文件的行號",
         goToLineUnavailable: "該行不在目前已載入的切片中",
         goToLineInvalid: "請輸入有效行號",
@@ -107,6 +111,10 @@ const CATALOG = Object.freeze({
 	}),
 	"en": Object.freeze({
 		goToLine: "Go to Line",
+        powerShell: "PowerShell",
+        powerShellUnavailable: "Local PowerShell agent unavailable",
+        powerShellConnecting: "Connecting to local agent",
+        powerShellPairInvalid: "Enter a valid port and 64-character token",
         goToLineHint: "Enter a line number in this document",
         goToLineUnavailable: "The line is outside the loaded page",
         goToLineInvalid: "Enter a valid line number",
