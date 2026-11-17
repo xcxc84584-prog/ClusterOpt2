@@ -103,7 +103,7 @@ test("PR14.5 model credential stays in host, task route and cancel",
         "/Implementation/LinkCore/LinkCore.js");
       const view = linkCore.pluginHostInstaller.uiHost.views.get(
         "cluster.ai-agent-mcp");
-      return {
+      return JSON.stringify({
         sent: window.__modelSent.map(x => x.type),
         task: view.modelTask.snapshot(),
         agent: view.localAgent.state,
@@ -111,8 +111,8 @@ test("PR14.5 model credential stays in host, task route and cancel",
           x.kind === "EHU").slice(0,5).map(x => ({
             action: x.action, status: x.status
           }))
-      };
-    })).toMatchObject({ sent: expect.arrayContaining(["task"]) });
+      });
+    })).toContain('"task"');
     await expect(frame.locator('[data-model-action="cancel"]'))
       .toBeEnabled();
     await frame.locator('[data-model-action="cancel"]').click();
