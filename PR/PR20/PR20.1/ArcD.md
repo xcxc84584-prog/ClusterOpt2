@@ -40,3 +40,16 @@ ChatGPT OAuth(scope=cluster.control)
   -> result and existing OMU EHU/Log
 ```
 The OAuth scope enables requesting an action only; it never grants actual file or shell permissions. Permission revocation at ToolBox denies execution independently of token expiry.
+
+## Patch(+4): EventChain and access matrix
+```text
+Remote tools/call
+→ OAuth scope (read/control)
+→ MCP gateway
+→ paired Local Agent dispatch
+→ HubUnit Request(PluginExplorer / PluginShellApproval)
+→ per-operation rights and browser handle permission check
+→ file operation OR PS exact command confirmation
+→ Log / EHU → tool_result → MCP response
+```
+Explorer grants: `list/read/readChunk`→read, `create`→create, `update`→update, `delete`→delete. Root query needs selected root, PS UI requires ps enabled, PowerShell command approval additionally requires shell.execute capability and one-time user consent. Response request IDs are preserved. Hub rejection and revoked permission fail closed.
