@@ -200,7 +200,9 @@ export function mountPluginManagerUI(core,doc,options={}) {
       if(!doc.defaultView.confirm(t("確定移除插件：",
         "Unregister plugin: ")+p.providerId+"?"))return;
       if(core.uru.getProvider(p.providerId)!==p)return render();
-      const result=core.unregisterProvider(p.objectId,p.providerId);
+      const result=core.pluginHostInstaller.handles.has(p.providerId) ?
+        core.pluginHostInstaller.uninstall(p.providerId) :
+        core.unregisterProvider(p.objectId,p.providerId);
       if(result.ok) {
         selected="";
         void core.forgetReviewedPlugin(p.providerId);
