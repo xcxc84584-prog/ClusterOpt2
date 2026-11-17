@@ -22,7 +22,7 @@ Review and approve the six requested privileged capabilities:
 The installed plugin adds an AI Agent button beside PowerShell.
 Its isolated UI supports Traditional Chinese / English, palette
 sharing, host-mediated Local Agent pairing, connectivity check,
-model setup, text-only prompts, task output and cancellation.
+model setup, read-only task/operation output and cancellation.
 
 To pair, start the legacy Windows Cluster Terminal Agent configured
 for the exact browser Origin. Enter its 64-character token in the
@@ -37,9 +37,11 @@ key at rest has not yet been verified. Only use a trusted machine and
 a key appropriate to that environment.
 
 The current model transport uses the legacy Agent OpenAI API path.
-All tasks are text-only. Every task receives an ID and may be
-cancelled. The model's file/PowerShell tool calls are not supported.
-Browser ToolBox, a separately consented PowerShell command bridge and\nread-only MCP projections are opt-in host features. Model prompts remain\ntext-only and cannot autonomously invoke these tools.
+Existing model tasks remain host-managed and may be cancelled. The
+plugin UI has no chat composer or task submission controls; ChatGPT MCP
+is the intended external request surface, with ToolBox approval enforced
+by the trusted host. The model's file/PowerShell tool calls are not supported.
+Browser ToolBox, a separately consented PowerShell command bridge and\nread-only MCP projections are opt-in host features. The built-in model task flow does not autonomously invoke these tools.
 
 Worker `getStatus` and `describe` report the sandbox Worker's
 own read-only contract. Live pairing, model and tasks are handled by
