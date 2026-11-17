@@ -45,7 +45,7 @@ export class PluginLocalAgentObject {
     this.mcpReadId = null;
     this.explorerId = null;
     this.bridgeRegistered = false;
-    this.pairPort = 43879;
+    this.pairPort = 43881;
   }
 
   audit(status, action) {
