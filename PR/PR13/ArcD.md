@@ -123,3 +123,17 @@ User-authored full-folder bundle -> IndexedDB packages (inert)
 
 Both flows preserve URU as the sole active Provider source.
 Restored state never constitutes an untrusted plugin grant.
+
+## PR13 Patch(+5) protocol metadata and template pipeline
+```text
+HubUnit existing methods -> HubProtocolPolicy (immutable metadata)
+  -> EDPMU shared Property -> HubUnit Property.Read(source="ui")
+  -> API List (Protocol, Request input and Response envelope)
+
+Current UI Language (zh-Hant/en) -> Template Generator
+  -> ZIP (plugin.json, README, HTML/CSS/JS)
+  -> user extracts and edits folder
+  -> PluginFolderPackagePolicy -> staged bytes (not executed)
+```
+The protocol metadata is deliberately separate from runtime grants or
+execution. No duplicate URU/Provider registry or editable static ACLs.
