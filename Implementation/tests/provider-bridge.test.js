@@ -105,3 +105,16 @@ test("PR03.10 global Service dependency cycles fail without partial index",
       event.kind === "EHU" && event.action === "Provider.Register" &&
       event.status === 409));
   });
+
+test("PR03.03 revoked Proxy Manifest fails closed with EHU 400", () => {
+  const core = new LinkCore();
+  core.register(object());
+  const proxy = Proxy.revocable({}, {});
+  proxy.revoke();
+  const result = core.registerProvider("PluginA", proxy.proxy);
+  assert.equal(result.status, 400);
+  assert.equal(core.uru.listProviders().length, 0);
+  assert.ok(core.getSnapshot().logs.some(event =>
+    event.kind === "EHU" && event.action === "Provider.Register" &&
+    event.status === 400));
+});
