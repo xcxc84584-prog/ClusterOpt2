@@ -149,16 +149,16 @@ test("Patch18 recovery retains virtual marker and never restores preview",
     assert.ok(doc.text.length <= 65540);
   });
 
-test("Patch18 keeps small FileDocument behavior intact", async () => {
+test("PR8 all selected sizes share the bounded virtual slice editor", async () => {
   const { workspace, request } = setup();
   const handle = fakeHandle(1024);
   const result = await request("workspace", "open", {
     handles: [handle]
   });
-  // This lightweight fake does not implement stream(); the existing
-  // FileDocument loader is deliberately unchanged.
-  assert.equal(result.ok, false);
-  assert.equal(workspace.active.virtualReadOnly, undefined);
+  assert.equal(result.ok, true, result.error);
+  assert.equal(workspace.active.virtualReadOnly, true);
+  assert.equal(workspace.active.virtualPageCount, 1);
+  assert.equal(workspace.active.text.length, 1024);
 });
 
 test("Patch18 Hub records page EventChain and directed dependencies",
