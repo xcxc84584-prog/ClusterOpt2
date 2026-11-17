@@ -96,13 +96,16 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
   overview.append(node(doc,"p","pm-contract-description",
     descriptor.description || t("未提供描述","No description registered")));
   host.append(overview);
-  if (entry.kind === "Request" || entry.kind === "Provider") {
+  if (entry.kind === "Request" || entry.kind === "Provider" ||
+      entry.kind === "Protocol") {
     const envelopes=section(doc,t("Request / Response 對稱協議",
       "Symmetric Request / Response protocol"));
     const methods=node(doc,"div","pm-contract-fields");
-    methods.append(field(doc,"Request",entry.kind==="Provider" ?
-      "HubUnit.requestService(source, service, action, payload, options)" :
-      "HubUnit.request(source, target, action, payload, options)"));
+    const call = entry.kind === "Protocol" ? entry.id + "(...)" :
+      entry.kind === "Provider" ?
+        "HubUnit.requestService(source, service, action, payload, options)" :
+        "HubUnit.request(source, target, action, payload, options)";
+    methods.append(field(doc,"Request",call));
     methods.append(field(doc,"Response",
       "{ ok: boolean, status: number, value?: output, error?: string }"));
     methods.append(field(doc,t("輸入 Payload", "Input payload"),
