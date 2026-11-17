@@ -65,3 +65,14 @@ The MCP OAuth public hostname is reserved as **clusteropt2**. An OAuth issuer mu
 
 ### Download errors
 If the standalone CMD reports `DOWNLOAD FAILED: <URL>`, check that the fixed revision exists, that Windows can reach `raw.githubusercontent.com`, and that all five files are downloadable. The script shows the exact failed filename and PowerShell exception, rather than only `[ERROR] Setup incomplete`. Avoid running CMD as Administrator.
+
+### Cloudflare named tunnel example (manual setup)
+
+If using Cloudflare Tunnel, the **tunnel name** can be fixed to `clusteropt2`, but the OAuth **public DNS hostname** must still be a real FQDN controlled by you:
+
+```powershell
+cloudflared tunnel create clusteropt2
+cloudflared tunnel route dns clusteropt2 clusteropt2.YOUR-OWN-DOMAIN
+```
+
+These commands require Cloudflare login, ownership of `YOUR-OWN-DOMAIN`, and a locally configured named tunnel with ingress proxying only to `http://127.0.0.1:43879`. They are instructions, not actions run by the CMD. Do not paste API tokens or tunnel credentials into the repository.
