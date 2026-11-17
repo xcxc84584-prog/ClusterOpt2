@@ -77,6 +77,14 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     const cmd = await readFile(await downloaded.path(), "utf8");
     expect(cmd).toContain("SourceRevision");
     expect(cmd).toContain("Setup-Quick.ps1");
+    const mcpDownloading = page.waitForEvent("download");
+    await frame.locator("[data-mcp-quick-setup]").click();
+    const mcpDownload = await mcpDownloading;
+    expect(mcpDownload.suggestedFilename())
+      .toBe("AI-Agent-MCP-Quick-Connect.cmd");
+    const mcpCmd = await readFile(await mcpDownload.path(), "utf8");
+    expect(mcpCmd).toContain("Start-MCP.ps1");
+    expect(mcpCmd).toContain("Start-OAuth.ps1");
 
     await page.evaluate(() => {
       const frame = document.querySelector(
