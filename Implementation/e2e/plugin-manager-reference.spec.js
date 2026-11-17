@@ -39,12 +39,9 @@ test("live Provider manifest publishes inspectable API contract",
         execution:{isolation:"worker",concurrency:"serial"}});
       if(!result.ok)throw Error(JSON.stringify(result));
     });
-    await page.evaluate(async()=>{
-      const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
-      // Tool entry refreshes the registry-backed view after registration.
-      document.querySelector("#pluginToolToggle").click();
-      document.querySelector("#pluginToolToggle").click();
-    });
+    // Switching tabs refreshes the live provider registry.
+    await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await page.locator(".pm-tabs [role=tab]").nth(0).click();
     await expect(page.locator(".pm-provider")).toHaveCount(1);
     await expect(page.locator(".pm-permission-controls input"))
       .toBeChecked();
@@ -65,10 +62,8 @@ test("language switching updates plugin tab labels",async ({page})=>{
     const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
     linkCore.edpmu.update("Language","en");
   });
-  await page.evaluate(async()=>{
-    document.querySelector("#pluginToolToggle").click();
-    document.querySelector("#pluginToolToggle").click();
-  });
+  await page.locator(".pm-tabs [role=tab]").nth(1).click();
+  await page.locator(".pm-tabs [role=tab]").nth(0).click();
   await expect(page.locator(".pm-tabs [role=tab]").nth(0))
     .toHaveText("Permission");
   await expect(page.locator(".pm-tabs [role=tab]").nth(1))
@@ -77,8 +72,8 @@ test("language switching updates plugin tab labels",async ({page})=>{
     const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
     linkCore.edpmu.update("Language","zh-Hant");
   });
-  await page.locator("#pluginToolToggle").click();
-  await page.locator("#pluginToolToggle").click();
+  await page.locator(".pm-tabs [role=tab]").nth(1).click();
+  await page.locator(".pm-tabs [role=tab]").nth(0).click();
   await expect(page.locator(".pm-tabs [role=tab]").nth(0))
     .toHaveText("權限");
 });
@@ -92,3 +87,19 @@ test("Language property does not generate an unknown-ui EHU",async ({page})=>{
   });
   expect(errors).toHaveLength(0);
 });
+
+test("minimal performance shows only bounded text loading controls",
+  async ({page})=>{
+    await openManager(page);
+    await page.locator(".pm-tabs [role=tab]").nth(3).click();
+    await expect(page.locator("#pluginMaxMiB")).toBeVisible();
+    await expect(page.locator("#pluginApply")).toBeVisible();
+    await expect(page.locator("#pluginLimitNote")).toBeVisible();
+    await expect(page.locator("#pluginToolToggle")).toHaveCount(0);
+    await expect(page.locator("#pluginUnlimited")).toHaveCount(0);
+    await expect(page.locator(".plugin-workbench-header")).toHaveCount(0);
+    await expect(page.locator(".plugin-panel-heading")).toHaveCount(0);
+    await page.locator("#pluginMaxMiB").fill("16");
+    await page.locator("#pluginApply").click();
+    await expect(page.locator("#pluginMaxMiB")).toHaveValue("16");
+  });
