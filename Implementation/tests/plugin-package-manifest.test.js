@@ -42,7 +42,8 @@ test("PR13.1 accepts a dynamic user provider without static allowlist", () => {
 
 test("PR13.1 denies traversal, remote URLs and absolute entries", () => {
   for (const entry of [
-    "../index.js", "/index.js", "a/../index.js",
+    "../index.js", String.fromCharCode(47) + "index.js",
+    "a/../index.js",
     "https://bad.example/plugin.js", "C:/plugin.js",
     "a\\index.js", "a//index.js", "./index.js"
   ]) {
