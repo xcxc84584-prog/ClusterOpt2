@@ -33,6 +33,7 @@ export class PluginLocalAgentObject {
     this.socket = null;
     this.state = "disconnected";
     this.onState = () => {};
+    this.onShellResult = () => {};
     this.waiting = null;
     this.pendingPing = null;
     this.cancelPrompt = null;
@@ -351,6 +352,7 @@ export class PluginLocalAgentObject {
                    "powershell_execution_result" &&
                    this.bridgeRegistered) {
           this.audit(200, "ShellResultReceived");
+          this.onShellResult(checked.value);
         } else if (["provider_info", "task_status", "task_result"]
         .includes(checked.value.type) &&
           this.state === "connected" && this.modelTaskId) {
