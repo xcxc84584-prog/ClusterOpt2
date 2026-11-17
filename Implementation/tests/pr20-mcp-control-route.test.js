@@ -66,3 +66,53 @@ test("PR20 Explorer rejects Agent without explicit trusted identity", async () =
       { source: "PluginLocalAgent.allowed" }),
     error => error.status === 403);
 });
+
+test("PR20 open PowerShell requires ToolBox PS right", async () => {
+  const sent = [];
+  let opened = 0;
+  let psGranted = false;
+  const core = {
+    omu: { record() {} },
+    async request(_source, _target, action) {
+      assert.equal(action, "status");
+      return { ok: true, status: 200, value: {
+        selected: true, folderName: "Workspace",
+        permissions: { ps: psGranted }
+      } };
+    }
+  };
+  const doc = {
+    defaultView: {},
+    getElementById(id) {
+      assert.equal(id, "explorerPowerShell");
+      return { click() { opened++; } };
+    }
+  };
+  const agent = new PluginLocalAgentObject(
+    core, "cluster.ai-agent-mcp", doc);
+  agent.state = "connected";
+  agent.socket = { send(data) { sent.push(JSON.parse(data)); } };
+  agent.shellApprovalId = "PluginShell.cluster_ai_agent_mcp";
+  agent.registerExplorer("PluginExplorer.cluster_ai_agent_mcp");
+
+  await agent.dispatchShellTool({
+    requestId: "ps1", name: "cluster.open_powershell", args: {}
+  });
+  assert.equal(opened, 0);
+  assert.equal(sent.at(-1).result.error,
+    "PowerShell permission not granted");
+
+  psGranted = true;
+  await agent.dispatchShellTool({
+    requestId: "ps2", name: "cluster.open_powershell", args: {}
+  });
+  assert.equal(opened, 1);
+  assert.equal(sent.at(-1).result.requested, true);
+
+  agent.shellApprovalId = null;
+  await agent.dispatchShellTool({
+    requestId: "ps3", name: "cluster.open_powershell", args: {}
+  });
+  assert.equal(opened, 1);
+  assert.equal(sent.at(-1).result.error, "Tool access denied");
+});
