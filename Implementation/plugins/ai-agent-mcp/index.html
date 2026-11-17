@@ -147,10 +147,10 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
   document.querySelectorAll("[data-model-action]").forEach(button => {
     button.addEventListener("click", () => {
       if (button.disabled) return;
-      window.parent.postMessage({
-        type: "cluster-model-" + button.dataset.modelAction.replace(
-          /[A-Z]/g, char => "-" + char.toLowerCase())
-      }, "*");
+      const action = button.dataset.modelAction;
+      const messageType = action === "modelInfo" ?
+        "cluster-model-info" : "cluster-model-" + action;
+      window.parent.postMessage({ type: messageType }, "*");
     });
   });
   document.querySelector("form").addEventListener("submit", event => {
