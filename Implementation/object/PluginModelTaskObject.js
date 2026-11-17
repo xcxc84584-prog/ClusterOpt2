@@ -88,6 +88,9 @@ export class PluginModelTaskObject {
 
   async configure(action) {
     if (!this.has("model.configure")) return this.fail(403, "Denied");
+    if (this.activeId && action === "configure") {
+      return this.fail(409, "TaskActive");
+    }
     const method = action === "configure" ?
       "providerSet" : "providerGet";
     const result = await this.relay(method);
