@@ -224,3 +224,32 @@ No new Object, Property or dependency link; internal catalog metadata
 reads do not execute provider handlers. Hub request authorization remains
 the only gate for protected actions. Separate Event IDs preserved per EHU,
 including duplicate errors. Recovery and SaveTask are untouched.
+
+## PR02.10 — External read-only facade architecture
+```mermaid
+flowchart LR
+  User[Browser caller] --> API[Cluster.api frozen facade]
+  API -->|fixed ui / user| Core[LinkCore.discover]
+  Core --> Hub[HubUnit.discoverCatalog]
+  Hub --> ACL[AccessPolicy + URU / EDPMU]
+  ACL --> Catalog[AuthorizedCatalogCollection]
+  Catalog --> Query[CatalogQuery]
+  Hub --> OMU[OMU EHU / Log]
+  API -->|docs only| Docs[CatalogDocumentation via LinkCore]
+```
+New implementation helper: ClusterAPIFacade.js, **not** a new Object,
+Property, registry or permission authority. No changes to old Request /
+Response, Hub dispatch, main editor, MVCC or SaveTask.
+
+EventChain:
+1. UI registers with URU -> browser calls Cluster.api.list/describe/query.
+2. Facade pins caller ui and origin user -> LinkCore -> Hub validates
+   caller -> project authorized descriptors -> filter/query -> EHU/Log.
+3. Browser docs() -> LinkCore.generateCatalogDocs -> Hub-authorized
+   pagination -> bounded safe JSON / Markdown. Renderer error -> OMU EHU.
+4. Invalid page 400; missing/hidden ID or pre-registration caller 404;
+   ambiguous visible ID 409; oversized docs 413. API never executes
+   provider or returns Property value.
+Relation: UI -> Hub REQ 10, Hub -> UI result REP 01. Existing
+HubUnit/URU/EDPMU/OMU relation contracts unchanged. No new event chain
+allowing browser-origin impersonation or agent access.
