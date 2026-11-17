@@ -338,7 +338,9 @@ padding:10px
 </li>
 <li>在 ChatGPT 設定自訂 MCP 連線：貼上 https://你的網域/mcp，使用 OAuth 登入，於授權頁輸入本機顯示的授權密碼。
 </li>
-<li>確認 ChatGPT 可查詢 cluster.get_status、cluster.list_files 等唯讀工具；檔案修改和 PowerShell 需要額外 ToolBox 授權，不能由 cluster.read 自動取得。
+<li>預設 cluster.read 僅提供五項唯讀工具。若需遠端檔案 CRUD／PowerShell，必須明確要求 cluster.control、在 OAuth 頁面同意高權限警告，再於 Cluster ToolBox 分別開啟檔案與 PS 權限。
+</li>
+<li>每一條 PowerShell 命令仍須在 Cluster 視窗確認，關閉 ToolBox 對應權限即可拒絕後續請求。
 </li>
 </ol>
 </div>
