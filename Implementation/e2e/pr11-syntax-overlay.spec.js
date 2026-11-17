@@ -38,7 +38,7 @@ test("PR11 mounted provider renders safe native-editor overlay", async ({page}) 
 	await expect(page.locator("#editor.syntax-overlay-active"))
 		.toHaveCount(0);
 	const unchanged = await page.locator(
-		"#pr11SyntaxOverlay").evaluate(el =>
+		"#pr11SyntaxOverlay:not([hidden])").evaluate(el =>
 		el.parentElement.querySelector("textarea").value);
 	expect(unchanged).toBe("const answer = 42; // note");
 });
