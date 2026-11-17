@@ -17,3 +17,6 @@ The user-approved sketch is implemented as four separate views: Plugin List, Plu
 
 ## PR06.08 Consent Patch
 A user-visible modal now allows explicit session-only grant decisions on each permission; denial creates no grant, revoke removes active grant. The modal rechecks URU Provider identity and exact Manifest reference before approval and requires a trusted click. This is only an application Host consent path: same-origin arbitrary plugin execution stays permanently blocked by PluginSourcePolicy; isolated-origin third-party sandbox remains a separate pending requirement.
+
+## Release Candidate 0.0.12 Gate
+This release intentionally enables only trusted, bundled Worker plugins. Untrusted third-party JavaScript is rejected by PluginSourcePolicy (never executed); distinct opaque-origin sandbox and independent publisher provenance are **not implemented** and must not be advertised as supported. Session-only consent UI confirms declared permissions and allows revoke, but is not a security boundary against already-compromised host origin. Each of the four Plugin Manager pages reads URU/OMU live data. Requires exact-head 5-workflow CI PASS and verified SHA branch before major merge. This is an explicit scope limitation, not a claim of full third-party plugin support.

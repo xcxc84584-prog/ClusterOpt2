@@ -1,3 +1,4 @@
+import { PluginPermissionPolicy } from "../property/PluginPermissionPolicy.js";
 import { Language } from "../property/Language.js";
 /**
  * PLUGIN PR06.08: four separate Plugin Manager pages.
@@ -188,13 +189,15 @@ export function mountPluginManagerUI(core, doc) {
         row.append(element(doc, "span", "",
           permission + " · " + (granted ? t("pluginPermissionGranted") :
             t("pluginPermissionDenied"))));
+        const blocked = PluginPermissionPolicy.level(permission) ===
+          "core";
         const revoke = button(granted ? t("pluginPermissionRevoke") :
           t("pluginPermissionReview"), () => {
             if (!granted) return askConsent(provider, permission);
             const result = core.revokePluginPermission(
               provider.objectId, provider.providerId, permission);
             if (result.ok) draw();
-          });
+          }, blocked);
         row.append(revoke);
         section.append(row);
       }

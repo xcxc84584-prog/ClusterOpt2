@@ -62,6 +62,6 @@ test("PR03.04-10 real browser Provider metadata lifecycle", async ({ page }) => 
     candidates: 2, lazy: true, compatible: 200, incompatible: 409,
     materialized: 201, executed: 1, remaining: ["browser.b"],
     finalStatus: 404, catalog: true,
-    version: "0.0.11"
+    version: "0.0.12"
   });
 });

@@ -11,3 +11,6 @@ PR06.03/04/06 candidate: approved, application-shipped trusted Worker operations
 
 ## Patch3 Security acceptance candidate
 PR06.07 content SHA-256 pre-pinned integrity check. Verification is not signature identity, not an installation approval and never authorizes arbitrary JS. PR06.09 sanitize Worker failure EHU without payload. PR06.10 injection, forged response, oversized artifact and Chromium negative tests. Untrusted isolated-origin plugin runtime / user consent still pending.
+
+## Release Candidate 0.0.12 Gate
+This release intentionally enables only trusted, bundled Worker plugins. Untrusted third-party JavaScript is rejected by PluginSourcePolicy (never executed); distinct opaque-origin sandbox and independent publisher provenance are **not implemented** and must not be advertised as supported. Session-only consent UI confirms declared permissions and allows revoke, but is not a security boundary against already-compromised host origin. Each of the four Plugin Manager pages reads URU/OMU live data. Requires exact-head 5-workflow CI PASS and verified SHA branch before major merge. This is an explicit scope limitation, not a claim of full third-party plugin support.
