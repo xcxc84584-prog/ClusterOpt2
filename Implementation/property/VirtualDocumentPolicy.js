@@ -11,5 +11,11 @@ export const VirtualDocumentPolicy = Object.freeze({
       throw error;
     }
     return size > this.legacyMaxBytes;
+  },
+
+  /** All real, Blob-backed selected files use the same slice engine. */
+  isUniformSliceFile(file) {
+    return file instanceof Blob &&
+      this.isVirtual(file.size) !== null;
   }
 });
