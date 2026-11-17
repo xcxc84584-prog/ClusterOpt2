@@ -102,3 +102,40 @@ test("PR13 timeout terminates unresponsive sandbox and emits EHU",
       status: 504, missingFrame: true, ehu: true
     });
   });
+
+test("PR13.7 sandbox CSP denies network exfiltration and host storage",
+  async ({ page }) => {
+    await page.goto("/");
+    const outcome = await page.evaluate(async manifest => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const source = `export async function transform() {
+        let networkDenied = false;
+        let storageDenied = false;
+        try { await fetch("https://example.com/collect"); }
+        catch { networkDenied = true; }
+        try { void parent.localStorage.length; }
+        catch { storageDenied = true; }
+        return { networkDenied, storageDenied };
+      }`;
+      const raw = JSON.stringify(manifest);
+      const snapshot = {
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText: raw,
+        files: { "plugin.json": btoa(raw), "entry.js": btoa(source) }
+      };
+      const installed = await linkCore.pluginHostInstaller.install(
+        snapshot, { consented: true });
+      if (!installed.ok) return { installed };
+      const result = await linkCore.request(
+        "ui", manifest.provider.objectId, "transform", {},
+        { origin: "user" });
+      linkCore.pluginHostInstaller.uninstall(
+        manifest.provider.providerId);
+      return result;
+    }, manifest("user.sandbox-network"));
+    expect(outcome.status).toBe(200);
+    expect(outcome.value).toEqual({
+      networkDenied: true, storageDenied: true
+    });
+  });
