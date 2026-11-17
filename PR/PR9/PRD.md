@@ -8,3 +8,8 @@
 PR8's six-layer architecture acceptance remains an independent track. PR10 plugin execution stays postponed.
 ## Acceptance
 Each Request/Response EventChain must pass deterministic unit/VTE tests and browser-level tests. Legacy parity must be checked against ClusterOpt, not assumed. No change to main before verified rollback and CI.
+
+## Patch2 partial acceptance
+Browser offers actual PowerShell via existing local-agent ConPTY route,
+but the agent must be installed and paired explicitly. This does not
+mean a static GitHub Pages site can launch powershell.exe itself.
