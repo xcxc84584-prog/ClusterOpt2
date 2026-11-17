@@ -11,6 +11,7 @@ export class UnifiedRegistrationUnit {
     this.objects = new Map();
     this.factories = new Map();
     this.providers = new Map();
+    this.providerServices = new Map();
   }
 
   register(object) {
@@ -85,11 +86,33 @@ export class UnifiedRegistrationUnit {
       return { ok: false, status: 409, error: "Duplicate provider ID" };
     }
     this.providers.set(value.providerId, value);
+    for (const item of value.provides) {
+      const list = this.providerServices.get(item.service) ?? new Set();
+      list.add(value.providerId);
+      this.providerServices.set(item.service, list);
+    }
     return { ok: true, status: 201, value };
   }
 
   unregisterProvider(providerId) {
+    const provider = this.providers.get(providerId);
+    if (!provider) return false;
+    for (const item of provider.provides) {
+      const list = this.providerServices.get(item.service);
+      list?.delete(providerId);
+      if (!list?.size) this.providerServices.delete(item.service);
+    }
     return this.providers.delete(providerId);
+  }
+
+  providersForService(serviceId) {
+    const ids = this.providerServices.get(serviceId) ?? new Set();
+    return Object.freeze([...ids].map(id =>
+      this.providers.get(id)).filter(Boolean));
+  }
+
+  listServices() {
+    return Object.freeze([...this.providerServices.keys()].sort());
   }
 
   getProvider(providerId) {
@@ -115,7 +138,7 @@ export class UnifiedRegistrationUnit {
     const removed = this.objects.delete(id);
     if (removed) {
       for (const [providerId, manifest] of this.providers) {
-        if (manifest.objectId === id) this.providers.delete(providerId);
+        if (manifest.objectId === id) this.unregisterProvider(providerId);
       }
     }
     return removed;
