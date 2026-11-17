@@ -1291,3 +1291,9 @@ header .menu-wrap { margin-left:auto; }
   .pm-tab { min-width:90px; padding:10px 8px; }
   .pm-page { padding:8px; }
 }
+
+.pm-permission-controls { display:flex; align-items:center;
+  justify-content:space-between; gap:10px; flex-wrap:wrap;
+  padding:8px 0 12px; margin-bottom:10px;
+  border-bottom:1px solid var(--ui-border); }
+.pm-permission-controls input { accent-color:var(--ui-accent); }
