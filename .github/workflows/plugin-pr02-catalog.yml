@@ -9,6 +9,7 @@ on:
       - "Implementation/LinkCore/HubUnit.js"
       - "Implementation/property/CatalogVisibilityPolicy.js"
       - "Implementation/property/CatalogVersionPolicy.js"
+      - "Implementation/property/CatalogDocumentation.js"
       - "Implementation/LinkCore/ObjectContract.js"
       - "Implementation/LinkCore/UnifiedRegistrationUnit.js"
       - "Implementation/property/APIDescriptorPolicy.js"
@@ -20,6 +21,8 @@ on:
       - "Implementation/tests/catalog-query.test.js"
       - "Implementation/tests/catalog-visibility.test.js"
       - "Implementation/tests/catalog-version.test.js"
+      - "Implementation/tests/catalog-documentation.test.js"
+      - "Implementation/e2e/plugin-pr02-docs.spec.js"
       - "Implementation/e2e/plugin-pr02-version.spec.js"
       - "Implementation/e2e/plugin-pr02-visibility.spec.js"
       - "Implementation/e2e/plugin-pr02-query.spec.js"
@@ -43,7 +46,8 @@ jobs:
           node-version: "22"
       - run: npm install --no-audit --no-fund
       - run: >
-          node --test Implementation/tests/catalog-version.test.js
+          node --test Implementation/tests/catalog-documentation.test.js
+          Implementation/tests/catalog-version.test.js
           Implementation/tests/catalog-visibility.test.js
           Implementation/tests/catalog-query.test.js
           Implementation/tests/catalog-collection.test.js
@@ -62,6 +66,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: >
           npx playwright test
+          Implementation/e2e/plugin-pr02-docs.spec.js
           Implementation/e2e/plugin-pr02-version.spec.js
           Implementation/e2e/plugin-pr02-visibility.spec.js
           Implementation/e2e/plugin-pr02-query.spec.js
