@@ -30,6 +30,7 @@ export class PluginLocalAgentObject {
     this.state = "disconnected";
     this.onState = () => {};
     this.waiting = null;
+    this.pendingPing = null;
     this.cancelPrompt = null;
     this.generation = 0;
   }
@@ -53,6 +54,7 @@ export class PluginLocalAgentObject {
   close() {
     this.generation++;
     this.cancelPrompt?.();
+    this.pendingPing?.({ ok: false, status: 503 });
     this.state = "disconnected";
     this.onPong = null;
     const socket = this.socket;
@@ -270,8 +272,10 @@ export class PluginLocalAgentObject {
         finished = true;
         clearTimeout(timer);
         this.onPong = null;
+        if (this.pendingPing === finish) this.pendingPing = null;
         resolve(result);
       };
+      this.pendingPing = finish;
       const timer = setTimeout(() => {
         this.audit(504, "PingTimeout");
         finish({ ok: false, status: 504 });
