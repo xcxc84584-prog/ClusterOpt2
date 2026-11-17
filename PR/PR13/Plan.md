@@ -158,3 +158,14 @@ graph, and user-code persistent auto-resume are NOT advertised as
 complete. Deferred features remain on the follow-up roadmap.
 No merge unless 0.0.15 Node/VTE/browser and all CI workflows PASS;
 preserve a candidate and pre-merge backup.
+
+## PR13 Patch(+13) — Plugin Manager state preservation
+- Avoid destroying the current API List table or Resource search input
+  on tool refresh if view, locale, selection, and Provider states match.
+- Explicit navigation and permission changes retain forced rendering.
+- Catalogue includes a non-executable authoring template with bilingual
+  ZIP download and searchable title/metadata; remove separate UI block.
+- Browser relation tests verify scroll DOM identity and keyword input
+  are retained and existing marketplace tests accept two cards.
+- This is a UI defect patch, no Provider/HubUnit contract or release
+  version change.
