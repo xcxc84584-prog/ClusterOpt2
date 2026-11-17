@@ -54,6 +54,8 @@ export const PluginFolderPackagePolicy = Object.freeze({
     if (!paths.length || paths.length > MAX_FILES ||
         !paths.includes("plugin.json") ||
         !paths.includes(parsed.value.entry) ||
+        (parsed.value.uiEntry !== undefined &&
+         !paths.includes(parsed.value.uiEntry)) ||
         paths.some(path => !validPath(path))) {
       return fail(400, "Invalid package file inventory");
     }
