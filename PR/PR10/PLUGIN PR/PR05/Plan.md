@@ -16,3 +16,6 @@ PR05.04: keep routeVersion pinned synchronously before async work, retain genera
 
 ## Patch3 — Draining and validated rehydrate
 PR05.05: Provider-level selected-request pinning, explicit disable-then-drain-and-unregister, reject direct Provider/Object unregister while selected in-flight. Does not pretend to forcibly terminate already executing JS; PR06 Worker time budgets remain separate. PR05.08: host can rehydrate an approved candidate via Begin/Validate/Commit; no untrusted persistence. Negative impersonation and concurrent removal regression added.
+
+## Final PR05.10 release Gate
+Atomic route generations, validated candidate transactions, CAS, inflight source binding, graceful Provider drain, revalidated rollback, runtime transaction rehydrate, EHU/Log/Dependency regression and CI. Release 0.0.11 as single major PR. Real file permission/5GiB physical tests and untrusted plugin Worker termination are deferred to subsequent major PRs. No second registration authority or public mutation API.

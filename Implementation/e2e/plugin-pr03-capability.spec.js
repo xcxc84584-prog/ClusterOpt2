@@ -25,6 +25,6 @@ test("PR03.01 real Chromium reads canonical shared policy", async ({ page }) => 
   expect(result).toEqual({
     status: 200, valid: 200, invalid: 400, conflict: 409,
     propertyRegistered: true, legacy: true,
-    version: "0.0.10", dependencies: 0
+    version: "0.0.11", dependencies: 0
   });
 });
