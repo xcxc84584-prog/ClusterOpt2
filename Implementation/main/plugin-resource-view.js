@@ -135,7 +135,7 @@ export function renderResources(doc,host,options) {
       return;
     }
     try {
-      const module=await import("../../plugins/multilang-highlighter.js");
+      const module=await import("../plugins/multilang-highlighter.js");
       const result=module.install(core);
       mountStatus.textContent=result.ok?t(
         "201：插件已裝載並向 HubUnit 註冊。",
