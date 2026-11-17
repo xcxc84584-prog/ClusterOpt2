@@ -10,10 +10,10 @@ test("PR06.08 four pages are separate and no inert overview tab", () => {
     "../main/plugin-manager-ui.js", import.meta.url), "utf8");
   assert.match(html, /id="pluginManagerPages"/);
   assert.match(html, /id="pluginToolToggle"/);
-  assert.match(source, /"list", "pluginPageList/);
-  assert.match(source, /"permissions", "pluginPagePermissions/);
-  assert.match(source, /"api", "pluginPageAPI/);
-  assert.match(source, /"ehu", "pluginPageEHU/);
+  assert.match(source, /"list","Plugin List/);
+  assert.match(source, /"permissions","Plugin Permission/);
+  assert.match(source, /"api","API List/);
+  assert.match(source, /"ehu","EHU Log/);
   assert.match(source, /event\.isTrusted/);
   assert.match(source, /grantPluginPermission\(/);
   assert.match(source, /revokePluginPermission\(/);
