@@ -119,7 +119,7 @@ test("PR14.4 authenticated pairing, ping, disconnect through Hub",
     assert.equal(h.agent.state, "disconnected");
     assert.equal(JSON.stringify(h.env.log()).includes(token), false);
     assert.ok(h.env.snapshot().dependencies.some(item =>
-      item.source === "ui" || item.target === "ui"));
+      item.link.startsWith("ui->") || item.link.endsWith("->ui")));
   });
 
 test("PR14.4 invalid pairing token is never sent", async () => {
