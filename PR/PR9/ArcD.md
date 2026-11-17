@@ -27,3 +27,23 @@ SessionRecovery.restore -> HubUnit -> Workspace.restore -> virtual page
 load -> Workspace.onChange -> UI render -> animation frame -> viewport.
 Guard active document identity and loading status; do not restore
 offscreen inactive tab into the visible editor.
+
+## Patch(+2) OCDA addition
+Object: PowerShellSessionManager (independent file, Public)
+Property: PowerShellConnectionPolicy (independent file, Public)
+Cross-Object chain:
+UI -> HubUnit -> PowerShellSessionManager
+ -> read EDPMU PowerShellConnectionPolicy -> Response -> OMU
+Browser-side native bridge:
+UI -> authenticated loopback WebSocket -> old Local Agent -> ConPTY.
+The native bridge is an external OS boundary, not an unregistered Object
+interacting with LinkCore internals. No secrets enter OMU.
+| Event | PASS | FAIL | EHU |
+| --- | --- | --- | --- |
+| Session.create | 200 | 429 limit | Hub records |
+| Session.select/close | 200 | 404 unknown | Hub records |
+| Session.closeAll | 200 | none | Hub records |
+| Connection pairing | local validated | invalid token/port | no token logged |
+| Native socket connect | ready | unavailable/unauthorized | sanitized UI EHU |
+Parallelism: independently keyed sessions may run in parallel at the
+external native agent; no synchronous shell operation in browser main.
