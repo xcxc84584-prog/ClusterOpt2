@@ -22,7 +22,8 @@ export const AI_AGENT_PACKAGE_FILES = Object.freeze([
   "local-agent/Start-OAuth.ps1",
   "local-agent/Quick-Setup.cmd",
   "local-agent/MCP-Quick-Setup.cmd",
-  "local-agent/Setup-Quick.ps1"
+  "local-agent/Setup-Quick.ps1",
+  "local-agent/Port-CPO.ps1"
 ]);
 
 const PACKAGE_ROOT = "./Implementation/plugins/ai-agent-mcp/";
