@@ -98,9 +98,21 @@ test("PR14.5 model credential stays in host, task route and cancel",
       .toContainText("模型已設定");
     await frame.locator("textarea").fill("Explain a function");
     await frame.locator('form button[type="submit"]').click();
-    await expect.poll(() => page.evaluate(() =>
-      window.__modelSent.some(msg => msg.type === "task")))
-      .toBe(true);
+    await expect.poll(() => page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const view = linkCore.pluginHostInstaller.uiHost.views.get(
+        "cluster.ai-agent-mcp");
+      return {
+        sent: window.__modelSent.map(x => x.type),
+        task: view.modelTask.snapshot(),
+        agent: view.localAgent.state,
+        failures: linkCore.getSnapshot().logs.filter(x =>
+          x.kind === "EHU").slice(0,5).map(x => ({
+            action: x.action, status: x.status
+          }))
+      };
+    })).toMatchObject({ sent: expect.arrayContaining(["task"]) });
     await expect(frame.locator('[data-model-action="cancel"]'))
       .toBeEnabled();
     await frame.locator('[data-model-action="cancel"]').click();
