@@ -5,6 +5,9 @@ on:
       - "Implementation/LinkCore/LinkCore.js"
       - "Implementation/LinkCore/CatalogCollection.js"
       - "Implementation/LinkCore/CatalogQuery.js"
+      - "Implementation/LinkCore/AuthorizedCatalogCollection.js"
+      - "Implementation/LinkCore/HubUnit.js"
+      - "Implementation/property/CatalogVisibilityPolicy.js"
       - "Implementation/LinkCore/ObjectContract.js"
       - "Implementation/LinkCore/UnifiedRegistrationUnit.js"
       - "Implementation/property/APIDescriptorPolicy.js"
@@ -14,6 +17,8 @@ on:
       - "Implementation/e2e/plugin-pr02-property.spec.js"
       - "Implementation/tests/catalog-collection.test.js"
       - "Implementation/tests/catalog-query.test.js"
+      - "Implementation/tests/catalog-visibility.test.js"
+      - "Implementation/e2e/plugin-pr02-visibility.spec.js"
       - "Implementation/e2e/plugin-pr02-query.spec.js"
       - "Implementation/e2e/plugin-pr02-catalog.spec.js"
       - "Implementation/tests/api-descriptor.test.js"
@@ -35,7 +40,8 @@ jobs:
           node-version: "22"
       - run: npm install --no-audit --no-fund
       - run: >
-          node --test Implementation/tests/catalog-query.test.js
+          node --test Implementation/tests/catalog-visibility.test.js
+          Implementation/tests/catalog-query.test.js
           Implementation/tests/catalog-collection.test.js
           Implementation/tests/api-descriptor.test.js
           Implementation/tests/object-api-descriptors.test.js
@@ -52,6 +58,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: >
           npx playwright test
+          Implementation/e2e/plugin-pr02-visibility.spec.js
           Implementation/e2e/plugin-pr02-query.spec.js
           Implementation/e2e/plugin-pr02-catalog.spec.js
           Implementation/e2e/plugin-pr02-descriptor.spec.js
