@@ -14,7 +14,7 @@ async function openResources(page) {
 test("PR12 resources show searchable downloadable packages, not paths", async ({page}) => {
   await openResources(page);
   await expect(page.locator(".pm-market-card").filter({
-    has: page.locator("a[download=multilang-highlighter.js]")
+    has: page.locator("a[download="multilang-highlighter.js"]")
   })).toHaveCount(1);
   await expect(page.locator("#pluginAgentDownload")).toHaveCount(1);
   await expect(page.locator("a.pm-market-download")).toHaveAttribute(
@@ -32,7 +32,7 @@ test("PR12 local chooser mounts only an exact reviewed download", async ({page})
   await openResources(page);
   const chooserPromise = page.waitForEvent("filechooser");
   await page.locator(".pm-market-card").filter({
-    has: page.locator("a[download=multilang-highlighter.js]")
+    has: page.locator("a[download="multilang-highlighter.js"]")
   }).getByRole("button", {name: /裝載|Mount/}).click();
   const chooser = await chooserPromise;
   await chooser.setFiles({
@@ -55,7 +55,7 @@ test("PR12 altered local JavaScript is blocked without execution", async ({page}
   await openResources(page);
   const chooserPromise = page.waitForEvent("filechooser");
   await page.locator(".pm-market-card").filter({
-    has: page.locator("a[download=multilang-highlighter.js]")
+    has: page.locator("a[download="multilang-highlighter.js"]")
   }).getByRole("button", {name: /裝載|Mount/}).click();
   const chooser = await chooserPromise;
   await chooser.setFiles({
