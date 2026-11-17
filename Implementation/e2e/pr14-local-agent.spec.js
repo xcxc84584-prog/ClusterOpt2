@@ -24,7 +24,7 @@ async function install(page) {
       consented: true, approvedPermissions: []
     });
     const approved = await linkCore.pluginHostInstaller.install(snapshot, {
-      consented: true, approvedPermissions: ["network.request"]
+      consented: true, approvedPermissions: ["network.request", "local-agent.pair"]
     });
     const view = linkCore.pluginHostInstaller.uiHost.views.get(
       "cluster.ai-agent-mcp");
