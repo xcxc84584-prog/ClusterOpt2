@@ -70,7 +70,10 @@ export class LinkCore {
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
-    this.version = ReleaseVersion.product;
+    Object.defineProperty(this, "version", {
+      value: ReleaseVersion.product, enumerable: true,
+      writable: false, configurable: false
+    });
     for (const [name, value] of [
       ["ProviderSharedPropertyPolicy", ProviderSharedPropertyPolicy],
       ["ProviderFactoryPolicy", ProviderFactoryPolicy],
@@ -78,15 +81,15 @@ export class LinkCore {
       ["ProviderHealthPolicy", ProviderHealthPolicy]
     ]) {
       this.hub.registerProperty(name, value, {
-        owners: ["LinkCore"], visibility: "Public"
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     }
     this.hub.registerProperty("ProviderManifestPolicy",
       ProviderManifestPolicy, {
-        owners: ["LinkCore"], visibility: "Public"
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     this.hub.registerProperty("CapabilityIdPolicy", CapabilityIdPolicy, {
-      owners: ["LinkCore"], visibility: "Public"
+      owners: ["LinkCore"], visibility: "Public", readOnly: true
     });
     this.hub.registerProperty("CatalogDocumentation",
       CatalogDocumentation, {
@@ -108,7 +111,7 @@ export class LinkCore {
       owners: ["LinkCore"], visibility: "Public"
     });
     this.hub.registerProperty("SystemVersion", this.version, {
-      owners: ["LinkCore"], visibility: "Public"
+      owners: ["LinkCore"], visibility: "Public", readOnly: true
     });
     this.hub.registerProperty("ParallelExecutionPolicy",
       ParallelExecutionPolicy, { owners: ["LinkCore"] });
