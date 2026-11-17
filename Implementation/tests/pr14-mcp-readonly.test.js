@@ -36,6 +36,9 @@ function harness() {
   assert.equal(env.core.register({
     id: agentId, receive: () => null
   }), true);
+  assert.equal(env.core.register({
+    id: "untrusted", receive: () => null
+  }), true);
   const mcp = new PluginMCPReadOnlyObject(env.core,
     "cluster.ai-agent-mcp", agentId);
   assert.equal(env.core.register(mcp), true);
@@ -58,7 +61,7 @@ test("PR14.8 MCP rejects absent opt-in and untrusted source", async () => {
     .value.error, "Denied");
   h.mcp.setEnabled(true);
   assert.equal((await h.invoke("cluster.list_files", {},
-    "untrusted")).status, 403);
+    "untrusted")).value.error, "Denied");
 });
 
 test("PR14.8 MCP exposes only bounded saved-file projections",
