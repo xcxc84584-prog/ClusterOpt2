@@ -214,3 +214,14 @@ Template click -> bilingual ZIP generator -> download only
 ```
 No new EHU status, HubUnit API, Property or Provider. Downloading a
 development scaffold never invokes install, URU or capability approval.
+
+## PR13 Patch(+14) — purely presentational layout graph
+```text
+Resource pane (independent vertical scroll)
+  -> heading -> search -> local chooser -> plugin cards
+API pane -> search -> table-wrap (x/y scrolling)
+  -> min-width table -> readable Kind/Action/Owner/Req/Rep cells
+```
+No new EDPMU Property, HubUnit service, Provider, permission, EHU
+or cross-object dependency. Native browser autofill popup is outside
+application styling authority.
