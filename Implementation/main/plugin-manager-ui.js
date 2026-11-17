@@ -292,9 +292,9 @@ export function mountPluginManagerUI(core,doc,options={}) {
       let offset=0;
       const collected=[];
       while(offset<4096) {
-        const result=core.discover("ui","list",kind,{},{
-          origin:"user",offset,limit:100
-        });
+        const result=core.discover("ui","list",kind,{
+          offset,limit:100
+        },{origin:"user"});
         if(!result.ok)return collected;
         collected.push(...result.value.items);
         if(result.value.nextOffset===null)break;
