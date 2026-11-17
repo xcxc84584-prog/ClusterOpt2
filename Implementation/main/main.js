@@ -406,7 +406,7 @@ function localized(key, args = {}) {
 }
 const notify = message => { ui.statusText.textContent = message; };
 
-mountNativePowerShell({
+const nativePowerShell = mountNativePowerShell({
   core: linkCore,
   button: document.getElementById("nativePowerShellBtn"),
   host: document.getElementById("clusterEditorColumn"),
@@ -416,6 +416,7 @@ mountNativePowerShell({
 function render() {
   const active = workspace.active;
   renderPriority();
+  nativePowerShell?.refresh();
   void renderExplorer();
   queueRecovery();
   if (workspace.activeId !== observedWorkspaceActiveId) {
