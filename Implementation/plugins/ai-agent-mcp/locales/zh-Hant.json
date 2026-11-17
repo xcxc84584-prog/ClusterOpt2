@@ -8,8 +8,6 @@
   "ping": "測試連線",
   "stop": "中斷任務",
   "close": "關閉",
-  "prompt": "輸入任務需求…",
-  "submit": "送出",
   "feed": "任務輸出",
   "unavailable": "AI 模型與任務服務尚未啟用。",
   "status": "目前階段：介面預覽",
@@ -24,5 +22,6 @@
   "modelInactive": "配對本地 Agent 並設定模型後即可執行純文字任務。",
   "modelReady": "模型已設定",
   "modelNotConfigured": "模型尚未設定",
-  "taskState": "任務"
+  "taskState": "任務",
+  "readOnlyNotice": "唯讀輸出介面：請透過 ChatGPT MCP 發送操作，此處不提供聊天輸入。"
 }
