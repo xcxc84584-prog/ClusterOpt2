@@ -18,11 +18,15 @@ export class PluginLocalAgentObject {
     this.strictOCDA = true;
     this.authorization = {
       default: "Private", pair: "Public", ping: "Public",
-      disconnect: "Public", status: "Public"
+      disconnect: "Public", status: "Public",
+      providerSet: "Public", providerGet: "Public",
+      taskStart: "Public", taskCancel: "Public"
     };
     this.ocda = {
-      EHU: [], Log: [], Request: ["pair", "ping", "disconnect", "status"],
-      Response: ["pair", "ping", "disconnect", "status"],
+      EHU: [], Log: [], Request: ["pair", "ping", "disconnect",
+        "status", "providerSet", "providerGet", "taskStart", "taskCancel"],
+      Response: ["pair", "ping", "disconnect", "status",
+        "providerSet", "providerGet", "taskStart", "taskCancel"],
       UserAPI: ["pair", "ping", "disconnect", "status"],
       AgentAPI: [], Property: [], Program: "PluginLocalAgentObject"
     };
@@ -32,6 +36,7 @@ export class PluginLocalAgentObject {
     this.waiting = null;
     this.pendingPing = null;
     this.cancelPrompt = null;
+    this.modelTaskId = null;
     this.generation = 0;
   }
 
@@ -72,16 +77,27 @@ export class PluginLocalAgentObject {
       catch { /* Closing a failed transport is best effort. */ }
     }
     this.publish();
+    if (this.modelTaskId) {
+      void this.core.request(this.id, this.modelTaskId,
+        "reset", {});
+    }
   }
 
   async receive(action, payload, context = {}) {
-    if (context.source !== "ui" ||
+    const fromUI = context.source === "ui";
+    const fromModel = context.source === this.modelTaskId;
+    if ((!fromUI && !fromModel) ||
         !this.core.checkPluginPermission(
           this.providerId, "network.request") ||
         !this.core.checkPluginPermission(
           this.providerId, "local-agent.pair")) {
       return this.fail(403, "Denied");
     }
+    if (fromModel && ["providerSet", "providerGet", "taskStart",
+      "taskCancel"].includes(action)) {
+      return this.modelRequest(action, payload);
+    }
+    if (!fromUI) return this.fail(403, "ModelActionDenied");
     if (action === "status") {
       return { state: this.state };
     }
@@ -231,7 +247,12 @@ export class PluginLocalAgentObject {
             "UnexpectedMessage");
           return;
         }
-        if (checked.value.type === "ready" &&
+        if (["provider_info", "task_status", "task_result"]
+        .includes(checked.value.type) &&
+          this.state === "connected" && this.modelTaskId) {
+          void this.core.request(this.id, this.modelTaskId,
+            "ingest", checked.value);
+        } else if (checked.value.type === "ready" &&
             this.state === "connecting") {
           this.state = "connected";
           this.publish();
@@ -259,6 +280,130 @@ export class PluginLocalAgentObject {
         this.close();
         this.audit(503, "Disconnected");
       };
+    });
+  }
+
+  /**
+   * Host-mediated model transport. A configured key is sent only over
+   * the authenticated local socket. Never placed in a Hub payload.
+   */
+  async modelRequest(action, payload) {
+    const capability = action.startsWith("provider") ?
+      "model.configure" : "model.task";
+    if (!this.core.checkPluginPermission(this.providerId, capability)) {
+      return this.fail(403, "ModelDenied");
+    }
+    if (this.state !== "connected" || !this.socket) {
+      return this.fail(503, "ModelDisconnected");
+    }
+    if (action === "providerSet") {
+      const configured = await this.askProviderConfig();
+      if (!configured) return this.fail(403, "ModelCancelled");
+      this.socket.send(JSON.stringify({
+        type: "provider_set", apiKey: configured.apiKey,
+        model: configured.model
+      }));
+      configured.apiKey = "";
+      return { sent: true };
+    }
+    if (action === "providerGet") {
+      this.socket.send(JSON.stringify({ type: "provider_get" }));
+      return { sent: true };
+    }
+    if (action === "taskStart") {
+      if (!this.modelTaskId || typeof payload?.requestId !== "string") {
+        return this.fail(400, "TaskMalformed");
+      }
+      this.socket.send(JSON.stringify({
+        type: "task", requestId: payload.requestId,
+        prompt: payload.prompt
+      }));
+      return { sent: true };
+    }
+    if (action === "taskCancel") {
+      this.socket.send(JSON.stringify({
+        type: "task_cancel", requestId: payload.requestId
+      }));
+      return { sent: true };
+    }
+    return this.fail(404, "ModelUnknownAction");
+  }
+
+  /** Only the trusted host displays the model credential form. */
+  askProviderConfig() {
+    if (!this.doc.createElement) return Promise.resolve(null);
+    const locale = this.core.readProperty("ui", "Language");
+    const en = locale.value === "en";
+    const dialog = this.doc.createElement("dialog");
+    dialog.setAttribute("aria-label",
+      en ? "Model configuration" : "模型設定");
+    dialog.style.cssText = "padding:20px;max-width:min(440px,90vw);" +
+      "background:var(--ui-panel,#152033);" +
+      "color:var(--ui-text-on-panel,#fff);" +
+      "border:1px solid var(--ui-border);border-radius:9px";
+    const form = this.doc.createElement("form");
+    const title = this.doc.createElement("h2");
+    title.textContent = en ? "Model configuration" : "模型設定";
+    const note = this.doc.createElement("p");
+    note.textContent = en ?
+      "API key is sent to your local Agent, never saved in this browser." :
+      "API 金鑰只傳送至本地 Agent，不儲存於瀏覽器。";
+    const key = this.doc.createElement("input");
+    key.type = "password";
+    key.placeholder = "API key";
+    key.autocomplete = "off";
+    key.maxLength = 256;
+    key.required = true;
+    const model = this.doc.createElement("input");
+    model.type = "text";
+    model.placeholder = "Model";
+    model.value = "gpt-4.1-mini";
+    model.maxLength = 100;
+    model.required = true;
+    for (const field of [key, model]) {
+      field.style.cssText = "display:block;width:100%;padding:9px;" +
+        "margin:8px 0;background:var(--ui-control,#1d2734);" +
+        "color:inherit;border:1px solid var(--ui-border)";
+    }
+    const cancel = this.doc.createElement("button");
+    cancel.type = "button";
+    cancel.textContent = en ? "Cancel" : "取消";
+    const save = this.doc.createElement("button");
+    save.type = "submit";
+    save.textContent = en ? "Save" : "儲存";
+    form.append(title, note, key, model, cancel, save);
+    dialog.append(form);
+    (this.doc.body ?? this.doc.documentElement).append(dialog);
+    return new Promise(resolve => {
+      let done = false;
+      const finish = value => {
+        if (done) return;
+        done = true;
+        this.cancelPrompt = null;
+        key.value = "";
+        dialog.close();
+        dialog.remove();
+        resolve(value);
+      };
+      this.cancelPrompt = () => finish(null);
+      cancel.addEventListener("click", () => finish(null));
+      dialog.addEventListener("cancel", event => {
+        event.preventDefault();
+        finish(null);
+      });
+      form.addEventListener("submit", event => {
+        event.preventDefault();
+        const apiKey = key.value.trim();
+        const modelId = model.value.trim();
+        if (!/^sk-[\\w-]{10,256}$/.test(apiKey) ||
+            !/^[\\w.:-]{1,100}$/.test(modelId)) {
+          finish(null);
+          return;
+        }
+        finish({ apiKey, model: modelId });
+      });
+      dialog.showModal();
+      key.focus();
     });
   }
 
