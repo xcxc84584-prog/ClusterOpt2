@@ -11,14 +11,14 @@ const SAFE = new Set(["ready", "pong", "error",
   "powershell_execution_result"]);
 export const PluginLocalAgentPolicy = Object.freeze({
   address: "ws://127.0.0.1:43879/agent",
-  maxMessageBytes: 65536,
+  maxMessageBytes: 160000,
   authTimeoutMs: 10000,
   pingTimeoutMs: 5000,
   validToken(value) {
     return typeof value === "string" && HEX.test(value);
   },
   inspectMessage(value) {
-    if (typeof value !== "string" || value.length > 65536) {
+    if (typeof value !== "string" || value.length > 160000) {
       return { ok: false, status: 413 };
     }
     let message;
@@ -27,6 +27,24 @@ export const PluginLocalAgentPolicy = Object.freeze({
     if (!message || typeof message !== "object" ||
         Array.isArray(message) || !SAFE.has(message.type)) {
       return { ok: false, status: 403 };
+    }
+    if (message.type !== "powershell_execution_result" &&
+        value.length > 65536) {
+      return { ok: false, status: 413 };
+    }
+    if (message.type === "powershell_execution_result") {
+      const output = message.result;
+      const valid = typeof message.command === "string" &&
+        message.command.length <= 2000 &&
+        ((output && typeof output === "object" &&
+          !Array.isArray(output) &&
+          (typeof output.stdout === "string" &&
+           output.stdout.length <= 65536) &&
+          (typeof output.stderr === "string" &&
+           output.stderr.length <= 65536)) ||
+         (typeof message.error === "string" &&
+          message.error.length <= 512));
+      if (!valid) return { ok: false, status: 400 };
     }
     if (["provider_info", "task_status", "task_result"]
       .includes(message.type) &&
