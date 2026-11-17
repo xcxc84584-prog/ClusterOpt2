@@ -82,3 +82,11 @@ Fix branch: pr9/patch6-fix-native-agent-installer-parser.
 Status: FIX IMPLEMENTED; pending exact-head Windows PowerShell
 5.1 / 7 parser CI and real Windows native agent pairing.
 Do NOT classify the whole PR9 as PASS yet.
+
+## PR9 Patch7 — User-requested P/C/O (2026-11-17)
+Implementation: native installer displays P/C/O, warns about
+stopping another process, demands secondary OVERRIDE confirmation,
+and verifies listener identities before Stop-Process -Force.
+Testing: native PowerShell AST parser 5.1/7 and Node structural
+regressions required; manual Windows ConPTY and actual port override
+remain OPEN. Never mark the overall PR9 PASS only from CI.
