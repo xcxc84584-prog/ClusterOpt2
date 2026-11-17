@@ -155,9 +155,10 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
       window.parent.postMessage({ type: messageType }, "*");
     });
   });
-  document.querySelector("form").addEventListener("submit", event => {
+  function submitTask(event) {
     event.preventDefault();
-    if (submit.disabled || !taskInput.value.trim()) return;
+    if (taskPending || taskActive || agentState !== "connected" ||
+        !taskInput.value.trim()) return;
     const prompt = taskInput.value.trim().slice(0, 8000);
     taskPending = true;
     renderModelControls();
@@ -165,7 +166,12 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
     window.parent.postMessage({
       type: "cluster-model-submit", prompt
     }, "*");
-  });
+  }
+  // Some sandboxed browsers do not dispatch submit on a button whose
+  // disabled state changes during click processing. Explicitly handle
+  // the user click as well as keyboard-based form submission.
+  submit.addEventListener("click", submitTask);
+  document.querySelector("form").addEventListener("submit", submitTask);
   window.addEventListener("message", event => {
     if (event.source !== window.parent) return;
     if (event.data?.type === "cluster-model-event") {
