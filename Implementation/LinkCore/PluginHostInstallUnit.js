@@ -224,21 +224,10 @@ export class PluginHostInstallUnit {
     const review = PluginCapabilityReviewPolicy.inspect(next,
       options.approvedPermissions ?? []);
     if (!review.ok) return review;
-    const priorServices = new Set(
-      previous.provides.map(item => item.service));
-    const newServices = new Set(next.provides.map(item => item.service));
-    // An upgrade briefly replaces the URU identity. Reject cutovers
-    // that could strand active dependents, even if service IDs persist.
-    // A separate live Provider for each consumed service permits update.
+    // Re-registering the Provider creates a brief service gap.
+    // Block the upgrade if active dependents lack alternatives.
     if (this.dependents(providerId).length) {
       return this.blocked(providerId);
-    }
-    if ([...priorServices].some(service =>
-      !newServices.has(service) &&
-      this.core.services.resolve(service).ok &&
-      this.core.services.resolve(service).value.some(item =>
-        item.providerId !== providerId))) {
-      this.record(200, "ServiceRemovedWithAlternative", providerId);
     }
     if (this.core.hub.providerInflight.get(providerId) > 0) {
       this.record(409, "UpgradeBusy", providerId);
