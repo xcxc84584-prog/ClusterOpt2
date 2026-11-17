@@ -28,7 +28,7 @@ test("PR12 resources show searchable downloadable packages, not paths", async ({
 test("PR12 local chooser mounts only an exact reviewed download", async ({page}) => {
   await openResources(page);
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.locator(".pm-market-actions button").click();
+  await page.locator(".pm-market-actions button:not(#pluginTemplateDownload)").click();
   const chooser = await chooserPromise;
   await chooser.setFiles({
     name: "multilang-highlighter.js",
@@ -49,7 +49,7 @@ test("PR12 local chooser mounts only an exact reviewed download", async ({page})
 test("PR12 altered local JavaScript is blocked without execution", async ({page}) => {
   await openResources(page);
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.locator(".pm-market-actions button").click();
+  await page.locator(".pm-market-actions button:not(#pluginTemplateDownload)").click();
   const chooser = await chooserPromise;
   await chooser.setFiles({
     name: "multilang-highlighter.js",
