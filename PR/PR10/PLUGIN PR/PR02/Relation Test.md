@@ -59,3 +59,22 @@ Hub-mediated Request 200. This is not evidence of PR02.03–PR02.10.
 
 No PASS is claimed solely from a committed test source. The browser
 remains loadable without the new metadata; main unchanged.
+
+## PR02.03 Exact-head Acceptance
+Commit da2672e8315afb64a8cd8255c0b49acbec587d02:
+- PLUGIN PR02 API Catalog 44022150286: SUCCESS.
+- PR1 OCDA Verification 44022150263: SUCCESS.
+- Local Agent PowerShell Parse 44022150302: SUCCESS.
+- OCDA CI 44022150256: SUCCESS.
+- Recovery checkpoint: backup/plugin-pr02-sub03-da2672e.
+
+## PR02.04 Matrix (CI pending)
+| Scenario | Verification |
+| --- | --- |
+| Empty registration and legacy Property omitted | Node + Chromium |
+| New Object descriptor immediately collected | Node + Chromium |
+| New Property descriptor collected, not value | Node |
+| Unregister removes next projection, prior snapshot detached | Node + Chromium |
+| Frozen metadata, no dynamic handler execution | Node + Chromium |
+| Existing Hub Request path and Cluster legacy facade | Chromium |
+| Dedicated Node / Playwright / OCDA / Windows | exact-head CI PENDING |
