@@ -12,7 +12,7 @@ In a user-controlled PowerShell window, from this directory run:
 .\Start-LocalAgent.ps1 -Origin 'https://xcxc84584-prog.github.io'
 ```
 
-This starts the loopback Local Agent on port 43879. Enter its token
+This starts the loopback Local Agent on port 43881. Enter its token
 only into Cluster's trusted pairing dialogue. To start the optional
 local MCP bearer gateway in another shell:
 
@@ -27,7 +27,7 @@ reverse proxy to the loopback OAuth port; then start:
 .\Start-OAuth.ps1 -Issuer 'https://your-trusted-host.example'
 ```
 
-Never publish the agent port (43879), the MCP port (43880), a local
+Never publish the agent port (43881), the MCP port (43880), a local
 pairing token or bearer key. The OAuth gateway is scoped read-only;
 its advertised five tools are not equivalent to unrestricted Explorer
 or PowerShell control. Remote MCP may expose additional operations
@@ -48,3 +48,5 @@ public ChatGPT connection, configure HTTPS termination separately and
 supply the exact issuer origin in the OAuth console. The remote OAuth
 scope `cluster.read` is server-enforced to five read-only tools.
 See `../MCP-SETUP.md` for the full walkthrough and tool matrix.
+
+Port selection for all three scripts uses the shared `Port-CPO.ps1` (C=cancel, P=choose another port, O=verified override with a second explicit confirmation). Selected ports are stored in `%LOCALAPPDATA%/ClusterOpt2/AI-Agent-MCP/service-ports.json`; use the actual OAuth port for HTTPS proxy routing and the actual Agent port for browser pairing. Default ports: Local Agent 43881, MCP 43880, OAuth 43879.
