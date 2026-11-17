@@ -190,3 +190,44 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
       item.result.approved));
     expect(results).toEqual([true, false]);
   });
+
+test("PR14.8 explicit MCP read-only tool bridge returns metadata",
+  async ({ page }) => {
+    await page.goto("/");
+    expect((await install(page)).approved).toBe(201);
+    await page.locator(".plugin-extension-button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator('[data-agent-action="pair"]').click();
+    await page.locator("dialog[open] input").fill(token);
+    await page.locator("dialog[open] button[type=submit]").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator('[data-agent-status]').waitFor();
+    await page.locator(".plugin-agent-toolbox > button").click();
+    const box = page.locator(".plugin-agent-toolbox");
+    await box.locator('[data-right="mcp"]').check();
+    await expect.poll(() => page.evaluate(() =>
+      window.__agentSent.some(item =>
+        item.type === "bridge_register"))).toBe(true);
+    await page.evaluate(() => window.__agentSocket.onmessage({
+      data: JSON.stringify({
+        type: "tool_call", requestId: crypto.randomUUID(),
+        name: "cluster.list_files", args: {}
+      })
+    }));
+    await expect.poll(() => page.evaluate(() =>
+      window.__agentSent.some(item => item.type === "tool_result" &&
+        Array.isArray(item.result?.files)))).toBe(true);
+    await box.locator('[data-right="mcp"]').uncheck();
+    await page.evaluate(() => window.__agentSocket.onmessage({
+      data: JSON.stringify({
+        type: "tool_call", requestId: crypto.randomUUID(),
+        name: "cluster.list_files", args: {}
+      })
+    }));
+    await expect.poll(() => page.evaluate(() =>
+      window.__agentSent.filter(item =>
+        item.type === "tool_result").length)).toBe(2);
+    const denied = await page.evaluate(() => window.__agentSent.filter(
+      item => item.type === "tool_result").at(-1).result.error);
+    expect(denied).toBe("Tool access denied");
+  });
