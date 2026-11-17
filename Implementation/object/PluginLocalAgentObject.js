@@ -395,8 +395,8 @@ export class PluginLocalAgentObject {
         event.preventDefault();
         const apiKey = key.value.trim();
         const modelId = model.value.trim();
-        if (!/^sk-[\\w-]{10,256}$/.test(apiKey) ||
-            !/^[\\w.:-]{1,100}$/.test(modelId)) {
+        if (!/^sk-[\w-]{10,256}$/.test(apiKey) ||
+            !/^[\w.:-]{1,100}$/.test(modelId)) {
           finish(null);
           return;
         }
