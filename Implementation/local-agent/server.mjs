@@ -139,14 +139,21 @@ export function runInteractive(command){
  });
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
- const agent=createLocalAgent();
+ // The detached installer provides a one-time token in the child environment.
+ // Delete it before spawning any native PowerShell descendants.
+ const suppliedToken=process.env.CLUSTEROPT_PAIRING_TOKEN;
+ delete process.env.CLUSTEROPT_PAIRING_TOKEN;
+ const hasSuppliedToken=/^[a-f0-9]{64}$/i.test(suppliedToken||'');
+ if(suppliedToken&&!hasSuppliedToken)throw Error('INVALID_PAIRING_TOKEN');
+ const agent=createLocalAgent(hasSuppliedToken?{token:suppliedToken.toLowerCase()}:{});
+
  try{const {attachNativeTerminal}=await import('./native-terminal.mjs');await attachNativeTerminal(agent.server,{token:agent.token,allowedOrigins:ALLOWED_ORIGINS});console.log('Native ConPTY terminal: enabled');}
  catch(error){console.error('Native terminal unavailable:',error.message);}
  console.log('PowerShell sessions: enabled after browser pairing');
  const port=Number(process.env.CLUSTEROPT_PORT)||DEFAULT_PORT;
  agent.server.listen(port,'127.0.0.1',()=>{
   console.log('ClusterOpt Local Agent listening on 127.0.0.1:'+port);
-  console.log('Pairing token (do not share): '+agent.token);
+  if(!hasSuppliedToken)console.log('Pairing token (do not share): '+agent.token);
   console.log('Allowed origin: https://xcxc84584-prog.github.io');
    console.log('Agent version: '+(process.env.CLUSTEROPT_AGENT_VERSION||'unknown'));
  });
