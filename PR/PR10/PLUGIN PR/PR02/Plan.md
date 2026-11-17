@@ -167,3 +167,22 @@ not catalog providers. Fixed: skip absent APIDescriptors, preserve
 legacy Object runtime and do not synthesize undocumented metadata.
 New regression test verifies registered legacy caller, empty read-only
 projection and Hub-mediated discovery 200. Re-test full exact-head CI.
+
+## PR02.07 — API Version Compatibility and Deprecation
+Compared VS Code extension engines.vscode/version matching and API
+proposal lifecycle at https://github.com/microsoft/vscode-docs and
+https://github.com/microsoft/vscode/wiki/Extension-API-process .
+Design improvement: separate metadata compatibility from runtime
+permission and from plugin activation. CatalogVersionPolicy validates
+MAJOR.MINOR.PATCH using safe integers; stable major compatibility
+requires provider >= requested version with same major; pre-1.0
+requires same major and minor (conservative unstable API behavior).
+Optional since cannot exceed descriptor version; older-than-since
+requests are incompatible. deprecated=true is descriptive; no hidden
+side effects, force migration, access revocation or silent automatic
+updates. Invalid version/since rejects Object registration with EHU 400.
+Policy is a single independent immutable global Property, registered
+through HubUnit, but remains pure and cannot grant access. Descriptor
+remains detached/frozen. Complexity O(version length), constant bounded
+memory. Node and Chromium real integration tests added to CI.
+Status: implemented, exact-head CI pending.
