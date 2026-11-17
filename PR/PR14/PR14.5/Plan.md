@@ -57,3 +57,9 @@ notifications, yielding once to the event loop before HubUnit ingestion.
 The connection generation guards stale replies. This prevents nested
 ModelTask -> LocalAgent -> ModelTask cyclic waits. Reconfiguration is
 denied while an active task would otherwise block cancellation.
+
+## Patch(+4): host-authoritative UI state
+The iframe's cancel button follows a bounded boolean projection of
+PluginModelTaskObject.activeId returned in the same Hub-backed
+model-action response. This prevents lost or reordered UI callbacks
+from leaving the cancellation control in an incorrect disabled state.

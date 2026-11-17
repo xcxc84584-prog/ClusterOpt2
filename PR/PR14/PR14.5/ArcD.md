@@ -92,3 +92,12 @@ ModelTask.submit -> Hub -> LocalAgent.taskStart -> WebSocket.send
 ```
 Each queued reply is discarded if the observed connection generation
 does not equal the current generation. EHU covers rejected replies.
+ 
+## Patch(+4): Response state projection
+```text
+ModelTask submit -- Hub --> LocalAgent.taskStart
+   |                               |
+   +-- Hub Response 200 -- Host UI taskActive=true
+   +-- model status --> Hub ingest --> UI status update
+```
+The host projects only task activity, not keys or user prompt data.
