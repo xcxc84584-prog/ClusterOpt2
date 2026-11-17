@@ -1434,3 +1434,27 @@ header .menu-wrap { margin-left:auto; }
   #pluginWindow .pm-resource-pane { max-height:45vh; overflow-y:auto; }
   #pluginWindow .pm-contract-fields { grid-template-columns:minmax(0,1fr); }
 }
+
+
+/* OCDA plugin sample: theme-bound token colors, no hard-coded layout. */
+.pm-sample-editor,
+.pm-sample-preview {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 5rem;
+  margin: 0.5rem 0;
+  padding: 0.65rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow: auto;
+  border: 1px solid var(--border, #627082);
+  border-radius: 0.4rem;
+  background: var(--panel, transparent);
+  color: inherit;
+  font: 0.82rem/1.5 ui-monospace, Consolas, monospace;
+}
+.pm-token-keyword { color: #78a9ff; font-weight: 600; }
+.pm-token-string { color: #78c69c; }
+.pm-token-number { color: #e6b773; }
+.pm-token-comment { color: #8997a6; font-style: italic; }
+.pm-token-operator { color: #b9a7ff; }
