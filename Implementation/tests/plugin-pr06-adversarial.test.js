@@ -30,6 +30,8 @@ test("PR06.07 verifies pinned bytes but never enables execution", async () => {
 
 test("PR06.07 rejects forged or oversized artifact and digest", async () => {
   const hash = "0".repeat(64);
+  assert.equal((await PluginArtifactPolicy.verify(
+    new Uint8Array([1]), hash)).status, 412);
   for (const [bytes, digest] of [
     [new Uint8Array(0), hash],
     [new Uint8Array(1024 * 1024 + 1), hash],
