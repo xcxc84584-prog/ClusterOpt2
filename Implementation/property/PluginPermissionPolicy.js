@@ -12,7 +12,9 @@ const LEVELS = Object.freeze({
   "network.request": "privileged",
   "local-agent.pair": "privileged",
   "model.configure": "privileged",
-  "model.task": "privileged"
+  "model.task": "privileged",
+  "shell.execute": "privileged",
+  "mcp.read": "privileged"
 });
 const ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
 
