@@ -1,26 +1,47 @@
-# AI AGENT MCP(ChatGPT) — PR14.2
+# AI AGENT MCP(ChatGPT) — PR14.4
 
-This folder is a complete **installable contract-only plugin**.
+This is an installable, sandbox-isolated plugin for ClusterOpt2.
 
 ## Installation
-Use ClusterOpt2 Resources > local plugin-folder picker to select this folder,
-review the provider identity and approve installation. No capability grant
-is requested. Registration is runtime-only through HubUnit/URU.
+In Resources, select and install this local plugin folder. Review both
+requested capabilities before approving the installation:
+- `network.request`: privileged network request declaration.
+- `local-agent.pair`: separately privileged Local Agent pairing.
 
-## Currently implemented
-- `cluster.ai-agent.status` / `getStatus({})`
-- `cluster.ai-agent.contract` / `describe({})`
-- Worker isolation and strict Request/Response schemas
+Both are required for any Local Agent interaction. Approval is
+explicit, session-scoped, and revocable in Plugin Permissions.
 
-**Not implemented yet:** legacy AI UI, Local Agent pairing, models, task
-pipeline, Explorer CRUD, shell execution, MCP and OAuth. The responses are
-honest about this: status is `contract-only`, disconnected and unprivileged.
-There is intentionally no `uiEntry` or privileged permission declaration.
+## Current functionality
+- Independent AI Agent button next to PowerShell.
+- Isolated output UI, bilingual zh-Hant/en labels, palette integration.
+- Host-owned pairing dialog. Token input stays in the host and is
+  never sent to the plugin Worker or its iframe.
+- Pinned local WebSocket `ws://127.0.0.1:43879/agent` supporting only
+  `auth -> ready`, `ping -> pong`, and disconnect.
+- Per-call HubUnit/URU permission checks and OMU Log/EHU.
+- Worker Provider contracts `getStatus({})` and `describe({})`.
+  Worker status still describes its **own** contract-only capabilities;
+  the separate host UI displays live Local Agent connection state.
 
-No API keys, token storage, absolute paths, browser globals or direct OS
-calls. Plugin source may not bypass the host-owned capability authority.
+## Required local setup
+Start the *legacy Cluster Local Agent* on Windows with its origin
+configuration matching the exact origin of the deployed ClusterOpt2
+page. Use the pairing token printed by that Local Agent in the
+**trusted host pairing dialog**. The token is not saved by the plugin.
 
-## Roadmap
-PR14.3 UI / Language; PR14.4 authenticated transport; PR14.5 models;
-PR14.6 Explorer; PR14.7 shell approval; PR14.8 MCP/OAuth;
-PR14.9 lifecycle; PR14.10 security and browser acceptance.
+## Security boundaries
+This PR deliberately does not send `bridge_register` and does not
+process any `tool_call` messages. Unsolicited tool messages cause a
+connection shutdown. The local connection does **not** grant permission
+to access files, execute PowerShell, configure models, create tasks,
+or expose MCP/OAuth endpoints.
+
+## Deferred
+- PR14.5: model provider and task pipeline.
+- PR14.6: Explorer CRUD with granular file capabilities.
+- PR14.7: approved PowerShell execution.
+- PR14.8: scoped MCP/OAuth gateway.
+- PR14.9–10: lifecycle and final real-machine security acceptance.
+
+No API keys, machine-specific absolute paths or development-only
+prompts are written into user-facing UI.
