@@ -80,3 +80,31 @@ test("PR9 Patch6: native installer is unique and parser protected", () => {
   assert.ok(nativeInstaller.includes("npm.cmd"));
   assert.ok(nativeInstaller.includes("Stop-Process -Id $owner.ProcessId"));
 });
+
+test("PR9 Patch8: detached agent keeps token off disk and closes CMD", () => {
+  const cmd = createSetupCmd({ version });
+  const nativeUI = readFileSync(fileURLToPath(new URL(
+    "../main/legacy-powershell/powershell-ui.js", import.meta.url)), "utf8");
+  const style = readFileSync(fileURLToPath(new URL(
+    "../main/legacy-powershell/powershell-legacy.css", import.meta.url)),
+    "utf8");
+
+  assert.ok(nativeInstaller.includes("WindowStyle = 'Hidden'"));
+  assert.ok(nativeInstaller.includes("CLUSTEROPT_PAIRING_TOKEN"));
+  assert.ok(nativeInstaller.includes("RandomNumberGenerator"));
+  assert.ok(nativeInstaller.includes("PAIRING TOKEN (copy privately)"));
+  assert.ok(nativeInstaller.includes("press ENTER to close this installer"));
+  assert.equal(nativeInstaller.includes("RedirectStandardOutput"), false);
+  assert.equal(nativeInstaller.includes("OutFile $pairingToken"), false);
+  assert.ok(nativeServer.includes("delete process.env.CLUSTEROPT_PAIRING_TOKEN"));
+  assert.ok(nativeServer.includes("hasSuppliedToken"));
+  assert.match(cmd, /echo ClusterOpt2 agent setup complete\.[^\r\n]*\r\nexit \/b 0/);
+  assert.ok(cmd.includes("pause\r\nexit /b 1"));
+
+  assert.ok(nativeUI.includes("xterm-addon-fit@0.8.0"));
+  assert.ok(nativeUI.includes("new ResizeObserver("));
+  assert.ok(nativeUI.includes("fit.fit()"));
+  assert.ok(!nativeUI.includes(String.raw`\\r\\n[Native terminal disconnected]`));
+  assert.ok(style.includes(".psm-native-wrap"));
+  assert.ok(style.includes("flex: 1 1 0"));
+});
