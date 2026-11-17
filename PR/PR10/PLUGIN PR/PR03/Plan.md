@@ -65,3 +65,59 @@ Bounded O(total JSON bytes + N) validation; deeply detached frozen value.
 One new Property file, registered once via LinkCore/HubUnit/EDPMU.
 No browser-facing registration, no service execution, no Route Table.
 Node real VTE, Chromium, OCDA, legacy API and Windows CI gates.
+
+## PR03.03–03.10 implementation plan, risk/load review
+**03.03 URU ownership:** URU stores Provider Manifest metadata and the
+Provider ID/Service ID secondary indices. Only an existing Object with
+matching Manifest objectId and declared Request actions can register.
+HubUnit checks registered source identity, reports EHU for 400/403/
+404/409. Object unregister removes its linked provider candidates.
+
+**03.04 EDPMU claims:** Manifest may declare <=32 sharedProperties with
+access read/write and isolation private/shared. Check EDPMU visibility
+and ownership before accepting a Manifest, then require an additional
+HubUnit gate for each Provider write. Existing EDPMU remains sole mutable
+Property authority; unsafe writes 403 and unchanged existing data.
+
+**03.05 ServiceRegistry:** read-only projection of URU's indexed
+Service->Provider mapping (O(candidate count)), 200/400/404; no
+provider factory activation, route selection or independent Object
+registration. Multiple Providers can advertise a Service.
+
+**03.06 trusted factory:** Factory references are explicitly supplied
+by trusted in-process code after owner registration. A factory may
+materialize lazily at most once per Provider, and is never invoked during
+Service lookup/Catalog read. The closure/instance is not exposed in the
+Manifest and no arbitrary remote JS loading is provided (PR06).
+
+**03.07 lifecycle:** disableProvider != disableService !=
+disposeProvider != unregisterProvider != unregisterObject. Disabled
+candidates stop appearing in service resolution but remain registered;
+stopping one Provider leaves others intact. unbindRoute belongs to PR04,
+draining and CAS to PR05; do not claim implemented here.
+
+**03.08 compatibility:** conservative exact input/output schema
+comparison and PR02 SemVer (1.x same-major; 0.x same-minor).
+Nonmatching candidates rejected with 409, without changing current
+active routes.
+
+**03.09 health:** immutable healthy/degraded/faulted state, after three
+failures 30-second cooldown; URU owns health and candidates exclude
+temporarily faulted providers. Core Object registrations remain intact.
+OMU EHU on 503/504 failures and 429 blocked reports.
+
+**03.10 integration:** test different registered owners, Public/Private
+EDPMU claims, external impersonation, service collisions, restore of
+disabled candidate, lazy trusted factory, compatibility, health and
+VTE 00/10/01 REQ/REP EventChain. Test actual browser, old Cluster API,
+PR02 Catalog, Node, OCDA, PR1 and native Windows.
+No full plugin runtime or File I/O integration until later major PRs.
+
+### Release governance integrated alongside PR03
+One canonical `ReleaseVersion.product`, mirrored into package.json by
+`npm run version:sync`; mandatory CI `npm run version:check`.
+LinkCore, EDPMU SystemVersion, Cluster.version and UI version label all
+derive from LinkCore's canonical value. Draft PR child patches do not
+bump public product versions. Only at full major-PR release gate may
+version change, then all exact-head CI must rerun before protected merge.
+Restorable main baseline: 5191ffc8d1ae7996526b8808bd535a330c1f6269.
