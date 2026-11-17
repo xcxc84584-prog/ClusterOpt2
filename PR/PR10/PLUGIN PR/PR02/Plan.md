@@ -127,3 +127,34 @@ Runtime cost O(current snapshot size) per operation, bounded 4096
 registry entries and 100 results per page; page drift across concurrent
 registrations is not prevented (PR02.05 uses offset semantics).
 Node and Chromium dedicated workflow added; exact-head CI pending.
+
+## PR02.06 — Hub-scoped Visibility Projection
+Upstream comparison (2026-11-17):
+- Theia plugin-ext host/main RPC boundaries:
+  https://github.com/eclipse-theia/theia/blob/master/doc/Plugin-API.md
+- VS Code extension capabilities/restrictions:
+  https://code.visualstudio.com/api/extension-capabilities/overview
+Both favor a host-controlled API boundary instead of arbitrary access
+to editor internals. ClusterOpt2 retains its existing HubUnit rather
+than adding a second plugin host or caller permission database.
+
+New CatalogVisibilityPolicy is an immutable global Property once
+registered by LinkCore, with source-scoped AuthorizedCatalogCollection.
+HubUnit.discoverCatalog verifies a registered caller without invoking
+lazy factories; it computes authorization with existing AccessPolicy,
+actual OCDA UserAPI/AgentAPI and EDPMU visibility/owners. A Property
+also requires readable=true. Filtering occurs BEFORE search, counts,
+pagination or describe; invisible and absent descriptors both produce
+404 on describe. No live property values, handlers, files or runtime
+permission grants leak. Unknown caller 404, malformed command/context
+400; these are observed through OMU EHU. No public Cluster.api yet.
+
+Runtime: one bounded snapshot O(entries + descriptors) per request;
+no extra persistent indexes, write locks or async scheduler. Existing
+Request, editor, save, and recovery routes remain unchanged. Tests:
+Node catalog-visibility.test.js and real Chromium counterpart plus
+full OCDA / Windows exact-head checks. Status: CI pending.
+
+PR02.04 exact-head 79c56332: four workflows success. Rollback
+backup/plugin-pr02-sub04-79c5633.
+PR02.05 CI status must be verified separately before PASS.
