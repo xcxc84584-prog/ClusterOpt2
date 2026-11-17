@@ -606,3 +606,9 @@ this limit currently applies only to the independent registry.
 - Security review: same-folder collision and opened-document guard.
 - Outstanding: directory rename and recursive copy/move; old version
   itself explicitly did not support folder copy/move.
+
+### Patch25 Fix1
+- Reuse directory context primary first slot for New File.
+- Preserve file row Open, directory arrow Expand, existing 4/6
+  right-click toolbar geometry and language translation keys.
+- Run OPFS Playwright context-creation and legacy PR6 menu tests.
