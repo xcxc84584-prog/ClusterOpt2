@@ -21,3 +21,9 @@ Invalid local line address: UI-rejected 400 or 416; it is not an inter-Object Re
 Per-page line resolution synchronous and bounded. Recovery is debounced/serialized to avoid stale snapshot writes, independent of PR8 slice-load workers.
 ## Known limitations
 No cross-page virtual seek, no OS-file access in GoToLinePolicy, no claim of full PR9 completion.
+
+## Additional viewport EventChain
+SessionRecovery.restore -> HubUnit -> Workspace.restore -> virtual page
+load -> Workspace.onChange -> UI render -> animation frame -> viewport.
+Guard active document identity and loading status; do not restore
+offscreen inactive tab into the visible editor.
