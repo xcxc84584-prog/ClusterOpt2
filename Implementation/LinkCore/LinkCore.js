@@ -209,6 +209,10 @@ export class LinkCore {
   disposeProvider(source, providerId) {
     return this.hub.disposeProvider(source, providerId);
   }
+  reportProviderHealth(source, providerId, outcome, now) {
+    return this.hub.reportProviderHealth(
+      source, providerId, outcome, now);
+  }
   publishProviderProperty(source, providerId, name, value) {
     return this.hub.publishProviderProperty(
       source, providerId, name, value);
