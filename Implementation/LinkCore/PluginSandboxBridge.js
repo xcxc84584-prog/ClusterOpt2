@@ -2,58 +2,59 @@ import { PluginRPCContractPolicy as RPC } from
   "../property/PluginRPCContractPolicy.js";
 
 /**
- * PR13.3/13.5: opaque-origin sandboxed iframe running a data: module.
+ * PR13.3/13.5/13.7: opaque iframe launches a dedicated Worker.
  * Only a transferred MessagePort can communicate with the trusted host.
  * No allow-same-origin, network, top navigation or host DOM references.
  * Initial runtime supports self-contained ES modules only.
  */
+/** Untrusted JavaScript executes only inside a dedicated Worker.
+ * The opaque-origin iframe owns and can terminate that Worker even
+ * when the plugin runs an unbounded synchronous computation.
+ */
+const WORKER_SOURCE = "\"use strict\";\nlet channel = null;\nlet plugin = null;\nself.addEventListener(\"message\", async event => {\n  if (channel || event.data?.kind !== \"start\" ||\n      event.ports.length !== 1) return;\n  channel = event.ports[0];\n  try {\n    const source = event.data.source;\n    if (typeof source !== \"string\") throw Error(\"Source missing\");\n    const url = \"data:text/javascript;charset=utf-8,\" +\n      encodeURIComponent(source);\n    plugin = await import(url);\n    channel.onmessage = async ({data}) => {\n      if (data?.kind !== \"invoke\" ||\n          !Number.isSafeInteger(data.id)) return;\n      try {\n        const fn = Object.hasOwn(plugin, data.action) ?\n          plugin[data.action] : null;\n        if (typeof fn !== \"function\") {\n          channel.postMessage({kind:\"response\",id:data.id,\n            ok:false,status:404});\n          return;\n        }\n        const value = await fn(data.payload);\n        channel.postMessage({kind:\"response\",id:data.id,\n          ok:true,value:value ?? null});\n      } catch (_error) {\n        channel.postMessage({kind:\"response\",id:data.id,\n          ok:false,status:500});\n      }\n    };\n    channel.start();\n    channel.postMessage({kind:\"ready\"});\n  } catch (_error) {\n    channel.postMessage({kind:\"error\",status:400});\n  }\n});\n";
 const BOOTSTRAP = `
+const WORKER_SOURCE = "\"use strict\";\nlet channel = null;\nlet plugin = null;\nself.addEventListener(\"message\", async event => {\n  if (channel || event.data?.kind !== \"start\" ||\n      event.ports.length !== 1) return;\n  channel = event.ports[0];\n  try {\n    const source = event.data.source;\n    if (typeof source !== \"string\") throw Error(\"Source missing\");\n    const url = \"data:text/javascript;charset=utf-8,\" +\n      encodeURIComponent(source);\n    plugin = await import(url);\n    channel.onmessage = async ({data}) => {\n      if (data?.kind !== \"invoke\" ||\n          !Number.isSafeInteger(data.id)) return;\n      try {\n        const fn = Object.hasOwn(plugin, data.action) ?\n          plugin[data.action] : null;\n        if (typeof fn !== \"function\") {\n          channel.postMessage({kind:\"response\",id:data.id,\n            ok:false,status:404});\n          return;\n        }\n        const value = await fn(data.payload);\n        channel.postMessage({kind:\"response\",id:data.id,\n          ok:true,value:value ?? null});\n      } catch (_error) {\n        channel.postMessage({kind:\"response\",id:data.id,\n          ok:false,status:500});\n      }\n    };\n    channel.start();\n    channel.postMessage({kind:\"ready\"});\n  } catch (_error) {\n    channel.postMessage({kind:\"error\",status:400});\n  }\n});\n";
 "use strict";
-let channel = null;
-let plugin = null;
-window.addEventListener("message", async event => {
-  if (channel || event.source !== parent ||
+let launched = false;
+let runner = null;
+window.addEventListener("message", event => {
+  if (launched || event.source !== parent ||
       event.data?.kind !== "cluster-plugin-bootstrap" ||
       event.ports.length !== 1) return;
-  channel = event.ports[0];
+  launched = true;
+  const channel = event.ports[0];
   try {
-    const source = event.data.source;
-    if (typeof source !== "string") throw Error("Source missing");
-    // No eval and no host-origin script URL; relative imports are
-    // deliberately unsupported in the first secure runtime iteration.
-    const url = "data:text/javascript;charset=utf-8," +
-      encodeURIComponent(source);
-    plugin = await import(url);
-    channel.onmessage = async ({data}) => {
-      if (data?.kind !== "invoke" ||
-          !Number.isSafeInteger(data.id)) return;
-      try {
-        const fn = Object.hasOwn(plugin, data.action) ?
-          plugin[data.action] : null;
-        if (typeof fn !== "function") {
-          channel.postMessage({kind:"response",id:data.id,
-            ok:false,status:404});
-          return;
-        }
-        const value = await fn(data.payload);
-        channel.postMessage({kind:"response",id:data.id,
-          ok:true,value:value ?? null});
-      } catch (_error) {
-        channel.postMessage({kind:"response",id:data.id,
-          ok:false,status:500});
-      }
+    const workerScript = WORKER_SOURCE;
+    const url = URL.createObjectURL(new Blob([workerScript],
+      {type:"text/javascript"}));
+    try {
+      runner = new Worker(url, {type:"module"});
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+    runner.onerror = () => {
+      try { channel.postMessage({kind:"error",status:502}); }
+      catch (_ignored) {}
+      runner.terminate();
     };
-    channel.start();
-    channel.postMessage({kind:"ready"});
+    runner.postMessage({kind:"start",
+      source:event.data.source}, [channel]);
   } catch (_error) {
-    channel.postMessage({kind:"error",status:400});
+    channel.postMessage({kind:"error",status:502});
+  }
+});
+window.addEventListener("message", event => {
+  if (event.source === parent &&
+      event.data?.kind === "cluster-plugin-terminate") {
+    runner?.terminate();
+    runner = null;
   }
 });
 `;
 
-const CSP = "default-src 'none'; script-src 'unsafe-inline' data:; " +
+const CSP = "default-src 'none'; script-src 'unsafe-inline' data: blob:; " +
   "connect-src 'none'; img-src data:; style-src 'unsafe-inline'; " +
-  "font-src 'none'; object-src 'none'; worker-src 'none'; " +
+  "font-src 'none'; object-src 'none'; worker-src blob:; " +
   "child-src 'none'; frame-src 'none'; navigate-to 'none'; " +
   "form-action 'none'; base-uri 'none'";
 
@@ -89,6 +90,10 @@ export class PluginSandboxBridge {
     this.pending.clear();
     this.port?.close();
     this.port = null;
+    // The isolated frame controls the worker, not plugin code.
+    this.frame?.contentWindow?.postMessage({
+      kind: "cluster-plugin-terminate"
+    }, "*");
     this.frame?.remove();
     this.frame = null;
     this.audit(status, reason);
