@@ -107,28 +107,98 @@ function Install-Dependencies {
     }
 }
 
+function Get-PortListeners {
+    param([int]$Port)
+    return @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+}
+
+function Release-OccupiedPort {
+    param([int]$Port, [object[]]$Listeners)
+    $processIds = @($Listeners | Select-Object -ExpandProperty OwningProcess -Unique)
+    if ($processIds.Count -eq 0) {
+        throw 'Cannot identify process occupying the port'
+    }
+    $owners = @()
+    foreach ($ownerPid in $processIds) {
+        if ($ownerPid -le 4 -or $ownerPid -eq $PID) {
+            throw 'Refusing to terminate system or installer process'
+        }
+        $owner = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $ownerPid)
+        if (-not $owner -or -not $owner.Name -or -not $owner.CreationDate) {
+            throw 'Cannot verify process identity'
+        }
+        $ancestor = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID)
+        $ancestorIds = @()
+        while ($ancestor -and $ancestor.ParentProcessId -gt 0) {
+            $parentId = [int]$ancestor.ParentProcessId
+            if ($ancestorIds -contains $parentId) { break }
+            $ancestorIds += $parentId
+            $ancestor = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $parentId) -ErrorAction SilentlyContinue
+        }
+        if ($ancestorIds -contains $ownerPid) {
+            throw 'Refusing to terminate the parent shell'
+        }
+        $owners += $owner
+    }
+    Write-Warning ('Override may forcibly stop ' + $owners.Count + ' unrelated process(es).')
+    foreach ($owner in $owners) {
+        Write-Host ('PID ' + $owner.ProcessId + ': ' + $owner.Name)
+        Write-Host ('  Path: ' + $owner.ExecutablePath)
+    }
+    $confirmation = Read-Host ('Type OVERRIDE to release port ' + $Port)
+    if ($confirmation -cne 'OVERRIDE') {
+        throw 'Override cancelled; no process was terminated'
+    }
+    foreach ($owner in $owners) {
+        $ownerPid = [int]$owner.ProcessId
+        $current = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $ownerPid) -ErrorAction SilentlyContinue
+        if (-not $current -or $current.CreationDate -ne $owner.CreationDate -or $current.Name -ne $owner.Name) {
+            throw 'Port owner changed; override aborted'
+        }
+        $livePids = @(Get-PortListeners -Port $Port | Select-Object -ExpandProperty OwningProcess -Unique)
+        if ($livePids -notcontains $ownerPid) {
+            throw 'Port listener changed; override aborted'
+        }
+    }
+    foreach ($owner in $owners) {
+        Stop-Process -Id $owner.ProcessId -Force -ErrorAction Stop
+    }
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        if (@(Get-PortListeners -Port $Port).Count -eq 0) {
+            Write-Host ('Port ' + $Port + ' released.')
+            return
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    throw 'Port still occupied; agent not started'
+}
+
 function Select-LoopbackPort {
     $port = 43881
     while ($true) {
-        $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
+        $listeners = @(Get-PortListeners -Port $port)
         if ($listeners.Count -eq 0) { return $port }
         Write-Host ('Port ' + $port + ' is occupied.')
-        $choice = Read-Host '[P]ick another port / [C]ancel'
-        if ($choice.Trim().ToUpperInvariant() -ne 'P') {
-            throw 'Cancelled without stopping any process'
+        $choice = Read-Host '[P]ick another port / [C]ancel / [O]verride (force stop)'
+        switch ($choice.Trim().ToUpperInvariant()) {
+            'C' { throw 'Cancelled without stopping any process' }
+            'P' {
+                $value = Read-Host 'Enter TCP port (1024-65535)'
+                $candidate = 0
+                $valid = [int]::TryParse($value, [ref]$candidate)
+                if (-not $valid -or $candidate -lt 1024 -or $candidate -gt 65535) {
+                    Write-Warning 'Invalid TCP port'
+                    continue
+                }
+                $port = $candidate
+            }
+            'O' {
+                Release-OccupiedPort -Port $port -Listeners $listeners
+            }
+            default { Write-Warning 'Choose P, C or O' }
         }
-        $value = Read-Host 'Enter TCP port (1024-65535)'
-        $candidate = 0
-        $valid = [int]::TryParse($value, [ref]$candidate)
-        if (-not $valid -or $candidate -lt 1024 -or
-            $candidate -gt 65535) {
-            Write-Warning 'Invalid TCP port'
-            continue
-        }
-        $port = $candidate
     }
 }
-
 New-Item -ItemType Directory -Force -Path $agentDir | Out-Null
 Write-Host '[1/5] Checking Node.js...'
 $node = Find-Node
