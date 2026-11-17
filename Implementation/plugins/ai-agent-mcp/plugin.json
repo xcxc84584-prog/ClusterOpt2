@@ -1,0 +1,82 @@
+{
+  "packageVersion": 1,
+  "name": "AI AGENT MCP(ChatGPT)",
+  "entry": "worker.js",
+  "description": "OCDA AI Agent contract provider. PR14.2: status and contract inspection only; no model, filesystem, PowerShell, MCP or OAuth execution.",
+  "provider": {
+    "manifestVersion": 1,
+    "providerId": "cluster.ai-agent-mcp",
+    "objectId": "AIAgentMCP",
+    "provides": [
+      {
+        "service": "cluster.ai-agent.status",
+        "action": "getStatus",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "phase": {
+              "type": "string"
+            },
+            "connected": {
+              "type": "boolean"
+            },
+            "privileged": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "phase",
+            "connected",
+            "privileged"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "service": "cluster.ai-agent.contract",
+        "action": "describe",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "contractVersion": {
+              "type": "integer"
+            },
+            "pluginName": {
+              "type": "string"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "contractVersion",
+            "pluginName",
+            "capabilities"
+          ],
+          "additionalProperties": false
+        }
+      }
+    ],
+    "requires": [],
+    "permissions": [],
+    "execution": {
+      "isolation": "worker",
+      "concurrency": "parallel"
+    }
+  }
+}
