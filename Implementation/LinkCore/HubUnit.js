@@ -1019,6 +1019,59 @@ export class HubUnit {
    * Read-only Provider Contract projection. URU remains the sole live
    * authority. Metadata visibility does not grant invocation permission.
    */
+  /**
+   * Enumerate declared user/agent-callable Object actions.
+   * Missing legacy schemas are returned as null; never fabricate one.
+   * The source and per-action permission are checked before disclosure.
+   */
+  listActionContracts(source, options = {}) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Object.Action.List", 404);
+      return { ok: false, status: 404 };
+    }
+    const { offset = 0, limit = 100, origin = "user" } = options;
+    if (!["user", "agent"].includes(origin) ||
+        !Number.isSafeInteger(offset) || offset < 0 || offset > 4096 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      this.omu.record("EHU", source, "Object.Action.List", 400);
+      return { ok: false, status: 400 };
+    }
+    const api = origin === "user" ? "UserAPI" : "AgentAPI";
+    const entries = [];
+    for (const [owner, object] of this.registry.objects) {
+      for (const action of object.ocda?.[api] ?? []) {
+        if (!AccessPolicy.canUseAction(source, owner, action, object)) {
+          continue;
+        }
+        const descriptor = object.ocda?.APIDescriptors?.find(item =>
+          item.action === action && item.visibility !== "Private");
+        entries.push(Object.freeze({
+          owner, action, id: descriptor?.id ?? owner + "." + action,
+          version: descriptor?.version ?? null,
+          visibility: descriptor?.visibility ?? null,
+          inputSchema: descriptor?.inputSchema ?? null,
+          outputSchema: descriptor?.outputSchema ?? null,
+          described: Boolean(descriptor)
+        }));
+      }
+    }
+    entries.sort((a,b)=>a.owner.localeCompare(b.owner) ||
+      a.action.localeCompare(b.action));
+    const result = Object.freeze({
+      ok: true, status: 200,
+      value: Object.freeze({
+        items: Object.freeze(entries.slice(offset, offset + limit)),
+        total: entries.length,
+        nextOffset: offset + limit < entries.length ?
+          offset + limit : null
+      })
+    });
+    this.omu.record("Log", source, "Object.Action.List", 200);
+    return result;
+  }
+
   listProviderContracts(source, options = {}) {
     if (typeof source !== "string" ||
         !this.registry.objects.has(source)) {
