@@ -240,6 +240,13 @@ export class PluginUIHostUnit {
         menu.append(revoke);
         toolbox.append(trigger, menu);
         panel.append(toolbox);
+        view.resetToolBox = () => {
+          menu.hidden = true;
+          trigger.setAttribute("aria-expanded", "false");
+          rootStatus.textContent = "";
+          for (const checkbox of menu.querySelectorAll(
+            'input[type="checkbox"]')) checkbox.checked = false;
+        };
       }
       if (provider.permissions.includes("network.request") &&
           provider.permissions.includes("local-agent.pair")) {
@@ -426,6 +433,7 @@ export class PluginUIHostUnit {
     if (!enabled) {
       view.localAgent?.close();
       view.explorerAccess?.revoke();
+      view.resetToolBox?.();
       view.panel.hidden = true;
       view.button.setAttribute("aria-pressed", "false");
     }
