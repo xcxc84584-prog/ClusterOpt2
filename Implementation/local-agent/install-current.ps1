@@ -1,6 +1,7 @@
-param([Parameter(Mandatory=$true)][string]$ExpectedVersion)
-if ($ExpectedVersion -notmatch '^\d+\.\d+\.\d+-pr\d+\.patch\d+(\.fix\d+)?) { throw 'Invalid version' }
-# ClusterOpt2 Local Agent - versioned installer with safe port ownership
+param(
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^\d+\.\d+\.\d+-pr\d+\.patch\d+(?:\.fix\d+)?
+# ClusterOpt2 Local Agent setup. Version comes from LinkCore via CMD.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -98,7 +99,9 @@ for($i=0;$i -lt 100;$i++){
 if(-not $ready){if(Test-Path $err){Get-Content $err -Tail 25};throw 'Agent startup timed out'}
 Write-Host ('Agent version: '+$ExpectedVersion)
 Write-Host 'Agent running. You may close this CMD window.'
-) { throw 'Invalid version' }
+)]
+    [string]$ExpectedVersion
+)
 # ClusterOpt2 Local Agent - versioned installer with safe port ownership
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
