@@ -45,8 +45,9 @@ export class LinkCore {
     this.edpmu = new EntireDomainPropertyManagementUnit();
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
-    this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
+    this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
+      undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
     this.version = "0.0.9-pr9.patch9";
     this.hub.registerProperty("PropertyDescriptorPolicy",
@@ -156,6 +157,10 @@ export class LinkCore {
   unregister(id) { return this.hub.unregister(id); }
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
+  }
+  discover(source, command, kind, selector = {}, options = {}) {
+    return this.hub.discoverCatalog(source, command, kind,
+      selector, options);
   }
   readProperty(source, name) {
     return this.hub.readProperty(source, name);
