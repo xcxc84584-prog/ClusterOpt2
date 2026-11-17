@@ -439,7 +439,8 @@ legacyPSMUI = mountPowerShellUI({
   host: document.getElementById("clusterEditorColumn"),
   button: document.getElementById("explorerPowerShell"),
   language: legacyLanguage,
-  palette: legacyPalette
+  palette: legacyPalette,
+  version: linkCore.readProperty("ui", "SystemVersion").value
 });
 
 function render() {
