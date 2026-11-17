@@ -134,8 +134,9 @@ export class PluginUIHostUnit {
           };
           const action = Object.hasOwn(actions, kind) ?
             actions[kind] : null;
-          if (!action || !this.core.checkPluginPermission(
-            provider.providerId, "network.request")) return;
+          if (!action) return;
+          // The OCDA Object rechecks the live grant on every Request
+          // and writes an EHU for rejected attempts.
           const result = await this.core.request("ui", agent.id,
             action, {}, { origin: "user" });
           publish({ state: agent.state });
