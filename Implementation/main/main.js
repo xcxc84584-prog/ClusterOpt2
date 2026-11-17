@@ -374,7 +374,7 @@ linkCore.register({
     Response: [], UserAPI: ["new", "open", "save", "close", "closeAll",
       "reorder", "setPriority", "syncExternal"],
     AgentAPI: [], Property: ["DocumentStatus", "SystemVersion",
-      "Language", "EditorInteractionPolicy",
+      "Language", "GoToLinePolicy", "EditorInteractionPolicy",
       "EditorViewportPolicy"],
     Program: "MainUI", EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
   }),
