@@ -31,15 +31,16 @@ export class VirtualFileDocument extends FileDocument {
     this.lineCheckpoints = [{ byte: 0, lines: 0 }];
     this.prioritySeed = 0;
     this.ocda = Object.freeze({
-      Request: ["load", "page", "describePage", "save",
+      Request: ["load", "page", "seekLine", "describePage", "save",
         "edit", "reconcile"],
-      Response: ["load", "page", "describePage", "save",
+      Response: ["load", "page", "seekLine", "describePage", "save",
         "edit", "reconcile"],
-      UserAPI: ["page", "describePage", "edit", "save"],
+      UserAPI: ["page", "seekLine", "describePage", "edit", "save"],
       AgentAPI: [],
       Property: ["UTF8SlicePolicy", "PieceTreePolicy",
         "BPlusSliceIndex", "DocumentStatus", "VirtualPageLinePolicy",
-        "SliceTransactionPolicy", "SliceBatchWritePolicy"],
+        "SliceTransactionPolicy", "SliceBatchWritePolicy",
+        "GlobalPageLinePolicy", "GoToLinePolicy"],
       Program: "VirtualFileDocument",
       EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
     });
@@ -234,6 +235,63 @@ export class VirtualFileDocument extends FileDocument {
     return this.describePage();
   }
 
+  /**
+   * Navigate by GLOBAL line, including unloaded pages and edited pages.
+   * The bounded locator reads only source byte windows and dirty LF
+   * metadata; page text remains authoritative only after loadPage.
+   * No partial document state is published until the target is valid.
+   */
+  async seekLine({ line, lineHeight, viewportHeight,
+    onProgress = () => {} }) {
+    if (typeof onProgress !== "function" ||
+        !Number.isFinite(lineHeight) || lineHeight <= 0 ||
+        !Number.isFinite(viewportHeight) || viewportHeight < 0) {
+      this.failure("Invalid line seek geometry", 400);
+    }
+    const file = await this.handle.getFile();
+    if (this.fileFingerprint &&
+        this.fingerprint(file) !== this.fileFingerprint &&
+        this.unsaved) {
+      this.failure("External virtual file changed", 409);
+    }
+    const edits = new Map();
+    const pending = [...this.pendingRecoveries.values()];
+    if (this.pendingRecovery) pending.push(this.pendingRecovery);
+    for (const record of pending) {
+      edits.set(record.index, {
+        editedLineBreaks: record.editedLineBreaks,
+        endsWithLF: record.editedEndsWithLF
+      });
+    }
+    for (const record of this.dirtyPages.values()) {
+      edits.set(record.index, {
+        editedLineBreaks: record.editedLineBreaks,
+        endsWithLF: record.text.endsWith("\\n")
+      });
+    }
+    // Recovered checkpoints may not have a terminal LF flag. Their
+    // actual text must be loaded before resolving the exact edge.
+    const located = await this.property("GlobalPageLinePolicy").locate({
+      file, targetLine: line,
+      pageBytes: this.property("UTF8SlicePolicy").defaultChunkBytes,
+      edits, onProgress
+    });
+    if (located.index !== this.virtualPageIndex) {
+      await this.loadPage(located.index);
+    }
+    const position = this.property("GoToLinePolicy").resolve({
+      text: this.text, firstLine: this.pageFirstLine,
+      targetLine: line, lineHeight
+    });
+    this.cursor = position.offset;
+    this.scrollTop = Math.max(0,
+      position.scrollTop - viewportHeight / 3);
+    this.scrollLeft = 0;
+    this.pageEntryEdge = "start";
+    return { ...this.describePage(), line, offset: this.cursor,
+      scrollTop: this.scrollTop };
+  }
+
   async editPage(text) {
     if (!this.virtualEditable || !this.editSliceId) {
       this.failure("Virtual page is not ready to edit", 409);
@@ -405,6 +463,7 @@ export class VirtualFileDocument extends FileDocument {
         throw error;
       }
     }
+    if (action === "seekLine") return this.seekLine(payload);
     if (action === "describePage") return this.describePage();
     if (action === "edit") return this.editPage(payload.text);
     if (action === "save") {
