@@ -47,3 +47,13 @@ No real 5GiB editor or physical file-permission acceptance is claimed.
 - Disabled Provider fails at resolution (404); no silent fallback.
 - Existing PR04.03 replace and legacy target-ID tests stay in suite.
 - No route configuration exposed through Cluster.api.
+
+## PR04.06 — Observe relation tests
+- One primary plus one or more observers, full-table atomic validation.
+- Observer receives frozen {service, action, status, ok} only; no payload,
+  response, caller identity or options forwarded as data.
+- Primary failure skips sidecar; primary success returns unmodified.
+- Observer 403, thrown exception and contract mismatch log EHU but do not
+  alter primary REP. Every sidecar uses guarded HubUnit.request.
+- Existing Request/Response dependencies remain 10/01; VTE remains isolated.
+- Exact-head Node+browser CI and rollback checkpoint required for PASS.

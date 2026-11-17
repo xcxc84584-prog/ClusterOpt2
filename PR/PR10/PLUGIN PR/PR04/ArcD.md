@@ -120,3 +120,21 @@ Provider-supplied identity. Chain validates per-hop input/output; fanout
 checks each input before dispatch and each output after results.
 Failures 422/502 record EHU; ACL failures retain original 403.
 The scheduler is unchanged, so concurrency is asynchronous only.
+
+## PR04.06 — Observe sidecar architecture
+```mermaid
+flowchart TD
+  R[Service Request] --> S[ServiceRequestResolver]
+  S --> P[Primary via HubUnit.request]
+  P --> V[Validate primary output]
+  V --> Rep[Return original response]
+  V --> M[Minimal immutable event]
+  M --> O[Observer via HubUnit.request]
+  O --> E[Observer EHU on failure]
+```
+Observe requires at least two Providers (primary then sidecars). A failed
+primary is returned unchanged with no observer invocation. Sidecars can
+never receive original payload/response; each one still faces the original
+ACL/UserAPI/AgentAPI checks. Observer failures do not affect REP. OMU
+records the same normal 10/01 dependency edges for successful calls and
+EHU for rejected observation.

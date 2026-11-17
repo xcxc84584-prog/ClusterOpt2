@@ -87,3 +87,15 @@ returning partial data. Provider limits are eight, the scheduler remains
 the concurrency authority, and runtime output is bounded to 1 MiB per
 stage. timeoutMs remains metadata (no pretense of hard cancellation
 for running receive calls). No new browser or agent mutation API.
+
+## PR04.06 — Observe route
+Primary Provider receives the original payload; observers receive only a
+fixed immutable primitive-only envelope (service, action, status, ok),
+never request body, response value, source identity or options. Execute
+observer after successful primary completion via guarded HubUnit.request;
+observer errors log EHU and do not alter the primary return. No separate
+registry/Worker/permission grant or hard timeout. Provider list is bounded
+to 8, with one primary and at least one observer. Approximate dispatch
+cost is O(number of observers); primary path does not await observer I/O.
+Upstream comparison: OpenTelemetry's separation of telemetry export from
+business results and VS Code's contribution-based provider boundaries.

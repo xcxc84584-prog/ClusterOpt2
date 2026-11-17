@@ -263,12 +263,19 @@ export class HubUnit {
     }
     if (!parsed.value.routes.every(route =>
       route.mode === "replace" ||
-      (!replaceOnly && ["chain", "fanout"].includes(route.mode)))) {
+      (!replaceOnly && ["chain", "fanout", "observe"].includes(route.mode)))) {
       this.omu.record("EHU", "LinkCore", "Service.Route.Configure", 400);
       return { ok: false, status: 400,
         error: "Unsupported executable route mode" };
     }
     for (const route of parsed.value.routes) {
+      // Observe always has one primary and at least one independent observer.
+      if (route.mode === "observe" && route.providers.length < 2) {
+        this.omu.record("EHU", "LinkCore",
+          "Service.Route.Configure", 400, route.routeId);
+        return { ok: false, status: 400,
+          error: "Observe requires primary and observer" };
+      }
       const found = this.serviceResolver.services.resolve(route.service);
       const contracts = [];
       for (const id of route.providers) {
@@ -347,6 +354,10 @@ export class HubUnit {
       return this.executeFanout(source, route.value,
         payload, options);
     }
+    if (route.value.mode === "observe") {
+      return this.executeObserve(source, route.value,
+        payload, options);
+    }
     return this.request(source, route.value.objectId,
       route.value.action, payload, options);
   }
@@ -411,6 +422,62 @@ export class HubUnit {
     }
     return { ok: true, status: 200,
       value: Object.freeze(values) };
+  }
+
+  /**
+   * PR04.06: Only the primary gets application data. Observers receive
+   * minimal, primitive-only metadata after successful primary execution.
+   * They are asynchronous and can neither mutate nor delay its result.
+   * All dispatches still pass through the guarded Hub request.
+   */
+  async executeObserve(source, route, payload, options) {
+    const [primary, ...observers] = route.stages;
+    if (!RouteContractPolicy.validate(payload, primary.inputSchema)) {
+      return this.routeFailure(source, route, 422,
+        "Observe primary input contract failed", 0);
+    }
+    const result = await this.request(source, primary.objectId,
+      route.action, payload, options);
+    if (!result.ok) return result;
+    if (!RouteContractPolicy.validate(result.value, primary.outputSchema)) {
+      return this.routeFailure(source, route, 502,
+        "Observe primary output contract failed", 0);
+    }
+    // Do not forward payload, response, origin or source identity.
+    const event = Object.freeze({
+      service: route.service,
+      action: route.action,
+      status: result.status,
+      ok: true
+    });
+    for (const [index, observer] of observers.entries()) {
+      // Rejected contract is an observation failure, not a primary failure.
+      if (!RouteContractPolicy.validate(event, observer.inputSchema)) {
+        this.routeObservationFailure(source, route, 422, index + 1);
+        continue;
+      }
+      // Detached dispatch: no Promise is returned to the primary caller.
+      // Catch all exceptions and log failures to avoid unhandled rejection.
+      Promise.resolve().then(() => this.request(
+        source, observer.objectId, route.action, event, options
+      )).then(observed => {
+        if (!observed.ok) {
+          this.routeObservationFailure(
+            source, route, observed.status, index + 1);
+        } else if (!RouteContractPolicy.validate(
+          observed.value, observer.outputSchema)) {
+          this.routeObservationFailure(source, route, 502, index + 1);
+        }
+      }).catch(() => {
+        this.routeObservationFailure(source, route, 500, index + 1);
+      });
+    }
+    return result;
+  }
+
+  routeObservationFailure(source, route, status, stage) {
+    this.omu.record("EHU", source, "Service.Route.Observe",
+      status, route.routeId, { stage });
   }
 
   routeFailure(source, route, status, error, stage) {
