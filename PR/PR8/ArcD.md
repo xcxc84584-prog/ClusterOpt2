@@ -527,3 +527,13 @@ SliceLoader.Request.loadBatch(indices<=4) -> UTF8SlicePolicy.read concurrently
 - Optional preload budget miss is returned in skipped list, never
   silently represented as resident. A changed limit triggers retry.
 - No Worker CPU execution yet; batched concurrency is asynchronous I/O.
+
+## Patch(+25) transfer integrity EventChain
+UI -> HubUnit -> Explorer.Request.pasteEntry ->
+ExplorerEntryPolicy.ensureAbsent/verifyCopy ->
+FileSystemWritable.close -> bounded target readback ->
+source readback -> optional source retirement ->
+Explorer.Response.pasteEntry -> OMU Log / EHU.
+EHU: 400 invalid destination, 409 byte mismatch,
+503 failed file API and separate PasteCleanup EHU on cleanup failure.
+No new Object/Property; existing Explorer and ExplorerEntryPolicy reused.
