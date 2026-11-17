@@ -1,199 +1,178 @@
-param([Parameter(Mandatory=$true)][string]$ExpectedVersion)
-if ($ExpectedVersion -notmatch '^\d+\.\d+\.\d+-pr\d+\.patch\d+(\.fix\d+)?) { throw 'Invalid version' }
-# ClusterOpt2 Local Agent - versioned installer with safe port ownership
+param(
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^\d+\.\d+\.\d+-pr\d+\.patch\d+(?:\.fix\d+)?$')]
+    [string]$ExpectedVersion
+)
+
+# Version is provided by LinkCore.SystemVersion through the CMD.
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$dir = Join-Path $env:USERPROFILE 'ClusterOpt2-Agent'
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-$base = 'https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/main/Implementation/local-agent/'
-function Download([string]$url,[string]$target) {
-  $last = $null
-  foreach ($candidate in @($url,($url -replace 'raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/main/','github.com/xcxc84584-prog/ClusterOpt2/raw/refs/heads/main/'))) {
-    for ($i=0;$i -lt 3;$i++) {
-      try { Invoke-WebRequest -UseBasicParsing -Uri $candidate -OutFile $target -TimeoutSec 45 -ErrorAction Stop; if((Get-Item $target).Length -lt 20){throw 'Downloaded file is empty'}; return }
-      catch { $last = $_; Write-Warning ('Download retry: '+$_.Exception.Message); Start-Sleep -Seconds 2 }
+$agentDir = Join-Path $env:USERPROFILE 'ClusterOpt2-Agent'
+$base = 'https://raw.githubusercontent.com/xcxc84584-prog/' +
+    'ClusterOpt2/main/Implementation/local-agent/'
+
+function Download-AgentFile {
+    param([string]$Uri, [string]$Destination)
+    $fallback = $Uri.Replace(
+        'raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/main/',
+        'github.com/xcxc84584-prog/ClusterOpt2/raw/refs/heads/main/'
+    )
+    $failure = $null
+    foreach ($candidate in @($Uri, $fallback)) {
+        for ($attempt = 0; $attempt -lt 3; $attempt++) {
+            try {
+                $options = @{
+                    Uri = $candidate
+                    OutFile = $Destination
+                    TimeoutSec = 45
+                    UseBasicParsing = $true
+                }
+                Invoke-WebRequest @options
+                if ((Get-Item $Destination).Length -lt 20) {
+                    throw 'Downloaded file is incomplete'
+                }
+                return
+            } catch {
+                $failure = $_
+                Start-Sleep -Seconds 2
+            }
+        }
     }
-  }
-  throw ('Download failed: '+$url+'; '+$last)
+    throw ('Download failed: ' + $Uri + '; ' + $failure)
 }
-function FindNode {
-  $c = Get-Command node.exe -ErrorAction SilentlyContinue
-  if ($c) {try {$v = & $c.Source --version; if ([int](($v -replace '^v','').Split('.')[0]) -ge 20) {return $c.Source}}catch{}}
-  foreach($path in @((Join-Path $env:ProgramFiles 'nodejs\node.exe'),(Join-Path $dir 'node\node.exe'))) {
-    if(Test-Path $path){return $path}
-  }
-  return $null
+
+function Find-Node {
+    $command = Get-Command node.exe -ErrorAction SilentlyContinue
+    $candidates = @()
+    if ($command) { $candidates += $command.Source }
+    if ($env:ProgramFiles) {
+        $candidates += Join-Path $env:ProgramFiles 'nodejs\node.exe'
+    }
+    $candidates += Join-Path $agentDir 'node\node.exe'
+    foreach ($path in $candidates) {
+        if (-not (Test-Path $path)) { continue }
+        try {
+            $version = & $path --version
+            $major = [int](($version -replace '^v', '').Split('.')[0])
+            if ($LASTEXITCODE -eq 0 -and $major -ge 20) {
+                return $path
+            }
+        } catch {
+            continue
+        }
+    }
+    return $null
 }
+
+function Install-PortableNode {
+    $index = Invoke-RestMethod 'https://nodejs.org/dist/index.json'
+    $release = $index | Where-Object {
+        $_.lts -and $_.files -contains 'win-x64-zip'
+    } | Select-Object -First 1
+    if (-not $release) { throw 'No Windows x64 Node.js LTS found' }
+    $zip = Join-Path $agentDir 'node.zip'
+    $uri = 'https://nodejs.org/dist/' + $release.version +
+        '/node-' + $release.version + '-win-x64.zip'
+    Download-AgentFile -Uri $uri -Destination $zip
+    $extract = Join-Path $agentDir 'node-extract'
+    Expand-Archive -Path $zip -DestinationPath $extract -Force
+    $folder = Get-ChildItem $extract -Directory |
+        Select-Object -First 1
+    if (-not $folder) { throw 'Node.js extraction failed' }
+    $destination = Join-Path $agentDir 'node'
+    Copy-Item $folder.FullName $destination -Recurse -Force
+    return Join-Path $destination 'node.exe'
+}
+
+function Install-Dependencies {
+    param([string]$NodePath)
+    $parent = Split-Path $NodePath
+    $npmCmd = Join-Path $parent 'npm.cmd'
+    $npmCli = Join-Path $parent 'node_modules\npm\bin\npm-cli.js'
+    Push-Location $agentDir
+    try {
+        if (Test-Path $npmCmd) {
+            & $npmCmd install --omit=dev --no-audit --no-fund
+        } elseif (Test-Path $npmCli) {
+            & $NodePath $npmCli install --omit=dev --no-audit --no-fund
+        } else {
+            throw 'npm is missing from the selected Node.js distribution'
+        }
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Native node-pty dependencies failed to install'
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
+function Select-LoopbackPort {
+    $port = 43881
+    while ($true) {
+        $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
+        if ($listeners.Count -eq 0) { return $port }
+        Write-Host ('Port ' + $port + ' is occupied.')
+        $choice = Read-Host '[P]ick another port / [C]ancel'
+        if ($choice.Trim().ToUpperInvariant() -ne 'P') {
+            throw 'Cancelled without stopping any process'
+        }
+        $value = Read-Host 'Enter TCP port (1024-65535)'
+        $candidate = 0
+        $valid = [int]::TryParse($value, [ref]$candidate)
+        if (-not $valid -or $candidate -lt 1024 -or
+            $candidate -gt 65535) {
+            Write-Warning 'Invalid TCP port'
+            continue
+        }
+        $port = $candidate
+    }
+}
+
+New-Item -ItemType Directory -Force -Path $agentDir | Out-Null
 Write-Host '[1/5] Checking Node.js...'
-$node = FindNode
-if (-not $node) {
-  Write-Host 'Installing portable Node.js LTS (no administrator rights required)...'
-  $index = Invoke-RestMethod 'https://nodejs.org/dist/index.json' -TimeoutSec 45
-  $release = $index | Where-Object { $_.lts -and $_.files -contains 'win-x64-zip' } | Select-Object -First 1
-  if(-not $release){throw 'No Windows x64 Node.js LTS found'}
-  $zip = Join-Path $dir 'node.zip'
-  Download ('https://nodejs.org/dist/'+$release.version+'/node-'+$release.version+'-win-x64.zip') $zip
-  Expand-Archive -Path $zip -DestinationPath (Join-Path $dir 'node-extract') -Force
-  $extracted = Get-ChildItem (Join-Path $dir 'node-extract') -Directory | Select-Object -First 1
-  if(-not $extracted){throw 'Node archive extraction failed'}
-  Copy-Item $extracted.FullName (Join-Path $dir 'node') -Recurse -Force
-  $node = Join-Path $dir 'node\node.exe'
+$node = Find-Node
+if (-not $node) { $node = Install-PortableNode }
+$env:PATH = (Split-Path $node) + ';' + $env:PATH
+
+Write-Host '[2/5] Downloading compatible agent files...'
+foreach ($name in @('server.mjs', 'native-terminal.mjs', 'package.json')) {
+    $target = Join-Path $agentDir $name
+    Download-AgentFile -Uri ($base + $name) -Destination $target
 }
-$env:PATH = (Split-Path $node)+';'+$env:PATH
-Write-Host '[2/5] Downloading agent files...'
-foreach($file in @('server.mjs','native-terminal.mjs','package.json')) {Download ($base+$file) (Join-Path $dir $file)}
-# Refuse a moving-main payload that does not match the UI release.
-$manifestPath = Join-Path $dir 'package.json'
-$manifest = Get-Content -Path $manifestPath -Raw |
-  ConvertFrom-Json
+$manifest = Get-Content (Join-Path $agentDir 'package.json') -Raw |
+    ConvertFrom-Json
 if ($manifest.name -ne 'clusteropt2-local-agent' -or
     $manifest.version -ne $ExpectedVersion) {
-  throw ('Agent release mismatch: expected ' + $ExpectedVersion +
-    ', received ' + $manifest.version +
-    '. Download a fresh CMD from the matching ClusterOpt2 release.')
+    throw ('Agent release mismatch: expected ' + $ExpectedVersion +
+        '; received ' + $manifest.version)
 }
-Write-Host '[3/5] Installing terminal dependencies...'
-Push-Location $dir
-try {
-  & $node (Join-Path (Split-Path $node) 'node_modules\npm\bin\npm-cli.js') install --omit=dev --no-audit --no-fund
-  if($LASTEXITCODE -ne 0){throw 'npm install failed; Windows build tools may be required for node-pty'}
-} finally {Pop-Location}
-$port = 43881
-while($true) {
-  Write-Host ('[4/5] Checking port '+$port)
-  $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
-  if(-not $listeners){break}
-  $ids = @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)
-  foreach($processId in $ids){$proc=Get-Process -Id $processId -ErrorAction SilentlyContinue;Write-Host ('Occupied: PID '+$processId+' '+$proc.ProcessName+' '+$proc.Path)}
-  $choice = (Read-Host '[P]ick another port / [C]ancel').Trim().ToUpperInvariant()
-  if($choice -eq 'C'){throw 'Cancelled by user'}
-  if($choice -eq 'P'){
-    $value=Read-Host 'Enter TCP port (1024-65535)'
-    $number=0
-    if(-not [int]::TryParse($value,[ref]$number) -or $number -lt 1024 -or $number -gt 65535){Write-Warning 'Invalid port';continue}
-    $port=$number;continue
-  }
-  if($choice -ne 'P'){throw 'Cancelled to protect the existing listener'}
-}
-Write-Host '[5/5] Starting independent Local Agent...'
-$out=Join-Path $dir 'agent-stdout.log';$err=Join-Path $dir 'agent-stderr.log'
-if(Test-Path $out){Remove-Item $out -Force -ErrorAction SilentlyContinue}
-if(Test-Path $err){Remove-Item $err -Force -ErrorAction SilentlyContinue}
+
+Write-Host '[3/5] Installing dependencies...'
+Install-Dependencies -NodePath $node
+Write-Host '[4/5] Selecting available port...'
+$port = Select-LoopbackPort
 $env:CLUSTEROPT_PORT = [string]$port
 $env:CLUSTEROPT_AGENT_VERSION = $ExpectedVersion
-Start-Process -FilePath $node -ArgumentList @('server.mjs') -WorkingDirectory $dir -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError $err | Out-Null
-$ready=$false
-for($i=0;$i -lt 100;$i++){
- Start-Sleep -Milliseconds 250
- if(Test-Path $out){
-  $log=Get-Content $out -Raw -ErrorAction SilentlyContinue
-  if($log -match 'Pairing token \(do not share\): ([a-f0-9]{64})'){
-   Write-Host ('Agent port: '+$port)
-   Write-Host ('PAIRING TOKEN (keep private): '+$Matches[1])
-   $ready=$true;break
-  }
- }
+
+Write-Host '[5/5] Launching native Local Agent...'
+# No token is written to an installer log. The native process displays it.
+$start = @{
+    FilePath = $node
+    ArgumentList = @('server.mjs')
+    WorkingDirectory = $agentDir
+    PassThru = $true
 }
-if(-not $ready){if(Test-Path $err){Get-Content $err -Tail 25};throw 'Agent startup timed out'}
-Write-Host ('Agent version: '+$ExpectedVersion)
-Write-Host 'Agent running. You may close this CMD window.'
-) { throw 'Invalid version' }
-# ClusterOpt2 Local Agent - versioned installer with safe port ownership
-$ErrorActionPreference = 'Stop'
-$ProgressPreference = 'SilentlyContinue'
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$dir = Join-Path $env:USERPROFILE 'ClusterOpt2-Agent'
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-$base = 'https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/main/Implementation/local-agent/'
-function Download([string]$url,[string]$target) {
-  $last = $null
-  foreach ($candidate in @($url,($url -replace 'raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/main/','github.com/xcxc84584-prog/ClusterOpt2/raw/refs/heads/main/'))) {
-    for ($i=0;$i -lt 3;$i++) {
-      try { Invoke-WebRequest -UseBasicParsing -Uri $candidate -OutFile $target -TimeoutSec 45 -ErrorAction Stop; if((Get-Item $target).Length -lt 20){throw 'Downloaded file is empty'}; return }
-      catch { $last = $_; Write-Warning ('Download retry: '+$_.Exception.Message); Start-Sleep -Seconds 2 }
+$agent = Start-Process @start
+for ($attempt = 0; $attempt -lt 40; $attempt++) {
+    Start-Sleep -Milliseconds 250
+    if ($agent.HasExited) { throw 'Local Agent exited unexpectedly' }
+    $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
+    if (@($listeners | Where-Object { $_.OwningProcess -eq $agent.Id }).Count -gt 0) {
+        Write-Host ('Agent port: ' + $port)
+        Write-Host ('Agent version: ' + $ExpectedVersion)
+        Write-Host 'Pair with the token shown in the native agent console.'
+        exit 0
     }
-  }
-  throw ('Download failed: '+$url+'; '+$last)
 }
-function FindNode {
-  $c = Get-Command node.exe -ErrorAction SilentlyContinue
-  if ($c) {try {$v = & $c.Source --version; if ([int](($v -replace '^v','').Split('.')[0]) -ge 20) {return $c.Source}}catch{}}
-  foreach($path in @((Join-Path $env:ProgramFiles 'nodejs\node.exe'),(Join-Path $dir 'node\node.exe'))) {
-    if(Test-Path $path){return $path}
-  }
-  return $null
-}
-Write-Host '[1/5] Checking Node.js...'
-$node = FindNode
-if (-not $node) {
-  Write-Host 'Installing portable Node.js LTS (no administrator rights required)...'
-  $index = Invoke-RestMethod 'https://nodejs.org/dist/index.json' -TimeoutSec 45
-  $release = $index | Where-Object { $_.lts -and $_.files -contains 'win-x64-zip' } | Select-Object -First 1
-  if(-not $release){throw 'No Windows x64 Node.js LTS found'}
-  $zip = Join-Path $dir 'node.zip'
-  Download ('https://nodejs.org/dist/'+$release.version+'/node-'+$release.version+'-win-x64.zip') $zip
-  Expand-Archive -Path $zip -DestinationPath (Join-Path $dir 'node-extract') -Force
-  $extracted = Get-ChildItem (Join-Path $dir 'node-extract') -Directory | Select-Object -First 1
-  if(-not $extracted){throw 'Node archive extraction failed'}
-  Copy-Item $extracted.FullName (Join-Path $dir 'node') -Recurse -Force
-  $node = Join-Path $dir 'node\node.exe'
-}
-$env:PATH = (Split-Path $node)+';'+$env:PATH
-Write-Host '[2/5] Downloading agent files...'
-foreach($file in @('server.mjs','native-terminal.mjs','package.json')) {Download ($base+$file) (Join-Path $dir $file)}
-# Refuse a moving-main payload that does not match the UI release.
-$manifestPath = Join-Path $dir 'package.json'
-$manifest = Get-Content -Path $manifestPath -Raw |
-  ConvertFrom-Json
-if ($manifest.name -ne 'clusteropt2-local-agent' -or
-    $manifest.version -ne $ExpectedVersion) {
-  throw ('Agent release mismatch: expected ' + $ExpectedVersion +
-    ', received ' + $manifest.version +
-    '. Download a fresh CMD from the matching ClusterOpt2 release.')
-}
-Write-Host '[3/5] Installing terminal dependencies...'
-Push-Location $dir
-try {
-  & $node (Join-Path (Split-Path $node) 'node_modules\npm\bin\npm-cli.js') install --omit=dev --no-audit --no-fund
-  if($LASTEXITCODE -ne 0){throw 'npm install failed; Windows build tools may be required for node-pty'}
-} finally {Pop-Location}
-$port = 43881
-while($true) {
-  Write-Host ('[4/5] Checking port '+$port)
-  $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
-  if(-not $listeners){break}
-  $ids = @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)
-  foreach($processId in $ids){$proc=Get-Process -Id $processId -ErrorAction SilentlyContinue;Write-Host ('Occupied: PID '+$processId+' '+$proc.ProcessName+' '+$proc.Path)}
-  $choice = (Read-Host '[P]ick another port / [C]ancel').Trim().ToUpperInvariant()
-  if($choice -eq 'C'){throw 'Cancelled by user'}
-  if($choice -eq 'P'){
-    $value=Read-Host 'Enter TCP port (1024-65535)'
-    $number=0
-    if(-not [int]::TryParse($value,[ref]$number) -or $number -lt 1024 -or $number -gt 65535){Write-Warning 'Invalid port';continue}
-    $port=$number;continue
-  }
-  if($choice -ne 'P'){throw 'Cancelled to protect the existing listener'}
-}
-Write-Host '[5/5] Starting independent Local Agent...'
-$out=Join-Path $dir 'agent-stdout.log';$err=Join-Path $dir 'agent-stderr.log'
-if(Test-Path $out){Remove-Item $out -Force -ErrorAction SilentlyContinue}
-if(Test-Path $err){Remove-Item $err -Force -ErrorAction SilentlyContinue}
-$env:CLUSTEROPT_PORT = [string]$port
-$env:CLUSTEROPT_AGENT_VERSION = $ExpectedVersion
-Start-Process -FilePath $node -ArgumentList @('server.mjs') -WorkingDirectory $dir -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError $err | Out-Null
-$ready=$false
-for($i=0;$i -lt 100;$i++){
- Start-Sleep -Milliseconds 250
- if(Test-Path $out){
-  $log=Get-Content $out -Raw -ErrorAction SilentlyContinue
-  if($log -match 'Pairing token \(do not share\): ([a-f0-9]{64})'){
-   Write-Host ('Agent port: '+$port)
-   Write-Host ('PAIRING TOKEN (keep private): '+$Matches[1])
-   $ready=$true;break
-  }
- }
-}
-if(-not $ready){if(Test-Path $err){Get-Content $err -Tail 25};throw 'Agent startup timed out'}
-Write-Host ('Agent version: '+$ExpectedVersion)
-Write-Host 'Agent running. You may close this CMD window.'
+throw 'Local Agent failed to open the selected loopback port'

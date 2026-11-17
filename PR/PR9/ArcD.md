@@ -89,3 +89,34 @@ Failures: 400 invalid line or geometry; 416 beyond EOF; 409 external
 fingerprint conflict with unsaved edits; 422 truncated source chunk;
 503 I/O failure. HubUnit logs unsuccessful Request/Response as EHU.
 Document Load/Save authority and the old PS UI are unchanged.
+
+## Patch(+6): installer/EventChain security boundary
+UI[SystemVersion] -> createSetupCmd(version) -> CMD
+ -> PowerShell install-current.ps1 ExpectedVersion [ValidatePattern]
+ -> Download-AgentFile (ClusterOpt2 main only)
+ -> read package.json / exact version comparison
+ -> Find-Node or Install-PortableNode
+ -> Install-Dependencies
+ -> Select-LoopbackPort (cancel or alternative port)
+ -> native agent process and console pairing
+ -> existing browser PowerShellClient /status version handshake.
+
+The native installer is external OS execution explicitly initiated
+by the user; it does not claim registration as an OCDA browser Object.
+HubUnit continues to own browser-side registered Object/Property
+Request/Response. PSM pairing and native console are security
+boundaries and never place the secret in OMU logs.
+
+| Condition | Expected code/result | Observability |
+| --- | --- | --- |
+| Installer AST invalid | GitHub Windows CI FAIL | CI failure |
+| Version fails pattern | validation failure | CMD nonzero exit |
+| Manifest mismatch | installation abort | terminal error |
+| Node/npm absent | portable fallback or abort | terminal error |
+| Port occupied | select another or cancel | no process killed |
+| Native startup fails | nonzero error / timeout | terminal error |
+| Agent version mismatch | client rejects Connected | UI EHU |
+| Agent authenticated | existing 200 / WS authorized | Hub Log |
+
+The parser CI can run independent Windows OS versions in parallel.
+Local download and npm stages stay serial to avoid corrupted installs.

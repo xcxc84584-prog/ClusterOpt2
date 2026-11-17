@@ -60,3 +60,19 @@ test("PR9 rejects outdated local agents before starting native shell", async () 
   assert.equal(status.configured, false);
   assert.equal(status.error, "AGENT_VERSION_MISMATCH");
 });
+
+test("PR9 Patch6: native installer is unique and parser protected", () => {
+  assert.equal((nativeInstaller.match(/function Download-AgentFile/g) || [])
+    .length, 1);
+  assert.equal((nativeInstaller.match(/param\(/g) || []).length, 3);
+  assert.ok(nativeInstaller.includes("[ValidatePattern("));
+  assert.equal(nativeInstaller.includes("UnexpectedToken"), false);
+  assert.equal(nativeInstaller.includes("RedirectStandardOutput"), false);
+  assert.equal(nativeInstaller.includes("PAIRING TOKEN (keep private)"),
+    false);
+  assert.ok(nativeInstaller.includes("Install-Dependencies"));
+  assert.ok(nativeInstaller.includes("Start-Process @start"));
+  assert.ok(nativeInstaller.includes("Select-LoopbackPort"));
+  assert.ok(nativeInstaller.includes("npm.cmd"));
+  assert.equal(nativeInstaller.includes("Stop-Process"), false);
+});
