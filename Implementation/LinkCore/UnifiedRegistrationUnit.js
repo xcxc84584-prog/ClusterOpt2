@@ -1,6 +1,7 @@
 import { describeObjectAPIs, validateObjectContract } from "./ObjectContract.js";
 import { ProviderManifestPolicy } from "../property/ProviderManifestPolicy.js";
 import { ProviderFactoryPolicy } from "../property/ProviderFactoryPolicy.js";
+import { ProviderHealthPolicy } from "../property/ProviderHealthPolicy.js";
 
 /**
  * Volatile runtime registry. No localStorage: registrations expire on reload.
@@ -17,6 +18,7 @@ export class UnifiedRegistrationUnit {
     this.providerInstances = new Map();
     this.disabledProviders = new Set();
     this.disabledServices = new Map();
+    this.providerHealth = new Map();
   }
 
   register(object) {
@@ -91,6 +93,8 @@ export class UnifiedRegistrationUnit {
       return { ok: false, status: 409, error: "Duplicate provider ID" };
     }
     this.providers.set(value.providerId, value);
+    this.providerHealth.set(value.providerId,
+      ProviderHealthPolicy.initial);
     for (const item of value.provides) {
       const list = this.providerServices.get(item.service) ?? new Set();
       list.add(value.providerId);
@@ -156,6 +160,7 @@ export class UnifiedRegistrationUnit {
     this.providerFactories.delete(providerId);
     this.disabledProviders.delete(providerId);
     this.disabledServices.delete(providerId);
+    this.providerHealth.delete(providerId);
     for (const item of provider.provides) {
       const list = this.providerServices.get(item.service);
       list?.delete(providerId);
@@ -167,7 +172,9 @@ export class UnifiedRegistrationUnit {
   providersForService(serviceId) {
     const ids = this.providerServices.get(serviceId) ?? new Set();
     return Object.freeze([...ids].filter(id =>
-      this.isServiceEnabled(id, serviceId)).map(id =>
+      this.isServiceEnabled(id, serviceId) &&
+      ProviderHealthPolicy.isAvailable(
+        this.providerHealth.get(id))).map(id =>
       this.providers.get(id)).filter(Boolean));
   }
 
@@ -208,6 +215,20 @@ export class UnifiedRegistrationUnit {
   isServiceEnabled(providerId, serviceId) {
     return !this.disabledProviders.has(providerId) &&
       !this.disabledServices.get(providerId)?.has(serviceId);
+  }
+
+  updateProviderHealth(providerId, outcome, now = Date.now()) {
+    if (!this.providers.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    const updated = ProviderHealthPolicy.transition(
+      this.providerHealth.get(providerId), outcome, now);
+    if (updated.ok) this.providerHealth.set(providerId, updated.value);
+    return updated;
+  }
+
+  getProviderHealth(providerId) {
+    return this.providerHealth.get(providerId) ?? null;
   }
 
   getProvider(providerId) {
