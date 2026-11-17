@@ -34,6 +34,46 @@ export class HubUnit {
     return removed;
   }
 
+  /**
+   * Trusted in-process provider declaration. An Object may declare
+   * only its own existing actions; no external Cluster.api mutation.
+   */
+  registerProvider(source, manifest) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Provider.Register", 404);
+      return { ok: false, status: 404, error: "Unknown caller" };
+    }
+    if (source !== manifest?.objectId) {
+      this.omu.record("EHU", source, "Provider.Register", 403);
+      return { ok: false, status: 403, error: "Provider owner mismatch" };
+    }
+    const result = this.registry.registerProvider(manifest);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Register", result.status, manifest?.providerId ?? "");
+    return result;
+  }
+
+  unregisterProvider(source, providerId) {
+    if (!this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Unregister", 404);
+      return { ok: false, status: 404 };
+    }
+    const provider = this.registry.getProvider(providerId);
+    if (!provider) {
+      this.omu.record("EHU", source, "Provider.Unregister", 404);
+      return { ok: false, status: 404 };
+    }
+    if (provider.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Unregister", 403);
+      return { ok: false, status: 403 };
+    }
+    this.registry.unregisterProvider(providerId);
+    this.omu.record("Log", source, "Provider.Unregister", 200, providerId);
+    return { ok: true, status: 200 };
+  }
+
   // Active wait-for edges are used only for deadlock detection.
   hasWaitPath(start, destination, visited = new Set()) {
     if (start === destination) return true;
