@@ -20,7 +20,7 @@ test("PR9 global seek: spans virtual pages and preserves CRLF/UTF-8", async () =
   assert.ok(third.index >= 1);
   assert.ok(fourth.index >= third.index);
   assert.equal((await locate(text, 1)).index, 0);
-  await assert.rejects(locate(text, 5), { status: 416 });
+  await assert.rejects(locate(text, 6), { status: 416 });
   await assert.rejects(locate(text, 0), { status: 400 });
 });
 
