@@ -1,3 +1,6 @@
+import { PluginLocalAgentObject } from
+  "../object/PluginLocalAgentObject.js";
+
 /**
  * Generic plugin UI mounting extension for PR14.3.
  *
@@ -99,8 +102,49 @@ export class PluginUIHostUnit {
       panel.id = "plugin-extension-panel-" + provider.objectId;
       const view = {
         button, panel, frame, labels, enabled: true,
-        snapshot, provider
+        snapshot, provider, localAgent: null
       };
+      if (provider.permissions.includes("network.request")) {
+        const agent = new PluginLocalAgentObject(
+          this.core, provider.providerId, this.doc);
+        if (!this.core.register(agent)) {
+          throw Error("Local Agent object registration failed");
+        }
+        view.localAgent = agent;
+        const publish = response => {
+          frame.contentWindow?.postMessage({
+            type: "cluster-local-agent-status",
+            state: response.state
+          }, "*");
+        };
+        agent.onState = publish;
+        const receive = async event => {
+          if (event.source !== frame.contentWindow ||
+              event.origin !== "null" ||
+              !this.views.has(provider.providerId) ||
+              !view.enabled) return;
+          const kind = event.data?.type;
+          const actions = {
+            "cluster-local-agent-pair": "pair",
+            "cluster-local-agent-ping": "ping",
+            "cluster-local-agent-disconnect": "disconnect"
+          };
+          const action = Object.hasOwn(actions, kind) ?
+            actions[kind] : null;
+          if (!action || !this.core.checkPluginPermission(
+            provider.providerId, "network.request")) return;
+          const result = await this.core.request("ui", agent.id,
+            action, {}, { origin: "user" });
+          publish({ state: agent.state });
+          frame.contentWindow?.postMessage({
+            type: "cluster-local-agent-result",
+            action, status: result.status, ok: result.ok
+          }, "*");
+        };
+        this.doc.defaultView.addEventListener("message", receive);
+        view.unlistenAgent = () =>
+          this.doc.defaultView.removeEventListener("message", receive);
+      }
       const sync = () => {
         const locale = readLocale(this.core);
         if (!frame.contentWindow) return;
@@ -150,6 +194,9 @@ export class PluginUIHostUnit {
       view.dispose = () => {
         localeObserver.disconnect();
         this.doc.removeEventListener("click", closeForWorkbench);
+        view.unlistenAgent?.();
+        view.localAgent?.close();
+        if (view.localAgent) this.core.unregister(view.localAgent.id);
         frame.srcdoc = "";
         panel.remove();
         button.remove();
@@ -170,6 +217,7 @@ export class PluginUIHostUnit {
     view.enabled = enabled;
     view.button.hidden = !enabled;
     if (!enabled) {
+      view.localAgent?.close();
       view.panel.hidden = true;
       view.button.setAttribute("aria-pressed", "false");
     }
