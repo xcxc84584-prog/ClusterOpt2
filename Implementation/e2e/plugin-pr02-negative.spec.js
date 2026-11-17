@@ -32,5 +32,5 @@ test("PR02.09 real browser Hub boundary preserves negative EHU",
     expect(new Set(result.failures.map(x => x.eventId)).size)
       .toBe(result.failures.length);
     expect(result.legacy).toBe(true);
-    expect(result.facade).toBe("undefined");
+    expect(result.facade).toBe("object");
   });
