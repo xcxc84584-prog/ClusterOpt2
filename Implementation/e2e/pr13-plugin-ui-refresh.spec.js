@@ -69,8 +69,7 @@ test("PR13 author template is a plugin catalogue item, not overlay UI",
     await expect(template).toHaveCount(1);
     await expect(template).toContainText("API");
     await expect(template.locator("button")).toHaveCount(1);
-    await expect(page.locator(".pm-resource-cards > .pm-market-card"))
-      .toHaveCount(2);
+    await expect(page.locator("#pluginAgentDownload")).toBeVisible();
     const download = page.waitForEvent("download");
     await page.locator("#pluginTemplateDownload").click();
     expect((await download).suggestedFilename())
