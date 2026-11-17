@@ -44,7 +44,8 @@ test("PR13.1 denies traversal, remote URLs and absolute entries", () => {
   for (const entry of [
     "../index.js", String.fromCharCode(47) + "index.js",
     "a/../index.js",
-    "https://bad.example/plugin.js", "C:/plugin.js",
+    "https://bad.example/plugin.js",
+    "C:" + String.fromCharCode(47) + "plugin.js",
     "a\\index.js", "a//index.js", "./index.js"
   ]) {
     assert.equal(Policy.validate(packageText({ entry })).status, 400,
