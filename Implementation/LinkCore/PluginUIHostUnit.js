@@ -6,7 +6,8 @@ import { PluginLocalAgentObject } from
  *
  * Only the host owns toolbar controls and the workspace mount. The
  * untrusted HTML runs in an opaque-origin frame with no host API.
- * No iframe message is accepted as an authorization or Hub Request.
+ * UI messages request host-owned actions; only an explicitly granted
+ * network capability lets the host route them through HubUnit.
  */
 const UI_CSP = "default-src 'none'; script-src 'unsafe-inline'; " +
   "style-src 'unsafe-inline'; img-src data:; connect-src 'none'; " +
@@ -62,6 +63,7 @@ export class PluginUIHostUnit {
     if (!toolbar || !workspace) {
       return { ok: false, status: 503 };
     }
+    let pendingAgent = null;
     try {
       const html = decodeAsset(snapshot, manifest.uiEntry);
       if (html.length > 262144) throw Error("UI too large");
@@ -111,6 +113,7 @@ export class PluginUIHostUnit {
           throw Error("Local Agent object registration failed");
         }
         view.localAgent = agent;
+        pendingAgent = agent;
         const publish = response => {
           frame.contentWindow?.postMessage({
             type: "cluster-local-agent-status",
@@ -207,6 +210,10 @@ export class PluginUIHostUnit {
       this.views.set(provider.providerId, view);
       return { ok: true, status: 200 };
     } catch {
+      if (pendingAgent) {
+        pendingAgent.close();
+        this.core.unregister(pendingAgent.id);
+      }
       return { ok: false, status: 400 };
     }
   }
