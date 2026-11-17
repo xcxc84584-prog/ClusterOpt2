@@ -60,3 +60,23 @@ No direct plugin access to Cluster internal instances.
 
 Notes: PR13.1 validator itself is pure; only the routed Property.Read
 emits OMU Log. Reject events emitted by future install coordinator.
+
+## PR13 Patch(+2) EventChain and isolation boundary
+```text
+User gesture -> DirectoryPicker -> PluginLocalPackageUnit
+  -> PluginPackageManifestPolicy -> ProviderManifestPolicy
+  -> bounded entry read -> staged (no URU mutation)
+
+RPC data -> PluginMessagePolicy -> PluginRPCContractPolicy
+  -> service/action check -> validated envelope (no transport)
+
+Declared capability -> PluginPermissionPolicy
+  -> PluginCapabilityReviewPolicy -> approved/denied intent
+  -> future Hub authorization gate (not yet granted)
+```
+
+No new runtime registration authority. LocalPackageUnit reports Log/EHU
+to OMU, while immutable policies are read through existing Hub/EDPMU.
+Pending security: sandboxed origin, enforceable message-channel source,
+origin checks, launch/termination, permission enforcement per invocation,
+explicit human approval and route integration.
