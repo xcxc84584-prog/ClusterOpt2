@@ -160,3 +160,22 @@ Each pipeline Provider uses original source and origin, its own complete
 Hub request/response and 10/01 OMU Dependency edges. Any failure returns
 its guarded error or a recorded pipeline EHU, never a partial success.
 No Event ID is fabricated or rewritten; OMU remains lineage authority.
+
+## PR04.08 — Route ACL and dependency control
+```mermaid
+flowchart TD
+  Host[Trusted host identity] --> Owner[RouteControlPolicy scoped]
+  Owner -->|scope and provider owner pass| Merge[Preserve other owners]
+  Merge --> Schema[RouteTablePolicy]
+  Schema --> Contracts[Service and Processor contract checks]
+  Contracts --> DAG[RouteControlPolicy dependency DFS]
+  DAG -->|acyclic| Swap[Immutable Hub route snapshot]
+  Owner -->|403 or 404| EHU[OMU EHU]
+  DAG -->|409| EHU
+```
+New pure helper RouteControlPolicy; no new Object or EDPMU Property.
+Configuration permission differs from execution permission. Registered
+caller identity is established by trusted host, never supplied through
+Cluster.api. Each runtime hop keeps HubUnit AccessPolicy, API origin,
+scheduler and OMU EHU/Dependency. Cycles are preflight-rejected, nested
+runtime cycles still generate 423 through existing wait edges.

@@ -48,3 +48,10 @@ entry: validate, transform, fanout-only aggregate. Provider contract
 compatibility checked atomically, live URU checked at request time, and
 core-owned status/lineage preserved. Each hop has existing HubUnit
 permission and OMU tracing. No browser route-edit API or untrusted code.
+
+## PR04.08 implemented scope
+Bounded host-only route-configuration authorization: caller-scoped
+ownership, target Provider ownership, non-destructive multi-owner route
+merge and static dependency cycle check. Runtime ACL remains core-owned.
+An authenticated external configuration surface is deferred until a
+verified principal exists; no untrusted browser API added.

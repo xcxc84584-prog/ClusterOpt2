@@ -119,3 +119,18 @@ accidental prior-value mutation. Failed primary bypasses pipeline; stage
 metadata is produced solely by core. Time: O(stages * payload bytes),
 space: O(max stage bytes), max four sequential stages. No extra runtime,
 EDPMU authority, UI privilege, new CI workflow or release bump.
+
+## PR04.08 — Restricted Route ACL and dependency graph
+Study: VS Code registry's internal contribution ownership and Theia
+command permission segregation. Separate trusted host entry from
+runtime caller requests; do not expose a string-based source impersonation
+API to browser Cluster.api. New configureOwnedRoutes(source, table) is
+host-only, with host-verified source. Require a registered route owner,
+exact [source] filter, ownership of all primary and pipeline Providers.
+Merge owned routes into the immutable table without erasing other owners.
+Whole-table schema, contracts and dependency DAG are checked before swap.
+Conservatively reject static cycles across chain/response-stage edges as
+409; existing HubUnit.request continues runtime wait-loop detection 423.
+Cost: O(route count + providers + edges) bounded by existing 32 routes,
+8 primary and 4 response stages. No persistent grants, new API exposed
+to third-party plugins, new CI workflow or version bump.

@@ -69,3 +69,13 @@ No real 5GiB editor or physical file-permission acceptance is claimed.
 - Primary failures bypass pipeline; no plugin controls status/event fields.
 - Node/VTE and existing browser CI must be PASS at exact head; no new
   redundant workflow; verify immutable restore ref before acceptance.
+
+## PR04.08 — Route ACL / Dependency Relations
+- Unknown configuration owner => 404 EHU.
+- Wrong sourceFilter and foreign Provider ownership => 403 EHU.
+- Other owners' scoped routes persist after owned update or clear.
+- Static chain/response cyclic route graph => 409 EHU without swap.
+- Runtime AccessPolicy and User/Agent API remain unchanged.
+- No new Cluster.api/Agent API route mutation entry, no source spoofing.
+- VTE instance isolation and existing whole-table regression preserved.
+- Exact-head five CI checks and verified restore required for PASS.

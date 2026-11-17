@@ -13,6 +13,8 @@ import { RouteContractPolicy } from
   "../property/RouteContractPolicy.js";
 import { ResponsePipelinePolicy } from
   "../property/ResponsePipelinePolicy.js";
+import { RouteControlPolicy } from
+  "../property/RouteControlPolicy.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
   "./AuthorizedCatalogCollection.js";
@@ -253,6 +255,36 @@ export class HubUnit {
   }
 
   /**
+   * PR04.08: trusted host-only, caller-scoped route configuration.
+   * This is not an authenticated browser or Agent API. The host must
+   * supply the verified caller identity. Other owners remain intact.
+   */
+  configureOwnedRoutes(source, candidate) {
+    const parsed = RouteTablePolicy.validate(candidate);
+    if (!parsed.ok) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Service.Route.OwnedConfigure", parsed.status);
+      return parsed;
+    }
+    const allowed = RouteControlPolicy.scoped(
+      source, parsed.value.routes, this.registry);
+    if (!allowed.ok) {
+      this.omu.record("EHU", source ?? "unknown",
+        "Service.Route.OwnedConfigure", allowed.status);
+      return allowed;
+    }
+    const remaining = this.replaceRoutes.filter(route =>
+      route.sourceFilter.objects.length !== 1 ||
+      route.sourceFilter.objects[0] !== source);
+    const merged = { schemaVersion: 1,
+      routes: [...remaining, ...parsed.value.routes] };
+    const result = this.configureServiceRoutes(merged);
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Service.Route.OwnedConfigure", result.status);
+    return result;
+  }
+
+  /**
    * Trusted declarative route activation. PR04.04/05: chain/fanout
    * cannot bypass HubUnit.request or mint a caller identity.
    */
@@ -336,6 +368,14 @@ export class HubUnit {
           previous = contract.outputSchema;
         }
       }
+    }
+    const graph = RouteControlPolicy.cycles(
+      parsed.value.routes, this.registry);
+    if (!graph.ok) {
+      this.omu.record("EHU", "LinkCore",
+        "Service.Route.Configure", graph.status,
+        "HubUnit", { error: graph.error });
+      return graph;
     }
     // Existing in-flight requests hold their already resolved Object.
     this.replaceRoutes = parsed.value.routes;

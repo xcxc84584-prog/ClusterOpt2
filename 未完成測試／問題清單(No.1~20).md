@@ -108,3 +108,9 @@ PR1 is not considered accepted based on source code alone.
 - Exact-head five CI workflows and restore ref required before PASS.
 - Inflight hard cancellation, external Route ACL, routeVersion/CAS,
   untrusted Worker sandbox and manual 5GiB File I/O remain deferred.
+
+## PLUGIN PR04.08 pending gate
+- New scoped route ACL / dependency DAG tests submitted; exact-head
+  Node/Chromium/OCDA/PR02/PR03/Windows checks must PASS before accept.
+- Authenticated browser control still deferred: host-only identity.
+- Real file permission/5GiB and PR05 routeVersion/CAS unresolved.

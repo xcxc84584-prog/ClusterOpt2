@@ -251,6 +251,10 @@ export class LinkCore {
   configureServiceRoutes(table) {
     return this.hub.configureServiceRoutes(table);
   }
+  /** Trusted host only: identity is verified by the embedding host. */
+  configureOwnedRoutes(source, table) {
+    return this.hub.configureOwnedRoutes(source, table);
+  }
   requestService(source, service, action, payload = {}, options = {}) {
     return this.hub.requestService(source, service, action,
       payload, options);
