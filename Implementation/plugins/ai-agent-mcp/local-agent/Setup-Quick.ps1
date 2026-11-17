@@ -9,82 +9,6 @@ $agentDir = Join-Path $env:LOCALAPPDATA 'ClusterOpt2\AI-Agent-MCP'
 $remoteRoot = 'https://raw.githubusercontent.com/' +
   'xcxc84584-prog/ClusterOpt2/' + $SourceRevision +
   '/Implementation/plugins/ai-agent-mcp/local-agent/'
-$protected = @('System','Registry','Idle','smss.exe','csrss.exe',
-  'wininit.exe','winlogon.exe','services.exe','lsass.exe',
-  'svchost.exe','dwm.exe')
-function Listeners([int]$port) {
-  return @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
-}
-function Release-Port([int]$port, [object[]]$listeners) {
-  $owners = @()
-  $ancestorIds = @()
-  $ancestor = Get-CimInstance Win32_Process -Filter "ProcessId=$PID"
-  while ($ancestor -and $ancestor.ParentProcessId -gt 0) {
-    $parentId = [int]$ancestor.ParentProcessId
-    if ($ancestorIds -contains $parentId) { break }
-    $ancestorIds += $parentId
-    $ancestor = Get-CimInstance Win32_Process -Filter "ProcessId=$parentId"
-  }
-  foreach ($ownerPid in @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)) {
-    if ($ownerPid -le 4 -or $ownerPid -eq $PID -or $ancestorIds -contains $ownerPid) {
-      throw 'Refusing to terminate system, current or parent process'
-    }
-    $owner = Get-CimInstance Win32_Process -Filter "ProcessId=$ownerPid" -ErrorAction SilentlyContinue
-    if (-not $owner -or -not $owner.CreationDate -or
-        $protected -contains $owner.Name) {
-      throw 'Cannot verify process identity'
-    }
-    $owners += $owner
-  }
-  if ($owners.Count -eq 0) { throw 'Cannot identify listener process' }
-  Write-Warning 'Override can terminate an unrelated application.'
-  foreach ($owner in $owners) {
-    Write-Host ('PID ' + $owner.ProcessId + ': ' + $owner.Name)
-    Write-Host ('Path: ' + $owner.ExecutablePath)
-  }
-  if ((Read-Host 'Type OVERRIDE to stop listed PID(s)') -cne 'OVERRIDE') {
-    throw 'Override declined; no processes stopped'
-  }
-  foreach ($owner in $owners) {
-    $current = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $owner.ProcessId)
-    $activePids = @(Listeners $port | Select-Object -ExpandProperty OwningProcess -Unique)
-    if (-not $current -or $current.CreationDate -ne $owner.CreationDate -or
-        $current.Name -ne $owner.Name -or
-        $activePids -notcontains [int]$owner.ProcessId) {
-      throw 'Process identity/port listener changed'
-    }
-  }
-  foreach ($owner in $owners) { Stop-Process -Id $owner.ProcessId -Force }
-  for ($i = 0; $i -lt 20; $i++) {
-    if (@(Listeners $port).Count -eq 0) { return }
-    Start-Sleep -Milliseconds 250
-  }
-  throw 'Port still occupied'
-}
-function Select-Port {
-  $port = 43879
-  while ($true) {
-    $listeners = @(Listeners $port)
-    if ($listeners.Count -eq 0) { return $port }
-    Write-Host ('Port ' + $port + ' is in use.') -ForegroundColor Yellow
-    $choice = (Read-Host '[P]ick port / [C]ancel / [O]verride').Trim().ToUpperInvariant()
-    switch ($choice) {
-      'C' { throw 'Cancelled; no process stopped' }
-      'P' {
-        $inputPort = Read-Host 'New port (1024-65535)'
-        $candidate = 0
-        if (-not [int]::TryParse($inputPort, [ref]$candidate) -or
-            $candidate -lt 1024 -or $candidate -gt 65535) {
-          Write-Warning 'Invalid port'
-          continue
-        }
-        $port = $candidate
-      }
-      'O' { Release-Port $port $listeners }
-      default { Write-Warning 'Choose P, C or O' }
-    }
-  }
-}
 function Find-Node {
   $node = Get-Command node.exe -ErrorAction SilentlyContinue
   if (-not $node) { return $null }
@@ -111,9 +35,9 @@ function Ensure-Node {
 }
 function Ensure-Files {
   New-Item -ItemType Directory -Path $agentDir -Force | Out-Null
-  foreach ($name in @('server.cjs','package.json')) {
+  foreach ($name in @('server.cjs','package.json','Port-CPO.ps1')) {
     $target = Join-Path $agentDir $name
-    if (Test-Path -LiteralPath $target) { continue }
+    # Refresh reviewed code to prevent stale Agent binaries after upgrades.
     $temp = $target + '.download'
     try {
       Invoke-WebRequest -UseBasicParsing -Uri ($remoteRoot + $name) -OutFile $temp -TimeoutSec 45
@@ -128,7 +52,8 @@ Write-Host 'AI AGENT MCP(ChatGPT) - local setup'
 Write-Host ('Source: ' + $SourceRevision)
 $node = Ensure-Node
 Ensure-Files
-$port = Select-Port
+. (Join-Path $agentDir 'Port-CPO.ps1')
+$port = Select-ServicePort 'terminal'
 $npm = Get-Command npm.cmd -ErrorAction Stop
 Push-Location $agentDir
 try {
