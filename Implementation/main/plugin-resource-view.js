@@ -35,7 +35,7 @@ function providerStatus(provider,disabled,t) {
 }
 export function renderResources(doc,host,options) {
   const {t,settings,providers,disabled,apiEntries,logs,core,
-    getActivePreview}=options;
+    getActivePreview,onPluginInstalled}=options;
   const layout=el(doc,"div","pm-resources");
   const left=el(doc,"section","pm-resource-pane pm-resource-tools");
   const right=el(doc,"section","pm-resource-pane pm-resource-downloads");
@@ -172,7 +172,10 @@ export function renderResources(doc,host,options) {
     try {
       const module=await import("../plugins/multilang-highlighter.js");
       const result=module.install(core);
-      if(result.ok) renderCards();
+      if(result.ok) {
+        renderCards();
+        onPluginInstalled?.();
+      }
       mountStatus.textContent=result.ok?t(
         result.alreadyInstalled ? "插件已註冊。" :
           "201：插件已裝載並向 HubUnit 註冊。",
