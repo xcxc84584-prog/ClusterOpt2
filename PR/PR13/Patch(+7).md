@@ -44,8 +44,8 @@
 
 ## Important limitations / gates
 - The dependency graph is a computed read of URU, NOT a second registry.
-- There is no UI upgrade picker yet: the host upgrade API is callable by
-  trusted UI code; a user-facing upgrade workflow remains pending.
+- The Plugin Manager has a native-folder update picker, package validation
+  and explicit permission consent. Browser UX acceptance is still pending.
 - Replacement activation is not zero-downtime: requests arriving during
   the re-registration window can temporarily fail.
 - Rollback after a *failed restoration itself* is fail-closed, not a
