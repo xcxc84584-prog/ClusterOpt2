@@ -72,3 +72,16 @@ large file restore after delayed permissions and reload.
   regression and release-doc checklist.
 - Windows native dependency install and 1/5 GiB benchmarks are manual
   acceptance gates beyond Linux CI; document them as NOT TESTED.
+
+## Patch5: old ClusterOpt line toolbar with full-file seek
+- Remove floating GoToLine dialog in favor of old dedicated flex-row
+  #goLineBar between editor column and footer. The editor flex-shrinks
+  rather than being overlaid, on both large and small screens.
+- Resolve any positive, safe integer global LF line by bounded raw
+  Blob windows, then load the selected source page and set caret/
+  scroll. Valid trailing empty line is addressable; 416 for out of range.
+- Use dirty and durable recovered page LF counts to rebase subsequent
+  global lines; maintain original LF count cache for repeated jumps.
+- Existing multi-page durable batch Save continues to own writeback.
+- Real 1/5 GiB latency and Windows filesystem acceptance are still
+  separate PR8 gates, never implied by 65 MiB Playwright green.

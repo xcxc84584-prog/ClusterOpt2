@@ -29,17 +29,19 @@ export class VirtualFileDocument extends FileDocument {
     this.pendingRecoveries = new Map();
     this.pendingRecovery = null; // compatible with Patch19 restore
     this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+    this.pageLineCountCache = new Map();
     this.prioritySeed = 0;
     this.ocda = Object.freeze({
-      Request: ["load", "page", "describePage", "save",
+      Request: ["load", "page", "seekLine", "describePage", "save",
         "edit", "reconcile"],
-      Response: ["load", "page", "describePage", "save",
+      Response: ["load", "page", "seekLine", "describePage", "save",
         "edit", "reconcile"],
-      UserAPI: ["page", "describePage", "edit", "save"],
+      UserAPI: ["page", "seekLine", "describePage", "edit", "save"],
       AgentAPI: [],
       Property: ["UTF8SlicePolicy", "PieceTreePolicy",
         "BPlusSliceIndex", "DocumentStatus", "VirtualPageLinePolicy",
-        "SliceTransactionPolicy", "SliceBatchWritePolicy"],
+        "SliceTransactionPolicy", "SliceBatchWritePolicy",
+        "GlobalPageLinePolicy", "GoToLinePolicy"],
       Program: "VirtualFileDocument",
       EHU: "LinkCore.OMU", Log: "LinkCore.OMU"
     });
@@ -139,6 +141,7 @@ export class VirtualFileDocument extends FileDocument {
         this.failure("External virtual file changed", 409);
       }
       this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+      this.pageLineCountCache.clear();
       this.fileFingerprint = null;
       this.diskRevision = null;
     }
@@ -232,6 +235,68 @@ export class VirtualFileDocument extends FileDocument {
     this.pageEntryEdge = "start";
     this.revision++;
     return this.describePage();
+  }
+
+  /**
+   * Navigate by GLOBAL line, including unloaded pages and edited pages.
+   * The bounded locator reads only source byte windows and dirty LF
+   * metadata; page text remains authoritative only after loadPage.
+   * No partial document state is published until the target is valid.
+   */
+  async seekLine({ line, lineHeight, viewportHeight,
+    onProgress = () => {} }) {
+    if (typeof onProgress !== "function" ||
+        !Number.isFinite(lineHeight) || lineHeight <= 0 ||
+        !Number.isFinite(viewportHeight) || viewportHeight < 0) {
+      this.failure("Invalid line seek geometry", 400);
+    }
+    const file = await this.handle.getFile();
+    if (this.fileFingerprint &&
+        this.fingerprint(file) !== this.fileFingerprint &&
+        this.unsaved) {
+      this.failure("External virtual file changed", 409);
+    }
+    const edits = new Map();
+    const pending = [...this.pendingRecoveries.values()];
+    if (this.pendingRecovery) pending.push(this.pendingRecovery);
+    for (const record of pending) {
+      if (this.dirtyPages.has(record.index)) continue;
+      const restored = await this.invoke("restoreDurable", {
+        id: record.id
+      });
+      const text = await this.invoke("read", {
+        id: record.id, start: 0, end: restored.length
+      });
+      edits.set(record.index, {
+        editedLineBreaks: this.countLines(text),
+        endsWithLF: text.endsWith("\n")
+      });
+    }
+    for (const record of this.dirtyPages.values()) {
+      edits.set(record.index, {
+        editedLineBreaks: record.editedLineBreaks,
+        endsWithLF: record.text.endsWith("\n")
+      });
+    }
+    const located = await this.property("GlobalPageLinePolicy").locate({
+      file, targetLine: line,
+      pageBytes: this.property("UTF8SlicePolicy").defaultChunkBytes,
+      edits, cache: this.pageLineCountCache, onProgress
+    });
+    if (located.index !== this.virtualPageIndex) {
+      await this.loadPage(located.index);
+    }
+    const position = this.property("GoToLinePolicy").resolve({
+      text: this.text, firstLine: this.pageFirstLine,
+      targetLine: line, lineHeight
+    });
+    this.cursor = position.offset;
+    this.scrollTop = Math.max(0,
+      position.scrollTop - viewportHeight / 3);
+    this.scrollLeft = 0;
+    this.pageEntryEdge = "start";
+    return { ...this.describePage(), line, offset: this.cursor,
+      scrollTop: this.scrollTop };
   }
 
   async editPage(text) {
@@ -364,6 +429,7 @@ export class VirtualFileDocument extends FileDocument {
     this.status = DocumentStatus.SYNCED;
     this.fileFingerprint = null;
     this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+    this.pageLineCountCache.clear();
     this.virtualEditable = false; // force a fresh byte-aligned load
     const viewport = {
       top: this.scrollTop, left: this.scrollLeft ?? 0
@@ -405,6 +471,7 @@ export class VirtualFileDocument extends FileDocument {
         throw error;
       }
     }
+    if (action === "seekLine") return this.seekLine(payload);
     if (action === "describePage") return this.describePage();
     if (action === "edit") return this.editPage(payload.text);
     if (action === "save") {
@@ -426,6 +493,7 @@ export class VirtualFileDocument extends FileDocument {
       if (payload.priority === "external") {
         this.fileFingerprint = null;
         this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+        this.pageLineCountCache.clear();
         this.virtualEditable = false;
         const bytes = this.property("UTF8SlicePolicy");
         const pages = Math.max(1, bytes.count(

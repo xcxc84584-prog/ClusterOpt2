@@ -1111,61 +1111,91 @@ async function perform(action, payload = {}) {
     }
   }
 }
-// PR9: navigate a resident slice without replacing the editor caret
-// with an inferred position in unloaded source bytes.
-const goToLineDialog = document.getElementById("goToLineDialog");
-const goToLineInput = document.getElementById("goToLineInput");
-const goToLineError = document.getElementById("goToLineError");
-function openGoToLine() {
+// The original ClusterOpt jump toolbar stays outside the editor pane.
+// It never floats over the bottom of the document or status bar.
+const goLineInput = document.getElementById("goLineInput");
+const goLineButton = document.getElementById("goLineButton");
+const goLineHint = document.getElementById("goLineHint");
+function focusGoLine() {
   if (!workspace.active || toolState.active) return;
-  document.getElementById("goToLineTitle").textContent =
-    localized("goToLine");
-  document.getElementById("goToLineSubmit").textContent =
-    localized("goToLineConfirm");
-  goToLineInput.setAttribute("aria-label", localized("goToLineHint"));
-  goToLineError.textContent = "";
-  goToLineInput.value = "";
-  if (!goToLineDialog.open) goToLineDialog.showModal();
-  goToLineInput.focus();
+  goLineInput.focus();
+  goLineInput.select();
 }
-document.getElementById("goToLineBtn").addEventListener(
-  "click", openGoToLine);
 document.addEventListener("keydown", event => {
   if ((event.ctrlKey || event.metaKey) &&
       !event.altKey && event.key.toLowerCase() === "g") {
     event.preventDefault();
-    openGoToLine();
+    focusGoLine();
   }
 });
-document.getElementById("goToLineForm").addEventListener("submit",
-  event => {
-    const active = workspace.active;
-    if (!active) return;
-    const targetLine = Number(goToLineInput.value);
-    try {
-      const lineHeight = parseFloat(
-        window.getComputedStyle(ui.editor).lineHeight) || 22;
-      const policy = linkCore.readProperty("ui", "GoToLinePolicy").value;
-      const location = policy.resolve({
-        text: ui.editor.value, targetLine, lineHeight,
-        firstLine: active.virtualReadOnly ? active.pageFirstLine : 1
+let goLineBusy = false;
+async function goToGlobalLine() {
+  const active = workspace.active;
+  if (!active || toolState.active || goLineBusy) return;
+  const targetLine = Number(goLineInput.value);
+  const policy = linkCore.readProperty("ui", "GoToLinePolicy").value;
+  const lineHeight = parseFloat(
+    window.getComputedStyle(ui.editor).lineHeight) || 22;
+  goLineBusy = true;
+  goLineInput.disabled = true;
+  goLineButton.disabled = true;
+  goLineHint.textContent = localized("goToLine");
+  try {
+    let location;
+    if (active.virtualReadOnly) {
+      virtualPageBusy = true;
+      const result = await linkCore.request("ui", "workspace",
+        "gotoLine", { id: active.id, line: targetLine,
+          lineHeight, viewportHeight: ui.editor.clientHeight
+        }, { origin: "user" });
+      if (!result.ok) {
+        const error = new RangeError(result.error);
+        error.status = result.status;
+        throw error;
+      }
+      if (workspace.active !== active) return;
+      location = {
+        offset: active.cursor, scrollTop: active.scrollTop
+      };
+      render();
+    } else {
+      location = policy.resolve({
+        text: ui.editor.value, targetLine, lineHeight
       });
-      ui.editor.selectionStart = location.offset;
-      ui.editor.selectionEnd = location.offset;
-      ui.editor.scrollTop = location.scrollTop;
-      active.cursor = location.offset;
-      active.scrollTop = ui.editor.scrollTop;
-      active.scrollLeft = ui.editor.scrollLeft;
-      active.viewportLineHeight = lineHeight;
-      renderLines();
-      queueRecovery();
-      ui.editor.focus({ preventScroll: true });
-    } catch (error) {
-      event.preventDefault();
-      goToLineError.textContent = localized(
-        error.status === 416 ? "goToLineUnavailable" : "goToLineInvalid");
     }
-  });
+    ui.editor.setSelectionRange(location.offset, location.offset);
+    ui.editor.scrollTop = Math.max(0,
+      location.scrollTop - (active.virtualReadOnly ?
+        0 : ui.editor.clientHeight / 3));
+    ui.lineNumbers.scrollTop = ui.editor.scrollTop;
+    active.cursor = location.offset;
+    active.scrollTop = ui.editor.scrollTop;
+    active.scrollLeft = ui.editor.scrollLeft;
+    active.viewportLineHeight = lineHeight;
+    renderLines();
+    queueRecovery();
+    scheduleViewportObservation();
+    ui.editor.focus({ preventScroll: true });
+    goLineHint.textContent = "Ln " + targetLine;
+  } catch (error) {
+    goLineHint.textContent = localized(
+      error.status === 416 ? "goToLineUnavailable" : "goToLineInvalid");
+  } finally {
+    virtualPageBusy = false;
+    goLineBusy = false;
+    goLineInput.disabled = false;
+    goLineButton.disabled = false;
+  }
+}
+goLineButton.addEventListener("click", () => {
+  void goToGlobalLine();
+});
+goLineInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    void goToGlobalLine();
+  }
+});
 
 document.getElementById("explorerSearch").addEventListener(
   "input", () => {

@@ -9,6 +9,8 @@ import { ViewportSlicePolicy } from "../property/ViewportSlicePolicy.js";
 import { LineAddressPolicy } from "../property/LineAddressPolicy.js";
 import { ViewportLinePolicy } from "../property/ViewportLinePolicy.js";
 import { GoToLinePolicy } from "../property/GoToLinePolicy.js";
+import { GlobalPageLinePolicy } from
+  "../property/GlobalPageLinePolicy.js";
 import { SliceTransactionPolicy } from "../property/SliceTransactionPolicy.js";
 import { SliceJournalPolicy } from "../property/SliceJournalPolicy.js";
 import { SliceFileWritePolicy } from "../property/SliceFileWritePolicy.js";
@@ -38,7 +40,7 @@ export class LinkCore {
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
-    this.version = "0.0.9-pr9.patch4";
+    this.version = "0.0.9-pr9.patch5";
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public"
     });
@@ -84,6 +86,10 @@ export class LinkCore {
       SliceJournalPolicy, { owners: ["LinkCore"], visibility: "Public" });
     this.hub.registerProperty("SliceTransactionPolicy",
       SliceTransactionPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
+    this.hub.registerProperty("GlobalPageLinePolicy",
+      GlobalPageLinePolicy, {
         owners: ["LinkCore"], visibility: "Public"
       });
     this.hub.registerProperty("GoToLinePolicy", GoToLinePolicy,

@@ -25,24 +25,31 @@ test("PR9 legacy PowerShell appears next to Explorer, not File Tool",
     await expect(page.locator("#powershellManagerPane")).toBeHidden();
   });
 
-test("PR9 Go to Line dialog stays above status bar",
+test("PR9 legacy Go to Line row never obscures the editor or footer",
   async ({ page }) => {
     await page.goto("/");
     await page.locator("#menuBtn").click();
     await page.locator("#newFile").click();
     await page.locator("#editor").fill("one\ntwo\nthree");
-    await page.locator("#goToLineBtn").click();
-    const dialog = page.locator("#goToLineDialog");
-    await expect(dialog).toBeVisible();
-    const bounds = await dialog.boundingBox();
-    const footer = await page.locator(".statusbar").boundingBox();
-    expect(bounds).toBeTruthy();
-    expect(footer).toBeTruthy();
-    expect(bounds.y + bounds.height).toBeLessThan(footer.y);
-    await page.locator("#goToLineInput").fill("3");
-    await page.locator("#goToLineSubmit").click();
-    await expect(dialog).toBeHidden();
+    await expect(page.locator("#goToLineDialog")).toHaveCount(0);
+    const jump = page.locator("#goLineBar");
+    const workspace = page.locator("#clusterWorkspaceShell");
+    const footer = page.locator(".statusbar");
+    const [bar, main, bottom] = await Promise.all([
+      jump.boundingBox(), workspace.boundingBox(), footer.boundingBox()
+    ]);
+    expect(bar).toBeTruthy();
+    expect(main).toBeTruthy();
+    expect(bottom).toBeTruthy();
+    expect(bar.y).toBeGreaterThanOrEqual(
+      main.y + main.height - 1);
+    expect(bar.y + bar.height).toBeLessThanOrEqual(bottom.y + 1);
+    await page.locator("#goLineInput").fill("3");
+    await page.locator("#goLineButton").click();
+    await expect(page.locator("#position")).toContainText("Ln 3");
     await expect(page.locator("#editor")).toHaveValue("one\ntwo\nthree");
+    await page.keyboard.press("Control+g");
+    await expect(page.locator("#goLineInput")).toBeFocused();
   });
 
 test("PR9 restores legacy setup wizard and terminal controls",
