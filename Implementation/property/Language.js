@@ -4,7 +4,12 @@
  */
 const CATALOG = Object.freeze({
 	"zh-Hant": Object.freeze({
-		blockedTypesDescription: "隱藏 Explorer 中的指定副檔名，不會刪除原始檔案。",
+		goToLine: "跳轉行",
+        goToLineHint: "輸入目前文件的行號",
+        goToLineUnavailable: "該行不在目前已載入的切片中",
+        goToLineInvalid: "請輸入有效行號",
+        goToLineConfirm: "跳轉",
+        blockedTypesDescription: "隱藏 Explorer 中的指定副檔名，不會刪除原始檔案。",
 		blockedTypesInputLabel: "新增副檔名",
 		blockedTypesAdd: "＋ 新增",
 		blockedTypesListLabel: "已屏蔽類型",
@@ -101,7 +106,12 @@ const CATALOG = Object.freeze({
 		plainText: "純文字", palettePreview: "UI PREVIEW"
 	}),
 	"en": Object.freeze({
-		blockedTypesDescription: "Hide extensions in Explorer without deleting files.",
+		goToLine: "Go to Line",
+        goToLineHint: "Enter a line number in this document",
+        goToLineUnavailable: "The line is outside the loaded page",
+        goToLineInvalid: "Enter a valid line number",
+        goToLineConfirm: "Go",
+        blockedTypesDescription: "Hide extensions in Explorer without deleting files.",
 		blockedTypesInputLabel: "Add extension",
 		blockedTypesAdd: "+ Add",
 		blockedTypesListLabel: "Blocked types",

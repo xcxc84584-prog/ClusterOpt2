@@ -544,6 +544,32 @@ function render() {
     active.viewportLineHeight = lineHeight;
   }
   renderLines();
+  // A restored virtual page can finish loading after its first render.
+  // Apply saved browser pixels only after the textarea has real content.
+  if (active.pendingViewportRestore &&
+      active.status !== DocumentStatus.LOADING &&
+      !active.viewportRestoreScheduled) {
+    active.viewportRestoreScheduled = true;
+    window.requestAnimationFrame(() => {
+      active.viewportRestoreScheduled = false;
+      if (workspace.active !== active || toolState.active) return;
+      const saved = active.pendingViewportRestore;
+      if (!saved) return;
+      const measured = parseFloat(
+        window.getComputedStyle(ui.editor).lineHeight) || 22;
+      const ratio = saved.lineHeight ? measured / saved.lineHeight : 1;
+      ui.editor.scrollTop = Math.max(0, saved.top * ratio);
+      ui.editor.scrollLeft = Math.max(0, saved.left);
+      ui.lineNumbers.scrollTop = ui.editor.scrollTop;
+      active.scrollTop = ui.editor.scrollTop;
+      active.scrollLeft = ui.editor.scrollLeft;
+      active.viewportLineHeight = measured;
+      active.pendingViewportRestore = null;
+      scheduleGuides();
+      queueRecovery();
+      scheduleViewportObservation();
+    });
+  }
   scheduleGuides();
   updateStatus();
   scheduleViewportObservation();
@@ -1040,6 +1066,62 @@ async function perform(action, payload = {}) {
     }
   }
 }
+// PR9: navigate a resident slice without replacing the editor caret
+// with an inferred position in unloaded source bytes.
+const goToLineDialog = document.getElementById("goToLineDialog");
+const goToLineInput = document.getElementById("goToLineInput");
+const goToLineError = document.getElementById("goToLineError");
+function openGoToLine() {
+  if (!workspace.active || toolState.active) return;
+  document.getElementById("goToLineTitle").textContent =
+    localized("goToLine");
+  document.getElementById("goToLineSubmit").textContent =
+    localized("goToLineConfirm");
+  goToLineInput.setAttribute("aria-label", localized("goToLineHint"));
+  goToLineError.textContent = "";
+  goToLineInput.value = "";
+  if (!goToLineDialog.open) goToLineDialog.showModal();
+  goToLineInput.focus();
+}
+document.getElementById("goToLineBtn").addEventListener(
+  "click", openGoToLine);
+document.addEventListener("keydown", event => {
+  if ((event.ctrlKey || event.metaKey) &&
+      !event.altKey && event.key.toLowerCase() === "g") {
+    event.preventDefault();
+    openGoToLine();
+  }
+});
+document.getElementById("goToLineForm").addEventListener("submit",
+  event => {
+    const active = workspace.active;
+    if (!active) return;
+    const targetLine = Number(goToLineInput.value);
+    try {
+      const lineHeight = parseFloat(
+        window.getComputedStyle(ui.editor).lineHeight) || 22;
+      const policy = linkCore.readProperty("ui", "GoToLinePolicy").value;
+      const location = policy.resolve({
+        text: ui.editor.value, targetLine, lineHeight,
+        firstLine: active.virtualReadOnly ? active.pageFirstLine : 1
+      });
+      ui.editor.selectionStart = location.offset;
+      ui.editor.selectionEnd = location.offset;
+      ui.editor.scrollTop = location.scrollTop;
+      active.cursor = location.offset;
+      active.scrollTop = ui.editor.scrollTop;
+      active.scrollLeft = ui.editor.scrollLeft;
+      active.viewportLineHeight = lineHeight;
+      renderLines();
+      queueRecovery();
+      ui.editor.focus({ preventScroll: true });
+    } catch (error) {
+      event.preventDefault();
+      goToLineError.textContent = localized(
+        error.status === 416 ? "goToLineUnavailable" : "goToLineInvalid");
+    }
+  });
+
 document.getElementById("explorerSearch").addEventListener(
   "input", () => {
     saveExplorerView();

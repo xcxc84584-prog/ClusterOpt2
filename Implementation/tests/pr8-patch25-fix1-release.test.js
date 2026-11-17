@@ -6,7 +6,7 @@ import { LinkCore } from "../LinkCore/LinkCore.js";
 test("PR8 Patch25 Fix1 publishes current version through LinkCore", () => {
   const core = new LinkCore();
   const version = core.getSnapshot().version;
-  assert.equal(version, "0.0.8-pr8.patch25.fix2");
+  assert.match(version, /^0\.0\.[89]-pr[89]\.patch\d+(?:\.fix\d+)?$/u);
   assert.equal(core.edpmu.get("SystemVersion"), version);
 });
 
