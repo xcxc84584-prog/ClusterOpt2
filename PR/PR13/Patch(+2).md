@@ -8,6 +8,8 @@
 - PluginCapabilityReviewPolicy: deny unapproved / unsupported / Core
   permissions, no actual grant authority.
 - LinkCore host-only staging entry and read-only EDPMU policies.
+- Resource panel offers a native directory selector and explicit
+  validation-only status; activation remains disabled.
 - Unit/VTE tests for intake, failure EHU, RPC mismatch and permission denial.
 
 ## Status
