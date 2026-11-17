@@ -101,3 +101,7 @@ EventChain / EHU: Folder Snapshot 200 / 400 / 413; Package Persist
 201 / 503; Bundle Import validation 200 / 400; no runtime relation edges
 created by staging alone. Browser adversarial tests and restore flow
 remain required before declaring PR13.8 accepted.
+
+A package can declare an optional `uiEntry` HTML page. Bundle validation
+requires the UI entry file to exist; it remains inert until approved
+sandbox iframe support exists. Host UI does not import its scripts.
