@@ -101,3 +101,17 @@ ModelTask submit -- Hub --> LocalAgent.taskStart
    +-- model status --> Hub ingest --> UI status update
 ```
 The host projects only task activity, not keys or user prompt data.
+ 
+## Patch(+5): UI EventChain correction
+```text
+Button click or form submit
+    -> guarded task intent
+    -> PluginUIHostUnit
+    -> HubUnit Request
+    -> PluginModelTaskObject
+    -> HubUnit Request
+    -> PluginLocalAgentObject.taskStart
+```
+The UI may render submitted text only after posting the intent.
+The task-active projection is read-only and authorization remains
+host-owned.

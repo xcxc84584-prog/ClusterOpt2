@@ -63,3 +63,9 @@ The iframe's cancel button follows a bounded boolean projection of
 PluginModelTaskObject.activeId returned in the same Hub-backed
 model-action response. This prevents lost or reordered UI callbacks
 from leaving the cancellation control in an incorrect disabled state.
+
+## Patch(+5): explicit UI intent dispatch
+Task UI click and semantic form submission use one idempotent handler,
+which posts the bounded task intent before rendering local UI content.
+The acceptance test checks the actual sent message array, not any
+substring from a diagnostic object.
