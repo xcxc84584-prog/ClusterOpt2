@@ -141,3 +141,25 @@ execution. No duplicate URU/Provider registry or editable static ACLs.
 HubUnit.listActionContracts uses AccessPolicy + URU Object ocda.UserAPI
 as its sole source; the API List projects only permitted actions and
 marks undocumented schemas absent. No parallel catalog or authority.
+
+## PR13 Patch(+6) executable sandbox EventChain
+```text
+Native selected folder -> PluginLocalPackageUnit.snapshot
+  -> manifest + path validator -> host consent + capability review
+  -> PluginSandboxBridge (sandbox iframe, opaque origin, CSP)
+  -> MessageChannel private port -> self-contained module exported Action
+  -> PluginHostInstallUnit -> HubUnit.register(Object)
+  -> HubUnit.registerProvider -> URU Provider Contract
+  -> runtime grant through PluginPermissionUnit
+
+Caller -> HubUnit.request(source, pluginObject, action, payload)
+  -> Object.receive(action,payload,{source})
+  -> HubUnit.invokeExternalPlugin(source, providerId, action, ...)
+  -> URU provider / ACL / permission check -> sandbox RPC
+  -> validated Response -> HubUnit Response / OMU Log or EHU
+```
+
+No untrusted JavaScript loads into host main window; no parallel
+plugin registration authority. Runtime bridge handles only source
+execution and message deadlines. Relative module imports and HTML UI
+sandbox activation are pending, not silently executed by this patch.
