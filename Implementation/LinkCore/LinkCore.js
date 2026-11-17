@@ -4,6 +4,14 @@ import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
 import { ProviderManifestPolicy } from
   "../property/ProviderManifestPolicy.js";
+import { ProviderSharedPropertyPolicy } from
+  "../property/ProviderSharedPropertyPolicy.js";
+import { ProviderFactoryPolicy } from
+  "../property/ProviderFactoryPolicy.js";
+import { ProviderCompatibilityPolicy } from
+  "../property/ProviderCompatibilityPolicy.js";
+import { ProviderHealthPolicy } from
+  "../property/ProviderHealthPolicy.js";
 import { createClusterAPIFacade } from "./ClusterAPIFacade.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { CatalogVisibilityPolicy } from
@@ -63,6 +71,16 @@ export class LinkCore {
       undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
     this.version = ReleaseVersion.product;
+    for (const [name, value] of [
+      ["ProviderSharedPropertyPolicy", ProviderSharedPropertyPolicy],
+      ["ProviderFactoryPolicy", ProviderFactoryPolicy],
+      ["ProviderCompatibilityPolicy", ProviderCompatibilityPolicy],
+      ["ProviderHealthPolicy", ProviderHealthPolicy]
+    ]) {
+      this.hub.registerProperty(name, value, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
+    }
     this.hub.registerProperty("ProviderManifestPolicy",
       ProviderManifestPolicy, {
         owners: ["LinkCore"], visibility: "Public"
