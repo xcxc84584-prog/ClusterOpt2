@@ -44,3 +44,8 @@ Commit `117307604e83cf0cd4cf3a50f285f08f44b21f19`:
 
 ## Patch(+4) CI failure and Patch(+5) correction
 Commit `82e66d3b82f19639c1b926a89fb7d16506adfb7d`：`npm run check` FAIL，Runtime Audit 的 cycle case 原始 nested response 已正確包含 423，但輸出列的 status 誤用 outer 200，測試無法在報告中找到 423。Patch(+5) 改以 inner status 作為報告觀測碼，並保留完整 Response，重新跑 exact-head CI 才能標 PASS。此錯誤屬測試輸出，不表示 HubUnit 的 cycle EHU 失效。
+
+## Patch(+6) large logical sparse file evidence
+- New executable CLI and test: Node OS sparse files with logical sizes 1/64/1024/5120 MiB; inspect only bounded UTF-8 slices and verify last offset > 2^32.
+- GitHub Actions uploads `largefile-sparse.json`; latest exact-head result pending.
+- Real 5 GiB filled content, Chromium OPFS quota/permission, UI edit latency, save/writeback and crash recovery stay **NOT RUN**; do not equate sparse-size probe with them.

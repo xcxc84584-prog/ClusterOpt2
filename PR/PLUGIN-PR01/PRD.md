@@ -30,3 +30,6 @@ Production version stays `0.0.9-pr9.patch9`.
 
 ## Patch(+4) test coverage completion
 Expand the **fully executable** Runtime Audit CLI from 5 to 8 assertions: request/reply success, User/Agent permission isolation, unknown target/source, invalid object contract 400, duplicate ID 409, and cycle detection 423. This remains a production-class LinkCore behavior test and an executable, independently verifiable Node deliverable.
+
+## Patch(+6) PR01.08 runnable deliverable
+新增真實 OS 暫存稀疏檔自動驗證；對 1MiB、64MiB、1GiB、5GiB 的實體檔案進行地址跨度、切片長度與 UTF-8 Blob 讀取的 CI 測試。此項為「稀疏檔地址煙霧測試」子項的可運行版本，不表示真實 5GiB 文件編輯／存儲已通過；其餘使用者驗收需要獨立證據。

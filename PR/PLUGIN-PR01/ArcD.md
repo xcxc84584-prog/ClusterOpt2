@@ -82,3 +82,15 @@ All tests run against a newly created `LinkCore` instance; EHU is not suppressed
 
 ## Patch(+5) — 巢狀 Response 狀態投影
 `Audit.Caller → Audit.Left (200 outer) → Audit.Right (200 intermediate) → Audit.Left (423 inner)`。Node Runtime Audit 保留原始巢狀 Response，輸出事件的 `status` 使用最內層拒絕碼 423，以利機器驗證；OMU 仍保留真正 EHU 423。禁止將 outer 200 當成整個 EventChain 成功。
+
+## Patch(+6) — sparse-file probe (outside production EventChain)
+```mermaid
+flowchart LR
+ Runner[Linux CI real filesystem] --> Sparse[Temporary sparse file 1/64/1024/5120 MiB]
+ Sparse --> Blob[Node openAsBlob]
+ Blob --> Policy[Production UTF8SlicePolicy]
+ Policy --> Three[Read first/middle/last 64KiB windows]
+ Three --> Report[JSON size/offset/memory observations]
+ Report --> Clean[Delete temporary files]
+```
+Only `UTF8SlicePolicy` production Property is imported as immutable read algorithm; no Hub runtime routing, UI, mutation or entire-file read. It intentionally tests the addressing primitive rather than falsely claiming complete L1–L6 integration. Keep memory bounded by three 64KiB reads.

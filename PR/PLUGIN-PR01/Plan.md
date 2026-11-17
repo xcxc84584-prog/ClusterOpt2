@@ -50,3 +50,10 @@ Node runtime audit now covers 200 / 400 / 403 / 404 / 409 / 423 with real URU re
 
 ## Patch(+5) — GitHub 參考、巢狀回應正確性
 檢視 VS Code [extension service](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/extensions/common/extensions.ts) 的工作階段結果與控制界線，避免將巢狀動作的外層成功與內層失敗混為一談。OCDA 的 Runtime Audit 在返回 outer 200 時仍應突出 inner EHU 423。這次只調整稽核結果投影，不更改 HubUnit 的執行或錯誤傳遞語義。
+
+## Patch(+6) — Github reference, sparse scale addresses
+External design review:
+- [Node.js File System API](https://github.com/nodejs/node/blob/main/doc/api/fs.md): use real file handles and offset-addressed I/O; avoid allocating 5 GiB in RAM for a size smoke.
+- [VS Code PieceTree](https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeTextBuffer.ts): separate bounded text operations from the logical document size; do not treat a whole-file read as prerequisite for local editing.
+Architecture improvement: add real temporary **sparse** OS files at 1MiB/64MiB/1GiB/5GiB to validate actual UTF8SlicePolicy byte range arithmetic and no whole-file read. A sparse file verifies large addresses but **does not measure 5 GiB of real content**, browser OPFS file permission, real large-file edit/writeback, or durability.
+The benchmark is a self-cleaning CLI in Implementation/tools with a Node integration test and JSON CI artifact; no production Object/Property changes. Record elapsed and heap delta only as environmental observations, not guaranteed performance. Failure to support sparse filesystem must fail the test, not silently be marked PASS.
