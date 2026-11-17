@@ -40,3 +40,6 @@
 - Restore legacy root-path confirmation as an unverified Windows path label; does not grant access to new roots.
 - Deny cross-root paths and handle rejected Hub calls by EHU + error response.
 - Windows real Agent / ChatGPT OAuth / 14-tool E2E and browser matrix not yet PASS.
+
+## Patch(+5): Three-service C/P/O and port mapping
+Default ports are Local Agent 43881, MCP 43880 and OAuth 43879. The shared Port-CPO.ps1 provides C cancel, P choose an unused service port, and O process-identity-checked override after typed confirmation. Each launcher passes its chosen port through environment variables and a persisted port mapping; no additional core API is introduced. Internal HTTP/MCP paths use the selected upstream ports. Fixed-commit bootstraps fetch the CPO helper and updated runtime code. Windows PowerShell 5.1/7 and Node/Playwright are CI gates; changing OAuth port requires a matching HTTPS reverse-proxy update.
