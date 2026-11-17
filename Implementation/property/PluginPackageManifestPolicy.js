@@ -8,7 +8,8 @@ const MAX_BYTES = 65536;
 const MAX_LABEL = 128;
 const ENTRY = /^[A-Za-z0-9_./-]+\.m?js$/;
 const FIELDS = new Set([
-  "packageVersion", "name", "entry", "provider", "description"
+  "packageVersion", "name", "entry", "uiEntry",
+  "provider", "description"
 ]);
 const encoder = new TextEncoder();
 
@@ -22,10 +23,10 @@ function isRecord(value) {
     Object.getPrototypeOf(value) === Object.prototype;
 }
 
-function safeEntry(entry) {
+function safeEntry(entry, pattern = ENTRY) {
   if (typeof entry !== "string" ||
       entry.length > 256 ||
-      !ENTRY.test(entry) ||
+      !pattern.test(entry) ||
       entry.startsWith("/") ||
       entry.startsWith("./") ||
       entry.includes("//") ||
@@ -64,6 +65,8 @@ export const PluginPackageManifestPolicy = Object.freeze({
         typeof value.name !== "string" ||
         value.name.length < 1 || value.name.length > MAX_LABEL ||
         !safeEntry(value.entry) ||
+        (value.uiEntry !== undefined &&
+         !safeEntry(value.uiEntry, UI_ENTRY)) ||
         (value.description !== undefined &&
          (typeof value.description !== "string" ||
           value.description.length > 512))) {
@@ -78,6 +81,7 @@ export const PluginPackageManifestPolicy = Object.freeze({
     result.packageVersion = 1;
     result.name = value.name;
     result.entry = value.entry;
+    if (value.uiEntry !== undefined) result.uiEntry = value.uiEntry;
     result.provider = provider.value;
     if (value.description !== undefined) {
       result.description = value.description;
