@@ -58,3 +58,9 @@ Contract validation occurs at actual URU registration, not a mock Catalog.
 Malformed/duplicate/deceptive descriptors are rejected with registration
 EHU 400. This subPR adds no browser-facing unrestricted API; the external
 Catalog in PR02.05/06 will filter source visibility and authority.
+
+## PR02.02 Gate
+The internal URU validated metadata index is available only to trusted
+internal callers. No anonymous public Catalog was exposed. Runtime
+registration, response and unregister reflect a single URU truth.
+Validated on exact-head Node and Chromium tests; no new routing bypass.

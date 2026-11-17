@@ -34,3 +34,13 @@ PR02.02–PR02.10 remain TODO. Entire PR02 remains **not merged**.
 - Chromium: register dynamic Object, describe validated immutable
   metadata via internal URU, actual Request 200, unregister 404.
 - Check exact-head CI for both tests before declaring PASS.
+
+## PR02.02 exact-head CI: PASS
+Implementation commit `a7ba16a5859b0b428059cd71e5be401da6a637f9`.
+- [PLUGIN PR02 API Catalog](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44020847071): **PASS**
+- [OCDA CI](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44020847030): **PASS**
+- [PR1 OCDA Verification](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44020847024): **PASS**
+- [Local Agent PowerShell Parse](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44020847100): **PASS**
+
+Includes strict descriptor mismatch/duplicate EHU 400 and successful
+Hub-mediated Request 200. This is not evidence of PR02.03–PR02.10.
