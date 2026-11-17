@@ -18,10 +18,7 @@ if ($errors.Count -gt 0) {
 
 $content = Get-Content -LiteralPath $installer -Raw
 $rules = @{
-    ParameterBlockCount = @($ast.FindAll({
-        param($item)
-        $item -is [System.Management.Automation.Language.ParamBlockAst]
-    }, $true)).Count -eq 1
+    HasTopLevelParamBlock = $null -ne $ast.ParamBlock
     InstallerFunctionCount = @($ast.FindAll({
         param($item)
         $item -is [System.Management.Automation.Language.FunctionDefinitionAst]
