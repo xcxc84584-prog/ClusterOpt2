@@ -36,8 +36,9 @@ test("PR9 native terminal stays inside the editor and above status UI",
         header: bbox(".psm-terminal-head"),
         wrap: bbox(".psm-native-wrap"),
         footer: bbox(".statusbar"),
-        oldInput: getComputedStyle(document.querySelector(
-          ".psm-terminal-output")).display
+        oldInput: document.querySelector(".psm-terminal-output") ?
+          getComputedStyle(document.querySelector(
+            ".psm-terminal-output")).display : "none"
       };
     });
     expect(metrics.wrap.height).toBeGreaterThan(40);
