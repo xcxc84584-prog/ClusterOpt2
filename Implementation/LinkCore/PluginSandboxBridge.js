@@ -66,13 +66,19 @@ window.addEventListener("message", event => {
     } finally {
       URL.revokeObjectURL(url);
     }
+    // Keep the authenticated host port in the isolated frame so a
+    // worker startup failure can still reach HubUnit immediately.
+    const inner = new MessageChannel();
+    channel.onmessage = ({data}) => inner.port1.postMessage(data);
+    inner.port1.onmessage = ({data}) => channel.postMessage(data);
+    channel.start();
+    inner.port1.start();
     runner.onerror = () => {
-      try { channel.postMessage({kind:"error",status:502}); }
-      catch (_ignored) {}
+      channel.postMessage({kind:"error",status:502});
       runner.terminate();
     };
     runner.postMessage({kind:"start",
-      source:event.data.source}, [channel]);
+      source:event.data.source}, [inner.port2]);
   } catch (_error) {
     channel.postMessage({kind:"error",status:502});
   }
