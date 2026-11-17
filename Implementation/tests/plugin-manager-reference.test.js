@@ -32,10 +32,10 @@ test("sketch tabs and API explorer use registered contracts",()=>{
   const source=readFileSync(new URL(
     "../main/plugin-manager-ui.js",import.meta.url),"utf8");
   assert.match(source,/VIEWS=Object\.freeze\(\["permissions","api","ehu","resources"\]\)/);
-  assert.match(source,/core\\.discover\\("ui","list",kind/);
-  assert.match(source,/core\\.listProviderContracts\\("ui"/);
+  assert.ok(source.includes('core.discover("ui","list",kind'));
+  assert.ok(source.includes('core.listProviderContracts("ui"'));
   assert.match(source,/pm-api-table/);
-  assert.match(source,/service\\.outputSchema/);
+  assert.ok(source.includes("service.outputSchema"));
   const view=readFileSync(new URL(
     "../main/plugin-contract-view.js",import.meta.url),"utf8");
   assert.match(view,/JSON\.stringify\(descriptor,null,2\)/);
