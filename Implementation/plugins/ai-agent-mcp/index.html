@@ -56,7 +56,10 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
     <p data-i18n="setupNotice">本地 Agent 配對將在 PR14.4 提供。</p>
     <p data-i18n="features">尚未取得檔案及 PowerShell 權限。</p>
     <div class="controls">
-      <button type="button" disabled data-i18n="settings">模型設定</button>
+      <button type="button" data-model-action="configure"
+        disabled data-i18n="settings">模型設定</button>
+      <button type="button" data-model-action="modelInfo"
+        disabled data-i18n="modelStatus">模型狀態</button>
       <button type="button" disabled data-i18n="connection">連線教學</button>
       <button type="button" data-agent-action="pair"
         data-i18n="connect">配對</button>
@@ -70,14 +73,17 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
   <section class="feed">
     <div class="messages" role="log" aria-live="polite">
       <h2 data-i18n="feed">任務輸出</h2>
-      <div class="notice" data-i18n="unavailable">
-        AI 模型與任務服務尚未啟用。
+      <div class="notice" data-model-notice data-i18n="modelInactive">
+        配對本地 Agent 並設定模型後即可執行文字任務。
       </div>
+      <div data-model-output></div>
     </div>
     <form>
       <textarea disabled maxlength="8000" rows="2"
         data-placeholder="prompt" aria-label="Task prompt"></textarea>
       <button type="submit" disabled data-i18n="submit">送出</button>
+      <button type="button" data-model-action="cancel"
+        disabled data-i18n="stop">中斷</button>
     </form>
   </section>
 </main>
@@ -86,6 +92,31 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
   "use strict";
   const labels = {};
   let agentState = "disconnected";
+  let taskActive = false;
+  let taskPending = false;
+  let modelConfigured = false;
+  const messages = document.querySelector("[data-model-output]");
+  const taskInput = document.querySelector("textarea");
+  const submit = document.querySelector('form button[type="submit"]');
+  function renderModelControls() {
+    const connected = agentState === "connected";
+    for (const selector of ["configure", "modelInfo"]) {
+      document.querySelector('[data-model-action="' + selector + '"]')
+        .disabled = !connected;
+    }
+    taskInput.disabled = !connected || taskActive || taskPending;
+    submit.disabled = taskInput.disabled;
+    document.querySelector('[data-model-action="cancel"]').disabled =
+      !connected || !taskActive;
+  }
+  function appendMessage(message, kind = "info") {
+    const item = document.createElement("p");
+    item.className = "model-output model-output-" + kind;
+    item.textContent = String(message).slice(0, 65536);
+    messages.append(item);
+    if (messages.children.length > 40) messages.firstChild.remove();
+    item.scrollIntoView({ block: "nearest" });
+  }
   function updateAgentState() {
     const status = document.querySelector("[data-agent-status]");
     const key = agentState === "connected" ? "connected" :
@@ -97,6 +128,12 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
       agentState !== "connected";
     document.querySelector('[data-agent-action="disconnect"]').disabled =
       agentState === "disconnected";
+    if (agentState === "disconnected") {
+      taskActive = false;
+      taskPending = false;
+      modelConfigured = false;
+    }
+    renderModelControls();
   }
   document.querySelectorAll("[data-agent-action]").forEach(button => {
     button.addEventListener("click", () => {
@@ -107,8 +144,65 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
       }, "*");
     });
   });
+  document.querySelectorAll("[data-model-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      if (button.disabled) return;
+      window.parent.postMessage({
+        type: "cluster-model-" + button.dataset.modelAction.replace(
+          /[A-Z]/g, char => "-" + char.toLowerCase())
+      }, "*");
+    });
+  });
+  document.querySelector("form").addEventListener("submit", event => {
+    event.preventDefault();
+    if (submit.disabled || !taskInput.value.trim()) return;
+    const prompt = taskInput.value.trim().slice(0, 8000);
+    taskPending = true;
+    renderModelControls();
+    appendMessage(prompt, "user");
+    window.parent.postMessage({
+      type: "cluster-model-submit", prompt
+    }, "*");
+  });
   window.addEventListener("message", event => {
     if (event.source !== window.parent) return;
+    if (event.data?.type === "cluster-model-event") {
+      const update = event.data.update;
+      if (!update || typeof update !== "object") return;
+      if (update.kind === "model") {
+        modelConfigured = update.configured === true;
+        appendMessage(modelConfigured ?
+          (labels.modelReady || "Model ready") + ": " + update.model :
+          (labels.modelNotConfigured || "Model not configured"));
+      } else if (update.kind === "result") {
+        appendMessage(update.text, "assistant");
+      } else if (update.kind === "task") {
+        taskPending = false;
+        taskActive = !["completed", "failed", "interrupted"]
+          .includes(update.status);
+        if (update.status === "queued") taskInput.value = "";
+        appendMessage((labels.taskState || "Task") + ": " +
+          update.status);
+      } else if (update.kind === "reset") {
+        taskActive = false;
+        taskPending = false;
+      }
+      renderModelControls();
+      return;
+    }
+    if (event.data?.type === "cluster-model-response") {
+      const value = event.data;
+      if (value.action === "submit" && value.ok !== true) {
+        taskPending = false;
+        taskActive = false;
+      }
+      if (value.ok !== true) {
+        appendMessage((labels.connectionError || "Error") +
+          " (" + value.status + ")", "error");
+      }
+      renderModelControls();
+      return;
+    }
     if (event.data?.type === "cluster-local-agent-status") {
       const state = event.data.state;
       if (["connected", "connecting", "disconnected"].includes(state)) {
@@ -157,9 +251,6 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
       const value = labels[node.dataset.placeholder];
       if (typeof value === "string") node.placeholder = value;
     }
-  });
-  document.querySelector("form").addEventListener("submit", event => {
-    event.preventDefault();
   });
 })();
 </script>
