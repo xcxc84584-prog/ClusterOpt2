@@ -7,9 +7,9 @@ For full instructions see [MCP-SETUP.md](MCP-SETUP.md).\n\nFor Windows Local Age
 **下載 Quick-Setup.cmd**. This downloads one CMD file, not the ZIP.
 The CMD downloads a revision-pinned setup helper and Agent files
 after confirmation, then installs dependencies and starts a loopback
-service. Nothing runs automatically from the browser.\n\nFor the separate ChatGPT MCP server, click **下載 MCP 快速配置 CMD**.\nThe second standalone CMD retrieves revision-pinned MCP/OAuth gateway files,\nstarts the local bearer gateway and offers an opt-in OAuth configuration\nwindow. Configure a separate trusted HTTPS proxy to OAuth port 43881;\nthe script never starts a public tunnel.
+service. Nothing runs automatically from the browser.\n\nFor the separate ChatGPT MCP server, click **下載 MCP 快速配置 CMD**.\nThe second standalone CMD retrieves revision-pinned MCP/OAuth gateway files,\nstarts the local bearer gateway and offers an opt-in OAuth configuration\nwindow. Configure a separate trusted HTTPS proxy to OAuth port 43879;\nthe script never starts a public tunnel.
 
-If port 43879 is occupied, choose **P** to select another port,
+If port 43881 is occupied, choose **P** to select another port,
 **C** to cancel safely, or **O** to inspect owning PID(s) and require
 typing OVERRIDE before terminating any process. Enter the selected
 port and pairing token in the trusted host pairing dialog.
@@ -83,3 +83,5 @@ Do not treat a mock WebSocket test as proof of a real model connection.
 
 ## Separate OAuth control scope
 When explicitly requested, `cluster.control` advertises all 14 legacy MCP tools after a distinct authorization-page warning. Requests still pass through the already paired Local Agent, browser ToolBox grants and per-command PowerShell user confirmation; it is **not** a direct shell endpoint. Ordinary `cluster.read` tokens remain five-tool read-only. See MCP-SETUP.md.
+
+C/P/O is now shared by the Local Agent, MCP Gateway, and OAuth Gateway launchers. Defaults: 43881 / 43880 / 43879 respectively. Changed ports persist to the local service port configuration and must be reflected in browser pairing / HTTPS proxy settings.
