@@ -90,12 +90,12 @@ test("PR02.06 honors UserAPI, AgentAPI and non-readable properties", () => {
   core.register(target("Service", "Public", "agent"));
   registerProperty(core, "HiddenProp", "Public", false);
   assert.equal(core.discover("guest", "list", "api").value.total, 0);
-  assert.equal(core.discover("guest", "list", "api", {
+  assert.equal(core.discover("guest", "list", "api", {}, {
     origin: "agent"
   }).value.total, 1);
   assert.equal(core.discover("guest", "list",
     "property").value.total, 0);
-  assert.equal(core.discover("guest", "list", "api", {
+  assert.equal(core.discover("guest", "list", "api", {}, {
     origin: "unknown"
   }).status, 400);
   assert.equal(core.discover("guest", "mutate", "api").status, 400);
