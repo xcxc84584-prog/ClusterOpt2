@@ -72,6 +72,9 @@ export class PluginUIHostUnit {
       return { ok: false, status: 503 };
     }
     let pendingAgent = null;
+    let pendingExplorer = null;
+    let pendingShell = null;
+    let pendingMCP = null;
     try {
       const html = decodeAsset(snapshot, manifest.uiEntry);
       if (html.length > 262144) throw Error("UI too large");
@@ -125,6 +128,7 @@ export class PluginUIHostUnit {
           throw Error("Explorer access registration failed");
         }
         view.explorerAccess = access;
+        pendingExplorer = access;
         const toolbox = this.doc.createElement("div");
         toolbox.className = "plugin-agent-toolbox";
         toolbox.style.cssText = "position:absolute;top:8px;right:16px;" +
@@ -314,12 +318,14 @@ export class PluginUIHostUnit {
             throw Error("Shell approval registration failed");
           }
           view.shellApproval = shell;
+          pendingShell = shell;
           const read = new PluginMCPReadOnlyObject(
             this.core, provider.providerId, agent.id);
           if (!this.core.register(read)) {
             throw Error("MCP read object registration failed");
           }
           view.mcpReadOnly = read;
+          pendingMCP = read;
         }
         if (provider.permissions.includes("model.configure") &&
             provider.permissions.includes("model.task")) {
@@ -488,6 +494,9 @@ export class PluginUIHostUnit {
       this.views.set(provider.providerId, view);
       return { ok: true, status: 200 };
     } catch {
+      if (pendingMCP) this.core.unregister(pendingMCP.id);
+      if (pendingShell) this.core.unregister(pendingShell.id);
+      if (pendingExplorer) this.core.unregister(pendingExplorer.id);
       if (pendingAgent) {
         pendingAgent.close();
         if (pendingAgent.modelTaskId) {
