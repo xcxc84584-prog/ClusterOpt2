@@ -1,4 +1,5 @@
 import { CatalogCollection } from "./CatalogCollection.js";
+import { CatalogQuery } from "./CatalogQuery.js";
 import { PropertyDescriptorPolicy } from
   "../property/PropertyDescriptorPolicy.js";
 import { APIDescriptorPolicy } from
@@ -46,6 +47,7 @@ export class LinkCore {
     this.omu = new ObjectManagementUnit();
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu);
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
+    this.catalogQuery = new CatalogQuery(this.catalog);
     this.version = "0.0.9-pr9.patch9";
     this.hub.registerProperty("PropertyDescriptorPolicy",
       PropertyDescriptorPolicy, {
