@@ -84,3 +84,39 @@ PR1 is not considered accepted based on source code alone.
   inflight draining and real File I/O are deferred to PR04–06.
 - PR03 major merge forbidden until exact-head PASS and final
   rollback snapshot; original editor large-file manual tests remain open.
+
+## PLUGIN PR04.01 outstanding acceptance
+- PR04.01 Node, VTE and Chromium tests: PENDING latest-head CI.
+- PR04.02–PR04.10 Route Table, ACL, and execution paths: TODO.
+- Real browser File System Access/manual 5GiB edit: NOT validated.
+
+## PLUGIN PR04.03 status
+- Replace-route runtime/ACL/VTE code and regression tests submitted.
+- Exact-head CI and restore proof: pending; no PASS until confirmed.
+- External route ACL (PR04.08), routeVersion/CAS (PR05) outstanding.
+- Real 5GiB and browser file permission manual tests remain open.
+
+## PLUGIN PR04.04–05 checkpoints
+- Node/VTE and Chromium exact-head CI: unverified until workflows finish.
+- Runtime Receive cancellation/timeout and transactional routeVersion
+  remain deferred; timeoutMs does not force running Provider termination.
+- External route-config ACL remains PR04.08, no public mutation API.
+- Physical 5GiB and file permissions remain unverified.
+
+## PLUGIN PR04.07 verification
+- Response Pipeline Node/VTE tests and production code submitted.
+- Exact-head five CI workflows and restore ref required before PASS.
+- Inflight hard cancellation, external Route ACL, routeVersion/CAS,
+  untrusted Worker sandbox and manual 5GiB File I/O remain deferred.
+
+## PLUGIN PR04.08 pending gate
+- New scoped route ACL / dependency DAG tests submitted; exact-head
+  Node/Chromium/OCDA/PR02/PR03/Windows checks must PASS before accept.
+- Authenticated browser control still deferred: host-only identity.
+- Real file permission/5GiB and PR05 routeVersion/CAS unresolved.
+
+## PLUGIN PR04.09–10 acceptance gate
+- New read facade Node/VTE/Chromium tests submitted, final exact-head
+  five workflows and restore verification required before merge.
+- Untrusted Worker, routeVersion CAS/draining and physical 5GiB
+  File System Access still deferred; no implied coverage.

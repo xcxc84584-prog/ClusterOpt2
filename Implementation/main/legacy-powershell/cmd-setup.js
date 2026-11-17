@@ -7,7 +7,7 @@ export const PLA_SOURCE =
   "ClusterOpt2/main/Implementation/local-agent/install-current.ps1";
 
 export function setupFilename(version) {
-  if (!/^\d+\.\d+\.\d+-pr\d+\.patch\d+(?:\.fix\d+)?$/u.test(version)) {
+  if (!/^\d+\.\d+\.\d+(?:-pr\d+\.patch\d+(?:\.fix\d+)?)?$/u.test(version)) {
     throw new TypeError("Invalid release version");
   }
   return "ClusterOpt2-PLA-Setup-" + version + ".cmd";

@@ -13,6 +13,7 @@ import { ProviderCompatibilityPolicy } from
 import { ProviderHealthPolicy } from
   "../property/ProviderHealthPolicy.js";
 import { createClusterAPIFacade } from "./ClusterAPIFacade.js";
+import { createRouteReadFacade } from "./RouteReadFacade.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { CatalogVisibilityPolicy } from
   "../property/CatalogVisibilityPolicy.js";
@@ -68,7 +69,7 @@ export class LinkCore {
     this.omu = new ObjectManagementUnit();
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
-      undefined, this.catalog);
+      undefined, this.catalog, this.services);
     this.catalogQuery = new CatalogQuery(this.catalog);
     Object.defineProperty(this, "version", {
       value: ReleaseVersion.product, enumerable: true,
@@ -241,6 +242,27 @@ export class LinkCore {
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
   }
+  /**
+   * Trusted host configuration, intentionally not added to Cluster.api.
+   * No third-party privilege or self-service route control until PR04.08.
+   */
+  configureReplaceRoutes(table) {
+    return this.hub.configureReplaceRoutes(table);
+  }
+  configureServiceRoutes(table) {
+    return this.hub.configureServiceRoutes(table);
+  }
+  /** Trusted host only: identity is verified by the embedding host. */
+  configureOwnedRoutes(source, table) {
+    return this.hub.configureOwnedRoutes(source, table);
+  }
+  inspectRoutes(source, command, input, origin = "user") {
+    return this.hub.inspectRoutes(source, command, input, origin);
+  }
+  requestService(source, service, action, payload = {}, options = {}) {
+    return this.hub.requestService(source, service, action,
+      payload, options);
+  }
   generateCatalogDocs(source, format, options = {}) {
     const result = CatalogDocumentation.render(
       (caller, command, kind, selector, context) =>
@@ -286,7 +308,8 @@ if (typeof window !== "undefined") {
     subobject: (path) => linkCore.subobjects(path),
     inheritedProperties: (path) => linkCore.inheritedProperties(path),
     version: () => linkCore.getSnapshot().version,
-    api: createClusterAPIFacade(linkCore)
+    api: createClusterAPIFacade(linkCore),
+    routes: createRouteReadFacade(linkCore)
   });
   Object.defineProperty(window, "Cluster", {
     configurable: false, writable: false, value: methods

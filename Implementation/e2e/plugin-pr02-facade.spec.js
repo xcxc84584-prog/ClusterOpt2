@@ -52,7 +52,7 @@ test("PR02.10 Cluster.api works in real page without changing legacy API",
     expect(state.keys).toEqual(["describe", "docs", "list", "query"]);
     expect(state.frozen).toBe(true);
     expect(state.methods).toBe(true);
-    expect(state.version).toBe("0.0.9-pr9.patch9");
+    expect(state.version).toBe("0.0.10");
     expect(state.statuses).toEqual([200, 200, 200, 200, 400]);
     expect(state.owner).toBe("CatalogFacadeBrowser");
     expect(state.found).toBe(1);

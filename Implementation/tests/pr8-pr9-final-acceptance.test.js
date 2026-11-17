@@ -15,7 +15,7 @@ const nativeServer = readFileSync(fileURLToPath(
   new URL("../local-agent/server.mjs", import.meta.url)), "utf8");
 
 test("PR9 current version propagates into UI installer and CMD filename", () => {
-  assert.match(version, /^0\.0\.\d+-pr\d+\.patch\d+(?:\.fix\d+)?$/u);
+  assert.match(version, /^\d+\.\d+\.\d+(?:-pr\d+\.patch\d+(?:\.fix\d+)?)?$/u);
   const cmd = createSetupCmd({ version });
   assert.equal(setupFilename(version),
     "ClusterOpt2-PLA-Setup-" + version + ".cmd");

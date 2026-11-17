@@ -12,7 +12,7 @@ test("only ReleaseVersion governs runtime and distribution metadata", () => {
   assert.equal(new LinkCore().version, ReleaseVersion.product);
   assert.equal(new LinkCore().edpmu.get("SystemVersion"),
     ReleaseVersion.product);
-  assert.equal(ReleaseVersion.channel, "development");
+  assert.equal(ReleaseVersion.channel, "stable");
   assert.equal(Object.isFrozen(ReleaseVersion), true);
 });
 
