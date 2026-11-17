@@ -26,7 +26,12 @@ function snapshot(manifestText = asset("plugin.json")) {
     files: {
       "plugin.json": Buffer.from(manifestText).toString("base64"),
       "worker.js": Buffer.from(asset("worker.js")).toString("base64"),
-      "README.md": Buffer.from(asset("README.md")).toString("base64")
+      "README.md": Buffer.from(asset("README.md")).toString("base64"),
+      "index.html": Buffer.from(asset("index.html")).toString("base64"),
+      "locales/en.json": Buffer.from(asset("locales/en.json"))
+        .toString("base64"),
+      "locales/zh-Hant.json": Buffer.from(
+        asset("locales/zh-Hant.json")).toString("base64")
     }
   };
 }
