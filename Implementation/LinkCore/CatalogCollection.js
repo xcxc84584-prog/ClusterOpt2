@@ -21,6 +21,10 @@ export class CatalogCollection {
 
     const apis = [];
     for (const owner of objects) {
+      const object = this.uru.objects.get(owner);
+      // Legacy Objects have no self-description contract. Keep them
+      // runnable but do not infer or publish undocumented APIs.
+      if (!object?.ocda?.APIDescriptors) continue;
       const response = this.uru.describeAPI(owner);
       if (!response.ok) {
         return { ok: false, status: response.status,
