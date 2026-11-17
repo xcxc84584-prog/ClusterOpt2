@@ -1,0 +1,30 @@
+name: Plugin PR01 OCDA Baseline
+on:
+  pull_request:
+    paths:
+      - "Implementation/tools/ocda-baseline.mjs"
+      - "Implementation/tests/ocda-baseline.test.js"
+      - "PR/PLUGIN-PR01/**"
+      - ".github/workflows/plugin-pr01-baseline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test Implementation/tests/ocda-baseline.test.js
+      - name: Generate artifacts without modifying the working tree
+        run: |
+          mkdir -p "$RUNNER_TEMP/ocda-audit"
+          node Implementation/tools/ocda-baseline.mjs --json > "$RUNNER_TEMP/ocda-audit/inventory.json"
+          node Implementation/tools/ocda-baseline.mjs > "$RUNNER_TEMP/ocda-audit/inventory.md"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plugin-pr01-inventory
+          path: ${{ runner.temp }}/ocda-audit/
+          retention-days: 14
