@@ -144,7 +144,9 @@ export function pluginTemplateFiles(locale = "zh-Hant") {
     "7. Use the Resources tab to validate the extracted folder.",
     "",
     "IMPORTANT: The current PR13 build stores untrusted folders as data.",
-    "Automatic execution awaits sandbox, RPC and HubUnit ACL approval.",
+    "Standalone ES Module functions can now run after explicit approval.",
+    "Use named exports matching the declared Action (e.g. transform).",
+    "Relative JS imports and embedded HTML UI activation are pending.",
     "No direct access to the host DOM, filesystem or internal Cluster APIs.",
     "Do not assume a Manifest declaration grants a permission."
   ] : [
@@ -159,7 +161,9 @@ export function pluginTemplateFiles(locale = "zh-Hant") {
     "7. 解壓後到資源頁選擇資料夾執行驗證。",
     "",
     "重要：目前 PR13 僅將自製插件儲存為資料。",
-    "執行仍需通過隔離環境、RPC、HubUnit ACL 授權驗收。",
+    "自包含 ES Module 的 Action 可經明確同意後在隔離環境執行。",
+    "請使用與 Action 同名的 export（例如 transform）。",
+    "跨檔 JavaScript import 與 HTML UI 啟動仍待完成。",
     "插件不得直接存取主頁 DOM、檔案系統或 Cluster 內部實例。",
     "Manifest 宣告權限不代表已獲准使用。"
   ];
@@ -169,14 +173,14 @@ export function transform(payload) {
   const text = typeof payload?.text === "string" ? payload.text : "";
   return { result: text.toUpperCase() };
 }
-// The future PR13 RPC bridge will dispatch declared actions here.
+// The isolated PR13 RPC bridge calls exported functions by action name.
 ` : `// 插件服務邏輯，只能在通過審核的隔離環境啟動。
 // 呼叫前請查看「插件管理 > API 列表」的輸入／輸出契約。
 export function transform(payload) {
   const text = typeof payload?.text === "string" ? payload.text : "";
   return { result: text.toUpperCase() };
 }
-// 後續 PR13 RPC Bridge 將負責派送已宣告的 Action。
+// PR13 隔離 RPC Bridge 依 Action 名稱呼叫對應的 export 函數。
 `;
   const html = `<!doctype html>
 <html lang="${english ? "en" : "zh-Hant"}">
