@@ -193,6 +193,12 @@ export class LinkCore {
   unregisterProvider(source, providerId) {
     return this.hub.unregisterProvider(source, providerId);
   }
+  attachProviderFactory(source, providerId, factory) {
+    return this.hub.attachProviderFactory(source, providerId, factory);
+  }
+  materializeProvider(source, providerId) {
+    return this.hub.materializeProvider(source, providerId);
+  }
   publishProviderProperty(source, providerId, name, value) {
     return this.hub.publishProviderProperty(
       source, providerId, name, value);
