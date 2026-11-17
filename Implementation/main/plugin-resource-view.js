@@ -1,3 +1,6 @@
+import { downloadPluginTemplate } from
+  "./plugin-template-download.js";
+
 /**
  * Resources: independent scroll panes and user-initiated data-only exports.
  * Provider Manifests do not contain binary package download URLs. Never
@@ -246,6 +249,22 @@ export function renderResources(doc, host, options) {
     "Search downloadable plugins...");
   search.setAttribute("aria-label", t("搜尋可下載插件",
     "Search downloadable plugins"));
+  const template=el(doc,"article",
+    "pm-resource-card pm-market-card");
+  template.append(el(doc,"strong","",
+    t("插件製作範本","Plugin development template")));
+  template.append(el(doc,"p","pm-muted",t(
+    "下載完整 HTML／CSS／JS 範本，開發前請先查看 API 列表的" +
+      " Request 輸入與 Response 輸出契約。",
+    "Download a full HTML/CSS/JS project. Read API List Request" +
+      " and Response contracts before writing a plugin.")));
+  const templateDownload=button(doc,t("下載製作範本 ZIP",
+    "Download template ZIP"),()=>{
+    const locale=core.edpmu.get("Language");
+    downloadPluginTemplate(doc,locale==="en"?"en":"zh-Hant");
+  });
+  templateDownload.id="pluginTemplateDownload";
+  template.append(templateDownload);
   const cards = el(doc, "div", "pm-resource-cards");
   const status = el(doc, "p", "pm-market-status");
   status.setAttribute("role", "status");
@@ -352,7 +371,7 @@ export function renderResources(doc, host, options) {
   const localGroup = el(doc, "section", "pm-resource-local");
   localGroup.append(localPackage);
   heading.append(search);
-  right.append(heading, localGroup, cards, status, filePicker);
+  right.append(heading, template, localGroup, cards, status, filePicker);
   layout.append(left, right);
   host.append(layout);
 }
