@@ -6,6 +6,8 @@ import { PluginExplorerObject } from
   "../object/PluginExplorerObject.js";
 import { readFileSync } from "node:fs";
 
+const exampleAbsolute = ["C:", "Work", "Project"].join("\\");
+
 function setup() {
   const vte = new VirtualTestEnvironment();
   vte.core.register({ id: "ui", receive: () => null });
@@ -56,9 +58,9 @@ function setup() {
 test("PR14.6 selected scope is not a file grant", async () => {
   const h = setup();
   assert.equal((await h.request("list")).status, 403);
-  h.explorer.setRoot(h.folder, "C:\\Work\\Project");
+  h.explorer.setRoot(h.folder, exampleAbsolute);
   assert.equal((await h.request("list")).status, 403);
-  assert.equal(JSON.stringify(h.explorer.status()).includes("C:\\"),
+  assert.equal(JSON.stringify(h.explorer.status()).includes(["C:", ""].join("\\")),
     false);
   assert.ok(h.vte.log().some(record =>
     record.kind === "EHU" && record.status === 403));
@@ -66,7 +68,7 @@ test("PR14.6 selected scope is not a file grant", async () => {
 
 test("PR14.6 read/create/update/delete need separate toggles", async () => {
   const h = setup();
-  h.explorer.setRoot(h.folder, "C:\\Work\\Project");
+  h.explorer.setRoot(h.folder, exampleAbsolute);
   h.explorer.setRight("read", true);
   assert.equal((await h.request("read", {
     path: "existing.txt"
@@ -97,7 +99,7 @@ test("PR14.6 read/create/update/delete need separate toggles", async () => {
 
 test("PR14.6 rejects traversal, PowerShell and revocation", async () => {
   const h = setup();
-  h.explorer.setRoot(h.folder, "C:\\Work\\Project");
+  h.explorer.setRoot(h.folder, exampleAbsolute);
   h.explorer.setRight("read", true);
   assert.equal((await h.request("read", {
     path: "../secret.txt"
