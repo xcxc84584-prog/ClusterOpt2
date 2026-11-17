@@ -34,7 +34,7 @@ test("PR20 UI never submits chat, downloads through trusted host", () => {
   assert.match(downloads, /local-agent\/MCP-Quick-Setup\.cmd/);
 });
 
-test("PR20 bundled MCP retains all 13 legacy remote tool names", () => {
+test("PR20 bundled MCP retains all 14 legacy remote tool names", () => {
   const gateway = asset("local-agent/remote-mcp.cjs");
   const expected = [
     "get_status", "get_task_status", "list_files",
@@ -49,5 +49,12 @@ test("PR20 bundled MCP retains all 13 legacy remote tool names", () => {
       "Missing legacy MCP tool: " + action);
   }
   const oauth = asset("local-agent/oauth-mcp-gateway.cjs");
+  const stdio = asset("local-agent/mcp-stdio.cjs");
+  for (const action of expected) {
+    assert.ok(stdio.includes("'cluster." + action + "'"),
+      "Missing stdio MCP tool: " + action);
+  }
   assert.match(oauth, /scopes_supported:\['cluster\.read'\]/);
+  assert.match(oauth, /readonlyTools\.has\(rpc\.params\?\.name\)/);
+  assert.match(oauth, /value\.result\.tools\.filter/);
 });
