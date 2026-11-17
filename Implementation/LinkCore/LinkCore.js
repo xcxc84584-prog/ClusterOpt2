@@ -1,4 +1,5 @@
 import { CatalogCollection } from "./CatalogCollection.js";
+import { ServiceRegistry } from "./ServiceRegistry.js";
 import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
 import { ProviderManifestPolicy } from
@@ -55,6 +56,7 @@ export class LinkCore {
   constructor() {
     this.edpmu = new EntireDomainPropertyManagementUnit();
     this.uru = new UnifiedRegistrationUnit(this.edpmu);
+    this.services = new ServiceRegistry(this.uru);
     this.omu = new ObjectManagementUnit();
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
@@ -190,6 +192,10 @@ export class LinkCore {
   }
   unregisterProvider(source, providerId) {
     return this.hub.unregisterProvider(source, providerId);
+  }
+  publishProviderProperty(source, providerId, name, value) {
+    return this.hub.publishProviderProperty(
+      source, providerId, name, value);
   }
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
