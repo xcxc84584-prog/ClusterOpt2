@@ -370,6 +370,10 @@ export class LinkCore {
     }
     return result;
   }
+  listProviderContracts(source, options = {}) {
+    return this.hub.listProviderContracts(source, options);
+  }
+
   discover(source, command, kind, selector = {}, options = {}) {
     return this.hub.discoverCatalog(source, command, kind,
       selector, options);
