@@ -31,3 +31,9 @@ backup/plugin-pr02-sub03-da2672e exists. PR02.03 = PASS.
 Live internal CatalogCollection built from URU/EDPMU, bounded immutable
 snapshots, no shared mutable index, no plugin-facing unauthorized API.
 Implementation committed; exact-head CI acceptance pending.
+
+## PR02.05 implementation scope
+Internal CatalogQuery list, describe and query with bounded pagination,
+validated selectors and ambiguity detection. Uses one current immutable
+CatalogCollection result per call. No external discovery before PR02.06.
+CI pending; PR02 large PR must remain Draft.
