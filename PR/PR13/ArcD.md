@@ -193,3 +193,13 @@ Sandbox script -> CSP connect-src 'none' -> failed network fetch
 ```
 No additional registration authority. IndexedDB stores inert bytes,
 not active Providers or permission grants.
+
+## PR13 Patch(+11) release integration (bounded)
+```text
+Verified PR13.1–13.6 subset -> ReleaseVersion.product=0.0.15
+  -> package.json version parity -> npm/VTE/Chromium -> GitHub checks
+  -> verified backup -> guarded PR #58 merge -> main
+Deferred multi-file UI/import/auto-resume -> future implementation
+```
+This release gate does not authorize executing arbitrary archived HTML,
+relative JavaScript modules or auto-replaying stored capability grants.
