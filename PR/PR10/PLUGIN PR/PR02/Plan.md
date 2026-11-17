@@ -67,3 +67,30 @@ Exact-head commit `a7ba16a5859b0b428059cd71e5be401da6a637f9`:
 The exact commit passed Node LinkCore registration, Chromium Object
 descriptor integration, global regression and Windows validation.
 PR02.02 complete; remaining Catalog APIs PR02.03–PR02.10 TODO.
+
+## PR02.03 — Property Descriptor Schema (GitHub design review)
+Upstream references:
+- VS Code configuration extension point:
+  https://github.com/microsoft/vscode/blob/main/src/vs/workbench/api/common/configurationExtensionPoint.ts
+- VS Code JSON Schema and settings:
+  https://github.com/microsoft/vscode-docs/blob/main/docs/languages/json.md
+- Theia PreferenceSchemaService:
+  https://eclipse-theia.github.io/theia/docs/next/documents/Migration.html
+
+Architecture improvement: descriptions of name/type/owner/visibility,
+readability, writability and human-readable invariants belong to one
+EDPMU entry. Do not copy a second registry, expose private metadata to
+untrusted plugins, or treat writable=true as permission to invoke updates.
+No live validator executes user-provided invariant code.
+
+Implementation:
+- Independent immutable PropertyDescriptorPolicy v1, <=8 KiB.
+- Optional descriptor on existing HubUnit.registerProperty(name,value,opts).
+- EDPMU validates descriptor/name/owners/visibility against actual
+  registration and stores a frozen snapshot next to the value.
+- Trusted EDPMU.describeProperty returns 404 for absent, null metadata
+  for existing legacy registrations. Hub readProperty and AccessPolicy
+  remain the sole allowed read path to actual property values.
+- Node/Chromium tests and dedicated workflow run on PR branch.
+Performance O(metadata size) bounded; no file handle or SaveTask changes.
+Gate: exact-head CI + browser must PASS; until then PR02.03 PENDING.
