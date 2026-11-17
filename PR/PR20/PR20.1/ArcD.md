@@ -21,3 +21,10 @@ MCP 多筆呼叫由既有 requestId 對應；不可因 UI 狀態共享而將結�
 
 ## EHU / Failure
 未授權或過期權限一律由現有 Host/OMU 產生 EHU；UI 不可繞過錯誤路由。此 PR 只移除提交入口，不聲稱完成全端安全驗收。
+
+## Patch(+2) Connection chain
+Quick Setup CMD → revision-pinned PowerShell downloads → Local Agent (43879) + MCP (43880) + optional OAuth (43881) → trusted reverse proxy → ChatGPT.
+
+OAuth token scope `cluster.read` → 5-tool allowlist → MCP gateway → local Agent → authorized browser bridge; unlisted/mutating calls receive JSON-RPC denial before the proxy. Local stdio and local bearer gateway expose 14 contract descriptions, but actual mutation must pass ToolBox capabilities and user approval.
+
+No new EDPMU Property, global version writer, or URU registry introduced. The only host interface extension is a named, reviewed installer download event.
