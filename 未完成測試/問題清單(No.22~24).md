@@ -63,3 +63,14 @@ PR8 remains NOT PASS.
   integration / user gesture acceptance still required.
 - 25.14: Old Cluster.version() after merge: verify exact
   location.href and uncached resource URL in client.
+
+## Final PR8/PR9 acceptance audit — 2026-11-17
+Full matrix: PR/PR8/FinalAcceptance-20261117.md and
+PR/PR9/FinalAcceptance-20261117.md.
+
+- PR8 22.2 / 22.3, 23.4, 24.2 / 24.3 / 24.4 / 24.6 and
+  25.3 / 25.13 remain OPEN or not independently verified.
+- PR9 full global line jump, Explorer parity and Windows native
+  PowerShell parity remain OPEN.
+- Patch4 addresses PSM version and CMD source mismatch; do not
+  equate an exact-head green CI with full system acceptance.
