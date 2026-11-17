@@ -275,6 +275,8 @@ padding:10px
 </p>
 <button
   type="button" data-quick-setup>下載 Quick-Setup.cmd</button>
+<button
+  type="button" data-mcp-quick-setup>下載 MCP 快速配置 CMD</button>
 </div>
 <div
   class="cai-step">
@@ -330,7 +332,13 @@ padding:10px
 </li>
 <li>點選「模型設定」，在可信任視窗設定 OpenAI API Key 與模型。
 </li>
-<li>MCP／OAuth 需個別啟動並完成本機及 HTTPS 安全授權；不會自動啟用。
+<li>再點選「下載 MCP 快速配置 CMD」執行本機 MCP 配置。它會準備 43880 MCP 與選用的 43881 OAuth；不會自動架設公開 HTTPS。
+</li>
+<li>設定可信任的固定 HTTPS 反向代理，僅指向本機 127.0.0.1:43881，網址必須與 OAuth Issuer 完全一致。
+</li>
+<li>在 ChatGPT 設定自訂 MCP 連線：貼上 https://你的網域/mcp，使用 OAuth 登入，於授權頁輸入本機顯示的授權密碼。
+</li>
+<li>確認 ChatGPT 可查詢 cluster.get_status、cluster.list_files 等唯讀工具；檔案修改和 PowerShell 需要額外 ToolBox 授權，不能由 cluster.read 自動取得。
 </li>
 </ol>
 </div>
@@ -411,6 +419,9 @@ padding:10px
   document.querySelector("[data-quick-setup]").addEventListener(
     "click", () => window.parent.postMessage({
       type: "cluster-plugin-quick-setup" }, "*"));
+  document.querySelector("[data-mcp-quick-setup]").addEventListener(
+    "click", () => window.parent.postMessage({
+      type: "cluster-plugin-mcp-quick-setup" }, "*"));
   document.querySelector("[data-legacy-close]").addEventListener(
     "click", () => window.parent.postMessage({
       type: "cluster-plugin-panel-close" }, "*"));
