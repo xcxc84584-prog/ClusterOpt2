@@ -4,6 +4,8 @@ test("PR13 API List uses compact HubUnit req/rep table", async ({
   page
 }) => {
   await page.goto("/");
+  await page.locator("#menuBtn").click();
+  await page.locator("#toolBtn").click();
   await page.locator("#pluginBtn").click();
   const window = page.locator("#pluginWindow");
   await expect(window).toBeVisible();
