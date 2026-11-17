@@ -169,3 +169,14 @@ preserve a candidate and pre-merge backup.
   are retained and existing marketplace tests accept two cards.
 - This is a UI defect patch, no Provider/HubUnit contract or release
   version change.
+
+## PR13 Patch(+14) — UI layout readability repair
+- Space Resource heading, plugin search field, local folder chooser and
+  catalogue download cards to prevent touching or collision.
+- Allocate minimum visual widths for Kind and Action in API List;
+  preserve full data using horizontal table scrolling rather than
+  squeezing long identifiers into single-character fragments.
+- Scope layout CSS to #pluginWindow. Do not modify plugin lifecycle,
+  HubUnit API contracts, URU authorities, or user consent.
+- Two browser layout tests plus the existing 109+ regression tests are
+  the acceptance gate. Version remains 0.0.15.
