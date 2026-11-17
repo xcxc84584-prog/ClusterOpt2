@@ -253,8 +253,8 @@ export class LinkCore {
   removeStoredPluginBundle(providerId) {
     return this.pluginPackageStore.remove(providerId);
   }
-  rememberReviewedPlugin(providerId) {
-    return this.pluginPackageStore.rememberReviewed(providerId);
+  rememberReviewedPlugin(providerId, enabled = true) {
+    return this.pluginPackageStore.rememberReviewed(providerId,enabled);
   }
   listReviewedPlugins() {
     return this.pluginPackageStore.listReviewed();
