@@ -39,6 +39,8 @@ export class PluginLocalAgentObject {
     this.modelTaskId = null;
     this.generation = 0;
     this.modelReplyQueue = Promise.resolve();
+    this.shellApprovalId = null;
+    this.bridgeRegistered = false;
   }
 
   audit(status, action) {
@@ -60,6 +62,7 @@ export class PluginLocalAgentObject {
   close() {
     this.generation++;
     this.modelReplyQueue = Promise.resolve();
+    this.bridgeRegistered = false;
     this.cancelPrompt?.();
     this.pendingPing?.({ ok: false, status: 503 });
     this.state = "disconnected";
@@ -82,6 +85,56 @@ export class PluginLocalAgentObject {
     if (this.modelTaskId) {
       void this.core.request(this.id, this.modelTaskId,
         "reset", {});
+    }
+  }
+
+  /**
+   * Only trusted ToolBox code can enable the legacy MCP bridge.
+   * Every shell request is separately approved by a host-owned Object.
+   */
+  registerShellBridge(objectId) {
+    if (typeof objectId !== "string" ||
+        !objectId.startsWith("PluginShell.") ||
+        this.state !== "connected" || !this.socket) {
+      return { ok: false, status: 409 };
+    }
+    this.shellApprovalId = objectId;
+    try {
+      this.socket.send(JSON.stringify({ type: "bridge_register" }));
+      return { ok: true, status: 200 };
+    } catch {
+      this.shellApprovalId = null;
+      return { ok: false, status: 503 };
+    }
+  }
+
+  disableShellBridge() {
+    this.shellApprovalId = null;
+  }
+
+  async dispatchShellTool(message) {
+    const requestId = message.requestId;
+    let approved = false;
+    if (this.shellApprovalId &&
+        message.name === "cluster.powershell_request") {
+      const result = await this.core.request(this.id,
+        this.shellApprovalId, "approve", {
+          command: message.args.command,
+          path: message.args.path
+        });
+      approved = result.ok && result.value?.approved === true;
+    }
+    if (!this.socket || this.state !== "connected") return;
+    try {
+      this.socket.send(JSON.stringify({
+        type: "tool_result", requestId,
+        result: { approved }
+      }));
+      this.audit(approved ? 200 : 403,
+        approved ? "ShellApproved" : "ToolDenied");
+    } catch {
+      this.audit(503, "ToolResultFailed");
+      this.close();
     }
   }
 
@@ -249,7 +302,20 @@ export class PluginLocalAgentObject {
             "UnexpectedMessage");
           return;
         }
-        if (["provider_info", "task_status", "task_result"]
+        if (checked.value.type === "bridge_registered" &&
+            this.shellApprovalId &&
+            this.state === "connected") {
+          this.bridgeRegistered = true;
+          this.audit(200, "BridgeRegistered");
+        } else if (checked.value.type === "tool_call" &&
+            this.state === "connected" &&
+            this.bridgeRegistered) {
+          void this.dispatchShellTool(checked.value);
+        } else if (checked.value.type ===
+                   "powershell_execution_result" &&
+                   this.bridgeRegistered) {
+          this.audit(200, "ShellResultReceived");
+        } else if (["provider_info", "task_status", "task_result"]
         .includes(checked.value.type) &&
           this.state === "connected" && this.modelTaskId) {
           const target = this.modelTaskId;
