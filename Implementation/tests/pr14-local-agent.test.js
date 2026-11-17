@@ -67,9 +67,11 @@ function harness(promptValue = token) {
         } });
       assert.equal(env.core.registerProvider(
         target, manifest.provider).status, 201);
-      assert.equal(env.core.grantPluginPermission(
-        target, manifest.provider.providerId,
-        "network.request", true).status, 200);
+      for (const name of manifest.provider.permissions) {
+        assert.equal(env.core.grantPluginPermission(
+          target, manifest.provider.providerId,
+          name, true).status, 200);
+      }
     },
     request(action) {
       return env.core.request("ui", agent.id,
