@@ -127,6 +127,14 @@ function Release-OccupiedPort {
         if (-not $owner -or -not $owner.Name -or -not $owner.CreationDate) {
             throw 'Cannot verify process identity'
         }
+        $protectedNames = @(
+            'System', 'Registry', 'Idle', 'smss.exe', 'csrss.exe',
+            'wininit.exe', 'winlogon.exe', 'services.exe',
+            'lsass.exe', 'svchost.exe', 'dwm.exe'
+        )
+        if ($protectedNames -contains $owner.Name) {
+            throw ('Refusing to terminate protected process: ' + $owner.Name)
+        }
         $ancestor = Get-CimInstance Win32_Process -Filter ('ProcessId=' + $PID)
         $ancestorIds = @()
         while ($ancestor -and $ancestor.ParentProcessId -gt 0) {
