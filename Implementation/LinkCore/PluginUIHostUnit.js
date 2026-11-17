@@ -293,6 +293,13 @@ export class PluginUIHostUnit {
         menu.append(revoke);
         toolbox.append(trigger, menu);
         panel.append(toolbox);
+        view.resetBridgeToolBox = () => {
+          for (const name of ["ps", "mcp"]) {
+            const checkbox = menu.querySelector(
+              '[data-right="' + name + '"]');
+            if (checkbox) checkbox.checked = false;
+          }
+        };
         view.resetToolBox = () => {
           menu.hidden = true;
           trigger.setAttribute("aria-expanded", "false");
@@ -342,6 +349,18 @@ export class PluginUIHostUnit {
           agent.modelTaskId = task.id;
         }
         const publish = response => {
+          if (response.state === "disconnected") {
+            const hadBridge = view.shellApproval?.active ||
+              view.mcpReadOnly?.enabled;
+            if (hadBridge) {
+              view.shellApproval?.revoke();
+              view.mcpReadOnly?.revoke();
+              view.localAgent?.disableShellBridge();
+              view.localAgent?.disableReadBridge();
+              view.explorerAccess?.setRight("ps", false);
+              view.resetBridgeToolBox?.();
+            }
+          }
           frame.contentWindow?.postMessage({
             type: "cluster-local-agent-status",
             state: response.state
