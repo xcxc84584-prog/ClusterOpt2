@@ -14,6 +14,9 @@ const KEYS = new Set([
   "manifestVersion", "providerId", "objectId", "provides",
   "requires", "permissions", "execution"
 ]);
+const OPTIONAL = new Set(["sharedProperties"]);
+const PROPERTY = new Set(["name", "access", "isolation"]);
+const PROPERTY_NAME = /^[A-Za-z][A-Za-z0-9_]{0,127}$/;
 const PROVIDED = new Set([
   "service", "action", "version", "inputSchema", "outputSchema"
 ]);
@@ -106,8 +109,10 @@ export const ProviderManifestPolicy = Object.freeze({
     if (!record(candidate) || !dataTree(candidate)) {
       return fail("Invalid manifest data");
     }
-    if (!fields(candidate, KEYS) ||
-        Object.keys(candidate).length !== KEYS.size) {
+    if (!record(candidate) ||
+        Object.keys(candidate).some(key =>
+          !KEYS.has(key) && !OPTIONAL.has(key)) ||
+        [...KEYS].some(key => !Object.hasOwn(candidate, key))) {
       return fail("Invalid manifest fields");
     }
     const json = JSON.stringify(candidate);
@@ -139,6 +144,20 @@ export const ProviderManifestPolicy = Object.freeze({
         !ISOLATION.has(candidate.execution.isolation) ||
         !CONCURRENCY.has(candidate.execution.concurrency)) {
       return fail("Invalid execution declaration");
+    }
+    if (candidate.sharedProperties !== undefined) {
+      if (!list(candidate.sharedProperties, 32) ||
+          candidate.sharedProperties.some(item =>
+            !fields(item, PROPERTY) ||
+            Object.keys(item).length !== 3 ||
+            typeof item.name !== "string" ||
+            !PROPERTY_NAME.test(item.name) ||
+            !["read", "write"].includes(item.access) ||
+            !["shared", "private"].includes(item.isolation)) ||
+          new Set(candidate.sharedProperties.map(item =>
+            item.name)).size !== candidate.sharedProperties.length) {
+        return fail("Invalid shared property claims");
+      }
     }
     // All values are plain data; reparse to detach and freeze recursively.
     function freeze(value) {
