@@ -36,8 +36,9 @@ test("Patch19 fix2: Close All saves large dirty file and removes tab",
   async ({ page }) => {
     test.setTimeout(120000);
     await prepareLargeFile(page, "fix2-close-all.txt");
-    await page.evaluate(() => { window.confirm = () => true; });
     await page.locator("#closeAllMain").evaluate(button => button.click());
+    await expect(page.locator(".save-close-dialog")).toBeVisible();
+    await page.locator(".save-close-dialog .save-close-yes").click();
     await expect(page.locator(".tab.active"))
       .toHaveCount(0, { timeout: 90000 });
     const file = await page.evaluate(async () => {
@@ -68,8 +69,9 @@ test("Patch19 fix2: denied local write permission preserves dirty tab",
 test("Patch19 fix2: Close All cancel retains dirty large file",
   async ({ page }) => {
     await prepareLargeFile(page, "fix2-cancel.txt");
-    await page.evaluate(() => { window.confirm = () => false; });
     await page.locator("#closeAllMain").evaluate(button => button.click());
+    await expect(page.locator(".save-close-dialog")).toBeVisible();
+    await page.keyboard.press("Escape");
     await expect(page.locator(".tab.active")).toHaveCount(1);
     await expect(page.locator("#statusLamp")).toHaveClass(/yellow/);
   });
