@@ -1,6 +1,6 @@
 # AI AGENT MCP(ChatGPT) — Windows Local Agent package
 
-This directory vendors the **unchanged** Cluster legacy Node services.
+This directory vendors Cluster legacy Node services. The plugin copy of\nserver.cjs contains one explicit PR14.7 adaptation: a separately\napproved PowerShell command no longer requires an already opened\nlegacy terminal session. The original Cluster repository stays unchanged.
 Browser plugin install does not execute these local programs.
 
 Prerequisites: Windows, PowerShell, Node.js 20+, npm, and a browser
