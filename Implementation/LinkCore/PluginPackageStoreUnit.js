@@ -46,9 +46,12 @@ export class PluginPackageStoreUnit {
       return await new Promise((resolve, reject) => {
         const tx = db.transaction(STORE, mode);
         const store = tx.objectStore(STORE);
+        let result;
         const request = operation(store);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => { result = request.result; };
         request.onerror = () => reject(request.error);
+        tx.oncomplete = () => resolve(result);
+        tx.onerror = () => reject(tx.error);
         tx.onabort = () => reject(tx.error);
       });
     } finally {
