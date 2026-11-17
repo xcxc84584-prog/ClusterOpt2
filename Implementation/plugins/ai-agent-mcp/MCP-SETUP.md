@@ -47,3 +47,7 @@ Remote OAuth file modification and PowerShell execution are **not enabled** by t
 - 404 or connection refused: check each console and the reverse proxy to 43881.
 - HTTPS issuer invalid: only an HTTPS origin with no path or trailing slash is accepted.
 - Real Windows + OAuth end-to-end validation is required before production use.
+
+## Separate remote control authorization (PR20.1 Patch 3)
+
+The OAuth gateway on port 43881 supports independently requested `cluster.read` and `cluster.control`. Only `cluster.control` can enumerate and request all 14 legacy MCP tools; its OAuth consent page displays a distinct high-privilege warning. It does **not** automatically enable local access: in ClusterOpt2 select the Explorer workspace, grant precisely the required ToolBox CRUD permissions, and independently enable PowerShell. The browser must approve **each exact PowerShell command**. Revoking ToolBox access prevents future commands even with an unexpired OAuth token. `cluster.read` continues to expose only the five read-only tools. Do not use elevated or administrator local Agent processes. Live Windows E2E security testing remains required.
