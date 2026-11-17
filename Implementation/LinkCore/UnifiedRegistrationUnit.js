@@ -1,5 +1,6 @@
 import { describeObjectAPIs, validateObjectContract } from "./ObjectContract.js";
 import { ProviderManifestPolicy } from "../property/ProviderManifestPolicy.js";
+import { ProviderFactoryPolicy } from "../property/ProviderFactoryPolicy.js";
 
 /**
  * Volatile runtime registry. No localStorage: registrations expire on reload.
@@ -12,6 +13,8 @@ export class UnifiedRegistrationUnit {
     this.factories = new Map();
     this.providers = new Map();
     this.providerServices = new Map();
+    this.providerFactories = new Map();
+    this.providerInstances = new Map();
   }
 
   register(object) {
@@ -94,9 +97,58 @@ export class UnifiedRegistrationUnit {
     return { ok: true, status: 201, value };
   }
 
+  attachProviderFactory(providerId, factory) {
+    const manifest = this.providers.get(providerId);
+    if (!manifest) return { ok: false, status: 404 };
+    const check = ProviderFactoryPolicy.inspect(manifest, factory);
+    if (!check.ok) return check;
+    if (this.providerFactories.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
+    this.providerFactories.set(providerId, factory);
+    return { ok: true, status: 201 };
+  }
+
+  materializeProvider(providerId) {
+    if (!this.providers.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    if (this.providerInstances.has(providerId)) {
+      return { ok: true, status: 200,
+        value: this.providerInstances.get(providerId) };
+    }
+    const factory = this.providerFactories.get(providerId);
+    if (!factory) return { ok: false, status: 404 };
+    try {
+      const instance = factory();
+      const checked = ProviderFactoryPolicy.inspectInstance(instance);
+      if (!checked.ok) return checked;
+      this.providerInstances.set(providerId, instance);
+      return { ok: true, status: 201, value: instance };
+    } catch (_error) {
+      return { ok: false, status: 500,
+        error: "Trusted Provider factory failed" };
+    }
+  }
+
+  disposeProvider(providerId) {
+    const instance = this.providerInstances.get(providerId);
+    this.providerInstances.delete(providerId);
+    if (!instance) return { ok: true, status: 200 };
+    try {
+      instance.dispose?.();
+      return { ok: true, status: 200 };
+    } catch (_error) {
+      return { ok: false, status: 500,
+        error: "Provider dispose failed" };
+    }
+  }
+
   unregisterProvider(providerId) {
     const provider = this.providers.get(providerId);
     if (!provider) return false;
+    this.disposeProvider(providerId);
+    this.providerFactories.delete(providerId);
     for (const item of provider.provides) {
       const list = this.providerServices.get(item.service);
       list?.delete(providerId);
