@@ -58,8 +58,26 @@ test("PR06.08 permission management is fail-closed, no direct Grant",
     await page.locator(".plugin-manager-nav button").nth(1).click();
     await expect(page.locator(".plugin-manager-page"))
       .toContainText("document.slice.read");
+    await page.getByRole("button", { name: "需經安全審核" }).click();
+    await expect(page.locator(".plugin-consent-dialog")).toBeVisible();
+    await page.locator(".plugin-consent-dialog").getByRole("button",
+      { name: "拒絕" }).click();
+    await expect(page.locator(".plugin-consent-dialog")).toBeHidden();
+    const denied = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      return linkCore.checkPluginPermission(
+        "preview.plugin", "document.slice.read");
+    });
+    expect(denied).toBe(false);
+    await page.getByRole("button", { name: "需經安全審核" }).click();
+    await page.locator(".plugin-consent-dialog").getByRole("button",
+      { name: "同意此權限" }).click();
+    await expect(page.getByRole("button", { name: "撤銷" }))
+      .toBeVisible();
+    await page.getByRole("button", { name: "撤銷" }).click();
     await expect(page.getByRole("button", { name: "需經安全審核" }))
-      .toBeDisabled();
+      .toBeVisible();
     await page.locator(".plugin-manager-nav button").nth(2).click();
     await expect(page.locator(".plugin-manager-page"))
       .toContainText("test.preview");

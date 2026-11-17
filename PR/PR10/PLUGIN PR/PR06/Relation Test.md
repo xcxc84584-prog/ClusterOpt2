@@ -10,3 +10,6 @@ Node: plugin-pr06-adversarial.test.js checks digest mismatch, mutable input, ove
 
 ## Patch4 — Four-page Plugin Manager
 The user-approved sketch is implemented as four separate views: Plugin List, Plugin Permission, API List, EHU Log. Existing slice budget/highlighter/processor/committer control remains reachable through Plugin Tool. URU provides only live registration data; OMU provides EHU; permissions are read-only plus already-authorized revocation, never synthetic grants. PR06.08 approval ceremony remains separate and NOT complete. Responsive layout and Playwright real browser verification required.
+
+## PR06.08 Consent Patch
+A user-visible modal now allows explicit session-only grant decisions on each permission; denial creates no grant, revoke removes active grant. The modal rechecks URU Provider identity and exact Manifest reference before approval and requires a trusted click. This is only an application Host consent path: same-origin arbitrary plugin execution stays permanently blocked by PluginSourcePolicy; isolated-origin third-party sandbox remains a separate pending requirement.

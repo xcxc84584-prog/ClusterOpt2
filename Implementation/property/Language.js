@@ -4,6 +4,10 @@
  */
 const CATALOG = Object.freeze({
 	"zh-Hant": Object.freeze({
+		pluginPermissionConfirm: "確認插件授權",
+		pluginPermissionSession: "授權僅本次工作階段有效，關閉後失效",
+		pluginPermissionReject: "拒絕",
+		pluginPermissionApprove: "同意此權限",
 		pluginPageList: "插件列表",
 		pluginPagePermissions: "插件權限",
 		pluginPageAPI: "API 列表",
@@ -143,6 +147,10 @@ const CATALOG = Object.freeze({
 		plainText: "純文字", palettePreview: "UI PREVIEW"
 	}),
 	"en": Object.freeze({
+		pluginPermissionConfirm: "Confirm Plugin Permission",
+		pluginPermissionSession: "Session-only access; expires on reload",
+		pluginPermissionReject: "Deny",
+		pluginPermissionApprove: "Allow permission",
 		pluginPageList: "Plugins",
 		pluginPagePermissions: "Permissions",
 		pluginPageAPI: "API List",

@@ -43,6 +43,49 @@ export function mountPluginManagerUI(core, doc) {
   let selected = "";
   let searchText = "";
   let filter = "all";
+  let consent = null;
+  const dialog = element(doc, "dialog", "plugin-consent-dialog");
+  dialog.setAttribute("aria-labelledby", "pluginConsentTitle");
+  const consentTitle = element(doc, "h3", "", "Plugin Permission Request");
+  consentTitle.id = "pluginConsentTitle";
+  const consentInfo = element(doc, "p", "plugin-manager-muted");
+  const consentActions = element(doc, "div", "plugin-manager-actions");
+  const refuse = element(doc, "button", "", "拒絕");
+  const allow = element(doc, "button", "", "僅此工作階段允許");
+  refuse.type = "button";
+  allow.type = "button";
+  consentActions.append(refuse, allow);
+  dialog.append(consentTitle, consentInfo, consentActions);
+  doc.getElementById("pluginWindow").append(dialog);
+  function closeConsent() { consent = null; dialog.close(); }
+  refuse.addEventListener("click", closeConsent);
+  dialog.addEventListener("close", () => { consent = null; });
+  allow.addEventListener("click", event => {
+    if (!event.isTrusted || !consent) return;
+    const { providerId, owner, permission, manifest } = consent;
+    const current = core.uru.getProvider(providerId);
+    if (!current || current !== manifest ||
+        current.objectId !== owner ||
+        !current.permissions.includes(permission)) {
+      closeConsent();
+      return;
+    }
+    const approved = core.grantPluginPermission(owner,
+      providerId, permission, true);
+    closeConsent();
+    if (approved.ok) draw();
+  });
+  const askConsent = (provider, permission) => {
+    if (dialog.open) return;
+    consent = { providerId: provider.providerId,
+      owner: provider.objectId, permission, manifest: provider };
+    consentTitle.textContent = t("pluginPermissionConfirm");
+    consentInfo.textContent = provider.providerId + " · " + permission +
+      " · " + t("pluginPermissionSession");
+    refuse.textContent = t("pluginPermissionReject");
+    allow.textContent = t("pluginPermissionApprove");
+    dialog.showModal();
+  };
 
   const title = (name, description) => {
     const head = element(doc, "div", "plugin-manager-head");
@@ -146,12 +189,12 @@ export function mountPluginManagerUI(core, doc) {
           permission + " · " + (granted ? t("pluginPermissionGranted") :
             t("pluginPermissionDenied"))));
         const revoke = button(granted ? t("pluginPermissionRevoke") :
-          t("pluginPermissionReview"),
-          () => {
+          t("pluginPermissionReview"), () => {
+            if (!granted) return askConsent(provider, permission);
             const result = core.revokePluginPermission(
               provider.objectId, provider.providerId, permission);
             if (result.ok) draw();
-          }, !granted);
+          });
         row.append(revoke);
         section.append(row);
       }
