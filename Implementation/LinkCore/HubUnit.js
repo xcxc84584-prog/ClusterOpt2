@@ -135,6 +135,9 @@ export class HubUnit {
       status = 403;
     } else if (!bridge || typeof bridge.invoke !== "function") {
       status = 503;
+    } else if (!RouteContractPolicy.validate(payload,
+      service.inputSchema)) {
+      status = 400;
     }
     if (status !== 200) {
       this.omu.record("EHU", source, "Plugin.Invoke." + action,
@@ -143,6 +146,12 @@ export class HubUnit {
     }
     const result = await bridge.invoke(service.service,
       action, payload);
+    if (result.ok && !RouteContractPolicy.validate(result.value,
+      service.outputSchema)) {
+      this.omu.record("EHU", source, "Plugin.Invoke." + action,
+        502, providerId, { error: "Invalid Response contract" });
+      return { ok: false, status: 502 };
+    }
     this.omu.record(result.ok ? "Log" : "EHU",
       source, "Plugin.Invoke." + action, result.status, providerId);
     return result;
