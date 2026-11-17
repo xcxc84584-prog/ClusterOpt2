@@ -6,6 +6,8 @@ test("PR9 native terminal session tabs do not replace editor bytes",
     await page.locator("#menuBtn").click();
     await page.locator("#newFile").click();
     await page.locator("#editor").fill("persistent editor bytes");
+    await page.locator("#menuBtn").click();
+    await page.locator("#toolBtn").click();
     await page.locator("#nativePowerShellBtn").click();
     await expect(page.locator("#nativePowerShellPane")).toBeVisible();
     await expect(page.locator("#nativePsTabs button")).toHaveCount(2);
