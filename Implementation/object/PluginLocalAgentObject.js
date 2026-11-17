@@ -13,11 +13,12 @@ export class PluginLocalAgentObject {
     this.providerId = providerId;
     this.doc = doc;
     this.createSocket = createSocket;
-    this.id = "PluginLocalAgentBridge";
+    this.id = "PluginLocalAgent." + providerId.replace(/-/g, "_");
     this.strictOCDA = true;
-    this.authorization = { default: "Private",
-      actions: { pair: "Public", ping: "Public",
-        disconnect: "Public", status: "Public" } };
+    this.authorization = {
+      default: "Private", pair: "Public", ping: "Public",
+      disconnect: "Public", status: "Public"
+    };
     this.ocda = {
       EHU: [], Log: [], Request: ["pair", "ping", "disconnect", "status"],
       Response: ["pair", "ping", "disconnect", "status"],
@@ -48,6 +49,7 @@ export class PluginLocalAgentObject {
   close() {
     this.generation++;
     this.state = "disconnected";
+    this.onPong = null;
     const socket = this.socket;
     this.socket = null;
     if (this.waiting) {
@@ -116,28 +118,29 @@ export class PluginLocalAgentObject {
       this.waiting = finish;
       const timer = setTimeout(() => {
         if (generation !== this.generation) return;
+        finish({ ok: false, status: 504 });
         this.close();
         this.audit(504, "AuthTimeout");
-        finish({ ok: false, status: 504 });
       }, Policy.authTimeoutMs);
       socket.onopen = () => {
         if (generation !== this.generation) return;
         try {
           socket.send(JSON.stringify({ type: "auth", token: secret }));
         } catch {
+          finish({ ok: false, status: 503 });
           this.close();
           this.audit(503, "AuthSendFailure");
-          finish({ ok: false, status: 503 });
         }
       };
       socket.onmessage = event => {
         if (generation !== this.generation) return;
         const checked = Policy.inspectMessage(event.data);
         if (!checked.ok || checked.value.type === "error") {
+          finish({ ok: false,
+            status: checked.ok ? 403 : checked.status });
           this.close();
           this.audit(checked.ok ? 403 : checked.status,
             "UnexpectedMessage");
-          finish({ ok: false, status: checked.ok ? 403 : checked.status });
           return;
         }
         if (checked.value.type === "ready" &&
@@ -158,11 +161,13 @@ export class PluginLocalAgentObject {
       };
       socket.onerror = () => {
         if (generation !== this.generation) return;
+        finish({ ok: false, status: 503 });
         this.close();
         this.audit(503, "SocketError");
       };
       socket.onclose = () => {
         if (generation !== this.generation) return;
+        finish({ ok: false, status: 503 });
         this.close();
         this.audit(503, "Disconnected");
       };
