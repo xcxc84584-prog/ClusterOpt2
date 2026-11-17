@@ -162,10 +162,10 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
     const prompt = taskInput.value.trim().slice(0, 8000);
     taskPending = true;
     renderModelControls();
-    appendMessage(prompt, "user");
     window.parent.postMessage({
       type: "cluster-model-submit", prompt
     }, "*");
+    appendMessage(prompt, "user");
   }
   // Some sandboxed browsers do not dispatch submit on a button whose
   // disabled state changes during click processing. Explicitly handle
