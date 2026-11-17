@@ -120,3 +120,26 @@ large file restore after delayed permissions and reload.
   machine paths committed. Existing browser HubUnit protocol intact.
 - Test via Windows PS5/PS7 AST CI, OCDA Node tests, then cautious
   Windows process ownership/manual acceptance.
+
+## Patch(+8): native terminal layout and background agent handoff
+- User screenshot: xterm prompt displaced under footer and status text
+  contains literal escaped CR/LF, then disconnected native socket.
+- Keep old ClusterOpt shell UI and tab geometry. Use xterm FitAddon
+  and a per-session ResizeObserver, constraining native wrapper within
+  the pane's available flex height. Release observers on close.
+- Hide obsolete browser-only input/output in connected ConPTY mode.
+  UI text reports native socket disconnected independently of HTTP
+  agent health.
+- Installer generates a new random 32-byte pairing token, launches
+  Node as a hidden detached process, checks listener, displays the
+  selected port/token for user to copy, then exits after Enter.
+  CMD finishes without a second pause. No token log or persisted
+  secret file; Node deletes the inherited bootstrap env var.
+- Require successful node-pty native import after npm; blocked
+  lifecycle scripts must be addressed rather than ignored.
+- Performance: fit calculation on resize and session activation;
+  per-session observers with disposal and active-session guard.
+- Security: loopback-only listener; bearer-token and Origin checks;
+  no secret embedded in static JS or written to disk.
+- Tests: Windows PS5.1/7 AST, OCDA unit/Browser, xterm viewport
+  geometry, native Windows real-life verification still open.
