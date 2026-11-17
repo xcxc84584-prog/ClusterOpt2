@@ -475,7 +475,20 @@ export class PluginLocalAgentObject {
         } else if (checked.value.type === "tool_call" &&
             this.state === "connected" &&
             this.bridgeRegistered) {
-          void this.dispatchShellTool(checked.value);
+          const requestId = checked.value.requestId;
+          void this.dispatchShellTool(checked.value).catch(() => {
+            this.audit(500, "ToolDispatchFailed");
+            if (this.socket && this.state === "connected") {
+              try {
+                this.socket.send(JSON.stringify({
+                  type: "tool_result", requestId,
+                  error: "Tool operation failed"
+                }));
+              } catch {
+                this.close();
+              }
+            }
+          });
         } else if (checked.value.type ===
                    "powershell_execution_result" &&
                    this.bridgeRegistered) {
