@@ -34,7 +34,8 @@ function providerStatus(provider,disabled,t) {
     t("啟用","Enabled");
 }
 export function renderResources(doc,host,options) {
-  const {t,settings,providers,disabled,apiEntries,logs,core}=options;
+  const {t,settings,providers,disabled,apiEntries,logs,core,
+    getActivePreview}=options;
   const layout=el(doc,"div","pm-resources");
   const left=el(doc,"section","pm-resource-pane pm-resource-tools");
   const right=el(doc,"section","pm-resource-pane pm-resource-downloads");
@@ -88,6 +89,25 @@ export function renderResources(doc,host,options) {
   const sampleInput=el(doc,"textarea","pm-sample-editor",
     "const answer = 42; // sample");
   sampleInput.setAttribute("aria-label",t("語法測試文字","Syntax sample"));
+  const sourceNote=el(doc,"p","pm-muted");
+  if(typeof getActivePreview==="function") {
+    sample.append(button(doc,t("讀取目前編輯頁面（唯讀）",
+      "Load current editor page (read-only)"),()=>{
+      const snapshot=getActivePreview();
+      if(!snapshot) {
+        sourceNote.textContent=t("沒有開啟的文件","No open document");
+        return;
+      }
+      fileName.value=snapshot.fileName;
+      sampleInput.value=snapshot.text;
+      sourceNote.textContent=snapshot.truncated?t(
+        "僅載入前 65,536 字元；不會修改原始文件。",
+        "First 65,536 characters only; source is not modified.") :
+        t("已複製目前頁面內容到測試區（未修改原始文件）。",
+          "Copied current page for testing; source is unchanged.");
+    }));
+  }
+  sample.append(sourceNote);
   const sampleResult=el(doc,"pre","pm-sample-preview");
   sampleResult.setAttribute("aria-live","polite");
   sampleInput.maxLength=65536;
