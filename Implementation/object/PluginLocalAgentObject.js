@@ -13,7 +13,8 @@ export class PluginLocalAgentObject {
     this.providerId = providerId;
     this.doc = doc;
     this.createSocket = createSocket;
-    this.id = "PluginLocalAgent." + providerId.replace(/-/g, "_");
+    this.id = "PluginLocalAgent." +
+      providerId.replace(/[^a-zA-Z0-9]/g, "_");
     this.strictOCDA = true;
     this.authorization = {
       default: "Private", pair: "Public", ping: "Public",
@@ -43,7 +44,9 @@ export class PluginLocalAgentObject {
 
   fail(status, action) {
     this.audit(status, action);
-    return { ok: false, status };
+    const error = new Error("Local Agent request rejected");
+    error.status = status;
+    throw error;
   }
 
   close() {
@@ -81,9 +84,14 @@ export class PluginLocalAgentObject {
       this.audit(200, "Disconnect");
       return { state: this.state };
     }
-    if (action === "pair") return this.pair();
-    if (action === "ping") return this.ping();
+    if (action === "pair") return this.unwrap(await this.pair());
+    if (action === "ping") return this.unwrap(await this.ping());
     return this.fail(404, "UnknownAction");
+  }
+
+  unwrap(response) {
+    if (!response.ok) return this.fail(response.status, "Rejected");
+    return response.value;
   }
 
   async pair() {
