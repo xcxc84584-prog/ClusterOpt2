@@ -227,33 +227,33 @@ export class PluginLocalAgentObject {
              fileName.length === 0 || fileName.length > 255 ||
              fileName === "." || fileName === ".." ||
              fileName.includes("/") ||
-             fileName.includes("\\\\") ||
+             fileName.includes(String.fromCharCode(92)) ||
              [...fileName].some(ch => ch.charCodeAt(0) < 32))) {
           result = { error: "Invalid Explorer file name" };
         } else {
-        const combined = message.name === "cluster.create_file" ?
-          (path ? path + "/" : "") + String(fileName ?? "") : path;
-        const reply = await this.core.request(this.id,
-          this.explorerId, actions[message.name], {
-            path: combined, content: args.content,
-            offset: args.offset, length: args.length
-          });
-        if (!reply.ok) {
-          result = { error: "ToolBox denied file operation" };
-        } else if (message.name === "cluster.list_directory") {
-          result = { path: full, items: reply.value.entries,
-            truncated: reply.value.truncated };
-        } else if (message.name === "cluster.read_path") {
-          result = { path: full, ...reply.value };
-        } else if (message.name === "cluster.create_file") {
-          result = { created: true,
-            path: full + (full.endsWith("/") ? "" : "/") +
-              String(fileName) };
-        } else if (message.name === "cluster.write_path") {
-          result = { updated: true, path: full };
-        } else {
-          result = { deleted: true, path: full };
-        }
+          const combined = message.name === "cluster.create_file" ?
+            (path ? path + "/" : "") + String(fileName ?? "") : path;
+          const reply = await this.core.request(this.id,
+            this.explorerId, actions[message.name], {
+              path: combined, content: args.content,
+              offset: args.offset, length: args.length
+            });
+          if (!reply.ok) {
+            result = { error: "ToolBox denied file operation" };
+          } else if (message.name === "cluster.list_directory") {
+            result = { path: full, items: reply.value.entries,
+              truncated: reply.value.truncated };
+          } else if (message.name === "cluster.read_path") {
+            result = { path: full, ...reply.value };
+          } else if (message.name === "cluster.create_file") {
+            result = { created: true,
+              path: full + (full.endsWith("/") ? "" : "/") +
+                String(fileName) };
+          } else if (message.name === "cluster.write_path") {
+            result = { updated: true, path: full };
+          } else {
+            result = { deleted: true, path: full };
+          }
         }
       }
     } else if (this.mcpReadId && [
