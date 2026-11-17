@@ -2,7 +2,7 @@
   "packageVersion": 1,
   "name": "AI AGENT MCP(ChatGPT)",
   "entry": "worker.js",
-  "description": "AI AGENT MCP(ChatGPT) OCDA plugin: authorized Local Agent pairing, local model configuration and text-only task pipeline; file, shell and OAuth access remain disabled.",
+  "description": "AI AGENT MCP(ChatGPT) OCDA plugin: authorized Local Agent, model tasks, scoped Explorer ToolBox, opt-in shell approval and read-only MCP bridge; local gateways require separate startup.",
   "provider": {
     "manifestVersion": 1,
     "providerId": "cluster.ai-agent-mcp",
