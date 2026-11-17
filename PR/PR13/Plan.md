@@ -76,3 +76,16 @@ External plugin isolation/runtime and UI installation are incomplete.
 A same-origin Worker is not an adequate untrusted-code sandbox.
 Do not call 13.2–13.4 complete or grant untrusted plugins until an
 isolated origin/channel and browser adversarial tests exist.
+
+## PR13 Patch(+3) — whole-folder plugin portability
+- File/folder project is the package boundary, not a precompiled single JS.
+- Preserve all nested HTML/CSS/JS and binary resources as bounded base64.
+- Maximum 128 assets, 2 MiB per file, 16 MiB total, 12 directories deep.
+- Reject unsafe relative paths and files with inconsistent content.
+- Add Resources > plugin bundle JSON export/import and IndexedDB snapshots.
+- Persisted package records are intentionally disabled and unapproved.
+- **Activation remains unavailable** until authenticated cross-origin or
+  opaque-origin sandbox, CSP and per-call HubUnit ACL are verified.
+- Package exports represent staged snapshots, not currently active
+  third-party runtime instances. Bundled trusted providers require a
+  separate verified export path before parity with active plugin list.
