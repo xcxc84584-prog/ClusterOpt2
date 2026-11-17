@@ -545,3 +545,15 @@ EDPMU.SystemVersion -> Cluster.version response.
 Browser -> GitHub Pages -> relative ./favicon.svg -> static asset.
 Static 404 is outside HubUnit; OMU EHU may legitimately remain empty.
 No new Object, Property or non-Hub Request/Response introduced.
+
+
+## Patch(+25-Fix2) EventChain and diagnostics
+UI.timer -> HubUnit.Request.workspace.syncExternal ->
+Workspace.queryPermission -> [granted] ->
+HubUnit.Request.document.reconcile -> getFile ->
+HubUnit.Response -> OMU Log.
+[prompt/denied] -> no getFile, no background permission dialog.
+[NotAllowedError] -> mark transient accessBlocked, return false,
+keep edits, no repeated EHU 500.
+Unexpected read error -> EHU 500, existing error handling retained.
+Manual Open/Save remains user-initiated and never silently ignored.
