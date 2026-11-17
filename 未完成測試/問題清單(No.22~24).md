@@ -54,3 +54,12 @@ PR8 remains NOT PASS.
 - 25.9 Exact browser 404 source URL still UNKNOWN; request URL
   needed if the console message persists after the Pages build.
 - 25.10 Verify Pages deployed SHA and cache after CI merge.
+
+
+## Patch25 Fix2 status
+- 25.11: NotAllowedError reconcile loop: guarded and tested.
+- 25.12: Matching handle re-selection resumes existing tab: tested.
+- 25.13: Browser permission revoke/regain workflow: real browser
+  integration / user gesture acceptance still required.
+- 25.14: Old Cluster.version() after merge: verify exact
+  location.href and uncached resource URL in client.

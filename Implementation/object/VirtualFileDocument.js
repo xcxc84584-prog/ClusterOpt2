@@ -213,6 +213,7 @@ export class VirtualFileDocument extends FileDocument {
     this.editRevision = revision;
     this.fileFingerprint = fingerprint;
     this.diskRevision = fingerprint;
+    this.accessBlocked = false;
     this.sourceHash = sourceHash;
     this.virtualPageIndex = index;
     this.virtualPageCount = Math.max(1, count);
@@ -412,7 +413,15 @@ export class VirtualFileDocument extends FileDocument {
     }
     if (action === "reconcile") {
       if (this.unsaved) return false;
-      const file = await this.handle.getFile();
+      let file;
+      try {
+        file = await this.handle.getFile();
+      } catch (error) {
+        if (error?.name !== "NotAllowedError") throw error;
+        this.accessBlocked = true;
+        return false;
+      }
+      this.accessBlocked = false;
       if (this.fingerprint(file) === this.fileFingerprint) return false;
       if (payload.priority === "external") {
         this.fileFingerprint = null;

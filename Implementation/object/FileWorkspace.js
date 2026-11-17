@@ -212,6 +212,10 @@ export class FileWorkspace {
         }
       }
       if (existing) {
+        // A fresh picker handle can reauthorize an existing tab without
+        // duplicating it or discarding unsaved in-memory edits.
+        existing.handle = handle;
+        existing.accessBlocked = false;
         this.activeId = existing.id;
         continue;
       }
@@ -433,6 +437,26 @@ export class FileWorkspace {
     const priority = this.core.readProperty(this.id, "StoragePriority").value;
     const results = await Promise.all(this.documents.map(async doc => {
       if (!doc.handle || doc.status === DocumentStatus.LOADING) return null;
+      // A polling task has no user activation. Only inspect permissions
+      // silently; never call requestPermission() from an interval.
+      if (typeof doc.handle.queryPermission === "function") {
+        let permission;
+        try {
+          permission = await doc.handle.queryPermission({ mode: "read" });
+        } catch (error) {
+          if (error?.name !== "NotAllowedError") throw error;
+          permission = "denied";
+        }
+        if (permission !== "granted") {
+          doc.accessBlocked = true;
+          return null;
+        }
+        doc.accessBlocked = false;
+      } else if (doc.accessBlocked) {
+        // A handle with no permission-query API is retried only after
+        // an explicit new Open or Save replaces/revalidates the handle.
+        return null;
+      }
       return this.core.request(this.id, doc.id, "reconcile", {
         priority, onProgress: () => this.onChange()
       });
