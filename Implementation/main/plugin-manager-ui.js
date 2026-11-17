@@ -127,6 +127,27 @@ export function mountPluginManagerUI(core,doc) {
       btn(doc,"⚙ "+t("權限管理","Manage Permission"),
         ()=>activate("permissions"),"pm-mini"));
     const body=dom(doc,"div","pm-card-body");
+    const controls=dom(doc,"div","pm-permission-controls");
+    const switchLabel=dom(doc,"label","pm-permission-label");
+    const toggle=dom(doc,"input");
+    toggle.type="checkbox";toggle.checked=!disabled(p);
+    toggle.setAttribute("aria-label",t("啟用插件","Enable plugin"));
+    toggle.addEventListener("change",()=>{
+      if(core.uru.getProvider(p.providerId)!==p)return render();
+      core.setProviderEnabled(p.objectId,p.providerId,toggle.checked);
+      render();
+    });
+    switchLabel.append(toggle,dom(doc,"span","",
+      t("啟用插件","Enable plugin")));
+    const remove=btn(doc,t("移除插件","Unregister plugin"),()=>{
+      if(!doc.defaultView.confirm(t("確定移除插件：",
+        "Unregister plugin: ")+p.providerId+"?"))return;
+      if(core.uru.getProvider(p.providerId)!==p)return render();
+      const result=core.unregisterProvider(p.objectId,p.providerId);
+      if(result.ok)selected="";
+      render();
+    },"pm-mini");
+    controls.append(switchLabel,remove);body.append(controls);
     const grants=(p.permissions??[]).filter(name=>
       core.checkPluginPermission(p.providerId,name)).length;
     body.append(dom(doc,"p","pm-muted",
