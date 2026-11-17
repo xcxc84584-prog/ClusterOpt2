@@ -1802,3 +1802,144 @@ header .menu-wrap { margin-left:auto; }
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
+
+/* PR13 Patch(+14): readable, independently scrollable plugin panes.
+ * Reserve breathing room between search, actions and download cards.
+ */
+#pluginWindow .pm-market-header {
+  gap: 14px;
+  margin-bottom: 16px;
+}
+#pluginWindow .pm-market-header .pm-resource-heading {
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+#pluginWindow .pm-market-header p {
+  margin: 0;
+  line-height: 1.55;
+}
+#pluginWindow .pm-resource-search,
+#pluginWindow .pm-api-search {
+  display: block;
+  min-height: 40px;
+  line-height: 1.45;
+}
+#pluginWindow .pm-resource-local {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+#pluginWindow .pm-resource-local button {
+  max-width: 100%;
+  min-height: 36px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#pluginWindow .pm-resource-cards {
+  margin: 0;
+  gap: 16px;
+}
+#pluginWindow .pm-market-card {
+  padding: 16px;
+  gap: 14px;
+}
+#pluginWindow .pm-market-summary {
+  flex-basis: min(100%, 240px);
+}
+#pluginWindow .pm-market-summary strong {
+  display: block;
+  margin-bottom: 10px;
+  line-height: 1.45;
+}
+#pluginWindow .pm-market-summary p {
+  margin: 0 0 10px;
+  line-height: 1.55;
+}
+#pluginWindow .pm-market-meta {
+  line-height: 1.5;
+}
+#pluginWindow .pm-market-actions {
+  gap: 10px;
+}
+#pluginWindow .pm-market-actions .pm-mini {
+  margin-top: 0;
+  min-height: 32px;
+}
+#pluginWindow .pm-api-section {
+  min-width: 0;
+}
+#pluginWindow .pm-api-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 8px 10px 16px;
+}
+#pluginWindow .pm-api-table-wrap {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+  max-height: min(65vh, 650px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+#pluginWindow .pm-api-table {
+  min-width: 900px;
+  table-layout: fixed;
+}
+#pluginWindow .pm-api-table th,
+#pluginWindow .pm-api-table td {
+  box-sizing: border-box;
+  line-height: 1.5;
+  padding: 11px 14px;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+#pluginWindow .pm-api-table th:first-child,
+#pluginWindow .pm-api-table td:first-child {
+  width: 100px;
+  white-space: nowrap;
+}
+#pluginWindow .pm-api-table th:nth-child(2),
+#pluginWindow .pm-api-table td:nth-child(2) {
+  width: 225px;
+}
+#pluginWindow .pm-api-table th:nth-child(3),
+#pluginWindow .pm-api-table td:nth-child(3) {
+  width: 150px;
+}
+#pluginWindow .pm-api-table th:nth-child(4),
+#pluginWindow .pm-api-table td:nth-child(4),
+#pluginWindow .pm-api-table th:nth-child(5),
+#pluginWindow .pm-api-table td:nth-child(5) {
+  width: 155px;
+}
+#pluginWindow .pm-api-table th:nth-child(6),
+#pluginWindow .pm-api-table td:nth-child(6) {
+  width: 115px;
+}
+#pluginWindow .pm-api-schema-cell {
+  min-width: 0;
+  max-width: none;
+}
+#pluginWindow .pm-api-row-link {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+@media (max-width: 580px) {
+  #pluginWindow .pm-api-browser {
+    gap: 12px;
+    padding: 8px 4px 12px;
+  }
+  #pluginWindow .pm-resource-local {
+    margin-bottom: 16px;
+  }
+  #pluginWindow .pm-market-card {
+    padding: 12px;
+  }
+}
