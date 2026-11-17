@@ -252,6 +252,33 @@ export class LinkCore {
   configureServiceRoutes(table) {
     return this.hub.configureServiceRoutes(table);
   }
+  /** Host-only immutable route snapshot and CAS transaction lifecycle. */
+  routeSnapshot() { return this.hub.routeSnapshot(); }
+  beginRouteTransaction(table) {
+    return this.hub.beginRouteTransaction(table);
+  }
+  validateRouteTransaction(id) {
+    return this.hub.validateRouteTransaction(id);
+  }
+  commitRouteTransaction(id) {
+    return this.hub.commitRouteTransaction(id);
+  }
+  abortRouteTransaction(id) {
+    return this.hub.abortRouteTransaction(id);
+  }
+  rollbackRouteGeneration(generation, expectedGeneration) {
+    return this.hub.rollbackRouteGeneration(generation,
+      expectedGeneration);
+  }
+  awaitRouteDrain(generation) {
+    return this.hub.awaitRouteDrain(generation);
+  }
+  drainProvider(source, providerId) {
+    return this.hub.drainProvider(source, providerId);
+  }
+  restoreRouteConfiguration(table) {
+    return this.hub.restoreRouteConfiguration(table);
+  }
   /** Trusted host only: identity is verified by the embedding host. */
   configureOwnedRoutes(source, table) {
     return this.hub.configureOwnedRoutes(source, table);

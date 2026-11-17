@@ -1,0 +1,3 @@
+# ClusterOpt2 PLUGIN PR05 Patch3 Handoff
+
+Base main e7ae73c. Patch1 ed2c5e4 PASS 5/5, restore backup/plugin-pr05-sub01-03-verified-ed2c5e4. Patch2 18dac10 PASS 5/5, restore backup/plugin-pr05-patch2-verified-18dac10. Patch3: Provider draining and validated rehydrate. Before further implementation read PRD, Plan, ArcD, latest Patch and Relation Test, global properties and unresolved issues. Verify Patch3 exact-head CI, inspect final PR05.01–10 gate, update unified release version only on successful major merge, create PR05 final restore branch. Do not merge while tests pending; full cancellation/worker isolation belongs to PR06.

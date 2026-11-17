@@ -9,6 +9,7 @@ import { ServiceRegistry } from "./ServiceRegistry.js";
 import { ServiceRequestResolver } from "./ServiceRequestResolver.js";
 import { RouteTablePolicy } from
   "../property/RouteTablePolicy.js";
+import { RouteTransactionUnit } from "./RouteTransactionUnit.js";
 import { RouteContractPolicy } from
   "../property/RouteContractPolicy.js";
 import { ResponsePipelinePolicy } from
@@ -39,6 +40,13 @@ export class HubUnit {
       services ?? new ServiceRegistry(registry), registry);
     // Internal-only declarative snapshot; URU remains Provider authority.
     this.replaceRoutes = Object.freeze([]);
+    this.routeGeneration = 0;
+    this.routeHistory = new Map([[0, this.replaceRoutes]]);
+    this.routeInflight = new Map();
+    this.routeDrainWaiters = new Map();
+    this.providerInflight = new Map();
+    this.providerDrainWaiters = new Map();
+    this.routeTransactions = new RouteTransactionUnit(this);
   }
 
   register(object) {
@@ -49,6 +57,12 @@ export class HubUnit {
   }
 
   unregister(id) {
+    for (const [providerId, count] of this.providerInflight) {
+      if (count > 0 && this.registry.getProvider(providerId)?.objectId === id) {
+        this.omu.record("EHU", id, "Unregister", 409);
+        return false;
+      }
+    }
     const removed = this.registry.unregister(id);
     this.omu.record(removed ? "Log" : "EHU", id, "Unregister",
       removed ? 200 : 404);
@@ -91,6 +105,10 @@ export class HubUnit {
   }
 
   unregisterProvider(source, providerId) {
+    if (this.providerInflight.get(providerId) > 0) {
+      this.omu.record("EHU", source, "Provider.Unregister", 409);
+      return { ok: false, status: 409 };
+    }
     if (!this.registry.objects.has(source)) {
       this.omu.record("EHU", source, "Provider.Unregister", 404);
       return { ok: false, status: 404 };
@@ -383,7 +401,15 @@ export class HubUnit {
    * Trusted declarative route activation. PR04.04/05: chain/fanout
    * cannot bypass HubUnit.request or mint a caller identity.
    */
-  configureServiceRoutes(candidate, replaceOnly = false) {
+  configureServiceRoutes(candidate, replaceOnly = false,
+    control = {}) {
+    if (control.expectedGeneration !== undefined &&
+        control.expectedGeneration !== this.routeGeneration) {
+      this.omu.record("EHU", "LinkCore",
+        "Service.Route.Configure", 409);
+      return { ok: false, status: 409,
+        error: "Stale route generation" };
+    }
     const parsed = RouteTablePolicy.validate(candidate);
     if (!parsed.ok) {
       this.omu.record("EHU", "LinkCore", "Service.Route.Configure",
@@ -472,13 +498,163 @@ export class HubUnit {
         "HubUnit", { error: graph.error });
       return graph;
     }
-    // Existing in-flight requests hold their already resolved Object.
+    if (control.dryRun === true) {
+      return { ok: true, status: 200,
+        value: Object.freeze({ generation: this.routeGeneration,
+          count: parsed.value.routes.length }) };
+    }
+    // Route selection is synchronous; inflight calls retain their target.
     this.replaceRoutes = parsed.value.routes;
+    this.routeGeneration++;
+    this.routeHistory.set(this.routeGeneration, this.replaceRoutes);
+    while (this.routeHistory.size > 8) {
+      this.routeHistory.delete(this.routeHistory.keys().next().value);
+    }
     this.omu.record("Log", "LinkCore",
       "Service.Route.Configure", 200, "HubUnit",
       { count: this.replaceRoutes.length });
     return { ok: true, status: 200,
-      value: Object.freeze({ count: this.replaceRoutes.length }) };
+      value: Object.freeze({ count: this.replaceRoutes.length,
+        generation: this.routeGeneration }) };
+  }
+
+  /** Host-only transaction methods; no browser/Agent mutation facade. */
+  routeSnapshot() {
+    return Object.freeze({ generation: this.routeGeneration,
+      routes: this.replaceRoutes });
+  }
+
+  beginRouteTransaction(candidate) {
+    return this.routeTransactions.begin(candidate);
+  }
+
+  validateRouteTransaction(id) {
+    return this.routeTransactions.validate(id);
+  }
+
+  commitRouteTransaction(id) {
+    return this.routeTransactions.commit(id);
+  }
+
+  abortRouteTransaction(id) {
+    return this.routeTransactions.abort(id);
+  }
+
+  /** Bounded previous-generation restore, revalidated before CAS swap. */
+  rollbackRouteGeneration(generation, expectedGeneration) {
+    if (!Number.isSafeInteger(generation) || generation < 0 ||
+        !Number.isSafeInteger(expectedGeneration) ||
+        expectedGeneration !== this.routeGeneration) {
+      this.omu.record("EHU", "LinkCore", "Service.Route.Rollback", 409);
+      return { ok: false, status: 409 };
+    }
+    const routes = this.routeHistory.get(generation);
+    if (!routes) {
+      this.omu.record("EHU", "LinkCore", "Service.Route.Rollback", 404);
+      return { ok: false, status: 404 };
+    }
+    const result = this.configureServiceRoutes(
+      { schemaVersion: 1, routes }, false,
+      { expectedGeneration });
+    this.omu.record(result.ok ? "Log" : "EHU",
+      "LinkCore", "Service.Route.Rollback", result.status);
+    return result;
+  }
+
+  /** Wait only for calls that already selected a given generation. */
+  awaitRouteDrain(generation) {
+    if (!Number.isSafeInteger(generation) || generation < 0 ||
+        generation > this.routeGeneration) {
+      return Promise.resolve({ ok: false, status: 400 });
+    }
+    if (!this.routeInflight.get(generation)) {
+      return Promise.resolve({ ok: true, status: 200 });
+    }
+    return new Promise(resolve => {
+      const waiters = this.routeDrainWaiters.get(generation) ?? [];
+      waiters.push(resolve);
+      this.routeDrainWaiters.set(generation, waiters);
+    });
+  }
+
+  /** Inflight Provider pins prevent removal during a selected route. */
+  enterRouteProviders(ids) {
+    for (const id of ids) {
+      this.providerInflight.set(id,
+        (this.providerInflight.get(id) ?? 0) + 1);
+    }
+  }
+
+  leaveRouteProviders(ids) {
+    for (const id of ids) {
+      const remaining = (this.providerInflight.get(id) ?? 1) - 1;
+      if (remaining > 0) {
+        this.providerInflight.set(id, remaining);
+        continue;
+      }
+      this.providerInflight.delete(id);
+      for (const resolve of this.providerDrainWaiters.get(id) ?? []) {
+        resolve();
+      }
+      this.providerDrainWaiters.delete(id);
+    }
+  }
+
+  /** Disable new Provider selection before awaiting existing requests. */
+  async drainProvider(source, providerId) {
+    const manifest = this.registry.getProvider(providerId);
+    if (!manifest || !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Drain", 404);
+      return { ok: false, status: 404 };
+    }
+    if (manifest.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Drain", 403);
+      return { ok: false, status: 403 };
+    }
+    const disabled = this.setProviderEnabled(source, providerId, false);
+    if (!disabled.ok) return disabled;
+    if (this.providerInflight.get(providerId) > 0) {
+      await new Promise(resolve => {
+        const waiters = this.providerDrainWaiters.get(providerId) ?? [];
+        waiters.push(resolve);
+        this.providerDrainWaiters.set(providerId, waiters);
+      });
+    }
+    const removed = this.unregisterProvider(source, providerId);
+    this.omu.record(removed.ok ? "Log" : "EHU", source,
+      "Provider.Drain", removed.status, providerId);
+    return removed;
+  }
+
+  /** Host-controlled rehydrate must pass the same transaction Gate. */
+  restoreRouteConfiguration(candidate) {
+    const started = this.beginRouteTransaction(candidate);
+    if (!started.ok) return started;
+    const id = started.value.transactionId;
+    const validated = this.validateRouteTransaction(id);
+    if (!validated.ok) {
+      this.abortRouteTransaction(id);
+      return validated;
+    }
+    return this.commitRouteTransaction(id);
+  }
+
+  enterRouteGeneration(generation) {
+    this.routeInflight.set(generation,
+      (this.routeInflight.get(generation) ?? 0) + 1);
+  }
+
+  leaveRouteGeneration(generation) {
+    const remaining = (this.routeInflight.get(generation) ?? 1) - 1;
+    if (remaining > 0) {
+      this.routeInflight.set(generation, remaining);
+      return;
+    }
+    this.routeInflight.delete(generation);
+    for (const resolve of this.routeDrainWaiters.get(generation) ?? []) {
+      resolve({ ok: true, status: 200 });
+    }
+    this.routeDrainWaiters.delete(generation);
   }
 
   /**
@@ -503,18 +679,28 @@ export class HubUnit {
     }
     const origin = options.origin === "user" ||
       options.origin === "agent" ? options.origin : null;
+    const snapshot = this.routeSnapshot();
+    this.enterRouteGeneration(snapshot.generation);
+    let selectedProviders = [];
+    try {
     const route = this.serviceResolver.resolve(
-      service, action, source, origin, this.replaceRoutes);
+      service, action, source, origin, snapshot.routes);
     if (!route.ok) {
       this.omu.record("EHU", source, "Service.Resolve",
         route.status, typeof service === "string" ? service : "",
         { error: route.error });
       return route;
     }
+    selectedProviders = [...new Set([
+      ...(route.value.stages ?? [route.value]),
+      ...(route.value.responsePipeline ?? [])
+    ].map(stage => stage.providerId).filter(Boolean))];
+    this.enterRouteProviders(selectedProviders);
     this.omu.record("Log", source, "Service.Resolve", 200,
       route.value.objectId, {
         service: route.value.service,
-        providerId: route.value.providerId
+        providerId: route.value.providerId,
+        routeVersion: snapshot.generation
       });
     let result;
     if (route.value.mode === "chain") {
@@ -535,6 +721,10 @@ export class HubUnit {
     }
     return this.executeResponsePipeline(source, route.value,
       result, options);
+    } finally {
+      this.leaveRouteProviders(selectedProviders);
+      this.leaveRouteGeneration(snapshot.generation);
+    }
   }
 
 

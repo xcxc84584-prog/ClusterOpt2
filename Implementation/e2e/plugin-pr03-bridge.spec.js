@@ -38,6 +38,6 @@ test("PR03.03 real browser URU/Hub registration lifecycle", async ({ page }) => 
   });
   expect(r).toEqual({
     registered: 201, count: 1, cleared: 0, oldAPI: true,
-    logs: true, version: "0.0.10"
+    logs: true, version: "0.0.11"
   });
 });
