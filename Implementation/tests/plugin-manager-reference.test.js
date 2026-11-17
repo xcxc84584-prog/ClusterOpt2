@@ -27,3 +27,37 @@ test("plugin manager module parses without duplicate lexical bindings",()=>{
   assert.doesNotThrow(()=>execFileSync(process.execPath,
     ["--check",path],{stdio:"pipe"}));
 });
+
+test("sketch tabs and API explorer use registered contracts",()=>{
+  const source=readFileSync(new URL(
+    "../main/plugin-manager-ui.js",import.meta.url),"utf8");
+  assert.match(source,/VIEWS=Object\.freeze\(\["permissions","api","ehu","performance"\]\)/);
+  assert.match(source,/core\.catalog\.collect\(\)/);
+  assert.match(source,/core\.edpmu\.list\(\)/);
+  assert.match(source,/provider\.provides/);
+  assert.match(source,/JSON\.stringify\(entry\.descriptor,null,2\)/);
+});
+
+test("registered provider API schemas are discoverable from live registry",()=>{
+  const core=new LinkCore();
+  assert.equal(core.register({
+    id:"CatalogPluginOwner",receive:async()=>null,
+    ocda:{Request:["run"],Response:[],UserAPI:[],AgentAPI:[],
+      Property:[],Program:{},EHU:[],Log:[]}
+  }),true);
+  const manifest={
+    manifestVersion:1,providerId:"catalog.plugin",
+    objectId:"CatalogPluginOwner",
+    provides:[{service:"catalog.example",action:"run",version:"1.0.0",
+      inputSchema:{type:"object",properties:{value:{type:"string"}}},
+      outputSchema:{type:"object"}}],
+    requires:[],permissions:[],
+    execution:{isolation:"worker",concurrency:"serial"}
+  };
+  assert.equal(core.registerProvider("CatalogPluginOwner",manifest).ok,true);
+  const registered=core.uru.listProviders();
+  assert.equal(registered.length,1);
+  assert.equal(registered[0].provides[0].service,"catalog.example");
+  assert.equal(registered[0].provides[0].inputSchema.properties.value.type,
+    "string");
+});

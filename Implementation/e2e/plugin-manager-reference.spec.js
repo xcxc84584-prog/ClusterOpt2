@@ -1,54 +1,92 @@
 import { test, expect } from "@playwright/test";
 
-test("reference layout and migrated performance settings",async ({page})=>{
+async function openManager(page) {
   await page.goto("/");
   await page.locator("#menuBtn").click();
   await page.locator("#toolBtn").click();
   await page.locator("#pluginBtn").click();
-  await expect(page.locator(".pm-shell")).toBeVisible();
-  await expect(page.locator(".pm-tabs [role=tab]")).toHaveCount(6);
-  await expect(page.locator(".pm-sidebar")).toBeVisible();
-  await page.locator("#pluginToolToggle").click();
-  await expect(page.locator("#pluginLegacySettings")).toBeVisible();
-  await expect(page.locator("#pluginMaxMiB")).toBeVisible();
-  await page.locator("#pluginToolToggle").click();
-  await expect(page.locator("#pluginLegacySettings")).toBeHidden();
-});
-test("registered Provider renders four live overview cards",async ({page})=>{
-  await page.goto("/");
-  await page.evaluate(async()=>{
-    const { linkCore }=await import("/Implementation/LinkCore/LinkCore.js");
-    linkCore.register({id:"LayoutOwner",receive:async()=>null,
-      ocda:{Request:["run"],Response:[],UserAPI:["run"],AgentAPI:[],
-        Property:[],Program:{},EHU:[],Log:[]}});
-    linkCore.registerProvider("LayoutOwner",{
-      manifestVersion:1,providerId:"example.plugin",objectId:"LayoutOwner",
-      provides:[{service:"example.render",action:"run",version:"1.0.0",
-        inputSchema:{type:"object"},outputSchema:{type:"object"}}],
-      requires:[],permissions:["document.slice.read"],
-      execution:{isolation:"worker",concurrency:"serial"}});
+}
+
+test("sketch layout has four tabs and persistent scrollable sidebar",
+  async ({page})=>{
+    await openManager(page);
+    await expect(page.locator(".pm-shell")).toBeVisible();
+    await expect(page.locator(".pm-tabs [role=tab]")).toHaveCount(4);
+    await expect(page.locator(".pm-sidebar")).toBeVisible();
+    await expect(page.locator(".pm-page")).toBeVisible();
+    const style=await page.locator(".pm-page").evaluate(node=>
+      getComputedStyle(node).overflowY);
+    expect(style).toBe("auto");
+    await page.locator(".pm-tabs [role=tab]").nth(3).click();
+    await expect(page.locator("#pluginLegacySettings")).toBeVisible();
+    await expect(page.locator("#pluginMaxMiB")).toBeVisible();
   });
-  await page.locator("#menuBtn").click();
-  await page.locator("#toolBtn").click();
-  await page.locator("#pluginBtn").click();
-  await expect(page.locator(".pm-provider")).toHaveCount(1);
-  await expect(page.locator(".pm-grid .pm-card")).toHaveCount(4);
-  await expect(page.locator(".pm-hero-info")).toContainText("example.plugin");
-  await page.locator(".pm-tabs [role=tab]").nth(2).click();
-  await page.locator(".pm-permission-row button").click();
-  await expect(page.locator(".plugin-consent-dialog")).toBeVisible();
-  await page.locator(".plugin-consent-dialog button").first().click();
-  await page.locator(".pm-tabs [role=tab]").nth(0).click();
-  await page.locator(".pm-switch input").uncheck();
-  await expect(page.locator(".pm-hero-info")).toContainText("Disabled");
+
+test("live Provider manifest publishes inspectable API contract",
+  async ({page})=>{
+    await openManager(page);
+    await page.evaluate(async()=>{
+      const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
+      linkCore.register({id:"LayoutOwner",receive:async()=>null,
+        ocda:{Request:["run"],Response:[],UserAPI:["run"],
+          AgentAPI:[],Property:[],Program:{},EHU:[],Log:[]}});
+      const result=linkCore.registerProvider("LayoutOwner",{
+        manifestVersion:1,providerId:"example.plugin",objectId:"LayoutOwner",
+        provides:[{service:"example.render",action:"run",version:"1.0.0",
+          inputSchema:{type:"object",properties:{text:{type:"string"}}},
+          outputSchema:{type:"object"}}],
+        requires:[],permissions:["document.slice.read"],
+        execution:{isolation:"worker",concurrency:"serial"}});
+      if(!result.ok)throw Error(JSON.stringify(result));
+    });
+    await page.evaluate(async()=>{
+      const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
+      // Tool entry refreshes the registry-backed view after registration.
+      document.querySelector("#pluginToolToggle").click();
+      document.querySelector("#pluginToolToggle").click();
+    });
+    await expect(page.locator(".pm-provider")).toHaveCount(1);
+    await expect(page.locator(".pm-permission-controls input"))
+      .toBeChecked();
+    await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await expect(page.locator(".pm-api-entry")
+      .filter({hasText:"example.render"})).toBeVisible();
+    await page.locator(".pm-api-entry")
+      .filter({hasText:"example.render"}).click();
+    await expect(page.locator(".pm-contract-json")).toContainText(
+      '"text"');
+    await expect(page.locator(".pm-contract-json")).toContainText(
+      '"inputSchema"');
+  });
+
+test("language switching updates plugin tab labels",async ({page})=>{
+  await openManager(page);
+  await page.evaluate(async()=>{
+    const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
+    linkCore.edpmu.update("Language","en");
+  });
+  await page.evaluate(async()=>{
+    document.querySelector("#pluginToolToggle").click();
+    document.querySelector("#pluginToolToggle").click();
+  });
+  await expect(page.locator(".pm-tabs [role=tab]").nth(0))
+    .toHaveText("Permission");
+  await expect(page.locator(".pm-tabs [role=tab]").nth(1))
+    .toHaveText("API List");
+  await page.evaluate(async()=>{
+    const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
+    linkCore.edpmu.update("Language","zh-Hant");
+  });
+  await page.locator("#pluginToolToggle").click();
+  await page.locator("#pluginToolToggle").click();
+  await expect(page.locator(".pm-tabs [role=tab]").nth(0))
+    .toHaveText("權限");
 });
-test("Language read creates no 404 EHU for ui source",async ({page})=>{
-  await page.goto("/");
-  await page.locator("#menuBtn").click();
-  await page.locator("#toolBtn").click();
-  await page.locator("#pluginBtn").click();
+
+test("Language property does not generate an unknown-ui EHU",async ({page})=>{
+  await openManager(page);
   const errors=await page.evaluate(async()=>{
-    const { linkCore }=await import("/Implementation/LinkCore/LinkCore.js");
+    const {linkCore}=await import("/Implementation/LinkCore/LinkCore.js");
     return linkCore.getSnapshot().logs.filter(e=>e.kind==="EHU"&&
       e.source==="ui"&&e.target==="Language"&&e.status===404);
   });
