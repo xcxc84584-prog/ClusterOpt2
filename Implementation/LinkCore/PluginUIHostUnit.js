@@ -1,3 +1,5 @@
+import { PluginExplorerObject } from
+  "../object/PluginExplorerObject.js";
 import { PluginModelTaskObject } from
   "../object/PluginModelTaskObject.js";
 import { PluginLocalAgentObject } from
@@ -106,8 +108,109 @@ export class PluginUIHostUnit {
       panel.id = "plugin-extension-panel-" + provider.objectId;
       const view = {
         button, panel, frame, labels, enabled: true,
-        snapshot, provider, localAgent: null, modelTask: null
+        snapshot, provider, localAgent: null, modelTask: null,
+        explorerAccess: null
       };
+
+      // Trusted host-side ToolBox; never run a file picker in a sandbox.
+      if (provider.providerId === "cluster.ai-agent-mcp") {
+        const access = new PluginExplorerObject(
+          this.core, provider.providerId);
+        if (!this.core.register(access)) {
+          throw Error("Explorer access registration failed");
+        }
+        view.explorerAccess = access;
+        const toolbox = this.doc.createElement("div");
+        toolbox.className = "plugin-agent-toolbox";
+        toolbox.style.cssText = "position:absolute;top:8px;right:16px;" +
+          "z-index:20;font:12px system-ui;color:var(--ui-text-on-panel);";
+        const trigger = this.doc.createElement("button");
+        trigger.type = "button";
+        trigger.textContent = "ToolBox ▾";
+        trigger.setAttribute("aria-expanded", "false");
+        const menu = this.doc.createElement("div");
+        menu.hidden = true;
+        menu.style.cssText = "margin-top:8px;padding:12px;min-width:260px;" +
+          "background:var(--ui-panel,#101927);" +
+          "border:1px solid var(--ui-border,#34516f);" +
+          "border-radius:8px;box-shadow:0 10px 28px #0008;";
+        trigger.addEventListener("click", () => {
+          menu.hidden = !menu.hidden;
+          trigger.setAttribute("aria-expanded", String(!menu.hidden));
+        });
+        const rootButton = this.doc.createElement("button");
+        rootButton.type = "button";
+        rootButton.textContent = "選取本地資料夾 / Select folder";
+        const rootStatus = this.doc.createElement("p");
+        rootStatus.setAttribute("role", "status");
+        rootStatus.style.cssText = "margin:8px 0;overflow-wrap:anywhere;";
+        rootButton.addEventListener("click", async () => {
+          // Called synchronously from a real host user gesture.
+          if (!this.doc.defaultView.showDirectoryPicker) {
+            rootStatus.textContent = "File System Access unavailable";
+            return;
+          }
+          try {
+            const handle = await this.doc.defaultView.showDirectoryPicker({
+              mode: "readwrite"
+            });
+            // User-supplied absolute path is descriptive only. Authority
+            // comes exclusively from this browser-selected handle.
+            const label = this.doc.defaultView.prompt(
+              "已選取 " + handle.name +
+              "。可選填絕對路徑作為顯示名稱；不會擴大權限。",
+              handle.name);
+            if (label === null) return;
+            access.setRoot(handle, label);
+            rootStatus.textContent = access.status().label;
+            for (const checkbox of menu.querySelectorAll(
+              'input[type="checkbox"]')) checkbox.checked = false;
+          } catch (error) {
+            if (error?.name !== "AbortError") {
+              rootStatus.textContent = "Folder selection rejected";
+              access.audit("PickerFailed", 403);
+            }
+          }
+        });
+        menu.append(rootButton, rootStatus);
+        const rights = [
+          ["ps", "PowerShell (PR14.7)"],
+          ["create", "File Create"],
+          ["update", "File Update"],
+          ["read", "File Read"],
+          ["delete", "File Delete"]
+        ];
+        for (const [name, label] of rights) {
+          const row = this.doc.createElement("label");
+          row.style.cssText = "display:flex;align-items:center;" +
+            "gap:8px;padding:7px 0;cursor:pointer;";
+          const checkbox = this.doc.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.dataset.right = name;
+          checkbox.disabled = name === "ps";
+          checkbox.addEventListener("change", () => {
+            try {
+              access.setRight(name, checkbox.checked);
+            } catch {
+              checkbox.checked = false;
+            }
+          });
+          row.append(checkbox, this.doc.createTextNode(label));
+          menu.append(row);
+        }
+        const revoke = this.doc.createElement("button");
+        revoke.type = "button";
+        revoke.textContent = "撤銷全部 / Revoke all";
+        revoke.addEventListener("click", () => {
+          access.revoke();
+          rootStatus.textContent = "";
+          for (const checkbox of menu.querySelectorAll(
+            'input[type="checkbox"]')) checkbox.checked = false;
+        });
+        menu.append(revoke);
+        toolbox.append(trigger, menu);
+        panel.append(toolbox);
+      }
       if (provider.permissions.includes("network.request") &&
           provider.permissions.includes("local-agent.pair")) {
         const agent = new PluginLocalAgentObject(
@@ -234,6 +337,10 @@ export class PluginUIHostUnit {
         this.doc.removeEventListener("click", closeForWorkbench);
         view.unlistenAgent?.();
         view.localAgent?.close();
+        view.explorerAccess?.revoke();
+        if (view.explorerAccess) {
+          this.core.unregister(view.explorerAccess.id);
+        }
         if (view.modelTask) this.core.unregister(view.modelTask.id);
         if (view.localAgent) this.core.unregister(view.localAgent.id);
         frame.srcdoc = "";
@@ -264,6 +371,7 @@ export class PluginUIHostUnit {
     view.button.hidden = !enabled;
     if (!enabled) {
       view.localAgent?.close();
+      view.explorerAccess?.revoke();
       view.panel.hidden = true;
       view.button.setAttribute("aria-pressed", "false");
     }
