@@ -98,7 +98,7 @@ test("PR16 ToolBox remains a trusted host menu and does not cover header",
     await mountAgent(page);
     await page.locator(".plugin-extension-button").click();
     const menu = page.locator(".plugin-agent-toolbox");
-    await menu.locator("> button").click();
+    await menu.locator(":scope > button").click();
     await expect(menu.getByText("TOOLBOX  /  LOCAL ACCESS"))
       .toBeVisible();
     await expect(menu.locator("[data-right]")).toHaveCount(6);
