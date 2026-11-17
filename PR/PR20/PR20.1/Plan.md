@@ -19,3 +19,10 @@
 - UI 不含 textarea、caiForm 或 cluster-model-submit 發送流程。
 - 配對與 Quick-Setup 仍可操作；ToolBox 既有授權與撤銷測試不受影響。
 - 正式 Windows/OAuth/HTTPS 與 Node agent 的實機測試仍列為外部驗收。
+
+## Patch(+2): legacy MCP configuration and APIs
+- Standalone MCP setup CMD offered through the existing trusted host download mechanism; the plugin iframe never navigates to privileged local paths.
+- Remote MCP catalogue parity: 14 legacy named tools; stdio now mirrors the same schemas.
+- OAuth read-only security fix: `cluster.read` filters `tools/list` and rejects any `tools/call` outside the five-tool allowlist. No `cluster.control` is granted.
+- HTTPS termination still user-provided; 43879/43880 are loopback-only.
+- Source pins and code audit are necessary; Windows live E2E remains pending.
