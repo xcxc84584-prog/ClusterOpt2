@@ -13,8 +13,8 @@ async function openResources(page) {
 
 test("PR12 resources show searchable downloadable packages, not paths", async ({page}) => {
   await openResources(page);
-  await expect(page.locator(".pm-market-card")).toHaveCount(1);
-  await expect(page.locator(".pm-market-download")).toHaveAttribute(
+  await expect(page.locator(".pm-market-card")).toHaveCount(2);
+  await expect(page.locator("a.pm-market-download")).toHaveAttribute(
     "download", "multilang-highlighter.js");
   await expect(page.locator(".pm-sample-editor")).toHaveCount(0);
   await expect(page.locator(".pm-sample-preview")).toHaveCount(0);
