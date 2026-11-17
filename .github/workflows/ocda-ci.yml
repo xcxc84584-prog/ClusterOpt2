@@ -1,4 +1,7 @@
 name: OCDA CI
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 on:
   push:
     branches: [main, "pr4/**", "pr5/**", "pr6/**", "pr7/**", "pr8/**"]
