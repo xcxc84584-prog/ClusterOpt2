@@ -1154,10 +1154,15 @@ async function goToGlobalLine() {
         throw error;
       }
       if (workspace.active !== active) return;
-      location = {
-        offset: active.cursor, scrollTop: active.scrollTop
-      };
       render();
+      // HTML textarea canonicalizes CRLF; cursor offsets must be
+      // resolved against its actual LF-normalized visible value.
+      location = policy.resolve({
+        text: ui.editor.value, firstLine: active.pageFirstLine,
+        targetLine, lineHeight
+      });
+      location.scrollTop = Math.max(0,
+        location.scrollTop - ui.editor.clientHeight / 3);
     } else {
       location = policy.resolve({
         text: ui.editor.value, targetLine, lineHeight
