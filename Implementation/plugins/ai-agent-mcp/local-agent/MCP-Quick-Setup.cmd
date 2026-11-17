@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title ClusterOpt2 - ChatGPT MCP Quick Setup
-set "REV=6a00404555891b6dcb52950d60f62d1047960bf5"
+set "REV=01aaaec3f0654886d0cd8b45542a33f74ba9b728"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "BASE=https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/%REV%/Implementation/plugins/ai-agent-mcp/local-agent"
 echo ====================================================
