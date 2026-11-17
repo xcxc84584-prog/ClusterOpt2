@@ -75,6 +75,10 @@ export class PluginUIHostUnit {
       frame.srcdoc = '<meta http-equiv="Content-Security-Policy" ' +
         'content="' + UI_CSP + '">' + html;
       const panel = this.doc.createElement("section");
+      panel.style.cssText = "position:absolute;inset:0;z-index:12;" +
+        "background:var(--ui-editor,#101723);min-height:0;";
+      frame.style.cssText = "width:100%;height:100%;display:block;" +
+        "border:0;background:#0b1019;";
       panel.className = "plugin-extension-panel";
       panel.hidden = true;
       panel.setAttribute("aria-label", manifest.name);
@@ -82,13 +86,21 @@ export class PluginUIHostUnit {
       const button = this.doc.createElement("button");
       button.type = "button";
       button.className = "plugin-extension-button";
-      button.textContent = "✧ " + manifest.name;
+      button.textContent = "✧ " + manifest.name.split(" MCP(")[0];
+      button.style.cssText = "margin-left:8px;max-width:175px;" +
+        "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" +
+        "background:var(--ui-control);color:var(--ui-text-on-control);" +
+        "border:1px solid var(--ui-border);padding:7px 11px;" +
+        "border-radius:7px;";
       button.title = manifest.name;
       button.setAttribute("aria-controls", "plugin-extension-panel-" +
         provider.objectId);
       button.setAttribute("aria-pressed", "false");
       panel.id = "plugin-extension-panel-" + provider.objectId;
-      const view = { button, panel, frame, labels, enabled: true };
+      const view = {
+        button, panel, frame, labels, enabled: true,
+        snapshot, provider
+      };
       const sync = () => {
         const locale = readLocale(this.core);
         if (frame.contentWindow) {
@@ -112,18 +124,18 @@ export class PluginUIHostUnit {
       };
       button.addEventListener("click", open);
       frame.addEventListener("load", sync);
-      const onLanguage = event => {
-        if (!event.target.closest?.("[data-locale]")) return;
-        queueMicrotask(sync);
-      };
-      this.doc.addEventListener("click", onLanguage);
+      const localeObserver = new MutationObserver(sync);
+      localeObserver.observe(this.doc.documentElement, {
+        attributes: true, attributeFilter: ["lang"]
+      });
       view.dispose = () => {
-        this.doc.removeEventListener("click", onLanguage);
+        localeObserver.disconnect();
         frame.srcdoc = "";
         panel.remove();
         button.remove();
       };
       toolbar.append(button);
+      workspace.style.position = "relative";
       workspace.append(panel);
       this.views.set(provider.providerId, view);
       return { ok: true, status: 200 };
