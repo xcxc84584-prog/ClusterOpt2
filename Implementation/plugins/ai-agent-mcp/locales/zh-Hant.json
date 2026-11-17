@@ -19,7 +19,7 @@
   "disconnect": "中斷連線",
   "connectionError": "本地 Agent 連線失敗",
   "modelStatus": "模型狀態",
-  "modelInactive": "配對本地 Agent 並設定模型後即可執行純文字任務。",
+  "modelInactive": "完成本地 Agent 配對與 MCP 授權後，可於此查看操作狀態與輸出。",
   "modelReady": "模型已設定",
   "modelNotConfigured": "模型尚未設定",
   "taskState": "任務",
