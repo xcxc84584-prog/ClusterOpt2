@@ -23,3 +23,25 @@ jobs:
       - name: Parse installer with PowerShell 7
         shell: pwsh
         run: ./Implementation/tests/native-installer-parser.ps1
+
+  native-conpty-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+      - name: Install and rebuild approved node-pty
+        shell: pwsh
+        working-directory: Implementation/local-agent
+        run: |
+          npm install --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm rebuild node-pty --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run real native ConPTY probe as a file
+        shell: pwsh
+        working-directory: Implementation/local-agent
+        run: |
+          node probe-native.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
