@@ -385,6 +385,14 @@ export class PluginUIHostUnit {
         view.localAgent = agent;
         pendingAgent = agent;
         if (view.explorerAccess) {
+          view.explorerAccess.authorizeAgent(agent.id);
+          const attached = agent.registerExplorer(
+            view.explorerAccess.id);
+          if (!attached.ok) {
+            throw Error("Local Agent Explorer registration failed");
+          }
+        }
+        if (view.explorerAccess) {
           const shell = new PluginShellApprovalObject(
             this.core, provider.providerId, agent.id,
             view.explorerAccess, this.doc);
