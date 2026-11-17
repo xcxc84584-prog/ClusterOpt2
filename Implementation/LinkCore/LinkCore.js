@@ -68,7 +68,7 @@ export class LinkCore {
     this.omu = new ObjectManagementUnit();
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
-      undefined, this.catalog);
+      undefined, this.catalog, this.services);
     this.catalogQuery = new CatalogQuery(this.catalog);
     Object.defineProperty(this, "version", {
       value: ReleaseVersion.product, enumerable: true,
@@ -240,6 +240,10 @@ export class LinkCore {
   }
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
+  }
+  requestService(source, service, action, payload = {}, options = {}) {
+    return this.hub.requestService(source, service, action,
+      payload, options);
   }
   generateCatalogDocs(source, format, options = {}) {
     const result = CatalogDocumentation.render(

@@ -84,3 +84,8 @@ PR1 is not considered accepted based on source code alone.
   inflight draining and real File I/O are deferred to PR04–06.
 - PR03 major merge forbidden until exact-head PASS and final
   rollback snapshot; original editor large-file manual tests remain open.
+
+## PLUGIN PR04.01 outstanding acceptance
+- PR04.01 Node, VTE and Chromium tests: PENDING latest-head CI.
+- PR04.02–PR04.10 Route Table, ACL, and execution paths: TODO.
+- Real browser File System Access/manual 5GiB edit: NOT validated.

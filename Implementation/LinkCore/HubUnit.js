@@ -5,6 +5,8 @@ import { ProviderSharedPropertyPolicy } from
 import { ProviderManifestPolicy } from
   "../property/ProviderManifestPolicy.js";
 import { ExecutionScheduler } from "./ExecutionScheduler.js";
+import { ServiceRegistry } from "./ServiceRegistry.js";
+import { ServiceRequestResolver } from "./ServiceRequestResolver.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
   "./AuthorizedCatalogCollection.js";
@@ -15,13 +17,16 @@ import { AuthorizedCatalogCollection } from
  */
 export class HubUnit {
   constructor(registry, properties, omu,
-    scheduler = new ExecutionScheduler(), catalog = null) {
+    scheduler = new ExecutionScheduler(), catalog = null,
+    services = null) {
     this.registry = registry;
     this.properties = properties;
     this.omu = omu;
     this.scheduler = scheduler;
     this.waitEdges = new Map();
     this.catalog = catalog;
+    this.serviceResolver = new ServiceRequestResolver(
+      services ?? new ServiceRegistry(registry), registry);
   }
 
   register(object) {
@@ -225,6 +230,42 @@ export class HubUnit {
     if (remaining > 0) edges.set(target, remaining);
     else edges.delete(target);
     if (!edges.size) this.waitEdges.delete(source);
+  }
+
+  /**
+   * Map a logical Service to one Object, then reuse the entire
+   * existing Hub request, authorization, scheduler and EHU path.
+   */
+  async requestService(source, service, action,
+    payload = {}, options = {}) {
+    if (typeof source !== "string" ||
+        !this.registry.objects.has(source)) {
+      this.omu.record("EHU", "unknown", "Service.Request", 404,
+        typeof service === "string" ? service : "");
+      return { ok: false, status: 404,
+        error: "Sender not registered" };
+    }
+    if (!options || typeof options !== "object" ||
+        Array.isArray(options)) {
+      this.omu.record("EHU", source, "Service.Resolve", 400,
+        typeof service === "string" ? service : "");
+      return { ok: false, status: 400,
+        error: "Invalid request options" };
+    }
+    const route = this.serviceResolver.resolve(service, action);
+    if (!route.ok) {
+      this.omu.record("EHU", source, "Service.Resolve",
+        route.status, typeof service === "string" ? service : "",
+        { error: route.error });
+      return route;
+    }
+    this.omu.record("Log", source, "Service.Resolve", 200,
+      route.value.objectId, {
+        service: route.value.service,
+        providerId: route.value.providerId
+      });
+    return this.request(source, route.value.objectId,
+      route.value.action, payload, options);
   }
 
   async request(source, target, action, payload = {}, options = {}) {
