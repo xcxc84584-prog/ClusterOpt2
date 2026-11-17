@@ -13,7 +13,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Parse installer with Windows PowerShell 5.1
         shell: powershell
-        run: ./Implementation/tests/native-installer-parser.ps1
+        run: |
+          ./Implementation/tests/native-installer-parser.ps1
+          ./Implementation/tests/native-installer-port.test.ps1
   powershell-7:
     runs-on: windows-latest
     steps:

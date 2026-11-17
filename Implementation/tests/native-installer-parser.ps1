@@ -22,8 +22,12 @@ $rules = @{
     InstallerFunctionCount = @($ast.FindAll({
         param($item)
         $item -is [System.Management.Automation.Language.FunctionDefinitionAst]
-    }, $true)).Count -eq 5
-    NoForcedProcessStop = -not $content.Contains('Stop-Process')
+    }, $true)).Count -eq 7
+    ExplicitOverride = $content.Contains("'O' {")
+    DoubleConfirmation = $content.Contains('-cne ''OVERRIDE''')
+    OwnerIdentityCheck = $content.Contains('$current.CreationDate')
+    ProtectedProcessGuard = $content.Contains('$protectedNames')
+    ScopedStopProcess = $content.Contains('Stop-Process -Id $owner.ProcessId')
     NoTokenLog = -not $content.Contains('RedirectStandardOutput')
     NoDuplicatedBody = @($content -split 'function Download-AgentFile').Count -eq 2
     HasVersionValidation = $content.Contains('[ValidatePattern(')

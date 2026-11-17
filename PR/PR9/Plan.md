@@ -104,3 +104,19 @@ large file restore after delayed permissions and reload.
 - Load: downloads three agent sources, optional portable Node zip,
   npm dependencies; installation serial, native process async.
 - Manual Windows ConPTY pairing remains an independent gate.
+
+## Patch(+7) user-requested occupied-port override
+- Add P/C/O to the native installer only. O means terminate verified
+  listener PID(s) after a separate explicit OVERRIDE confirmation.
+- Warn that ordinary unrelated programs may be stopped and lose
+  unsaved work. Resolve and display PID/Name/ExecutablePath.
+- Refuse system processes, current installer/parent shells, known
+  critical Windows process names and unidentifiable owners.
+- Revalidate process CreationDate and live port ownership before
+  force termination. Recheck port release before agent launch.
+- Performance: one selected port, bounded CIM process lookups and
+  20 x 250 ms post-stop polls; no background workers.
+- Security: native privilege not elevated and no secrets or absolute
+  machine paths committed. Existing browser HubUnit protocol intact.
+- Test via Windows PS5/PS7 AST CI, OCDA Node tests, then cautious
+  Windows process ownership/manual acceptance.
