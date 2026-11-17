@@ -345,6 +345,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
       });
       if(!result.ok)break;
       for(const action of result.value.items) {
+        if(action.described)continue;
         add("Action",action.id,action.owner,{
           id:action.id,action:action.action,
           version:action.version,
