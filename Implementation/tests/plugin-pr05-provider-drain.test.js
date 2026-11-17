@@ -62,7 +62,7 @@ test("PR05.05 drain disables new provider work but completes inflight",
     assert.equal(result.value, "complete");
     const retired = await draining;
     assert.equal(retired.status, 200);
-    assert.equal(core.uru.getProvider("test.provider"), undefined);
+    assert.equal(core.uru.getProvider("test.provider"), null);
   });
 
 test("PR05.08 host rehydrate uses candidate validate and CAS",
