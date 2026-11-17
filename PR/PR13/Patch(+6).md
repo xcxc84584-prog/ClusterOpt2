@@ -53,3 +53,11 @@
 Draft PR #58 remains open and unmerged; preserve
 backup/pr13-prestart-20261117. No version bump before major PR13
 release acceptance and CI.
+
+## Additional Request/Response enforcement
+HubUnit.invokeExternalPlugin now validates every input payload against
+the live URU Provider's inputSchema using RouteContractPolicy (400 on
+mismatch) and validates successful output against outputSchema (502 EHU
+on mismatch). VTE relation tests cover both sides. This complements
+PluginRPCContractPolicy envelope validation; schema metadata is enforced
+rather than only displayed in API List.
