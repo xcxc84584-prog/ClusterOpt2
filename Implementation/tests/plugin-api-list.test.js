@@ -81,3 +81,34 @@ test("PR13 HubUnit drops disabled Provider from API contracts", () => {
   assert.equal(disabled.ok,true);
   assert.equal(env.core.listProviderContracts("VTE").value.total,0);
 });
+
+test("PR13 HubUnit catalog returns only declared Request/Response schema", () => {
+  const env = new VirtualTestEnvironment();
+  env.core.register({
+    id: "API.Example", receive: async (_action,payload) => payload,
+    authorization: { default: "Public" },
+    ocda: {
+      Request: ["echo"], Response: [], UserAPI: ["echo"],
+      AgentAPI: [], Property: [], Program: "Test", EHU: [], Log: [],
+      APIDescriptors: [{
+        apiVersion: 1, id: "example.echo", owner: "API.Example",
+        action: "echo", version: "1.0.0",
+        visibility: "Public", sideEffect: "none",
+        inputSchema: { type: "object",
+          properties: { data: { type: "string" } },
+          required: ["data"] },
+        outputSchema: { type: "object",
+          properties: { result: { type: "boolean" } } }
+      }]
+    }
+  });
+  const result = env.core.discover("VTE","list","api",
+    { offset: 0, limit: 100 },{ origin: "user" });
+  assert.equal(result.status,200);
+  const api=result.value.items.find(item=>
+    item.descriptor.id==="example.echo");
+  assert.equal(api.descriptor.inputSchema.properties.data.type,"string");
+  assert.equal(api.descriptor.outputSchema.properties.result.type,
+    "boolean");
+  assert.equal(env.core.discover("unknown","list","api").status,404);
+});
