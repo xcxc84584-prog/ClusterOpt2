@@ -132,3 +132,11 @@ not declare APIDescriptors. Never infer input/output from live data.
 - Timeout and failed RPC terminate sandbox and emit EHU; stop removes
   runtime handles and URU registration without a parallel registry.
 - Browser security and CPU starvation gates remain pending before PASS.
+
+## PR13 Patch(+7) — lifecycle (PR13.6)
+- Host-installer uses live URU state to block dependent-provider disable
+  and uninstall; UI managed toggles use guarded host APIs.
+- Same-identity, explicitly approved upgrade attempts rollback to the
+  old Provider, Object, sandbox and previously active grants on failure.
+- VTE tests added; browser, CI and recovery checks pending. Upgrade UI,
+  uninterrupted cutover and persisted package update are not yet done.
