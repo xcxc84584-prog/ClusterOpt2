@@ -112,3 +112,28 @@ test("PR16 ToolBox remains a trusted host menu and does not cover header",
     expect(positions.toolboxTop - positions.frameTop)
       .toBeGreaterThanOrEqual(50);
   });
+
+test("PR16 switching PowerShell and AI does not create extra sessions",
+  async ({ page }) => {
+    await page.goto("/");
+    await mountAgent(page);
+    await page.locator("#explorerPowerShell").click();
+    await expect(page.locator("#clusterEditorColumn"))
+      .toHaveClass(/psm-mode/);
+    await expect(page.locator(".psm-tab")).toHaveCount(1);
+
+    await page.locator(".plugin-extension-button").click();
+    await expect(page.locator("#powershellManagerPane")).toBeHidden();
+    await expect(page.locator(".plugin-extension-panel")).toBeVisible();
+    await expect(page.locator(".plugin-agent-tab")).toHaveCount(1);
+    await expect(page.locator(".psm-tab")).toHaveCount(1);
+
+    await page.locator(".psm-tab").click();
+    await expect(page.locator("#clusterEditorColumn"))
+      .toHaveClass(/psm-mode/);
+    await expect(page.locator(".plugin-extension-panel")).toBeHidden();
+
+    await page.locator(".plugin-agent-tab").click();
+    await expect(page.locator(".plugin-extension-panel")).toBeVisible();
+    await expect(page.locator(".psm-tab")).toHaveCount(1);
+  });
