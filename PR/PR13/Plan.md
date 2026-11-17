@@ -89,3 +89,8 @@ isolated origin/channel and browser adversarial tests exist.
 - Package exports represent staged snapshots, not currently active
   third-party runtime instances. Bundled trusted providers require a
   separate verified export path before parity with active plugin list.
+
+### Optional HTML frontend
+Package Manifest may declare `uiEntry: "index.html"` alongside its JS
+service entry. HTML/CSS/JS assets are preserved as inert data until the
+sandboxed UI runtime is audited; no raw HTML is injected into main DOM.
