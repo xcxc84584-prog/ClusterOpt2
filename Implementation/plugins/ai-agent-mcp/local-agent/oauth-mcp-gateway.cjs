@@ -123,7 +123,9 @@ const server=http.createServer(async(req,res)=>{
     }
    }
    const internal=fs.readFileSync(bearerPath,'utf8').trim();
-   const upstream=await fetch('http://127.0.0.1:43880/mcp',{method:req.method,headers:{Authorization:'Bearer '+internal,'Content-Type':'application/json','Accept':'application/json, text/event-stream'},...(payload!==undefined?{body:payload}:{}),signal:AbortSignal.timeout(18000)});
+   const upstream=await fetch('http://127.0.0.1:43880/mcp',{method:req.method,headers:{Authorization:'Bearer '+internal,'Content-Type':'application/json','Accept':'application/json, text/event-stream'},...(payload!==undefined?{body:payload}:{}),signal:AbortSignal.timeout(
+     rpc?.method==='tools/call' &&
+     session.scope==='cluster.control' ? 145000 : 18000)});
    const upstreamBytes=Buffer.from(await upstream.arrayBuffer());
    if(rpc?.method==='tools/list'&&upstream.ok){
     let value;
