@@ -42,3 +42,11 @@
 - Existing PR8 P0s and PR9 global line seek, Explorer parity and
   full UI pixel comparison remain open.
 - This patch is not a PR8/PR9 overall PASS.
+
+## Final-version download pin guard
+The generated CMD carries the central LinkCore SystemVersion. Since the
+script loads current main from GitHub, install-current.ps1 additionally
+checks downloaded package.json name and version before npm install or
+agent startup. If the release changed, installation aborts with a clear
+message to download a fresh CMD. This prevents a stale UI installer
+from silently launching a new incompatible agent.
