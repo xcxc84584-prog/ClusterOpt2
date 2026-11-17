@@ -40,4 +40,5 @@ jobs:
           Implementation/e2e/plugin-pr03-capability.spec.js
           Implementation/e2e/plugin-pr03-manifest.spec.js
           Implementation/e2e/plugin-pr03-bridge.spec.js
+          Implementation/e2e/plugin-pr03-integration.spec.js
           --config Implementation/e2e/playwright.config.js
