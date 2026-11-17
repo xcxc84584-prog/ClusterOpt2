@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test Implementation/tests/*.test.js",
-    "check": "npm run lint && node --check Implementation/LinkCore/LinkCore.js && node --check Implementation/main/main.js && npm test",
+    "check": "npm run version:check && npm run lint && node --check Implementation/LinkCore/LinkCore.js && node --check Implementation/main/main.js && npm test",
+    "version:check": "node scripts/sync-release.mjs --check",
+    "version:sync": "node scripts/sync-release.mjs --write",
     "lint": "node Implementation/tests/code-conventions.mjs",
     "test:e2e": "playwright test --config Implementation/e2e/playwright.config.js"
   },
