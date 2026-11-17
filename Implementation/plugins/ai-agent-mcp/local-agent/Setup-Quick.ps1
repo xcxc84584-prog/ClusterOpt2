@@ -136,7 +136,30 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'npm install failed' }
   & $node.Source -e "require('node-pty'); require('ws')"
   if ($LASTEXITCODE -ne 0) {
-    throw 'node-pty blocked: review npm warnings and approve native build scripts.'
+    Write-Warning 'node-pty native build may have been blocked by npm.'
+    $approval = Read-Host 'Approve node-pty install script now? [Y/N]'
+    if ($approval -notmatch '^[Yy]
+  $env:CLUSTER_TERMINAL_ORIGIN = $origin
+  $env:CLUSTER_TERMINAL_PORT = [string]$port
+  Write-Host ('Agent port: ' + $port)
+  Write-Host 'Copy this port and the pairing token into ClusterOpt2.'
+  Write-Host 'Keep the CMD window open while using AI Agent.'
+  & $node.Source (Join-Path $agentDir 'server.cjs')
+  if ($LASTEXITCODE -ne 0) { throw 'Agent terminated unexpectedly' }
+} finally {
+  Pop-Location
+}
+) {
+      throw 'Native dependency approval declined'
+    }
+    & $npm.Source install-scripts approve node-pty
+    if ($LASTEXITCODE -ne 0) {
+      throw 'npm install-scripts approval failed'
+    }
+    & $npm.Source rebuild node-pty --foreground-scripts
+    if ($LASTEXITCODE -ne 0) { throw 'node-pty rebuild failed' }
+    & $node.Source -e "require('node-pty'); require('ws')"
+    if ($LASTEXITCODE -ne 0) { throw 'node-pty remains unavailable' }
   }
   $env:CLUSTER_TERMINAL_ORIGIN = $origin
   $env:CLUSTER_TERMINAL_PORT = [string]$port
