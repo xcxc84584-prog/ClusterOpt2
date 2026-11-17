@@ -30,6 +30,7 @@ export class PluginLocalAgentObject {
     this.state = "disconnected";
     this.onState = () => {};
     this.waiting = null;
+    this.cancelPrompt = null;
     this.generation = 0;
   }
 
@@ -51,6 +52,7 @@ export class PluginLocalAgentObject {
 
   close() {
     this.generation++;
+    this.cancelPrompt?.();
     this.state = "disconnected";
     this.onPong = null;
     const socket = this.socket;
@@ -149,11 +151,13 @@ export class PluginLocalAgentObject {
       const finish = token => {
         if (finished) return;
         finished = true;
+        this.cancelPrompt = null;
         input.value = "";
         dialog.close();
         dialog.remove();
         resolve(token);
       };
+      this.cancelPrompt = () => finish(null);
       cancel.addEventListener("click", () => finish(null));
       dialog.addEventListener("cancel", event => {
         event.preventDefault();
