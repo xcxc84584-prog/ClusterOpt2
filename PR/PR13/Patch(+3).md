@@ -25,3 +25,9 @@ bundle. Imports never execute arbitrary JS and never grant permissions.
 PR13.3 sandbox, RPC transport, invocation-time authorization, browser
 adversarial tests, and PR13.8 full reload activation safety gate.
 Main remains untouched; PR #58 stays Draft.
+
+- Optional uiEntry supports a complete plugin webpage folder with
+  separate host-facing service entry and sandbox UI page; it is not
+  executable in the host DOM.
+- IndexedDB saves await transaction completion rather than request-only
+  success.
