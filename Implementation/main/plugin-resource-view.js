@@ -1,5 +1,6 @@
 import { downloadPluginTemplate } from
   "./plugin-template-download.js";
+import { downloadAgentPackage } from "./plugin-agent-download.js";
 
 /**
  * Resources: independent scroll panes and user-initiated data-only exports.
@@ -58,6 +59,15 @@ const PLUGINS = Object.freeze([{
   descriptionEn: "HTML/CSS/JS project scaffold. Check API List" +
     " Request inputs and Response outputs before development.",
   service: "plugin.author.template",
+  version: "1.0.0"
+}, {
+  id: "cluster.ai-agent-mcp",
+  kind: "folder-package",
+  nameZh: "AI Agent MCP（ChatGPT）",
+  nameEn: "AI Agent MCP (ChatGPT)",
+  descriptionZh: "完整插件包，含本地 Agent、MCP／OAuth。下載 ZIP、解壓後選擇資料夾裝載；需明確授權。",
+  descriptionEn: "Complete AI Agent, MCP and OAuth package. Download ZIP, extract and mount folder with consent.",
+  service: "cluster.ai-agent.status",
   version: "1.0.0"
 }]);
 
@@ -250,8 +260,8 @@ export function renderResources(doc, host, options) {
   titles.append(el(doc, "h2", "pm-resource-heading",
     t("可下載插件", "Downloadable plugins")));
   titles.append(el(doc, "p", "pm-muted", t(
-    "先下載到本地，再點擊裝載並選擇檔案。",
-    "Download locally, then select the file to mount.")));
+    "先下載到本地；單檔插件直接裝載，ZIP 插件須解壓後選擇資料夾。",
+    "Download first; mount single-file plugins directly or extract ZIP and select its folder.")));
   heading.append(titles);
   const search = el(doc, "input", "pm-resource-search");
   search.type = "search";
@@ -321,7 +331,30 @@ export function renderResources(doc, host, options) {
       summary.append(el(doc, "small", "pm-market-meta",
         plugin.service + " · v" + plugin.version));
       const buttons = el(doc, "div", "pm-market-actions");
-      if(plugin.kind==="template") {
+      if(plugin.kind==="folder-package") {
+        const download = button(doc, t("下載 ZIP", "Download ZIP"),
+          async () => {
+            status.textContent = t("正在準備 AI Agent 插件包...",
+              "Preparing AI Agent package...");
+            download.disabled = true;
+            try {
+              await downloadAgentPackage(doc);
+              status.textContent = t("下載已啟動。解壓 ZIP 後選擇資料夾裝載。",
+                "Download started. Extract ZIP and select the folder to mount.");
+            } catch {
+              status.textContent = t("插件包下載失敗，請檢查檔案是否完整。",
+                "Package download failed; check published assets.");
+            } finally {
+              download.disabled = false;
+            }
+          });
+        download.id = "pluginAgentDownload";
+        download.classList.add("pm-market-download");
+        const mount = button(doc, t("裝載資料夾", "Mount folder"),
+          event => installLocalFolder(event));
+        mount.id = "pluginAgentMount";
+        buttons.append(download, mount);
+      } else if(plugin.kind==="template") {
         const download=button(doc,t("下載 ZIP","Download ZIP"),()=>{
           const language=core.edpmu.get("Language");
           downloadPluginTemplate(doc,language==="en"?"en":"zh-Hant");
@@ -350,8 +383,7 @@ export function renderResources(doc, host, options) {
   renderCards();
   // PR13.2–13.4: explicit folder gesture, bounded data intake,
   // separate consent, then HubUnit/URU-backed sandbox installation.
-  const localPackage = button(doc, t("選擇並裝載自製插件資料夾",
-    "Select and install custom plugin folder"), async event => {
+  async function installLocalFolder(event) {
     // Native click events are trusted; plugin code in an opaque sandbox
     // cannot synthesize a valid host activation gesture.
     if (event && event.isTrusted === false) return;
@@ -401,7 +433,9 @@ export function renderResources(doc, host, options) {
       t("安全裝載失敗（狀態 ", "Safe activation failed (status ") +
       installed.status + ").";
     if (installed.ok) onPluginInstalled?.();
-  });
+  }
+  const localPackage = button(doc, t("選擇並裝載自製插件資料夾",
+    "Select and install custom plugin folder"), installLocalFolder);
   localPackage.setAttribute("aria-label", t(
     "選擇資料夾、審核權限並裝載自製插件",
     "Choose folder, approve capabilities, install custom plugin"));
