@@ -190,8 +190,10 @@ export class FileWorkspace {
     if (action === "page") return this.page(payload);
     if (action === "gotoLine") return this.gotoLine(payload);
     if (action === "activate") return this.activate(payload.id);
-    if (action === "close") return this.close(payload.id);
-    if (action === "closeAll") return this.closeAll();
+    if (action === "close") return this.close(payload.id,
+      payload.saveDecision, payload.saveHandles);
+    if (action === "closeAll") return this.closeAll(
+      payload.saveDecision, payload.saveHandles);
     if (action === "reorder") return this.reorder(payload.from, payload.to);
     if (action === "setPriority") return this.setPriority(payload.priority);
     if (action === "syncExternal") return this.syncExternal();
@@ -319,7 +321,7 @@ export class FileWorkspace {
   }
 
   /** Save each selected document before closing; failures preserve tabs. */
-  async saveBeforeClosing(targets) {
+  async saveBeforeClosing(targets, handles = {}) {
     for (const doc of targets) {
       if (doc.status === DocumentStatus.SYNCED) continue;
       if (doc.virtualReadOnly) {
@@ -327,7 +329,7 @@ export class FileWorkspace {
         else await this.writeVirtualDocument(doc);
       } else {
         // A new unsaved document needs an explicit OS destination.
-        let handle = doc.handle;
+        let handle = handles[doc.id] ?? doc.handle;
         if (!handle) {
           if (typeof window.showSaveFilePicker !== "function") {
             const error = new Error("Save file picker unavailable");
@@ -354,20 +356,21 @@ export class FileWorkspace {
    * Yes = persist before closing; No = discard and close.
    * Failed/cancelled Save leaves the affected document open.
    */
-  close(id = this.activeId) {
+  close(id = this.activeId, decision = null, handles = {}) {
     const doc = this.documents.find(item => item.id === id);
     if (!doc) return false;
     if (doc.status === DocumentStatus.SYNCED) {
       return this.removeClosedDocuments([doc]);
     }
     const locale = this.core.readProperty(this.id, "Language").value;
-    const save = window.confirm(Language.translate(locale,
-      "saveBeforeCloseQuestion", { name: doc.name }));
-    return save ? this.saveBeforeClosing([doc]) :
+    const save = typeof decision === "boolean" ? decision :
+      window.confirm(Language.translate(locale,
+        "saveBeforeCloseQuestion", { name: doc.name }));
+    return save ? this.saveBeforeClosing([doc], handles) :
       this.removeClosedDocuments([doc]);
   }
 
-  closeMany(ids) {
+  closeMany(ids, decision = null, handles = {}) {
     if (!Array.isArray(ids)) {
       const error = new TypeError("Document IDs must be an array");
       error.status = 400;
@@ -379,14 +382,16 @@ export class FileWorkspace {
       doc.status !== DocumentStatus.SYNCED);
     if (!dirty.length) return this.removeClosedDocuments(targets);
     const locale = this.core.readProperty(this.id, "Language").value;
-    const save = window.confirm(Language.translate(locale,
-      "saveBeforeCloseAllQuestion", { count: dirty.length }));
-    return save ? this.saveBeforeClosing(targets) :
+    const save = typeof decision === "boolean" ? decision :
+      window.confirm(Language.translate(locale,
+        "saveBeforeCloseAllQuestion", { count: dirty.length }));
+    return save ? this.saveBeforeClosing(targets, handles) :
       this.removeClosedDocuments(targets);
   }
 
-  closeAll() {
-    return this.closeMany(this.documents.map(doc => doc.id));
+  closeAll(decision = null, handles = {}) {
+    return this.closeMany(this.documents.map(doc => doc.id),
+      decision, handles);
   }
 
   /** Preserve document identity and active selection while reordering. */
