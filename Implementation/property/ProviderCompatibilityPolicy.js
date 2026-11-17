@@ -1,5 +1,6 @@
 import { CapabilityIdPolicy } from "./CapabilityIdPolicy.js";
 import { CatalogVersionPolicy } from "./CatalogVersionPolicy.js";
+import { APIDescriptorPolicy } from "./APIDescriptorPolicy.js";
 
 /**
  * PR03.08: fail-closed metadata negotiation only.
@@ -24,6 +25,14 @@ export const ProviderCompatibilityPolicy = Object.freeze({
         !requirement.inputSchema || !requirement.outputSchema) {
       return { ok: false, status: 400 };
     }
+    const contract = APIDescriptorPolicy.validate({
+      apiVersion: 1, id: requirement.service,
+      owner: "Contract", action: "match",
+      version: requirement.version, visibility: "Public",
+      sideEffect: "none", inputSchema: requirement.inputSchema,
+      outputSchema: requirement.outputSchema
+    });
+    if (!contract.ok) return { ok: false, status: 400 };
     if (provided.service !== requirement.service) {
       return { ok: false, status: 409,
         error: "Capability mismatch" };
