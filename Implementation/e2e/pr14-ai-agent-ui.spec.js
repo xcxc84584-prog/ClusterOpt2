@@ -54,7 +54,7 @@ test("PR14.3 AI Agent button, isolated output, language and removal",
     await expect(frame.getByText("連結本地 AI Agent")).toBeVisible();
     await expect(frame.getByText(
       "配對本地 Agent 並設定模型後即可執行純文字任務。")).toBeVisible();
-    await expect(frame.locator("textarea")).toBeDisabled();
+    await expect(frame.locator("textarea")).toHaveCount(0);
 
     const isolation = await page.evaluate(() => {
       const iframe = document.querySelector(
