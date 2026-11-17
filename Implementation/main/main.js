@@ -1492,7 +1492,10 @@ window.addEventListener("beforeunload", event => {
 render();
 // Only built-in, pre-reviewed providers may auto-restore on reload.
 void restoreReviewedPlugins(linkCore).then(result => {
-  if(result?.ok) pluginManager.refresh();
+  if(result?.ok) {
+    if(result.value.enabledRestored>0) syntaxOverlay.enable();
+    pluginManager.refresh();
+  }
 });
 void linkCore.request("ui", "session-recovery", "restore").then(
   async result => {
