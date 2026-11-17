@@ -89,3 +89,24 @@ EventChain:
 Relations: existing HubUnit-URU/EDPMU/OMU edges reused. No newly
 permitted cross-Object relation. Metadata is not a capability token.
 Distinct properties can register independently; same name is unique.
+
+## PR02.04 — Internal Catalog Collection
+```mermaid
+flowchart LR
+  Catalog[CatalogCollection.collect] --> URU[URU live Object list]
+  URU --> API[URU.describeAPI frozen descriptors]
+  Catalog --> EDPMU[EDPMU live Property list]
+  EDPMU --> PROP[EDPMU.describeProperty frozen descriptors]
+  API --> SNAP[Detached sorted frozen snapshot]
+  PROP --> SNAP
+  SNAP --> FUTURE[PR02.05/06 authorized discovery]
+```
+No new global Property, Object route, duplicated mutable registry,
+EHU side effects or authorization capability. CatalogCollection is an
+internal LinkCore-owned helper. Registration lifecycle remains in
+HubUnit/URU/EDPMU. PR02.04 never exposes the snapshot on window.Cluster.
+EventChain: runtime registration -> underlying authoritative registry;
+collect -> live lookup -> immutable snapshot; runtime unregister ->
+next collect excludes removed entries. Lookup errors return status and
+never synthesize metadata. No asynchronous shared snapshot cache or
+scheduler dependence; read-only, linear work bounded to 4096 entries.
