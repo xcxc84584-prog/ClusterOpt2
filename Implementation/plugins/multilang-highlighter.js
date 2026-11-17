@@ -94,7 +94,13 @@ export function install(core) {
       if (action !== "highlight") {
         return {ok:false,status:404};
       }
-      return tokenize(payload?.text,payload?.fileName);
+      const result=tokenize(payload?.text,payload?.fileName);
+      if (!result.ok) {
+        const error=new Error(result.error);
+        error.status=result.status;
+        throw error;
+      }
+      return result.value;
     }
   };
   if (!core.register(object)) return {ok:false,status:409};
