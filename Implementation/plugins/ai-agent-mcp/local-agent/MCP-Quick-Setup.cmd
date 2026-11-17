@@ -39,8 +39,11 @@ for %%F in (remote-mcp.cjs oauth-mcp-gateway.cjs Start-MCP.ps1 Start-OAuth.ps1 P
 )
 echo [2/3] Starting local bearer-protected MCP on 127.0.0.1:43880...
 echo If MCP port is occupied, the new window prompts C/P/O.
-start "ClusterOpt2 MCP Gateway" powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\Start-MCP.ps1"
+start "ClusterOpt2 MCP Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\Start-MCP.ps1"
 echo.
+echo Wait until MCP has completed any C/P/O port selection.
+echo The configured port is shared with OAuth automatically.
+pause
 echo [3/3] Optional OAuth Gateway setup
 echo Configure a trusted, stable HTTPS reverse proxy only to 127.0.0.1:43879.
 echo Never expose ports 43881 or 43880 to the Internet.
