@@ -1,5 +1,5 @@
 # PLUGIN PR02 — HubUnit Self-Describing API Catalog
-**Status:** IN PROGRESS; PR02.01 implementation committed, CI pending.
+**Status:** IN PROGRESS; PR02.01 PASS / PR02.02–PR02.10 TODO.
 **Source:** PLUGIN DESIGN PR LIST.md, PR02.01–PR02.10.
 **Base:** main f16efc9d864b086423b6dedb3df1453cdd9c02bf.
 **Rollback:** backup/pre-plugin-pr02-20261117.
@@ -7,7 +7,7 @@
 
 | Small PR | Scope | Status |
 | --- | --- | --- |
-| PR02.01 | API Descriptor Schema v1 & real LinkCore property | implemented, latest CI pending |
+| PR02.01 | API Descriptor Schema v1 & real LinkCore property | PASS (exact-head dedicated CI + OCDA + Chromium + Windows) |
 | PR02.02 | Object Contract descriptor declaration | TODO |
 | PR02.03 | Property Descriptor Schema | TODO |
 | PR02.04 | URU/EDPMU Catalog collection | TODO |

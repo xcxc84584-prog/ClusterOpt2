@@ -38,3 +38,9 @@ subject to AccessPolicy and UserAPI/AgentAPI.
 Exact-head Node checks, real Chromium browser, VTE/Relation, CI,
 rollback node. Every subPR must have functional tests, Patch, Plan/ArcD
 updates and handoff. PR02 remains OPEN until all subPRs pass.
+
+## PR02.01 Final Gate
+Automated exact-head checks passed on SHA `6a2ee4078c5c72cf9b1ef0cdbe94ef3063b31376`.
+The Descriptor v1 and read-only shared Property can run in an actual
+Chromium-loaded ClusterOpt2 page and a Node 22 environment.
+Pending Catalog discovery/permissions are separate subsequent sub-PRs.

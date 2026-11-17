@@ -37,3 +37,9 @@ validation, not parallel worker execution.
 HubUnit missing caller/property/visibility failures remain recorded as
 EHU 403/404. Invalid descriptor returns 400 locally; PR02.09 will map
 catalog endpoint errors into EHU. Do not invent EHU for local pure logic.
+
+## PR02.01 Deliverable Freeze
+The descriptor result is deeply frozen and detached from caller input,
+so future service registries can read stable metadata. The Property
+registration remains in one LinkCore location; it neither permits
+cross-Object calls nor changes any existing REQ/REP route.
