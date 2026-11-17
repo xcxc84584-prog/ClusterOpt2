@@ -336,6 +336,30 @@ export function mountPluginManagerUI(core,doc,options={}) {
         });
       }
     }
+    // Include legacy declared UserAPI actions without guessing their
+    // payload types. A missing schema is explicitly "Not declared".
+    let actionOffset=0;
+    while(actionOffset<4096) {
+      const result=core.listActionContracts("ui",{
+        origin:"user",offset:actionOffset,limit:100
+      });
+      if(!result.ok)break;
+      for(const action of result.value.items) {
+        add("Action",action.id,action.owner,{
+          id:action.id,action:action.action,
+          version:action.version,
+          visibility:action.visibility??"UserAPI",
+          inputSchema:action.inputSchema,
+          outputSchema:action.outputSchema,
+          description:action.described?
+            t("已宣告輸入輸出契約","Declared request/response") :
+            t("舊版 Action，未宣告輸入輸出結構",
+              "Legacy action: input/output schema not declared")
+        });
+      }
+      if(result.value.nextOffset===null)break;
+      actionOffset=result.value.nextOffset;
+    }
     let providerOffset=0;
     while(providerOffset<4096) {
       const result=core.listProviderContracts("ui",{
