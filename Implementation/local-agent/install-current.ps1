@@ -102,6 +102,17 @@ function Install-Dependencies {
         if ($LASTEXITCODE -ne 0) {
             throw 'Native node-pty dependencies failed to install'
         }
+        # npm can skip native lifecycle scripts; a successful npm exit
+        # alone is not proof that the ConPTY binary can load.
+        $probe = 'import("node-pty").then(m => ' +
+            'process.exit(typeof m.spawn === "function" ? 0 : 1))' +
+            '.catch(() => process.exit(1))'
+        & $NodePath -e $probe
+        if ($LASTEXITCODE -ne 0) {
+            throw ('node-pty native binary unavailable. Review and ' +
+                'approve the node-pty install script with ' +
+                'npm install-scripts approve node-pty, then rerun setup.')
+        }
     } finally {
         Pop-Location
     }
