@@ -166,11 +166,10 @@ export function mountPluginManagerUI(core,doc) {
   function logCard(p) {
     const section=card("EHU Log（EHU 記錄 / 歷史）",
       btn(doc,t("查看全部","View All")+" ↗",()=>activate("ehu"),"pm-mini"));
-    const events=logs().filter(x=>!p||
-      x.source===p.objectId||x.target===p.providerId||
-      x.source===p.providerId).slice(-70).reverse();
-    section.append(tabular(doc,["Time（時間）","Level","Message（訊息）"],
-      (active==="overview"?events.slice(0,5):events).map(x=>[
+    const events=logs().filter(x=>x.kind==="EHU").slice(-250).reverse();
+    section.append(tabular(doc,
+      [t("時間","Time"),t("等級","Level"),t("動作","Action")],
+      events.map(x=>[
         x.timestamp,x.kind,x.action])));
     return section;
   }
@@ -189,6 +188,9 @@ export function mountPluginManagerUI(core,doc) {
   }
   function renderSidebar() {
     search.placeholder=t("搜尋插件...","Search plugin...");
+    filter.setAttribute("aria-label",t("篩選插件","Filter plugins"));
+    reject.textContent=t("拒絕","Deny");
+    approve.textContent=t("同意此權限","Allow permission");
     items.replaceChildren();filter.replaceChildren();
     const choices=[["all",t("全部","All")],
       ["enabled",t("啟用","Enabled")],
@@ -208,7 +210,8 @@ export function mountPluginManagerUI(core,doc) {
       const label=dom(doc,"span","pm-provider-label");
       label.append(dom(doc,"strong","",p.providerId),
         dom(doc,"small","",(p.provides?.[0]?.version??"—")+
-          " · "+(disabled(p)?"Disabled":"Enabled")));
+          " · "+(disabled(p)?t("停用","Disabled"):
+            t("啟用","Enabled"))));
       row.append(dom(doc,"span","pm-cube","◇"),label,
         dom(doc,"span",disabled(p)?"pm-dot off":"pm-dot","●"));
       items.append(row);
