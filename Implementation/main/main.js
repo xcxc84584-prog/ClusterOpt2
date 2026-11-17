@@ -1057,6 +1057,11 @@ async function grantVirtualWriteAccess(action, payload) {
 
 async function perform(action, payload = {}) {
   closeMenu();
+  // Closing the Plugin Manager tool must never prompt for an editor tab.
+  if (action === "close" && !payload.id && toolState.active) {
+    await requestTool("close");
+    return;
+  }
   // Do not await anything for Open or legacy Save As: file
   // pickers require an uninterrupted user activation.
   const targets = action === "closeAll" ? workspace.documents :
@@ -1113,10 +1118,6 @@ async function perform(action, payload = {}) {
       notify(localized("virtualWritePermissionDenied"));
       return;
     }
-  }
-  if (action === "close" && !payload.id && toolState.active) {
-    await requestTool("close");
-    return;
   }
   if (action === "save" && toolState.active) return;
   if (["new", "open", "activate"].includes(action) &&
