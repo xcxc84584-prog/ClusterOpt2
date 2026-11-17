@@ -205,7 +205,28 @@ test("PR14.8 explicit MCP read-only tool bridge returns metadata",
       .locator('[data-agent-status]')).toHaveText("已連線");
     await page.locator(".plugin-agent-toolbox > button").click();
     const box = page.locator(".plugin-agent-toolbox");
-    await box.locator('[data-right="mcp"]').check();
+    await box.locator('[data-right="mcp"]').click();
+    const bridgeDiagnostic = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const providerId = "cluster.ai-agent-mcp";
+      const view = linkCore.pluginHostInstaller.uiHost.views.get(
+        providerId);
+      return {
+        checked: document.querySelector('[data-right="mcp"]').checked,
+        active: view.mcpReadOnly?.enabled,
+        connected: view.localAgent?.state,
+        registered: view.localAgent?.bridgeRegistered,
+        permission: linkCore.checkPluginPermission(
+          providerId, "mcp.read"),
+        pending: window.__agentSent.map(item => item.type),
+        logs: linkCore.getSnapshot().logs.slice(-8).map(item => ({
+          action: item.action, status: item.status
+        }))
+      };
+    });
+    expect(bridgeDiagnostic.checked, JSON.stringify(
+      bridgeDiagnostic)).toBe(true);
     await expect.poll(() => page.evaluate(() =>
       window.__agentSent.some(item =>
         item.type === "bridge_register"))).toBe(true);
