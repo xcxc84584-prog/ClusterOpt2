@@ -49,18 +49,27 @@ export class HubUnit {
         "Provider.Register", 404);
       return { ok: false, status: 404, error: "Unknown caller" };
     }
-    if (source !== manifest?.objectId) {
+    let parsed;
+    try {
+      parsed = ProviderManifestPolicy.validate(manifest);
+    } catch (_error) {
+      parsed = { ok: false, status: 400,
+        error: "Invalid provider Manifest" };
+    }
+    if (!parsed.ok) {
+      this.omu.record("EHU", source, "Provider.Register", parsed.status);
+      return parsed;
+    }
+    if (source !== parsed.value.objectId) {
       this.omu.record("EHU", source, "Provider.Register", 403);
       return { ok: false, status: 403, error: "Provider owner mismatch" };
     }
-    const parsed = ProviderManifestPolicy.validate(manifest);
-    const claims = parsed.ok ?
-      ProviderSharedPropertyPolicy.inspect(parsed.value, this.properties) :
-      parsed;
+    const claims = ProviderSharedPropertyPolicy.inspect(
+      parsed.value, this.properties);
     const result = claims.ok ?
       this.registry.registerProvider(parsed.value) : claims;
     this.omu.record(result.ok ? "Log" : "EHU", source,
-      "Provider.Register", result.status, manifest?.providerId ?? "");
+      "Provider.Register", result.status, parsed.value.providerId);
     return result;
   }
 
