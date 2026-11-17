@@ -176,3 +176,27 @@ contract returns EHU 400 and does not register. Consumer calls pure
 inspect and receives 200 compatibility/deprecation metadata or 400.
 No route through policy can authorize an action. Parallel independent
 checks have no mutation and no dependency edge except existing Hub.
+
+## PR02.08 — Authorized Documentation Event Chain
+```mermaid
+flowchart LR
+ Caller[Trusted LinkCore.generateCatalogDocs] --> Policy[CatalogDocumentation]
+ Policy --> Hub[HubUnit.discoverCatalog]
+ Hub --> Auth[AuthorizedCatalogCollection]
+ Auth --> URU[URU API Descriptor]
+ Auth --> EDPMU[EDPMU Property Descriptor]
+ Hub --> Query[CatalogQuery authorized page]
+ Query --> Policy
+ Policy --> Json[JSON SchemaVersion 1]
+ Policy --> Md[Escaped Markdown]
+ Hub --> OMU[OMU Log and EHU]
+```
+Single shared Property CatalogDocumentation registered via HubUnit.
+No new executable Object/API, new routing, additional registry or disk
+access. Required source identity and origin stay in HubUnit; missing
+caller generates EHU 404. Invalid format returns pure 400, oversized
+output 413 without partial document. Schema + descriptor metadata only;
+never expose live Property values or privileged Object handlers.
+Flow: validate format -> authorized paged discovery of APIs and
+Properties -> deterministic canonical order -> escape/render -> byte
+budget -> immutable result 200. No mixed-visibility raw snapshot.
