@@ -34,7 +34,7 @@ function providerStatus(provider,disabled,t) {
     t("啟用","Enabled");
 }
 export function renderResources(doc,host,options) {
-  const {t,settings,providers,disabled,apiEntries,logs}=options;
+  const {t,settings,providers,disabled,apiEntries,logs,core}=options;
   const layout=el(doc,"div","pm-resources");
   const left=el(doc,"section","pm-resource-pane pm-resource-tools");
   const right=el(doc,"section","pm-resource-pane pm-resource-downloads");
@@ -69,6 +69,44 @@ export function renderResources(doc,host,options) {
     t("下載僅含可見的 API 契約與 EHU 基本事件欄位。",
       "Exports include visible contracts and basic EHU event fields only.")));
   left.append(exports);
+  const sample=el(doc,"section","pm-resource-exports");
+  sample.append(el(doc,"h3","",t("測試插件","Sample plugin")));
+  sample.append(el(doc,"p","pm-muted",t(
+    "多語言語法著色：JS/TS/Python/C/C++/Java/CSS/HTML/JSON/SQL。",
+    "Multi-language syntax tokens: JS/TS/Python/C/C++/Java/CSS/HTML/JSON/SQL.")));
+  const download=el(doc,"a","pm-mini",t(
+    "下載多語言語法著色器 (.js)","Download syntax highlighter (.js)"));
+  download.href="./Implementation/plugins/multilang-highlighter.js";
+  download.download="multilang-highlighter.js";
+  sample.append(download);
+  const sampleInput=el(doc,"textarea","pm-sample-editor",
+    "const answer = 42; // sample");
+  sampleInput.setAttribute("aria-label",t("語法測試文字","Syntax sample"));
+  const sampleResult=el(doc,"pre","pm-sample-preview");
+  sampleResult.setAttribute("aria-live","polite");
+  sample.append(sampleInput,button(doc,t("測試插件","Run plugin test"),
+    async()=>{
+      const response=await core.requestService("ui",
+        "editor.syntax.highlight","highlight",{
+          text:sampleInput.value,fileName:"example.js"
+        },{origin:"user"});
+      sampleResult.replaceChildren();
+      if(!response.ok) {
+        sampleResult.textContent="HTTP "+response.status;
+        return;
+      }
+      const payload=response.value;
+      const value=payload?.value??payload;
+      if(!Array.isArray(value?.tokens)) {
+        sampleResult.textContent="Invalid plugin output";
+        return;
+      }
+      for(const token of value.tokens) {
+        const part=el(doc,"span","pm-token-"+token.type,token.text);
+        sampleResult.append(part);
+      }
+    }),sampleResult);
+  left.append(sample);
 
   right.append(el(doc,"h2","pm-resource-heading",
     t("插件下載資訊","Plugin download information")));
@@ -80,7 +118,34 @@ export function renderResources(doc,host,options) {
   search.placeholder=t("搜尋插件名稱、服務或版本...",
     "Search plugin, service or version...");
   const cards=el(doc,"div","pm-resource-cards");
-  right.append(search,cards);
+  const mount=el(doc,"section","pm-resource-card");
+  mount.append(el(doc,"strong","",t("裝載插件路徑","Mount plugin path")));
+  const path=el(doc,"input","pm-resource-search");
+  path.type="text";
+  path.value="./Implementation/plugins/multilang-highlighter.js";
+  path.setAttribute("aria-label",t("插件程式路徑","Plugin source path"));
+  const mountStatus=el(doc,"p","pm-muted");
+  mount.append(path,button(doc,t("裝載","Mount"),async()=>{
+    const value=path.value.trim();
+    // No arbitrary dynamic import: trusted bundled sample only.
+    if(value!=="./Implementation/plugins/multilang-highlighter.js") {
+      mountStatus.textContent=t(
+        "403：此版本僅允許裝載經審核的內建插件路徑。",
+        "403: Only the reviewed bundled plugin path is supported.");
+      return;
+    }
+    try {
+      const module=await import("../../plugins/multilang-highlighter.js");
+      const result=module.install(core);
+      mountStatus.textContent=result.ok?t(
+        "201：插件已裝載並向 HubUnit 註冊。",
+        "201: Plugin mounted and registered with HubUnit.") :
+        "HTTP "+result.status;
+    } catch(error) {
+      mountStatus.textContent="HTTP 500: "+String(error);
+    }
+  }),mountStatus);
+  right.append(mount,search,cards);
   function renderCards() {
     cards.replaceChildren();
     const term=search.value.trim().toLowerCase();
