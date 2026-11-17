@@ -233,24 +233,41 @@ $port = Select-LoopbackPort
 $env:CLUSTEROPT_PORT = [string]$port
 $env:CLUSTEROPT_AGENT_VERSION = $ExpectedVersion
 
-Write-Host '[5/5] Launching native Local Agent...'
-# No token is written to an installer log. The native process displays it.
+Write-Host '[5/5] Launching detached native Local Agent...'
+# A fresh cryptographic token is printed ONCE to this installer window.
+# No token file, redirected output or persistent browser storage is created.
+$tokenBytes = New-Object byte[] 32
+$generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try { $generator.GetBytes($tokenBytes) } finally { $generator.Dispose() }
+$pairingToken = [BitConverter]::ToString($tokenBytes).Replace('-', '').ToLowerInvariant()
+$env:CLUSTEROPT_PAIRING_TOKEN = $pairingToken
 $start = @{
     FilePath = $node
     ArgumentList = @('server.mjs')
     WorkingDirectory = $agentDir
+    WindowStyle = 'Hidden'
     PassThru = $true
 }
-$agent = Start-Process @start
+try {
+    $agent = Start-Process @start
+} finally {
+    Remove-Item Env:CLUSTEROPT_PAIRING_TOKEN -ErrorAction SilentlyContinue
+}
+$ready = $false
 for ($attempt = 0; $attempt -lt 40; $attempt++) {
     Start-Sleep -Milliseconds 250
     if ($agent.HasExited) { throw 'Local Agent exited unexpectedly' }
     $listeners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)
     if (@($listeners | Where-Object { $_.OwningProcess -eq $agent.Id }).Count -gt 0) {
-        Write-Host ('Agent port: ' + $port)
-        Write-Host ('Agent version: ' + $ExpectedVersion)
-        Write-Host 'Pair with the token shown in the native agent console.'
-        exit 0
+        $ready = $true
+        break
     }
 }
-throw 'Local Agent failed to open the selected loopback port'
+if (-not $ready) { throw 'Local Agent failed to open its loopback port' }
+Write-Host ('Agent port: ' + $port)
+Write-Host ('Agent version: ' + $ExpectedVersion)
+Write-Host ('PAIRING TOKEN (copy privately): ' + $pairingToken)
+Write-Host 'Local Agent will keep running after this window closes.'
+Read-Host 'Copy the port and token, then press ENTER to close this installer' | Out-Null
+$pairingToken = $null
+exit 0
