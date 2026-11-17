@@ -1,6 +1,6 @@
-# AI AGENT MCP(ChatGPT) — PR14.5
+# AI AGENT MCP(ChatGPT) — PR14 / PR15 resource package
 
-Install this entire local plugin folder using ClusterOpt2 Resources.
+In ClusterOpt2 Resources, download the AI Agent ZIP, extract it, then\nselect the extracted ai-agent-mcp folder with **Mount folder**.\nDo not select the ZIP itself. Installing the browser plugin never\nstarts its included Windows local-agent scripts.
 Review and approve the six requested privileged capabilities:
 `network.request`, `local-agent.pair`, `model.configure`,
 `model.task`, `shell.execute`, `mcp.read`. Each is separately revocable.
@@ -26,8 +26,7 @@ a key appropriate to that environment.
 The current model transport uses the legacy Agent OpenAI API path.
 All tasks are text-only. Every task receives an ID and may be
 cancelled. The model's file/PowerShell tool calls are not supported.
-No `bridge_register`, filesystem modification, OS command or
-MCP/OAuth execution is enabled.
+Browser ToolBox, a separately consented PowerShell command bridge and\nread-only MCP projections are opt-in host features. Model prompts remain\ntext-only and cannot autonomously invoke these tools.
 
 Worker `getStatus` and `describe` report the sandbox Worker's
 own read-only contract. Live pairing, model and tasks are handled by
@@ -48,14 +47,13 @@ The host-owned ToolBox supports explicitly selected folders with
 independent read/create/update/delete grants. Browser-chosen directory
 handles remain private to the trusted host, and a typed absolute path
 is only a display/confirmation label. PR14.7 adds a separately enabled
-PowerShell bridge with per-command browser approval; the legacy Agent
-requires a local terminal session before shell execution. PR14.8 adds
+PowerShell bridge with per-command browser approval; each shell request needs explicit host confirmation. PR14.8 adds
 an independent MCP read-only switch. Its three browser-projected tools
 are limited to list_files, get_editor_state and saved small read_file;
 get_status and get_task_status are served directly by the local Agent.
 Other MCP tools are denied unless separately implemented and approved.
 
-The unchanged legacy Node MCP/OAuth gateway files are now bundled in
+The plugin-local legacy Node MCP/OAuth gateway files are bundled in
 local-agent/. Run the separate PowerShell entry scripts explicitly;
 installing a browser plugin never starts a Windows program.
 The OAuth scope remains cluster.read; remote publishing requires a
