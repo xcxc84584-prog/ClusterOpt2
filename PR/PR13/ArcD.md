@@ -80,3 +80,24 @@ to OMU, while immutable policies are read through existing Hub/EDPMU.
 Pending security: sandboxed origin, enforceable message-channel source,
 origin checks, launch/termination, permission enforcement per invocation,
 explicit human approval and route integration.
+
+## PR13 Patch(+3) data and execution separation
+```text
+Selected project folder (HTML/CSS/JS/images/...)
+    -> PluginFolderPackageUnit (bounded traversal)
+    -> PluginFolderPackagePolicy (relative path + size + Manifest)
+    -> PluginPackageStoreUnit (IndexedDB inert bytes)
+    -> Resources export/import (portable JSON snapshot)
+    -> future approved activation -> HubUnit -> URU
+```
+
+**Security architecture reference:** sandboxed iframe with scripts but
+without allow-same-origin, plus restrictive CSP and authenticated message
+channel. Never combine same-origin + scripts; never import user-selected JS
+into the main page. Network, external URLs and iframe navigation require
+explicit risk review. Sandbox JS remains untrusted until PR13.3 passes.
+
+EventChain / EHU: Folder Snapshot 200 / 400 / 413; Package Persist
+201 / 503; Bundle Import validation 200 / 400; no runtime relation edges
+created by staging alone. Browser adversarial tests and restore flow
+remain required before declaring PR13.8 accepted.
