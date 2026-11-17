@@ -1,4 +1,5 @@
 import { CatalogCollection } from "./CatalogCollection.js";
+import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
 import { ProviderManifestPolicy } from
   "../property/ProviderManifestPolicy.js";
@@ -59,7 +60,7 @@ export class LinkCore {
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
-    this.version = "0.0.9-pr9.patch9";
+    this.version = ReleaseVersion.product;
     this.hub.registerProperty("ProviderManifestPolicy",
       ProviderManifestPolicy, {
         owners: ["LinkCore"], visibility: "Public"
