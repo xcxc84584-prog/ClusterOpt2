@@ -196,8 +196,26 @@ export function renderResources(doc, host, options) {
   }
   search.addEventListener("input", renderCards);
   renderCards();
+  // PR13.2: local user packages are staged only. Never describe them as
+  // mounted or executable before sandbox and Hub authorization exist.
+  const localPackage = button(doc, t("驗證本地自製插件包",
+    "Validate local custom plugin package"), async () => {
+    status.textContent = t("正在讀取所選插件包...",
+      "Reading selected plugin package...");
+    const result = await core.localPluginPackage.selectAndStage();
+    status.textContent = result.ok ?
+      t("套件契約已驗證；執行與裝載功能尚未開放。",
+        "Package contract validated; activation is not available yet.") :
+      t("插件包驗證失敗（狀態 ", "Package validation failed (status ") +
+        result.status + ").";
+  });
+  localPackage.setAttribute("aria-label", t(
+    "選擇本地資料夾並驗證自製插件",
+    "Select local folder and validate custom plugin"));
+  const localGroup = el(doc, "section", "pm-resource-local");
+  localGroup.append(localPackage);
   heading.append(search);
-  right.append(heading, cards, status, filePicker);
+  right.append(heading, localGroup, cards, status, filePicker);
   layout.append(left, right);
   host.append(layout);
 }
