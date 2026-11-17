@@ -291,6 +291,28 @@ export class PluginUIHostUnit {
             'input[type="checkbox"]')) checkbox.checked = false;
         });
         menu.append(revoke);
+        const shellOutput = this.doc.createElement("pre");
+        shellOutput.hidden = true;
+        shellOutput.setAttribute("role", "status");
+        shellOutput.style.cssText = "max-height:210px;max-width:360px;" +
+          "overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;" +
+          "border-top:1px solid var(--ui-border);padding-top:8px;";
+        menu.append(shellOutput);
+        view.showShellResult = message => {
+          const outcome = message?.result;
+          const code = outcome?.exitCode;
+          const stdout = typeof outcome?.stdout === "string" ?
+            outcome.stdout : "";
+          const stderr = typeof outcome?.stderr === "string" ?
+            outcome.stderr : "";
+          shellOutput.textContent = [
+            "PowerShell exit: " + String(code ?? "error"),
+            stdout.slice(0, 32768), stderr.slice(0, 32768)
+          ].join("\\n").slice(0, 65536);
+          shellOutput.hidden = false;
+          menu.hidden = false;
+          trigger.setAttribute("aria-expanded", "true");
+        };
         toolbox.append(trigger, menu);
         panel.append(toolbox);
         view.resetBridgeToolBox = () => {
@@ -367,6 +389,9 @@ export class PluginUIHostUnit {
           }, "*");
         };
         agent.onState = publish;
+        agent.onShellResult = message => {
+          if (view.enabled) view.showShellResult?.(message);
+        };
         const receive = async event => {
           if (event.source !== frame.contentWindow ||
               event.origin !== "null" ||
