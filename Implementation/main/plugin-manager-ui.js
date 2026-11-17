@@ -181,7 +181,17 @@ export function mountPluginManagerUI(core,doc,options={}) {
     toggle.setAttribute("aria-label",t("啟用插件","Enable plugin"));
     toggle.addEventListener("change",()=>{
       if(core.uru.getProvider(p.providerId)!==p)return render();
-      core.setProviderEnabled(p.objectId,p.providerId,toggle.checked);
+      const changed=core.setProviderEnabled(
+        p.objectId,p.providerId,toggle.checked);
+      if(changed.ok) {
+        void core.listReviewedPlugins().then(saved=>{
+          if(saved.ok && saved.value.some(entry=>
+            entry.providerId===p.providerId)) {
+            void core.rememberReviewedPlugin(
+              p.providerId,toggle.checked);
+          }
+        });
+      }
       render();
     });
     switchLabel.append(toggle,dom(doc,"span","",
@@ -191,7 +201,10 @@ export function mountPluginManagerUI(core,doc,options={}) {
         "Unregister plugin: ")+p.providerId+"?"))return;
       if(core.uru.getProvider(p.providerId)!==p)return render();
       const result=core.unregisterProvider(p.objectId,p.providerId);
-      if(result.ok)selected="";
+      if(result.ok) {
+        selected="";
+        void core.forgetReviewedPlugin(p.providerId);
+      }
       render();
     },"pm-mini");
     controls.append(switchLabel,remove);body.append(controls);
