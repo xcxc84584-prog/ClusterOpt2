@@ -1,7 +1,7 @@
 import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
 import { mountPaletteUI } from "./palette-ui.js";
-import { mountPluginManagerUI } from "./plugin-manager-ui.js";
+import { mountPluginManagerUI } from "./plugin-manager-ui.js?v=plugin-resources54";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
