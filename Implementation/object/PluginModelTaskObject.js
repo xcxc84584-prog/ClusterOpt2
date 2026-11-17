@@ -17,14 +17,14 @@ export class PluginModelTaskObject {
     this.authorization = {
       default: "Private", configure: "Public", modelInfo: "Public",
       submit: "Public", cancel: "Public", state: "Public",
-      ingest: "Public"
+      ingest: "Public", reset: "Public"
     };
     this.ocda = {
       EHU: [], Log: [],
       Request: ["configure", "modelInfo", "submit", "cancel",
-        "state", "ingest"],
+        "state", "ingest", "reset"],
       Response: ["configure", "modelInfo", "submit", "cancel",
-        "state", "ingest"],
+        "state", "ingest", "reset"],
       UserAPI: ["configure", "modelInfo", "submit", "cancel", "state"],
       AgentAPI: [], Property: [],
       Program: "PluginModelTaskObject"
@@ -71,6 +71,11 @@ export class PluginModelTaskObject {
           context.source === this.localAgentId)) {
       return this.fail(403, "SourceDenied");
     }
+    if (action === "reset" &&
+        context.source === this.localAgentId) {
+      this.reset();
+      return { reset: true };
+    }
     if (action === "ingest") return this.ingest(payload);
     if (action === "state") return this.snapshot();
     if (action === "configure" || action === "modelInfo") {
@@ -96,7 +101,7 @@ export class PluginModelTaskObject {
     if (!Policy.promptValid(payload?.prompt)) {
       return this.fail(400, "PromptInvalid");
     }
-    const requestId = crypto.randomUUID();
+    const requestId = globalThis.crypto.randomUUID();
     if (!Policy.requestIdValid(requestId)) {
       return this.fail(500, "RequestIdInvalid");
     }
