@@ -74,7 +74,8 @@
     ],
     "requires": [],
     "permissions": [
-      "network.request"
+      "network.request",
+      "local-agent.pair"
     ],
     "execution": {
       "isolation": "worker",
