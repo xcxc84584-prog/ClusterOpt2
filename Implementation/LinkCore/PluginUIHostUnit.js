@@ -1,3 +1,5 @@
+import { PluginWorkbenchTabUnit } from "./PluginWorkbenchTabUnit.js";
+import { downloadAgentPackage } from "../main/plugin-agent-download.js";
 import { PluginMCPReadOnlyObject } from
   "../object/PluginMCPReadOnlyObject.js";
 import { PluginShellApprovalObject } from
@@ -117,7 +119,7 @@ export class PluginUIHostUnit {
         button, panel, frame, labels, enabled: true,
         snapshot, provider, localAgent: null, modelTask: null,
         explorerAccess: null, shellApproval: null,
-        mcpReadOnly: null
+        mcpReadOnly: null, workbenchTab: null
       };
 
       // Trusted host-side ToolBox; never run a file picker in a sandbox.
@@ -131,25 +133,45 @@ export class PluginUIHostUnit {
         pendingExplorer = access;
         const toolbox = this.doc.createElement("div");
         toolbox.className = "plugin-agent-toolbox";
-        toolbox.style.cssText = "position:absolute;top:8px;right:16px;" +
-          "z-index:20;font:12px system-ui;color:var(--ui-text-on-panel);";
+        toolbox.style.cssText = "position:absolute;top:62px;right:16px;" +
+          "z-index:20;font:12px system-ui;color:var(--ui-text-on-panel);" +
+          "max-width:min(380px,calc(100% - 32px));";
         const trigger = this.doc.createElement("button");
         trigger.type = "button";
-        trigger.textContent = "ToolBox ▾";
+        trigger.textContent = "⚙ ToolBox ▾";
+        trigger.style.cssText = "padding:8px 12px;border-radius:6px;" +
+          "background:var(--ui-control,#1c2939);" +
+          "border:1px solid var(--ui-border,#44546b);" +
+          "color:var(--ui-text-on-panel,#dce6f5);cursor:pointer;";
         trigger.setAttribute("aria-expanded", "false");
         const menu = this.doc.createElement("div");
         menu.hidden = true;
-        menu.style.cssText = "margin-top:8px;padding:12px;min-width:260px;" +
-          "background:var(--ui-panel,#101927);" +
+        menu.style.cssText = "margin-top:8px;padding:16px;" +
+          "width:340px;max-width:100%;max-height:65vh;overflow:auto;" +
+          "background:var(--ui-panel,#131c29);" +
           "border:1px solid var(--ui-border,#34516f);" +
-          "border-radius:8px;box-shadow:0 10px 28px #0008;";
+          "border-radius:10px;box-shadow:0 18px 48px #0009;";
+        const title = this.doc.createElement("strong");
+        title.textContent = "TOOLBOX  /  LOCAL ACCESS";
+        title.style.cssText = "display:block;font-size:12px;" +
+          "letter-spacing:.08em;margin-bottom:8px;";
+        const helper = this.doc.createElement("p");
+        helper.textContent = "權限僅限本次選取的資料夾，關閉或斷線即撤銷。";
+        helper.style.cssText = "opacity:.78;margin:0 0 12px;" +
+          "line-height:1.5;font-size:12px;";
+        menu.append(title,helper);
         trigger.addEventListener("click", () => {
           menu.hidden = !menu.hidden;
           trigger.setAttribute("aria-expanded", String(!menu.hidden));
         });
         const rootButton = this.doc.createElement("button");
         rootButton.type = "button";
-        rootButton.textContent = "選取本地資料夾 / Select folder";
+        rootButton.textContent = "▣ 選取本地資料夾 / Select folder";
+        rootButton.style.cssText = "display:block;width:100%;" +
+          "text-align:left;padding:10px 12px;border-radius:6px;" +
+          "border:1px solid var(--ui-border,#45617d);" +
+          "background:var(--ui-control,#22344c);" +
+          "color:var(--ui-text-on-panel,#dce6f5);cursor:pointer;";
         const rootStatus = this.doc.createElement("p");
         rootStatus.setAttribute("role", "status");
         rootStatus.style.cssText = "margin:8px 0;overflow-wrap:anywhere;";
@@ -206,6 +228,12 @@ export class PluginUIHostUnit {
           }
         });
         menu.append(rootButton, rootStatus);
+        const permissionsTitle = this.doc.createElement("h3");
+        permissionsTitle.textContent = "PERMISSIONS";
+        permissionsTitle.style.cssText = "margin:14px 0 5px;font-size:11px;" +
+          "letter-spacing:.1em;opacity:.8;border-top:1px solid " +
+          "var(--ui-border,#435269);padding-top:12px;";
+        menu.append(permissionsTitle);
         const rights = [
           ["ps", "PowerShell"],
           ["mcp", "MCP Read-only"],
@@ -217,7 +245,12 @@ export class PluginUIHostUnit {
         for (const [name, label] of rights) {
           const row = this.doc.createElement("label");
           row.style.cssText = "display:flex;align-items:center;" +
-            "gap:8px;padding:7px 0;cursor:pointer;";
+            "gap:10px;padding:9px;border-radius:6px;cursor:pointer;" +
+            "border:1px solid transparent;";
+          row.addEventListener("mouseenter", () =>
+            row.style.background = "var(--ui-control,#1b2b40)");
+          row.addEventListener("mouseleave", () =>
+            row.style.background = "transparent");
           const checkbox = this.doc.createElement("input");
           checkbox.type = "checkbox";
           checkbox.dataset.right = name;
@@ -287,7 +320,10 @@ export class PluginUIHostUnit {
         }
         const revoke = this.doc.createElement("button");
         revoke.type = "button";
-        revoke.textContent = "撤銷全部 / Revoke all";
+        revoke.textContent = "✕ 撤銷全部 / Revoke all";
+        revoke.style.cssText = "width:100%;margin-top:12px;padding:9px;" +
+          "background:#2c1b23;color:#f9c4cc;" +
+          "border:1px solid #804252;border-radius:6px;cursor:pointer;";
         revoke.addEventListener("click", () => {
           access.revoke();
           view.shellApproval?.revoke();
@@ -493,22 +529,18 @@ export class PluginUIHostUnit {
       view.sync = sync;
       const open = () => {
         if (!view.enabled) return;
-        const next = panel.hidden;
         for (const other of this.views.values()) {
-          other.panel.hidden = true;
-          other.button.setAttribute("aria-pressed", "false");
+          if (other !== view) other.workbenchTab?.deactivate();
         }
-        panel.hidden = !next;
-        button.setAttribute("aria-pressed", String(next));
-        if (next) sync();
+        view.workbenchTab?.open();
+        sync();
       };
       button.addEventListener("click", open);
       frame.addEventListener("load", sync);
       const closeForWorkbench = event => {
-        if (!event.target.closest?.(
-          "#tabs .tab, #explorerPowerShell, #pluginBtn")) return;
-        panel.hidden = true;
-        button.setAttribute("aria-pressed", "false");
+        if (!event.target.closest?.("#explorerPowerShell, #pluginBtn"))
+          return;
+        view.workbenchTab?.deactivate();
       };
       this.doc.addEventListener("click", closeForWorkbench);
       const localeObserver = new MutationObserver(sync);
@@ -517,6 +549,8 @@ export class PluginUIHostUnit {
       });
       view.dispose = () => {
         localeObserver.disconnect();
+        view.workbenchTab?.dispose();
+        view.unlistenQuickSetup?.();
         this.doc.removeEventListener("click", closeForWorkbench);
         view.unlistenAgent?.();
         view.localAgent?.close();
@@ -543,6 +577,21 @@ export class PluginUIHostUnit {
       toolbar.append(button);
       workspace.style.position = "relative";
       workspace.append(panel);
+      view.workbenchTab = new PluginWorkbenchTabUnit(
+        this.doc, view, sync);
+      view.workbenchTab.attach();
+      if (provider.providerId === "cluster.ai-agent-mcp") {
+        const onQuickSetup = event => {
+          if (event.source !== frame.contentWindow ||
+              event.data?.type !== "cluster-plugin-quick-setup") return;
+          void downloadAgentPackage(this.doc).catch(() =>
+            this.core.omu.record("EHU","PluginUIHost",
+              "Plugin.QuickSetupDownload",503,provider.providerId));
+        };
+        this.doc.defaultView.addEventListener("message", onQuickSetup);
+        view.unlistenQuickSetup = () => this.doc.defaultView
+          .removeEventListener("message", onQuickSetup);
+      }
       this.views.set(provider.providerId, view);
       return { ok: true, status: 200 };
     } catch {
@@ -573,8 +622,7 @@ export class PluginUIHostUnit {
       view.localAgent?.disableShellBridge();
       view.localAgent?.disableReadBridge();
       view.resetToolBox?.();
-      view.panel.hidden = true;
-      view.button.setAttribute("aria-pressed", "false");
+      view.workbenchTab?.deactivate();
     }
   }
 
