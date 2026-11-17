@@ -59,7 +59,7 @@ test("PR16 workbench Agent tab switches cleanly with Plugin Manager",
     await expect(page.locator(".plugin-extension-panel")).toBeHidden();
   });
 
-test("PR16 legacy setup to runtime, guide and quick-setup ZIP",
+test("PR17 legacy setup offers a standalone quick-setup CMD",
   async ({ page }) => {
     await page.goto("/");
     await mountAgent(page);
@@ -71,7 +71,7 @@ test("PR16 legacy setup to runtime, guide and quick-setup ZIP",
     const downloading = page.waitForEvent("download");
     await frame.locator("[data-quick-setup]").click();
     expect((await downloading).suggestedFilename())
-      .toBe("ClusterOpt2-AI-Agent-MCP.zip");
+      .toBe("AI-Agent-MCP-Quick-Setup.cmd");
 
     await page.evaluate(() => {
       const frame = document.querySelector(
