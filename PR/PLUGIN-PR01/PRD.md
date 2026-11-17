@@ -18,3 +18,9 @@ Production version stays `0.0.9-pr9.patch9`.
 | PR01.10 | Plan、ArcD、Patch、交接 | 已建立文件 |
 
 **Merge Gate:** exact-head CI、VTE、Relation、browser evidence 必須具備；大檔/Windows 沒有量測證據不能標示 PASS。PR01 不修改正式資料處理路徑。
+## 新增小 PR 一次性交付規則（2026-11-17）
+- 大 PR 僅一個活躍工作分支；小 PR 數量不限制，但每個小 PR 必須包含 **實際可運作功能＋可重現測試＋提交＋交接**。
+- 禁止只提交 Specification/Mock/UI Stub 然後將小 PR 標為完成。
+- 小 PR 可在同一大 PR 開發分支累積 commit；整個大 PR PASS 才合併一次 main。
+- PR01 的功能交付是「唯讀 OCDA source inventory CLI」，不是未完成的路由編輯器；正式插件執行功能從 PR02 起實作。
+- 必須在真實 Repo 的 Node CI 運行 CLI，以及既有 Playwright 實際 Chromium 工作流程；沒有硬體授權或 5 GiB 壓測證據，相關項目必須維持 NOT RUN。

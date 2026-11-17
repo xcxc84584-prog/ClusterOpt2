@@ -34,3 +34,14 @@ PR01 新增 **0 個正式執行期 Object、0 個 Property**；新增一個獨�
 
 ## Relation Code
 00 無互動、10 Request、01 Response、11 雙向；OMU 觀測到的 Dependency 不是授權，必須以 VTE 分別測允許與拒絕行為。靜態分析有假陰性（動態呼叫/Factory），不能拿來代替執行期安全檢查。
+## Patch(+2) — 實際運行驗收架構
+```mermaid
+flowchart LR
+ Source[Repository sources] --> Analyzer[Read-only OCDA Inventory CLI]
+ Analyzer --> JSON[JSON Event/Import catalog]
+ Analyzer --> MD[Markdown audit]
+ Analyzer --> Integration[Real repository Node integration test]
+ Integration --> CI[GitHub Actions exact-head]
+ CI --> Browser[Existing Playwright Chromium regression]
+```
+CLI 只讀磁碟中的專案源碼、不調用 File System Access API、不修改任何正式 Object/Property/Route。其 static edges 為**待驗證候選依賴**，不是 OMU 的真實事件紀錄。HubUnit 仍是唯一正式 REQ/REP 路由。執行緒策略：檔案來源逐檔讀取、有限內存索引；避免巨大 Promise.all 對 repo 的一次性讀取。

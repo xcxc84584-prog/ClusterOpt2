@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildBaseline, markdownReport } from "../tools/ocda-baseline.mjs";
 
 async function fixture(run) {
@@ -51,4 +52,21 @@ test("missing imports are reported but not executed", async () => {
     const report = await buildBaseline(root);
     assert.equal(report.summary.missingImports, 1);
   });
+});
+
+test("real repository source inventory is runnable and bounded", async () => {
+  const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+  const report = await buildBaseline(root);
+  assert.ok(report.summary.files >= 30, "Expected actual source modules");
+  assert.equal(report.root, ".");
+  assert.ok(report.nodes.some(item =>
+    item.path === "Implementation/LinkCore/HubUnit.js"));
+  assert.ok(report.nodes.some(item =>
+    item.objectIds.includes("workspace")));
+  assert.ok(report.nodes.some(item =>
+    item.path === "Implementation/object/VirtualFileDocument.js"));
+  assert.ok(report.edges.some(item =>
+    item.type === "import" && item.to.endsWith("FileDocument.js")));
+  assert.equal(report.summary.missingImports, 0);
+  assert.ok(markdownReport(report).includes("LinkCore"));
 });

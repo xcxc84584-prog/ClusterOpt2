@@ -24,3 +24,11 @@ PRD → Plan → ArcD → Implementation + Relation Test → Project。Object �
 
 ## 合併門禁
 一個大 PR 合併一次。需備份分支、正確版本化交接、Relation Test、CI 與適用瀏覽器驗收，未確認時保持 PR 開啟；不得直接推 main。
+## Patch(+2) — 參考工程與完整交付策略
+實作前再次參考 GitHub 原始碼：
+- [Monaco Editor](https://github.com/microsoft/monaco-editor)：Editor 視圖與 Document Model 分離，適合未來 Service/Provider 解耦；PR01 僅稽核、不替換 Editor。
+- [VS Code extension service](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/extensions/common/extensions.ts)：以宣告式服務/生命週期組織擴展，未來 Provider 切換需原子更新且保護正在處理的 REP。
+- [Eclipse Theia plugin-ext](https://github.com/eclipse-theia/theia/tree/master/packages/plugin-ext)：插件宿主與外部能力邊界分離，強調 webview 隔離與來源信任；此 PR 不允許不受信任的 Javascript 加入 HubUnit。
+
+完成一個小 PR 的標準：執行期功能不是空殼；附 Node/Browser 或適當真實環境測試；通過 CI；可隨時用備份 SHA 還原；更新 Plan/ArcD/Patch/交接。若測試僅適用特定硬體，需標為 BLOCKED/NOT RUN，不得虛報 PASS。
+Patch2 將 CLI 測試擴大為**真實倉庫整合測試**（非只對 synthetic fixture）：要求能掃描 LinkCore、Workspace、VirtualFileDocument 與真實 import 邊，嚴格檢查無缺失相對匯入。
