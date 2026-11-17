@@ -1,9 +1,9 @@
 # AI AGENT MCP(ChatGPT) — PR14.5
 
 Install this entire local plugin folder using ClusterOpt2 Resources.
-Review and approve the four requested privileged capabilities:
+Review and approve the six requested privileged capabilities:
 `network.request`, `local-agent.pair`, `model.configure`,
-`model.task`. Each is separately revocable.
+`model.task`, `shell.execute`, `mcp.read`. Each is separately revocable.
 
 ## Current UI and protocols
 The installed plugin adds an AI Agent button beside PowerShell.
