@@ -1,5 +1,7 @@
 import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js";
 import { AccessPolicy } from "../property/AccessPolicy.js";
+import { ProviderSharedPropertyPolicy } from
+  "../property/ProviderSharedPropertyPolicy.js";
 import { ExecutionScheduler } from "./ExecutionScheduler.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
@@ -49,7 +51,10 @@ export class HubUnit {
       this.omu.record("EHU", source, "Provider.Register", 403);
       return { ok: false, status: 403, error: "Provider owner mismatch" };
     }
-    const result = this.registry.registerProvider(manifest);
+    const claims = ProviderSharedPropertyPolicy.inspect(
+      manifest, this.properties);
+    const result = claims.ok ?
+      this.registry.registerProvider(manifest) : claims;
     this.omu.record(result.ok ? "Log" : "EHU", source,
       "Provider.Register", result.status, manifest?.providerId ?? "");
     return result;
@@ -72,6 +77,31 @@ export class HubUnit {
     this.registry.unregisterProvider(providerId);
     this.omu.record("Log", source, "Provider.Unregister", 200, providerId);
     return { ok: true, status: 200 };
+  }
+
+  /**
+   * Explicit trusted Provider Property write: object ownership AND
+   * Provider declaration AND EDPMU policy must all agree.
+   */
+  publishProviderProperty(source, providerId, name, value) {
+    const provider = this.registry.getProvider(providerId);
+    if (!provider || !this.registry.objects.has(source)) {
+      this.omu.record("EHU", source, "Provider.Property.Write",
+        404, name);
+      return { ok: false, status: 404 };
+    }
+    if (provider.objectId !== source) {
+      this.omu.record("EHU", source, "Provider.Property.Write",
+        403, name);
+      return { ok: false, status: 403 };
+    }
+    const allowed = ProviderSharedPropertyPolicy.canWrite(
+      provider, name, this.properties);
+    const result = allowed.ok ?
+      this.properties.update(name, value) : allowed;
+    this.omu.record(result.ok ? "Log" : "EHU", source,
+      "Provider.Property.Write", result.status, name);
+    return result;
   }
 
   // Active wait-for edges are used only for deadlock detection.
