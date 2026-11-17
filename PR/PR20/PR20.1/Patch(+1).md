@@ -6,3 +6,11 @@
 - Playwright 測試改為驗證無輸入框。
 - 核心代碼修改：0。
 - 證據：GitHub CI 待檢查；Windows Agent、ChatGPT OAuth、CRUD 與 PS 真實環境待驗收。
+
+## Patch(+2) — MCP configuration / API parity / OAuth authorization
+- Added `MCP-Quick-Setup.cmd` and `MCP-SETUP.md` to the plugin package.
+- Added separate host-controlled download event through PluginUIHostUnit and plugin-agent-download. This is a plugin interface repair, not editor business logic.
+- Expanded local stdio MCP API from 5 to 14 legacy tool declarations.
+- Fixed critical scope mismatch: OAuth `cluster.read` now filters tool list and refuses non-readonly tool calls.
+- Updated UI guide, E2E and node contract tests.
+- Work remains Draft pending CI, Windows local installation, HTTPS/OAuth tests and actual ToolBox / PS execution.
