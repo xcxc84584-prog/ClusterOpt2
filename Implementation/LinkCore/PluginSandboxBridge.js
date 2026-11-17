@@ -53,7 +53,7 @@ window.addEventListener("message", async event => {
 
 const CSP = "default-src 'none'; script-src 'unsafe-inline' data:; " +
   "connect-src 'none'; img-src data:; style-src 'unsafe-inline'; " +
-  "font-src 'none'; object-src 'none'; worker-src 'none'; 
+  "font-src 'none'; object-src 'none'; worker-src 'none'; " +
   "child-src 'none'; frame-src 'none'; navigate-to 'none'; " +
   "form-action 'none'; base-uri 'none'";
 
