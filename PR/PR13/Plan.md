@@ -116,3 +116,8 @@ sandboxed UI runtime is audited; no raw HTML is injected into main DOM.
   explicit instruction to consult API List input/output first.
 - Locale changes must alter the downloaded content, not only button text.
 - Add ZIP format, contract and browser language-switch regression tests.
+
+### API contract coverage addition
+Expose only caller-authorized UserAPI/AgentAPI actions via
+HubUnit.listActionContracts, with schema absent where legacy Objects do
+not declare APIDescriptors. Never infer input/output from live data.
