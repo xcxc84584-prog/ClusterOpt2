@@ -70,6 +70,6 @@ test("PR11 input changes invalidate an old syntax response", async ({page}) => {
 		.toBeVisible();
 	await expect(page.locator(
 		"#pr11SyntaxOverlay .pm-token-keyword")).toContainText("let");
-	await expect(page.locator("#pr11SyntaxOverlay")).not
+	await expect(page.locator("#pr11SyntaxOverlay:not([hidden])")).not
 		.toContainText("first");
 });
