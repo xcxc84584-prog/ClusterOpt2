@@ -34,8 +34,7 @@ export class PluginModelTaskObject {
     this.model = "";
     this.activeId = null;
     this.activeStatus = "idle";
-    this.history = [];
-  }
+   }
 
   fail(status, label) {
     this.core.omu.record("EHU", this.id,
@@ -66,9 +65,10 @@ export class PluginModelTaskObject {
   }
 
   receive(action, payload = {}, context = {}) {
-    if (context.source !== "ui" &&
-        !(["ingest", "reset"].includes(action) &&
-          context.source === this.localAgentId)) {
+    const transportAction = ["ingest", "reset"].includes(action);
+    if (transportAction ?
+        context.source !== this.localAgentId :
+        context.source !== "ui") {
       return this.fail(403, "SourceDenied");
     }
     if (action === "reset" &&
