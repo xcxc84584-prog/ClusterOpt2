@@ -88,7 +88,8 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     });
     await expect(frame.locator("#caiSetup")).toBeHidden();
     await expect(frame.locator("#caiWorkspace")).toBeVisible();
-    await expect(frame.locator("#caiForm textarea")).toBeEnabled();
+    await expect(frame.locator("#caiForm")).toHaveCount(0);
+    await expect(frame.locator(".cai-readonly-note")).toBeVisible();
     await frame.locator("[data-legacy-guide]").click();
     await expect(frame.locator("#caiConnectGuide")).toBeVisible();
     await frame.locator("[data-guide-dismiss]").click();
