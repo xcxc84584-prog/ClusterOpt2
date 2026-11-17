@@ -9,7 +9,10 @@ test("PR06.08 four pages are separate and no inert overview tab", () => {
   const source = readFileSync(new URL(
     "../main/plugin-manager-ui.js", import.meta.url), "utf8");
   assert.match(html, /id="pluginManagerPages"/);
-  assert.match(html, /id="pluginToolToggle"/);
+  assert.doesNotMatch(html, /id="pluginToolToggle"/);
+  assert.match(html, /id="pluginMaxMiB"/);
+  assert.doesNotMatch(html, /class="plugin-workbench-header"/);
+  assert.doesNotMatch(html, /id="pluginUnlimited"/);
   assert.match(source, /"permissions","api","ehu","performance"/);
   assert.match(source, /core\.catalog\.collect\(\)/);
   assert.match(source, /event\.isTrusted/);
