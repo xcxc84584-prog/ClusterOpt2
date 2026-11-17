@@ -493,6 +493,7 @@ export class VirtualFileDocument extends FileDocument {
       if (payload.priority === "external") {
         this.fileFingerprint = null;
         this.lineCheckpoints = [{ byte: 0, lines: 0 }];
+        this.pageLineCountCache.clear();
         this.virtualEditable = false;
         const bytes = this.property("UTF8SlicePolicy");
         const pages = Math.max(1, bytes.count(
