@@ -187,6 +187,11 @@ export function mountPluginManagerUI(core,doc,options={}) {
           core.pluginHostInstaller.disable(p.providerId)) :
         core.setProviderEnabled(
           p.objectId,p.providerId,toggle.checked);
+      if(!changed.ok && changed.status===409) {
+        doc.defaultView.alert(t(
+          "相依性衝突：請先停用依賴此服務的插件。",
+          "Dependency conflict: disable dependent plugins first."));
+      }
       if(changed.ok) {
         void core.listReviewedPlugins().then(saved=>{
           if(saved.ok && saved.value.some(entry=>
