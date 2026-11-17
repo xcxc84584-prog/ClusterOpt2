@@ -70,8 +70,12 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     await expect(frame.locator(".cai-bar")).toBeVisible();
     const downloading = page.waitForEvent("download");
     await frame.locator("[data-quick-setup]").click();
-    expect((await downloading).suggestedFilename())
+    const downloaded = await downloading;
+    expect(downloaded.suggestedFilename())
       .toBe("AI-Agent-MCP-Quick-Setup.cmd");
+    const cmd = await readFile(await downloaded.path(), "utf8");
+    expect(cmd).toContain("SourceRevision");
+    expect(cmd).toContain("Setup-Quick.ps1");
 
     await page.evaluate(() => {
       const frame = document.querySelector(
