@@ -38,3 +38,15 @@ requires PR13.3/13.4 sandbox and per-call ACL before release.
 
 ## Recovery
 Keep PR #58 Draft and retain backup/pr13-prestart-20261117.
+
+## Patch(+5) coverage extension
+- HubUnit.listActionContracts(source, options): enumerates only
+  caller-authorized OCDA UserAPI/AgentAPI actions from URU live Objects.
+  Hidden/private actions are not inferred or surfaced.
+- API List now includes legacy user-callable Action rows with explicit
+  "Not declared" input/output when APIDescriptors are absent; existing
+  described Request APIs are deduplicated.
+- HubProtocolPolicy documents listActionContracts alongside request,
+  requestService, readProperty, discoverCatalog and Provider queries.
+- Added VTE tests for unknown source, invalid pagination and hidden
+  legacy actions; missing schemas remain null rather than fabricated.
