@@ -33,13 +33,17 @@ test("PR9 current version propagates into UI installer and CMD filename", () => 
     TypeError);
 });
 
-test("PR9 installer never kills an unrelated listener", () => {
-  assert.ok(nativeInstaller.includes("[P]ick another port / [C]ancel"));
+test("PR9 port override requires explicit confirmation and identity checks", () => {
+  assert.ok(nativeInstaller.includes("[P]ick another port / [C]ancel / [O]verride"));
   assert.ok(nativeInstaller.includes("CLUSTEROPT_AGENT_VERSION"));
   assert.ok(nativeInstaller.includes("$manifest.version -ne $ExpectedVersion"));
   assert.ok(nativeInstaller.includes("Agent release mismatch"));
   assert.ok(nativeInstaller.includes("ClusterOpt2/main/Implementation"));
-  assert.equal(nativeInstaller.includes("Stop-Process"), false);
+  assert.ok(nativeInstaller.includes("Stop-Process -Id $owner.ProcessId"));
+  assert.ok(nativeInstaller.includes("Port owner changed; override aborted"));
+  assert.ok(nativeInstaller.includes("Refusing to terminate protected process"));
+  assert.ok(nativeInstaller.includes("Override cancelled; no process was terminated"));
+  assert.ok(nativeInstaller.includes("Port still occupied; agent not started"));
   assert.ok(nativeServer.includes("process.env.CLUSTEROPT_AGENT_VERSION"));
   assert.ok(nativeServer.includes("mode:'INTERACTIVE'"));
 });
