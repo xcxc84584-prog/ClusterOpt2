@@ -72,3 +72,15 @@ test("PR02.04 catalog cannot expose live values or invoke handlers", () => {
   assert.equal("receive" in snapshot.value.apis[0], false);
   assert.equal(typeof core.catalog.request, "undefined");
 });
+
+test("legacy Objects remain registered without publishing synthetic APIs", () => {
+  const core = new LinkCore();
+  assert.equal(core.register({
+    id: "Legacy.Editor", receive: async (_name, payload) => payload
+  }), true);
+  const snapshot = core.catalog.collect();
+  assert.equal(snapshot.status, 200);
+  assert.equal(snapshot.value.apis.length, 0);
+  assert.equal(core.discover("Legacy.Editor", "list", "api").status, 200);
+  assert.equal(core.uru.objects.has("Legacy.Editor"), true);
+});
