@@ -308,7 +308,7 @@ export class PluginUIHostUnit {
           shellOutput.textContent = [
             "PowerShell exit: " + String(code ?? "error"),
             stdout.slice(0, 32768), stderr.slice(0, 32768)
-          ].join("\\n").slice(0, 65536);
+          ].join("\n").slice(0, 65536);
           shellOutput.hidden = false;
           menu.hidden = false;
           trigger.setAttribute("aria-expanded", "true");
