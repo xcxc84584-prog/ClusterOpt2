@@ -24,6 +24,7 @@ export class FileDocument {
     this.lineEnding = "\n";
     this.diskRevision = null;
     this.externalChanged = false;
+    this.accessBlocked = false;
     this.strictOCDA = true;
     this.ocda = Object.freeze({
       Request: ["edit", "load", "save", "reconcile"],
@@ -96,6 +97,7 @@ export class FileDocument {
       this.name = file.name;
       this.diskRevision = this.fingerprint(file);
       this.externalChanged = false;
+      this.accessBlocked = false;
       onProgress(100);
       return { bytes: loaded };
     } catch (error) {
@@ -130,6 +132,13 @@ export class FileDocument {
       }
       return true;
     } catch (error) {
+      if (error?.name === "NotAllowedError") {
+        // Background polling cannot request new file permissions.
+        // Preserve the active text and dirty/synced status; a future
+        // explicit user gesture or granted handle can resume polling.
+        this.accessBlocked = true;
+        return false;
+      }
       this.status = DocumentStatus.ERROR;
       this.error = String(error);
       throw error;
@@ -184,6 +193,7 @@ export class FileDocument {
       const writtenFile = await handle.getFile();
       this.diskRevision = this.fingerprint(writtenFile);
       this.externalChanged = false;
+      this.accessBlocked = false;
       this.progress = 100;
       // Preserve newer edits if the editor changed during the save operation.
       this.status = snapshotRevision === this.revision ?
