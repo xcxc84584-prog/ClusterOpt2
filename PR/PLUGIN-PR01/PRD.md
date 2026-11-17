@@ -24,3 +24,6 @@ Production version stays `0.0.9-pr9.patch9`.
 - 小 PR 可在同一大 PR 開發分支累積 commit；整個大 PR PASS 才合併一次 main。
 - PR01 的功能交付是「唯讀 OCDA source inventory CLI」，不是未完成的路由編輯器；正式插件執行功能從 PR02 起實作。
 - 必須在真實 Repo 的 Node CI 運行 CLI，以及既有 Playwright 實際 Chromium 工作流程；沒有硬體授權或 5 GiB 壓測證據，相關項目必須維持 NOT RUN。
+
+## Patch(+3) 交付
+新增真正執行期的 OCDA 容器驗證（Node 上建立 LinkCore 與隔離 VTE）：測試 REQ、REP、EHU、Relation 和權限拒絕案例；將可下載報告加入 CI artifact。此小 PR 交付的功能是可獨立執行的 **Runtime Audit CLI**，不是插件執行期或正式磁碟寫入。對不在 PR01 範圍內的 5 GiB 寫入與實體權限驗收維持 NOT RUN。

@@ -20,3 +20,14 @@ Commit `5417677e1bd5894bc349c548a0b6309891b15ebc`:
 - [Local Agent PowerShell Parse](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44016589294): PASS, PS5.1/7 and Windows ConPTY test.
 
 **注意：上述只適用 Patch1 SHA。Patch2 要重跑 exact-head CI 後才可更新驗收。** 原先 `NOT RUN` 的 5 GiB、實體使用者權限與長時穩定性，不能因其他 CI PASS 變成 PASS。
+
+## Patch(+2) exact-head CI result
+`ca3a1f15621b27f816b1ade654a49590669908c5`:
+- [OCDA CI](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017052165): PASS (unit + Chromium).
+- [PR1 OCDA Verification](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017052055): PASS (unit + Chromium).
+- [Local Agent PowerShell Parse](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017052073): PASS (PS5.1, PS7, native ConPTY).
+- [Plugin PR01 OCDA Baseline](https://github.com/xcxc84584-prog/ClusterOpt2/actions/runs/44017052053): PASS (real repo static CLI).
+These results do not certify later SHA or manual 5 GiB test.
+
+## Patch(+3) operational Relation Test
+`node --test Implementation/tests/ocda-runtime-audit.test.js` must PASS on latest SHA; `node Implementation/tools/ocda-runtime-audit.mjs` emits **real LinkCore OMU REQ/REP/EHU** JSON, not mocked fixture. CI uploads `runtime.json` artifact alongside static JSON/MD. New entries: UserAPI 200, AgentAPI 403, Private 403, unknown target/sender 404, dependency Request=10 Response=01, detached VTE success and isolation. **Latest SHA CI pending until GitHub completes.**

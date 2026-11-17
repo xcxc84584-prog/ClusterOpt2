@@ -45,3 +45,23 @@ flowchart LR
  CI --> Browser[Existing Playwright Chromium regression]
 ```
 CLI 只讀磁碟中的專案源碼、不調用 File System Access API、不修改任何正式 Object/Property/Route。其 static edges 為**待驗證候選依賴**，不是 OMU 的真實事件紀錄。HubUnit 仍是唯一正式 REQ/REP 路由。執行緒策略：檔案來源逐檔讀取、有限內存索引；避免巨大 Promise.all 對 repo 的一次性讀取。
+
+## Patch(+3) 執行期稽核 EventChain
+```mermaid
+sequenceDiagram
+ participant Auditor as RuntimeAudit (Node)
+ participant Hub as LinkCore.HubUnit
+ participant Sender as Audit.Caller
+ participant Target as Audit.Target
+ participant OMU
+ Auditor->>Hub: register(Audit / Caller / Target)
+ Auditor->>Hub: request(Caller,Target,echo)
+ Hub->>Target: receive(echo,payload)
+ Target-->>Hub: response(payload)
+ Hub-->>Auditor: {status:200,value}
+ Hub->>OMU: dependency REQ:10 REP:01
+ Auditor->>Hub: agent/private/unknown requests
+ Hub-->>Auditor: 403/404
+ Hub->>OMU: EHU preserved
+```
+稽核程序為獨立工具而非運行期 Object / Property，**不修改生產 HubUnit、URU、EDPMU 或 OMU**。測試路由在新的 `LinkCore` 實體上完成；VTE 在另一個獨立記憶體領域，阻止誤觸真實文件資料。此 Patch 不增加任何新的全域 Property。

@@ -3,7 +3,9 @@ on:
   pull_request:
     paths:
       - "Implementation/tools/ocda-baseline.mjs"
+      - "Implementation/tools/ocda-runtime-audit.mjs"
       - "Implementation/tests/ocda-baseline.test.js"
+      - "Implementation/tests/ocda-runtime-audit.test.js"
       - "PR/PLUGIN-PR01/**"
       - ".github/workflows/plugin-pr01-baseline.yml"
   workflow_dispatch:
@@ -17,12 +19,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: node --test Implementation/tests/ocda-baseline.test.js
+      - run: node --test Implementation/tests/ocda-baseline.test.js Implementation/tests/ocda-runtime-audit.test.js
       - name: Generate artifacts without modifying the working tree
         run: |
           mkdir -p "$RUNNER_TEMP/ocda-audit"
           node Implementation/tools/ocda-baseline.mjs --json > "$RUNNER_TEMP/ocda-audit/inventory.json"
           node Implementation/tools/ocda-baseline.mjs > "$RUNNER_TEMP/ocda-audit/inventory.md"
+          node Implementation/tools/ocda-runtime-audit.mjs > "$RUNNER_TEMP/ocda-audit/runtime.json"
       - uses: actions/upload-artifact@v4
         with:
           name: plugin-pr01-inventory

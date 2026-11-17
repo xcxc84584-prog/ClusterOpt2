@@ -32,3 +32,13 @@ PRD → Plan → ArcD → Implementation + Relation Test → Project。Object �
 
 完成一個小 PR 的標準：執行期功能不是空殼；附 Node/Browser 或適當真實環境測試；通過 CI；可隨時用備份 SHA 還原；更新 Plan/ArcD/Patch/交接。若測試僅適用特定硬體，需標為 BLOCKED/NOT RUN，不得虛報 PASS。
 Patch2 將 CLI 測試擴大為**真實倉庫整合測試**（非只對 synthetic fixture）：要求能掃描 LinkCore、Workspace、VirtualFileDocument 與真實 import 邊，嚴格檢查無缺失相對匯入。
+
+## Patch(+3) 實作前 GitHub 參考與架構改善
+- [VS Code Extension Service](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/extensions/common/extensions.ts)：將 Extension Host 的服務責任與編輯 UI 分離；PR01 不讓第三方程式直接取得 HubUnit。
+- [Eclipse Theia plugin-ext](https://github.com/eclipse-theia/theia/tree/master/packages/plugin-ext)：外掛執行與宿主責任分離；安全界線先作為未來插件建設的驗收門檻。
+- 現有 ClusterOpt2 `Implementation/tests/ocda.test.js` / `scheduler.test.js` 已測單個路由、權限與排程。新增 **real LinkCore + VTE integration audit** 而不建立第二套 Hub。
+- 不讓 Static scan 推測出的 dependencies 冒充執行期 dependencies；實際通過 Node 的 HubUnit 才能產生 REQ/REP 的事件證據。
+- 成功路由相對來源觀測代碼為 10；回應由目標返回來源的反向邊為 01。Relation Code 是觀測矩陣，**不是使用權限證明**。
+
+### 驗收證據分層
+A：真實 Node LinkCore 路由、EHU、VTE；B：Chromium Playwright；C：Windows runner native ConPTY；D：真實桌面 File System Access 互動與 1–5 GiB 實際負荷。只有 A/B/C 在本大 PR 建立可重現證據，D 保留為未經驗證的已知限制，後續 L1/L2/L6 PR 負責效能與權限硬體驗收。
