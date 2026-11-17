@@ -11,6 +11,14 @@ const SAFE = new Set(["ready", "pong", "error",
   "powershell_execution_result"]);
 export const PluginLocalAgentPolicy = Object.freeze({
   address: "ws://127.0.0.1:43879/agent",
+  validPort(value) {
+    return Number.isInteger(value) && value >= 1024 &&
+      value <= 65535;
+  },
+  addressForPort(port) {
+    if (!this.validPort(port)) throw TypeError("Invalid Agent port");
+    return "ws://127.0.0.1:" + port + "/agent";
+  },
   maxMessageBytes: 160000,
   authTimeoutMs: 10000,
   pingTimeoutMs: 5000,
