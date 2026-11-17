@@ -124,12 +124,20 @@ export class PluginUIHostUnit {
       };
       button.addEventListener("click", open);
       frame.addEventListener("load", sync);
+      const closeForWorkbench = event => {
+        if (!event.target.closest?.(
+          "#tabs .tab, #explorerPowerShell, #pluginBtn")) return;
+        panel.hidden = true;
+        button.setAttribute("aria-pressed", "false");
+      };
+      this.doc.addEventListener("click", closeForWorkbench);
       const localeObserver = new MutationObserver(sync);
       localeObserver.observe(this.doc.documentElement, {
         attributes: true, attributeFilter: ["lang"]
       });
       view.dispose = () => {
         localeObserver.disconnect();
+        this.doc.removeEventListener("click", closeForWorkbench);
         frame.srcdoc = "";
         panel.remove();
         button.remove();
