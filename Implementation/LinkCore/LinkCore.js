@@ -4,6 +4,8 @@ import { CatalogVisibilityPolicy } from
   "../property/CatalogVisibilityPolicy.js";
 import { CatalogVersionPolicy } from
   "../property/CatalogVersionPolicy.js";
+import { CatalogDocumentation } from
+  "../property/CatalogDocumentation.js";
 import { PropertyDescriptorPolicy } from
   "../property/PropertyDescriptorPolicy.js";
 import { APIDescriptorPolicy } from
@@ -54,6 +56,10 @@ export class LinkCore {
       undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
     this.version = "0.0.9-pr9.patch9";
+    this.hub.registerProperty("CatalogDocumentation",
+      CatalogDocumentation, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
     this.hub.registerProperty("CatalogVersionPolicy",
       CatalogVersionPolicy, {
         owners: ["LinkCore"], visibility: "Public"
@@ -169,6 +175,12 @@ export class LinkCore {
   unregister(id) { return this.hub.unregister(id); }
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
+  }
+  generateCatalogDocs(source, format, options = {}) {
+    return CatalogDocumentation.render(
+      (caller, command, kind, selector, context) =>
+        this.hub.discoverCatalog(caller, command, kind, selector, context),
+      source, format, options);
   }
   discover(source, command, kind, selector = {}, options = {}) {
     return this.hub.discoverCatalog(source, command, kind,
