@@ -129,20 +129,26 @@ export class UnifiedRegistrationUnit {
         graph.set(item.service, dependencies);
       }
     }
-    const visited = new Set();
-    const active = new Set();
-    const visit = id => {
-      if (active.has(id)) return true;
-      if (visited.has(id)) return false;
-      visited.add(id);
-      active.add(id);
-      for (const next of graph.get(id) ?? []) {
-        if (visit(next)) return true;
+    const incoming = new Map([...graph.keys()].map(id => [id, 0]));
+    for (const dependencies of graph.values()) {
+      for (const id of dependencies) {
+        if (incoming.has(id)) incoming.set(id, incoming.get(id) + 1);
       }
-      active.delete(id);
-      return false;
-    };
-    return [...graph.keys()].some(visit);
+    }
+    const ready = [...incoming].filter(([, count]) => count === 0)
+      .map(([id]) => id);
+    let processed = 0;
+    for (let index = 0; index < ready.length; index++) {
+      const id = ready[index];
+      processed++;
+      for (const dependency of graph.get(id) ?? []) {
+        if (!incoming.has(dependency)) continue;
+        const remaining = incoming.get(dependency) - 1;
+        incoming.set(dependency, remaining);
+        if (remaining === 0) ready.push(dependency);
+      }
+    }
+    return processed !== incoming.size;
   }
 
   attachProviderFactory(providerId, factory) {
