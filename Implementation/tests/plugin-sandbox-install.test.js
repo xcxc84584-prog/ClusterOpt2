@@ -161,3 +161,78 @@ test("PR13.4 rejects mismatched Request and Response schemas", async () => {
     entry.action === "Plugin.Invoke.transform" &&
     entry.status === 502));
 });
+
+function changeManifest(snapshot, edit) {
+  const manifest = JSON.parse(snapshot.manifestText);
+  edit(manifest.provider);
+  const content = JSON.stringify(manifest);
+  return {
+    ...snapshot, manifestText: content,
+    files: { ...snapshot.files, "plugin.json": btoa(content) }
+  };
+}
+
+test("PR13.6 prevents disabling or uninstalling a required Provider",
+  async () => {
+    const h = harness();
+    assert.equal((await h.installer.install(specimen(), {
+      consented: true
+    })).status, 201);
+    const dependent = changeManifest(specimen(), provider => {
+      provider.providerId = "author.dependent";
+      provider.objectId = "Author.Dependent";
+      provider.provides[0].service = "example.dependent";
+      provider.requires = ["example.text.transform"];
+    });
+    assert.equal((await h.installer.install(dependent, {
+      consented: true
+    })).status, 201);
+    assert.deepEqual(h.installer.dependents("author.sandbox"),
+      ["author.dependent"]);
+    assert.equal(h.installer.disable("author.sandbox").status, 409);
+    assert.equal(h.installer.uninstall("author.sandbox").status, 409);
+    assert.equal(h.env.core.uru.listProviders().length, 2);
+    assert.equal(h.installer.uninstall("author.dependent").status, 200);
+    assert.equal(h.installer.disable("author.sandbox").status, 200);
+    assert.equal(h.installer.enable("author.sandbox").status, 200);
+  });
+
+test("PR13.6 upgrade identity and explicit consent are mandatory",
+  async () => {
+    const h = harness();
+    assert.equal((await h.installer.install(specimen(), {
+      consented: true
+    })).status, 201);
+    assert.equal((await h.installer.upgrade("author.sandbox",
+      specimen())).status, 403);
+    const mismatch = changeManifest(specimen(), provider => {
+      provider.objectId = "Author.Other";
+    });
+    assert.equal((await h.installer.upgrade("author.sandbox",
+      mismatch, { consented: true })).status, 409);
+    assert.equal(h.env.core.uru.listProviders().length, 1);
+  });
+
+test("PR13.6 failed upgrade restores active original Provider",
+  async () => {
+    const h = harness();
+    assert.equal((await h.installer.install(specimen(), {
+      consented: true
+    })).status, 201);
+    h.installer.bridgeFactory = () => ({
+      async start() { return { ok: false, status: 502 }; },
+      terminate() {}
+    });
+    const attempted = await h.installer.upgrade("author.sandbox",
+      specimen(), { consented: true, approvedPermissions: [] });
+    assert.equal(attempted.ok, false);
+    assert.ok(h.env.core.uru.getProvider("author.sandbox"));
+    assert.ok(h.installer.handles.has("author.sandbox"));
+    const result = await h.env.core.request(
+      "VTE", "Author.Sandbox", "transform", { text: "restored" },
+      { origin: "user" });
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.value, { result: "restored" });
+    assert.ok(h.env.log().some(entry =>
+      entry.action === "Plugin.Install.UpgradeRolledBack"));
+  });
