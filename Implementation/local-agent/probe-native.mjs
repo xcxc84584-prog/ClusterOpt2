@@ -32,15 +32,16 @@ if (process.platform !== "win32") {
     const timeout = setTimeout(() => {
       console.error("ConPTY native probe timed out");
       terminal.kill();
-      process.exitCode = 3;
+      process.exit(3);
     }, 8000);
     terminal.onExit(({ exitCode }) => {
       clearTimeout(timeout);
-      if (process.exitCode) return;
-      process.exitCode = exitCode === 0 ? 0 : 4;
       if (exitCode !== 0) {
         console.error("ConPTY native shell exited with an error");
       }
+      // Native PTY handles may retain Node event-loop resources.
+      // The health probe is a one-off process; terminate decisively.
+      process.exit(exitCode === 0 ? 0 : 4);
     });
     terminal.onData(() => {});
   } catch (error) {
