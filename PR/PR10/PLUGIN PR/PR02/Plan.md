@@ -207,3 +207,13 @@ between pages, but each page is independently authorization-filtered.
 Live browser facade remains unavailable until PR02.10.
 Tests: Node injection/privacy/limit and real Chromium legacy compatibility.
 CI: exact-head dedicated catalog, OCDA, PR1, Windows pending.
+
+## PR02.06/07 CI failure diagnosis — follow-up
+At exact-head 95230b9, 3 workflows failed: browser jobs were PASS,
+Windows passed, while Node catalog-visibility test rejected the AgentAPI
+case. Source of error was a test calling discover(source, "list", "api",
+{origin:"agent"}) rather than placing origin in the fifth options
+argument; CatalogQuery correctly rejected unknown selector fields.
+Updated the test to use selector={} and options={origin:"agent"}.
+The invalid-origin case now also targets actual HubUnit validation.
+Re-run all exact-head jobs before marking PR02.06/07 PASS.
