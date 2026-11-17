@@ -2,7 +2,7 @@
   "packageVersion": 1,
   "name": "AI AGENT MCP(ChatGPT)",
   "entry": "worker.js",
-  "description": "OCDA AI Agent contract provider. PR14.2: status and contract inspection only; no model, filesystem, PowerShell, MCP or OAuth execution.",
+  "description": "OCDA AI Agent plugin. PR14.4 host-mediated, explicitly authorized loopback pairing and ping only; models, file, shell, MCP and OAuth remain disabled.",
   "provider": {
     "manifestVersion": 1,
     "providerId": "cluster.ai-agent-mcp",
@@ -73,7 +73,9 @@
       }
     ],
     "requires": [],
-    "permissions": [],
+    "permissions": [
+      "network.request"
+    ],
     "execution": {
       "isolation": "worker",
       "concurrency": "parallel"
