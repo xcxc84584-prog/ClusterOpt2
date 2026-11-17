@@ -157,8 +157,8 @@ export class PluginLocalAgentObject {
         this.shellApprovalId) {
       const reply = await this.core.request(this.id,
         this.shellApprovalId, "approve", {
-          command: message.args.command,
-          path: message.args.path
+          command: message.args?.command,
+          path: message.args?.path
         });
       result = {
         approved: reply.ok &&
@@ -168,7 +168,10 @@ export class PluginLocalAgentObject {
         message.name === "cluster.list_roots") {
       const reply = await this.core.request(this.id,
         this.explorerId, "roots", {});
-      result = reply.ok ? reply.value : { error: "Access denied" };
+      result = reply.ok ?
+        reply.value.roots.map(name => ({
+          name, kind: "directory"
+        })) : { error: "Access denied" };
     } else if (this.mcpReadId && this.explorerId &&
         Object.hasOwn({
           "cluster.list_directory": "list",
@@ -205,9 +208,22 @@ export class PluginLocalAgentObject {
             path: combined, content: args.content,
             offset: args.offset, length: args.length
           });
-        result = reply.ok ? reply.value : {
-          error: "ToolBox denied file operation"
-        };
+        if (!reply.ok) {
+          result = { error: "ToolBox denied file operation" };
+        } else if (message.name === "cluster.list_directory") {
+          result = { path: full, items: reply.value.entries,
+            truncated: reply.value.truncated };
+        } else if (message.name === "cluster.read_path") {
+          result = { path: full, ...reply.value };
+        } else if (message.name === "cluster.create_file") {
+          result = { created: true,
+            path: full + (full.endsWith("/") ? "" : "/") +
+              String(fileName) };
+        } else if (message.name === "cluster.write_path") {
+          result = { updated: true, path: full };
+        } else {
+          result = { deleted: true, path: full };
+        }
       }
     } else if (this.mcpReadId && [
       "cluster.list_files", "cluster.get_editor_state",
