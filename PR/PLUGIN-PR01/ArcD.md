@@ -94,3 +94,15 @@ flowchart LR
  Report --> Clean[Delete temporary files]
 ```
 Only `UTF8SlicePolicy` production Property is imported as immutable read algorithm; no Hub runtime routing, UI, mutation or entire-file read. It intentionally tests the addressing primitive rather than falsely claiming complete L1–L6 integration. Keep memory bounded by three 64KiB reads.
+
+## Patch(+7) — 可交換來源 Adapter
+```mermaid
+flowchart LR
+ A[Sparse real file] --> D{Offset beyond 4 GiB?}
+ D -->|No| B[Node openAsBlob]
+ D -->|Yes| N[Bounded fs.read positioned adapter]
+ B --> P[UTF8SlicePolicy.read]
+ N --> P
+ P --> R[3 verified 64KiB windows]
+```
+`openBoundedFileSource` 僅為測試專用輸入適配器，不是 L2 的生產 Route/Provider；`UTF8SlicePolicy` 不變。Context/API 與檔案寫入權限沒有越界。

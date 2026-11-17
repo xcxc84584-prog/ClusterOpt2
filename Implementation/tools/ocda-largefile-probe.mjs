@@ -35,6 +35,43 @@ async function createSparseFile(path, size) {
     await file.close();
   }
 }
+/**
+ * Positioned OS window adapter for Node hosts where openAsBlob cannot
+ * reliably expose offsets above 4 GiB. The production slice policy still
+ * validates UTF-8 and byte boundaries; this adapter cannot read unbounded.
+ */
+async function openBoundedFileSource(path, size) {
+  const handle = await open(path, "r");
+  return {
+    blob: {
+      size,
+      slice(start, end) {
+        ensure(Number.isSafeInteger(start) &&
+          Number.isSafeInteger(end) && start >= 0 &&
+          start <= end && end <= size, "invalid source range");
+        const length = end - start;
+        ensure(length <= UTF8SlicePolicy.maxChunkBytes + 4,
+          "unbounded source read");
+        return {
+          async arrayBuffer() {
+            const buffer = Buffer.alloc(length);
+            let done = 0;
+            while (done < length) {
+              const result = await handle.read(buffer, done,
+                length - done, start + done);
+              ensure(result.bytesRead > 0, "unexpected source EOF");
+              done += result.bytesRead;
+            }
+            return buffer.buffer.slice(buffer.byteOffset,
+              buffer.byteOffset + buffer.byteLength);
+          }
+        };
+      }
+    },
+    close: () => handle.close()
+  };
+}
+
 export async function runSparseProbe() {
   const dir = await mkdtemp(join(tmpdir(), "cluster-ocda-size-"));
   const rows = [];
@@ -43,7 +80,16 @@ export async function runSparseProbe() {
       const size = mib * MiB;
       const path = join(dir, String(mib) + ".bin");
       const info = await createSparseFile(path, size);
-      const blob = await openAsBlob(path);
+      // Node 22 openAsBlob can return an empty last slice > 4 GiB.
+      // Keep native Blob coverage for smaller sizes, but use bounded
+      // positioned reads for the 5 GiB case.
+      const backend = size > 2 ** 32 ?
+        "positioned-os-window" : "node-openAsBlob";
+      const source = backend === "node-openAsBlob" ?
+        { blob: await openAsBlob(path), close: async () => {} } :
+        await openBoundedFileSource(path, size);
+      const blob = source.blob;
+      try {
       const chunk = UTF8SlicePolicy.defaultChunkBytes;
       const count = UTF8SlicePolicy.count(blob.size, chunk);
       const before = process.memoryUsage().heapUsed;
@@ -64,12 +110,15 @@ export async function runSparseProbe() {
         info.allocatedBytes < 4 * MiB,
       "expected sparse backing allocation");
       rows.push({
-        sizeMiB: mib, ...info, sliceCount: count,
+        sizeMiB: mib, backend, ...info, sliceCount: count,
         inspectedBytes: first.end - first.start +
           middle.end - middle.start + last.end - last.start,
         elapsedMs, heapDeltaBytes: heapDelta,
         lastByteOffset: last.start
       });
+      } finally {
+        await source.close();
+      }
     }
     return {
       schemaVersion: 1,
@@ -77,6 +126,7 @@ export async function runSparseProbe() {
       cases: rows, pass: rows.length === CASES.length,
       limitations: [
         "Logical 5 GiB sparse files do not contain 5 GiB real data.",
+        "Node Blob and positioned OS windows are different input adapters.",
         "No browser OPFS, File System Access permission, edit or writeback.",
         "Timing and heap delta are observations, not performance guarantees."
       ]

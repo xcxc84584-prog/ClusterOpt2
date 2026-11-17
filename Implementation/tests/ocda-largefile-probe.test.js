@@ -13,4 +13,7 @@ test("real sparse 1/64/1024/5120 MiB files have bounded slice reads",
     assert.equal(result.cases.at(-1).logicalBytes,
       5 * 1024 ** 3);
     assert.ok(result.cases.at(-1).lastByteOffset > 2 ** 32);
+    assert.equal(result.cases[0].backend, "node-openAsBlob");
+    assert.equal(result.cases.at(-1).backend,
+      "positioned-os-window");
   });

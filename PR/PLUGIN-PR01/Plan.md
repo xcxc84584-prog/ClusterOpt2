@@ -57,3 +57,8 @@ External design review:
 - [VS Code PieceTree](https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeTextBuffer.ts): separate bounded text operations from the logical document size; do not treat a whole-file read as prerequisite for local editing.
 Architecture improvement: add real temporary **sparse** OS files at 1MiB/64MiB/1GiB/5GiB to validate actual UTF8SlicePolicy byte range arithmetic and no whole-file read. A sparse file verifies large addresses but **does not measure 5 GiB of real content**, browser OPFS file permission, real large-file edit/writeback, or durability.
 The benchmark is a self-cleaning CLI in Implementation/tools with a Node integration test and JSON CI artifact; no production Object/Property changes. Record elapsed and heap delta only as environmental observations, not guaranteed performance. Failure to support sparse filesystem must fail the test, not silently be marked PASS.
+
+## Patch(+7) — 5GiB OS I/O 實測發現與架構優化
+參考 [Node.js fs documentation](https://github.com/nodejs/node/blob/main/doc/api/fs.md) 對 positioned read 的原生支援，以及 [VS Code Piece Tree](https://github.com/microsoft/vscode/blob/main/src/vs/editor/common/model/pieceTreeTextBuffer/pieceTreeTextBuffer.ts) 的索引/內容分離。Github Runner / 本機 Node22 對 5GiB 稀疏檔的 `openAsBlob().slice(size-10)` 返回空資料，而原生 `fs.read()` 正確取得末端標記。此現象是 **Node Blob 測試適配器限制**，不是已證實的瀏覽器 Blob 或 ClusterOpt2 程式缺陷。
+改善方案：前 1MiB/64MiB/1GiB 維持 Node 原生 Blob，5GiB 使用有界 positioned OS window adapter；仍將資料交由原有 UTF8SlicePolicy 決定 slice boundaries/UTF8 decode。每次 read 上限為 `maxChunkBytes+4`，嚴格驗證位址與 EOF。
+不新增生產 Object/Property；多讀取提供者可換但不能迴避核心的界線檢查。完整 5GiB **實際內容**、磁碟寫回與網頁權限仍待後續驗收。

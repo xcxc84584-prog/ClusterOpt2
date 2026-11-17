@@ -49,3 +49,6 @@ Commit `82e66d3b82f19639c1b926a89fb7d16506adfb7d`：`npm run check` FAIL，Runti
 - New executable CLI and test: Node OS sparse files with logical sizes 1/64/1024/5120 MiB; inspect only bounded UTF-8 slices and verify last offset > 2^32.
 - GitHub Actions uploads `largefile-sparse.json`; latest exact-head result pending.
 - Real 5 GiB filled content, Chromium OPFS quota/permission, UI edit latency, save/writeback and crash recovery stay **NOT RUN**; do not equate sparse-size probe with them.
+
+## Patch(+6) failed run — Patch(+7) remediation
+Commit `5b3dcc5569e08920f8e8fac916bf137baf9c22df` 中新測試在 Node22 的 5GiB Blob 末端讀取報告 `Sparse file probe: last marker`。對同樣 5GiB 實體稀疏檔，原生檔案定位讀取可得到 END marker。Patch7 為 >4GiB 的 Node 測試來源使用 bounded positioned OS adapter，原有 UTF8SlicePolicy 與 1/64/1024MiB Node Blob 路徑保留。最新 exact-head CI 未完成前不標 PASS。
