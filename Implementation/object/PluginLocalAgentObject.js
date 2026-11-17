@@ -42,6 +42,7 @@ export class PluginLocalAgentObject {
     this.modelReplyQueue = Promise.resolve();
     this.shellApprovalId = null;
     this.mcpReadId = null;
+    this.explorerId = null;
     this.bridgeRegistered = false;
     this.pairPort = 43879;
   }
@@ -135,6 +136,19 @@ export class PluginLocalAgentObject {
     this.mcpReadId = null;
   }
 
+  /**
+   * Only a trusted PluginExplorer Object is eligible. This association
+   * never grants filesystem rights; ToolBox authorizes each operation.
+   */
+  registerExplorer(objectId) {
+    if (typeof objectId !== "string" ||
+        !objectId.startsWith("PluginExplorer.")) {
+      return { ok: false, status: 400 };
+    }
+    this.explorerId = objectId;
+    return { ok: true, status: 200 };
+  }
+
   async dispatchShellTool(message) {
     const requestId = message.requestId;
     let result = message.name === "cluster.powershell_request" ?
@@ -150,6 +164,49 @@ export class PluginLocalAgentObject {
         approved: reply.ok &&
           reply.value?.approved === true
       };
+    } else if (this.mcpReadId && this.explorerId &&
+        message.name === "cluster.list_roots") {
+      const reply = await this.core.request(this.id,
+        this.explorerId, "roots", {});
+      result = reply.ok ? reply.value : { error: "Access denied" };
+    } else if (this.mcpReadId && this.explorerId &&
+        Object.hasOwn({
+          "cluster.list_directory": "list",
+          "cluster.read_path": "readChunk",
+          "cluster.create_file": "create",
+          "cluster.write_path": "update",
+          "cluster.delete_path": "delete"
+        }, message.name)) {
+      const actions = {
+        "cluster.list_directory": "list",
+        "cluster.read_path": "readChunk",
+        "cluster.create_file": "create",
+        "cluster.write_path": "update",
+        "cluster.delete_path": "delete"
+      };
+      const args = message.args ?? {};
+      const explorer = this.core.getObject?.(this.explorerId);
+      const rootName = explorer?.root?.name;
+      const full = args.path;
+      if (!rootName || typeof full !== "string" ||
+          (full !== rootName &&
+           !full.startsWith(rootName + "/"))) {
+        result = { error: "Explorer root is not authorized" };
+      } else {
+        const path = full === rootName ? "" :
+          full.slice(rootName.length + 1);
+        const fileName = args.name;
+        const combined = message.name === "cluster.create_file" ?
+          (path ? path + "/" : "") + String(fileName ?? "") : path;
+        const reply = await this.core.request(this.id,
+          this.explorerId, actions[message.name], {
+            path: combined, content: args.content,
+            offset: args.offset, length: args.length
+          });
+        result = reply.ok ? reply.value : {
+          error: "ToolBox denied file operation"
+        };
+      }
     } else if (this.mcpReadId && [
       "cluster.list_files", "cluster.get_editor_state",
       "cluster.read_file"
