@@ -16,11 +16,11 @@ test("PR06.08 four separate Plugin Manager pages in original tool tab",
     await expect(nav.nth(2)).toHaveAttribute("aria-selected","true");
     await nav.nth(3).click();
     await expect(nav.nth(3)).toHaveAttribute("aria-selected","true");
-    await page.locator("#pluginToolToggle").click();
     await expect(page.locator("#pluginLegacySettings")).toBeVisible();
-    await page.locator("#pluginToolToggle").click();
-    await expect(page.locator("#pluginManagerPages")).toBeVisible();
+    await expect(page.locator("#pluginMaxMiB")).toBeVisible();
+    await nav.nth(0).click();
     await expect(page.locator("#pluginLegacySettings")).toBeHidden();
+    await expect(page.locator("#pluginManagerPages")).toBeVisible();
   });
 
 test("PR06.08 permission management is fail-closed, no direct Grant",

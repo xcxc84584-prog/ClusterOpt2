@@ -108,128 +108,26 @@
               aria-label="文字編輯器" wrap="off"></textarea>
           </div>
           <section id="pluginWindow" class="plugin-workbench-window"
-            aria-labelledby="pluginDialogTitle" hidden>
-            <div class="plugin-workbench-header">
-              <div class="plugin-workbench-identity">
-                <h2 id="pluginDialogTitle">♧ Plugin Manager</h2>
-                <p id="pluginDialogIntro">Manage plugins for ClusterOpt2 / HubUnit（外掛管理）</p>
-              </div>
-              <button id="pluginToolToggle" type="button"
-                aria-pressed="false">Plugin Tool</button>
-              <div class="plugin-category-control" id="pluginLegacyMenu" hidden>
-                <button id="pluginCategoryBtn" type="button"
-                  aria-haspopup="menu" aria-expanded="false"
-                  aria-controls="pluginCategoryMenu">
-                  <span id="pluginCategoryLabel">效能化</span>
-                  <span aria-hidden="true">⌄</span>
-                </button>
-                <div id="pluginCategoryMenu" class="plugin-category-menu"
-                  role="menu" aria-label="插件類別" hidden>
-                  <button id="pluginPerformanceBtn" type="button"
-                    role="menuitemradio" aria-checked="true"
-                    data-plugin-tab="performance">
-                    <span id="pluginPerformanceNavLabel">效能化</span>
-                  </button>
-                  <button id="pluginHighlighterBtn" type="button"
-                    role="menuitemradio" aria-checked="false"
-                    data-plugin-tab="highlighter">
-                    <span id="pluginHighlighterNavLabel">文本著色器</span>
-                  </button>
-                  <button id="pluginProcessorBtn" type="button"
-                    role="menuitemradio" aria-checked="false"
-                    data-plugin-tab="processor">
-                    <span id="pluginProcessorNavLabel">切片處理器</span>
-                  </button>
-                  <button id="pluginCommitterBtn" type="button"
-                    role="menuitemradio" aria-checked="false"
-                    data-plugin-tab="committer">
-                    <span id="pluginCommitterNavLabel">編輯提交單元</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+            aria-label="Plugin Manager" hidden>
             <div class="plugin-workbench-body">
               <div id="pluginManagerPages"></div>
-        <div class="plugin-dialog-content" id="pluginLegacySettings" hidden>
-          <section id="pluginPerformanceOptions" data-plugin-panel="performance">
-            <div class="plugin-panel-heading">
-              <div>
-                <div class="file-tool-eyebrow">01 / PERFORMANCE</div>
-                <h3 id="pluginPerformanceTitle">效能化</h3>
+              <div class="plugin-dialog-content"
+                id="pluginLegacySettings" hidden>
+                <section id="pluginPerformanceOptions"
+                  data-plugin-panel="performance">
+                  <div class="pm-budget-inline">
+                    <label id="pluginMaxLabel" for="pluginMaxMiB">
+                      最大文本載入量（MiB）
+                    </label>
+                    <input id="pluginMaxMiB" type="number"
+                      min="1" max="1024" step="1" value="8">
+                    <button id="pluginApply" type="button">套用</button>
+                  </div>
+                  <p id="pluginLimitNote" role="status" aria-live="polite">
+                    此設定目前僅控制切片快取容量。
+                  </p>
+                </section>
               </div>
-              <span id="pluginPerformanceState" class="plugin-state">
-                ACTIVE
-              </span>
-            </div>
-            <div class="plugin-setting-card">
-              <label id="pluginMaxLabel" for="pluginMaxMiB">
-                最大文本載入量（MiB）
-              </label>
-              <div class="plugin-budget-row">
-                <input id="pluginMaxMiB" type="number" min="1"
-                  max="1024" step="1" value="8">
-                <button id="pluginApply" type="button">套用</button>
-              </div>
-              <label class="plugin-dialog-check" for="pluginUnlimited">
-                <input id="pluginUnlimited" type="checkbox">
-                <span id="pluginOffLabel">Off（不限制）</span>
-              </label>
-              <p id="pluginLimitNote" role="status" aria-live="polite">
-                此設定目前僅控制切片快取容量。
-              </p>
-            </div>
-          </section>
-          <section id="pluginHighlighterOptions" data-plugin-panel="highlighter"
-            hidden>
-            <div class="plugin-panel-heading">
-              <h3 id="pluginHighlighterTitle">文本著色器</h3>
-              <span class="plugin-state pending" id="pluginHighlighterState">
-                尚未啟用
-              </span>
-            </div>
-            <p id="pluginHighlighterDescription" class="plugin-panel-note">
-              自訂著色規則與預設著色器將於切片處理器整合後開放。
-            </p>
-            <a href="./PR/PR8/API/TextHighlighter-v1.md" download
-              id="pluginHighlighterApi">文本著色器 API</a>
-          </section>
-          <section id="pluginProcessorOptions" data-plugin-panel="processor"
-            hidden>
-            <div class="plugin-panel-heading">
-              <h3 id="pluginProcessorTitle">切片處理器</h3>
-              <span class="plugin-state pending" id="pluginProcessorState">
-                尚未啟用
-              </span>
-            </div>
-            <p id="pluginProcessorDescription" class="plugin-panel-note">
-              預設處理器開關與自訂模組載入功能尚未啟用。
-            </p>
-            <a href="./PR/PR8/API/SliceProcessor-v1.md" download
-              id="pluginProcessorApi">切片處理器 API</a>
-          </section>
-          <section id="pluginCommitterOptions" data-plugin-panel="committer"
-            hidden>
-            <div class="plugin-panel-heading">
-              <h3 id="pluginCommitterTitle">編輯提交單元</h3>
-              <span class="plugin-state pending" id="pluginCommitterState">
-                尚未啟用
-              </span>
-            </div>
-            <p id="pluginCommitterDescription" class="plugin-panel-note">
-              提交前插件與 MVCC 控制將在安全回寫流程完成後開放。
-            </p>
-            <a href="./PR/PR8/API/EditCommitter-v1.md" download
-              id="pluginCommitterApi">編輯提交單元 API</a>
-          </section>
-          <p class="plugin-info-caption" id="pluginApiTitle">
-            API 標準可下載供開發參考；自訂插件目前不會執行。
-          </p>
-        </div>
-
-            </div>
-            <div class="plugin-workbench-footer">
-              <span id="pluginFooter">設定保留於此瀏覽器</span>
-              <button id="pluginDone" type="button">關閉視窗</button>
             </div>
           </section>
         </main>

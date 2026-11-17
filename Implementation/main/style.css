@@ -1297,3 +1297,49 @@ header .menu-wrap { margin-left:auto; }
   padding:8px 0 12px; margin-bottom:10px;
   border-bottom:1px solid var(--ui-border); }
 .pm-permission-controls input { accent-color:var(--ui-accent); }
+
+
+/* PR10 minimal performance panel: no heading, extra tool, or nested card. */
+#pluginWindow .plugin-workbench-body { padding:0; overflow:hidden; }
+#pluginWindow .plugin-dialog-content { width:100%; min-width:0;
+  max-width:none; padding:0; overflow:visible; }
+.pm-migrated-settings[hidden],
+.pm-migrated-settings #pluginLegacySettings[hidden] {
+  display:none!important;
+}
+.pm-migrated-settings { width:100%; }
+#pluginPerformanceOptions { width:100%; min-width:0; }
+.pm-budget-inline { display:flex; align-items:center; flex-wrap:wrap;
+  gap:10px; padding:4px 2px; }
+.pm-budget-inline #pluginMaxLabel { flex:0 0 auto; margin:0;
+  font-size:13px; font-weight:500; color:var(--ui-text-on-surface); }
+.pm-budget-inline #pluginMaxMiB { width:96px; max-width:96px;
+  flex:0 1 96px; min-width:72px; padding:7px 9px;
+  font:inherit; font-size:13px; box-sizing:border-box;
+  border:1px solid var(--ui-border); border-radius:5px;
+  background:var(--ui-control); color:var(--ui-text-on-control); }
+.pm-budget-inline #pluginApply { min-height:32px; padding:6px 12px;
+  cursor:pointer; font:inherit; font-size:12px;
+  border:1px solid var(--ui-border); border-radius:5px;
+  background:var(--ui-control); color:var(--ui-text-on-control); }
+.pm-budget-inline #pluginApply:focus-visible,
+.pm-budget-inline #pluginMaxMiB:focus-visible {
+  outline:2px solid var(--ui-accent); outline-offset:2px;
+}
+#pluginPerformanceOptions #pluginLimitNote {
+  margin:4px 2px 0; font-size:11px; line-height:1.45; opacity:.72;
+}
+#pluginWindow .pm-tabs { min-height:38px; padding:0 7px; }
+#pluginWindow .pm-tab { min-width:90px; padding:8px 10px;
+  font-size:12px; }
+#pluginWindow .pm-side-heading { min-height:38px; padding:9px 11px;
+  font-size:12px; }
+#pluginWindow .pm-sidebar { flex-basis:clamp(140px,20%,210px); }
+#pluginWindow .pm-provider { padding:8px; margin-bottom:2px; }
+#pluginWindow .pm-page { padding:10px 12px; }
+#pluginWindow .pm-card-heading { padding:8px 10px; font-size:12px; }
+#pluginWindow .pm-card-body { padding:8px 10px; }
+@media(max-width:620px) {
+  #pluginWindow .pm-sidebar { flex-basis:32%; min-width:115px; }
+  #pluginWindow .pm-page { padding:8px; }
+}

@@ -43,7 +43,6 @@ new ToolTabManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
 const pluginManager = mountPluginManagerUI(linkCore, document);
 let toolState = { open: false, active: false, position: 0 };
-let pluginCategory = "performance";
 let observedWorkspaceActiveId = null;
 let legacyPSMUI = null;
 const psmLocaleListeners = new Set();
@@ -51,7 +50,7 @@ const psmLocaleListeners = new Set();
 function saveToolView() {
   try {
     window.sessionStorage.setItem("clusteropt2.tool-view.v1",
-      JSON.stringify({ state: toolState, category: pluginCategory }));
+      JSON.stringify({ state: toolState }));
   } catch (error) {
     linkCore.omu.record("EHU", "ui", "ToolView.Persist",
       503, "sessionStorage", { error: String(error) });
@@ -1334,88 +1333,15 @@ async function renderPluginBudget() {
   const result = await linkCore.request("ui", "slice-registry",
     "list", {}, { origin: "user" });
   if (!result.ok) return notify(result.error);
-  const unlimited = result.value.limitBytes === null;
-  document.getElementById("pluginUnlimited").checked = unlimited;
-  document.getElementById("pluginMaxMiB").disabled = unlimited;
-  if (!unlimited) {
+  // A previous unlimited setting stays usable: preserve the input
+  // until a bounded value is applied explicitly by the user.
+  const bytes = result.value.limitBytes;
+  if (Number.isFinite(bytes) && bytes > 0) {
     document.getElementById("pluginMaxMiB").value =
-      String(result.value.limitBytes / (1024 * 1024));
+      String(bytes / (1024 * 1024));
   }
 }
 const pluginBtn = document.getElementById("pluginBtn");
-const categoryTrigger = document.getElementById("pluginCategoryBtn");
-const categoryMenu = document.getElementById("pluginCategoryMenu");
-const categoryLabel = document.getElementById("pluginCategoryLabel");
-const pluginTabs = [...categoryMenu.querySelectorAll("[data-plugin-tab]")];
-const pluginPanels = [...pluginWindow.querySelectorAll("[data-plugin-panel]")];
-
-function closePluginCategoryMenu(focusTrigger = false) {
-  categoryMenu.hidden = true;
-  categoryTrigger.setAttribute("aria-expanded", "false");
-  if (focusTrigger) categoryTrigger.focus();
-}
-
-function openPluginCategoryMenu(focusLast = false) {
-  categoryMenu.hidden = false;
-  categoryTrigger.setAttribute("aria-expanded", "true");
-  pluginTabs[focusLast ? pluginTabs.length - 1 : 0].focus();
-}
-
-function selectPluginTab(tab) {
-  const chosen = pluginTabs.find(button =>
-    button.dataset.pluginTab === tab);
-  if (!chosen) return;
-  pluginCategory = tab;
-  saveToolView();
-  for (const button of pluginTabs) {
-    const selected = button === chosen;
-    button.setAttribute("aria-checked", String(selected));
-  }
-  categoryLabel.textContent = chosen.textContent.trim();
-  for (const panel of pluginPanels) {
-    panel.hidden = panel.dataset.pluginPanel !== tab;
-  }
-  closePluginCategoryMenu();
-}
-
-categoryTrigger.addEventListener("click", () => {
-  if (categoryMenu.hidden) openPluginCategoryMenu();
-  else closePluginCategoryMenu();
-});
-categoryTrigger.addEventListener("keydown", event => {
-  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-    event.preventDefault();
-    openPluginCategoryMenu(event.key === "ArrowUp");
-  }
-});
-for (const button of pluginTabs) {
-  button.addEventListener("click", () => {
-    selectPluginTab(button.dataset.pluginTab);
-    categoryTrigger.focus();
-  });
-}
-categoryMenu.addEventListener("keydown", event => {
-  const index = pluginTabs.indexOf(document.activeElement);
-  let next = -1;
-  if (event.key === "ArrowDown") next = (index + 1) % pluginTabs.length;
-  if (event.key === "ArrowUp") {
-    next = (index + pluginTabs.length - 1) % pluginTabs.length;
-  }
-  if (event.key === "Home") next = 0;
-  if (event.key === "End") next = pluginTabs.length - 1;
-  if (next >= 0) {
-    event.preventDefault();
-    pluginTabs[next].focus();
-  } else if (event.key === "Escape") {
-    event.preventDefault();
-    closePluginCategoryMenu(true);
-  }
-});
-document.addEventListener("pointerdown", event => {
-  if (!event.target.closest(".plugin-category-control")) {
-    closePluginCategoryMenu();
-  }
-});
 pluginBtn.addEventListener("click", () => {
   closeMenu();
   void requestTool("open", {
@@ -1426,22 +1352,19 @@ pluginBtn.addEventListener("click", () => {
     void renderPluginBudget();
   });
 });
-document.getElementById("pluginDone").addEventListener("click", () => {
-  closePluginCategoryMenu();
-  void requestTool("close");
-});
-document.getElementById("pluginUnlimited").addEventListener(
-  "change", event => {
-    document.getElementById("pluginMaxMiB").disabled =
-      event.target.checked;
-  });
 document.getElementById("pluginApply").addEventListener("click", async () => {
-  const unlimited = document.getElementById("pluginUnlimited").checked;
-  const mib = Number(document.getElementById("pluginMaxMiB").value);
-  const bytes = unlimited ? null : mib * 1024 * 1024;
+  const input = document.getElementById("pluginMaxMiB");
+  const note = document.getElementById("pluginLimitNote");
+  const mib = Number(input.value);
+  if (!input.value.trim() || !Number.isInteger(mib) ||
+      mib < Number(input.min) || mib > Number(input.max)) {
+    note.textContent = localized("pluginLimitError") + ": " +
+      input.min + "–" + input.max + " MiB";
+    return;
+  }
+  const bytes = mib * 1024 * 1024;
   const result = await linkCore.request("ui", "slice-registry",
     "setLimit", { bytes }, { origin: "user" });
-  const note = document.getElementById("pluginLimitNote");
   note.textContent = result.ok ?
     localized("pluginLimitNote") :
     localized("pluginLimitError") + ": " + result.error;
@@ -1532,7 +1455,6 @@ void linkCore.request("ui", "session-recovery", "restore").then(
         await requestTool("restore", {
           state: stored.state, documentCount: workspace.documents.length
         });
-        selectPluginTab(stored.category ?? "performance");
         if (toolState.active) void renderPluginBudget();
       }
     } catch (error) {

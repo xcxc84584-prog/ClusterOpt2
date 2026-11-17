@@ -16,3 +16,6 @@ Permission.Grant → consent → HubUnit enforcement → OMU
 
 ## EHU policy
 Source: UI; target: HubUnit registry; failing read/registration is surfaced without granting privilege.
+
+## Patch 2 architecture
+Performance tab → inline max-text-size control → `main.js` validates integer 1–1024 → HubUnit Request (`slice-registry.setLimit`) → status. The legacy category controller and menu are deleted, not hidden. Existing null/unlimited configuration remains effective until a bounded value is explicitly applied. LanguageManager updates retained element IDs.
