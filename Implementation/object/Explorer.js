@@ -361,16 +361,26 @@ export class Explorer {
       this.failure("Select a different destination folder", 409);
     }
     await this.entryPolicy().ensureAbsent(folder.handle, source.name);
+    // Read the source before creating a destination. A cut is a
+    // two-phase operation: verified copy, then source retirement.
+    const original = await source.handle.getFile();
     const target = await folder.handle.getFileHandle(
       source.name, { create: true });
+    let committed = false;
     try {
       const writable = await target.createWritable();
       try {
-        await writable.write(await source.handle.getFile());
+        await writable.write(original);
         await writable.close();
       } catch (error) {
         await writable.abort?.();
         throw error;
+      }
+      const policy = this.entryPolicy();
+      if (!await policy.verifyCopy(original, await target.getFile()) ||
+          !await policy.verifyCopy(
+            original, await source.handle.getFile())) {
+        this.failure("Source or destination changed during paste", 409);
       }
       if (source.cut) {
         await source.parentHandle.removeEntry(source.name);
@@ -379,9 +389,20 @@ export class Explorer {
           this.locateCollection(source.sourceId)?.parentId);
         if (origin) await this.readChildren(origin);
       }
+      committed = true;
     } catch (error) {
+      // A failed copy must never delete the source. Best-effort cleanup
+      // removes an incomplete destination without concealing the error.
+      if (!committed) {
+        try {
+          await folder.handle.removeEntry(source.name);
+        } catch (cleanupError) {
+          this.core.omu.record("EHU", this.id, "Entry.PasteCleanup",
+            503, folder.id, { error: String(cleanupError) });
+        }
+      }
       this.core.omu.record("EHU", this.id, "Entry.Paste",
-        503, folder.id, { error: String(error) });
+        error.status ?? 503, folder.id, { error: String(error) });
       throw error;
     }
     await this.readChildren(folder);

@@ -192,7 +192,12 @@ function appendExplorerActions(row, node) {
   toolbar.setAttribute("role", "toolbar");
   toolbar.setAttribute("aria-label", localized("explorerActions"));
   const primary = [
-    ["open", "◇", "explorerOpenFile"],
+    // Directories already expand through the disclosure arrow.
+    // Reuse the original context slot for legacy "New File" without
+    // adding a redesigned toolbar or changing tested 4/6 button counts.
+    node.kind === "directory" ?
+      ["file", "◇", "explorerNewFile"] :
+      ["open", "◇", "explorerOpenFile"],
     ["rename", "✎", "explorerRename"],
     ["more", "⋯", "explorerMore"],
     ["close", "×", "explorerCloseEntry"]

@@ -33,3 +33,16 @@ Real disk benchmarks, Worker parallelism and full slice editor OPEN.
 - 23.5: eviction and duplicate requested preloads covered by new tests.
 - 24.3: synthetic 5 GiB byte seek test added; real disk I/O OPEN.
 - 24.1 / 24.5: require final HEAD CI and restore SHAs at BC.
+
+## Patch25 additional audit issues
+- 25.1 Explorer cut-paste copy verification and cleanup: test added.
+- 25.2 Old context toolbar new-file action missing: OPEN.
+- 25.3 Folder paste/rename returns 501: OPEN.
+- 25.4 Duplicate opened-handle identity under alternate handles:
+  REQUIRE browser test; Workspace.open already checks isSameEntry.
+- 25.5 Real Windows file permissions/locks: OPEN.
+- 25.6 Original styling parity: visual regression OPEN.
+PR8 remains NOT PASS.
+
+- 25.2: directory/root right-click new-file action implemented,
+  Playwright test added; pending final CI/browser PASS.
