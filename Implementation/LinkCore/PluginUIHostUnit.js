@@ -236,6 +236,10 @@ export class PluginUIHostUnit {
               }
               const enabled = checkbox.checked;
               if (name === "ps") {
+                if (enabled && !this.core.checkPluginPermission(
+                  provider.providerId, "shell.execute")) {
+                  throw Error("Shell capability not granted");
+                }
                 if (!view.shellApproval || !view.localAgent) {
                   throw Error("Shell adapter unavailable");
                 }
@@ -248,6 +252,10 @@ export class PluginUIHostUnit {
                 }
                 view.shellApproval.setEnabled(enabled);
               } else if (name === "mcp") {
+                if (enabled && !this.core.checkPluginPermission(
+                  provider.providerId, "mcp.read")) {
+                  throw Error("MCP capability not granted");
+                }
                 if (!view.mcpReadOnly || !view.localAgent) {
                   throw Error("MCP adapter unavailable");
                 }
