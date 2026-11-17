@@ -43,3 +43,6 @@ Real disk benchmarks, Worker parallelism and full slice editor OPEN.
 - 25.5 Real Windows file permissions/locks: OPEN.
 - 25.6 Original styling parity: visual regression OPEN.
 PR8 remains NOT PASS.
+
+- 25.2: directory/root right-click new-file action implemented,
+  Playwright test added; pending final CI/browser PASS.
