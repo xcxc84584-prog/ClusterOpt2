@@ -105,3 +105,21 @@ remain required before declaring PR13.8 accepted.
 A package can declare an optional `uiEntry` HTML page. Bundle validation
 requires the UI entry file to exist; it remains inert until approved
 sandbox iframe support exists. Host UI does not import its scripts.
+
+## PR13 Patch(+4) API and reload data flow
+```text
+Plugin API List (UI source "ui")
+  -> LinkCore.discover -> HubUnit.discoverCatalog
+  -> AuthorizedCatalogCollection -> URU / EDPMU
+  -> Request payload schema + Response value schema
+  -> LinkCore.listProviderContracts -> HubUnit
+  -> URU live Provider Manifest (not cached)
+
+Reviewed module (built into ClusterOpt2) <-> IndexedDB reviewed state
+  -> reviewed allowlist -> trusted bundled import -> Hub register
+User-authored full-folder bundle -> IndexedDB packages (inert)
+  -> awaiting sandbox, approval, per-call Hub ACL
+```
+
+Both flows preserve URU as the sole active Provider source.
+Restored state never constitutes an untrusted plugin grant.
