@@ -250,7 +250,7 @@ export function renderResources(doc, host, options) {
   search.setAttribute("aria-label", t("搜尋可下載插件",
     "Search downloadable plugins"));
   const template=el(doc,"article",
-    "pm-resource-card pm-market-card");
+    "pm-resource-card pm-template-card");
   template.append(el(doc,"strong","",
     t("插件製作範本","Plugin development template")));
   template.append(el(doc,"p","pm-muted",t(
