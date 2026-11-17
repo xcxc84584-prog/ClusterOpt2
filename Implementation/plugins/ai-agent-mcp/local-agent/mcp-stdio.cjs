@@ -10,7 +10,7 @@ const configPath=path.join(process.env.LOCALAPPDATA||
   'ClusterOpt2','AI-Agent-MCP','service-ports.json');
 let configuredPort=43881;
 try {
- const data=JSON.parse(fs.readFileSync(configPath,'utf8'));
+ const data=JSON.parse(fs.readFileSync(configPath,'utf8').replace(/^\uFEFF/,''));
  const port=Number(data.terminal);
  if(Number.isInteger(port)&&port>=1024&&port<=65535)configuredPort=port;
 } catch { /* No config yet: use canonical default. */ }
