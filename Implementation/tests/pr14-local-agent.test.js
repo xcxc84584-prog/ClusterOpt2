@@ -66,7 +66,7 @@ function harness(promptValue = token) {
           Program: "TestProvider", EHU: [], Log: []
         } });
       assert.equal(env.core.registerProvider(
-        target, manifest.provider).status, 200);
+        target, manifest.provider).status, 201);
       assert.equal(env.core.grantPluginPermission(
         target, manifest.provider.providerId,
         "network.request", true).status, 200);
