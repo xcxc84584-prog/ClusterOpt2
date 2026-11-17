@@ -1,13 +1,16 @@
 {
   "name": "clusteropt2-local-agent",
-  "version": "0.0.9-pr9.patch8",
+  "version": "0.0.9-pr9.patch9",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs"
   },
   "dependencies": {
-    "node-pty": "^1.0.0",
+    "node-pty": "1.1.0",
     "ws": "^8.18.0"
+  },
+  "allowScripts": {
+    "node-pty@1.1.0": true
   }
 }

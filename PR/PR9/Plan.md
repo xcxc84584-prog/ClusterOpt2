@@ -143,3 +143,17 @@ large file restore after delayed permissions and reload.
   no secret embedded in static JS or written to disk.
 - Tests: Windows PS5.1/7 AST, OCDA unit/Browser, xterm viewport
   geometry, native Windows real-life verification still open.
+
+## Patch(+9) — native node-pty build and probe repair
+User Node26 log shows PowerShell stripped quotes from the JavaScript
+passed via node -e and npm skipped unapproved node-pty lifecycle.
+Do not pass scripts through PowerShell arguments. Install and
+run a standalone .mjs probe after approval of node-pty@1.1.0 only.
+Use the current LinkCore SystemVersion in both package manifests.
+Performance budget: a single PowerShell ConPTY probe (<=8 seconds)
+and a bounded one-time native rebuild, then original port/agent flow.
+Security: no eval or shell interpolation of probe source, no extra
+secret handling, no all-scripts approval; keep OCDA isolation.
+Acceptance: Windows PS5/PS7 AST, Windows Node26 install/rebuild/
+actual ConPTY probe and OCDA Node/browser; user Windows pairing
+is an independent last gate.

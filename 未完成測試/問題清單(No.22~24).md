@@ -100,3 +100,12 @@ status; one-time random token and detached hidden Local Agent process;
 node-pty import prerequisite. Code/tests added; real Windows closing
 CMD, tabs, shell editing and session persistence remain OPEN until
 physical acceptance. Do not claim global PR9 PASS on automated CI.
+
+## PR9 Patch9 (2026-11-17): node-pty probe SyntaxError
+Patch8 CMD reaches dependency stage but PowerShell's node -e
+argument quoting strips JavaScript quotes. npm 12 also reports
+blocked node-pty@1.1.0 native lifecycle. New Patch9 standalone
+probe-native.mjs and narrowly approved npm allowScripts with
+native rebuild, Windows Node26 CI. Status: FIX DEVELOPED;
+real Windows installed agent/interactive shell still requires
+user acceptance. Patch9 expected to merge only after CI PASS.

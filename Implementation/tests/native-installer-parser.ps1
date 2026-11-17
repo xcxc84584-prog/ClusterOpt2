@@ -37,6 +37,10 @@ $rules = @{
     TokenToChildProcess = $content.Contains('CLUSTEROPT_PAIRING_TOKEN')
     TokenNotLogged = -not $content.Contains('RedirectStandardOutput')
     CopyBeforeExit = $content.Contains('Copy the port and token')
+    UsesModuleProbe = $content.Contains('$NodePath $probeFile')
+    RebuildsNativePty = $content.Contains('rebuild node-pty')
+    NoInlineEval = -not $content.Contains('$NodePath -e $probe')
+    ProbeDownloaded = $content.Contains("'probe-native.mjs'")
     SuccessExits = $content.Contains('exit 0')
     UsesCurrentRepository = $content.Contains('ClusterOpt2/main/Implementation')
 }

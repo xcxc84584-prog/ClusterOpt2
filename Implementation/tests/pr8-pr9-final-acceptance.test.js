@@ -108,3 +108,21 @@ test("PR9 Patch8: detached agent keeps token off disk and closes CMD", () => {
   assert.ok(style.includes(".psm-native-wrap"));
   assert.ok(style.includes("flex: 1 1 0"));
 });
+
+test("PR9 Patch9: quoted JavaScript probe replaced by standalone module", () => {
+  const agentManifest = JSON.parse(readFileSync(fileURLToPath(
+    new URL("../local-agent/package.json", import.meta.url)), "utf8"));
+  const probe = readFileSync(fileURLToPath(
+    new URL("../local-agent/probe-native.mjs", import.meta.url)), "utf8");
+
+  assert.equal(agentManifest.version, version);
+  assert.equal(agentManifest.dependencies["node-pty"], "1.1.0");
+  assert.equal(agentManifest.allowScripts["node-pty@1.1.0"], true);
+  assert.ok(nativeInstaller.includes("probe-native.mjs"));
+  assert.ok(nativeInstaller.includes("$NodePath $probeFile"));
+  assert.ok(nativeInstaller.includes("rebuild node-pty"));
+  assert.equal(nativeInstaller.includes("$NodePath -e $probe"), false);
+  assert.ok(probe.includes('import * as nodePtyModule from "node-pty"'));
+  assert.ok(probe.includes('pty.spawn('));
+  assert.ok(probe.includes('"powershell.exe"'));
+});

@@ -177,3 +177,18 @@ status instead of claiming a healthy terminal.
 Parallelism: the browser's different terminal sessions run
 independently via distinct WebSocket/ConPTY objects. Layout observers
 coalesce into animation-frame callbacks and do not read document bytes.
+
+## Patch(+9) native probe dependency chain / EHU
+Native installer user action (outside browser HubUnit)
+ -> Validate SystemVersion against downloaded package.json
+ -> npm install {allowScripts: node-pty@1.1.0 only}
+ -> npm rebuild node-pty (recovery from previously blocked script)
+ -> node probe-native.mjs
+ -> import node-pty and spawn Windows ConPTY powershell.exe
+ -> check exit status and timeout
+ -> P/C/O port selection -> detached agent.
+Failures in native dependency chain cause a nonzero installer exit
+and never report an authenticated browser connection. Browser-side
+PowerShellClient/HubUnit EventChain, OMU/EHU and VTE tests are
+unchanged. The test runs a short, noninteractive native shell,
+never a user-provided command or script.
