@@ -230,3 +230,22 @@ rendering now records EHU at the trusted LinkCore boundary; the pure
 CatalogDocumentation Property remains side-effect-free.
 Complexity: O(1) per failure log, existing 2000-event bounded OMU history.
 Tests: detached real LinkCore VTE, Node and Chromium; exact-head CI gate.
+
+## PR02.10 — Public read-only Cluster.api acceptance
+Upstream design review: VS Code Extension API process and its published
+capabilities separate a stable surface from internal hosts; Monaco's
+public monaco.d.ts is explicitly separated from unstable implementation.
+References:
+- https://github.com/Microsoft/vscode/wiki/Extension-API-process
+- https://code.visualstudio.com/api/extension-capabilities/overview
+- https://github.com/microsoft/monaco-editor
+
+Improvement: keep browser API deliberately smaller than trusted LinkCore.
+ClusterAPIFacade exposes only list/describe/query/docs, delegates through
+LinkCore.discover / HubUnit.discoverCatalog, and fixes source=ui,
+origin=user at the trusted binding. Never accept caller-supplied identity,
+internal Hub handles, raw Property values, execute/mutate operations or
+plugin registration. The existing frozen Cluster facade is extended
+without changing legacy methods. A call before UI registration fails 404.
+Tests include Node VTE/negative checks and real Chromium, plus exact-head
+CI and rollback checkpoint. Runtime version stays 0.0.9-pr9.patch9.
