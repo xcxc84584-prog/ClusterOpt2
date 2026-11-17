@@ -164,6 +164,27 @@ export class PluginLocalAgentObject {
         approved: reply.ok &&
           reply.value?.approved === true
       };
+    } else if (message.name === "cluster.open_powershell" &&
+        this.shellApprovalId && this.explorerId) {
+      const rootReply = await this.core.request(this.id,
+        this.explorerId, "status", {});
+      if (!rootReply.ok ||
+          rootReply.value?.permissions?.ps !== true ||
+          !rootReply.value?.selected) {
+        result = { error: "PowerShell permission not granted" };
+      } else {
+        const button = this.doc.getElementById(
+          "explorerPowerShell");
+        if (!button) {
+          result = { error: "PowerShell UI not available" };
+        } else {
+          button.click();
+          result = {
+            requested: true, ready: false,
+            message: "PowerShell tab opening; verify its local session"
+          };
+        }
+      }
     } else if (this.mcpReadId && this.explorerId &&
         message.name === "cluster.list_roots") {
       const reply = await this.core.request(this.id,
