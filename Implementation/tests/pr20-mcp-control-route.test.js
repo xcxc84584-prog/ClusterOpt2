@@ -34,7 +34,7 @@ test("PR20 MCP file CRUD routes through Hub and selected root", async () => {
   });
   assert.equal(calls.at(-1).action, "create");
   assert.equal(calls.at(-1).payload.path, "src/hello.txt");
-  assert.equal(sent.at(-1).result.action, "create");
+  assert.equal(sent.at(-1).result.created, true);
 
   await agent.dispatchShellTool({
     requestId: "r2", name: "cluster.read_path",
