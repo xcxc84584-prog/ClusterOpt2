@@ -192,7 +192,7 @@ export function mountPluginManagerUI(core,doc) {
     grid.append(info,permissionCard(p),apiCard(p),logCard(p));
     page.append(grid);
   }
-  function sidebar() {
+  function renderSidebar() {
     search.placeholder=t("搜尋插件...","Search plugin...");
     items.replaceChildren();filter.replaceChildren();
     const choices=[["all",t("全部","All")],
@@ -266,7 +266,7 @@ export function mountPluginManagerUI(core,doc) {
     const all=providers();
     if(selected&&!all.some(x=>x.providerId===selected))selected="";
     if(!selected&&all.length)selected=all[0].providerId;
-    sidebar();
+    renderSidebar();
     const p=current();
     hero(p);
     nav.replaceChildren();
@@ -305,10 +305,10 @@ export function mountPluginManagerUI(core,doc) {
   search.addEventListener("input",()=>{
     query=search.value;
     const caret=search.selectionStart;
-    sidebar();
+    renderSidebar();
     search.focus();search.setSelectionRange(caret,caret);
   });
-  filter.addEventListener("change",()=>{mode=filter.value;sidebar();});
+  filter.addEventListener("change",()=>{mode=filter.value;renderSidebar();});
   tool.addEventListener("click",()=>activate(active==="performance"?
     "overview":"performance"));
   activate("overview");
