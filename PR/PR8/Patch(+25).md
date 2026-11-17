@@ -59,3 +59,13 @@ Partial destination cleanup failure creates EHU Entry.PasteCleanup.
   larger-than-1GiB real file cut/paste verification.
 - All-file authoritative PieceTree/B+ slicing and true Worker CPU
   parallelism remain prior PR8 open gates.
+
+## Patch25 Fix1: context access without toolbar redesign
+- On directory rows, the existing primary context 'open' slot
+  becomes the legacy 'new file' operation.
+- Directory expansion remains available via the disclosure arrow.
+- File rows keep 'open'; the primary/secondary 4/6-button geometry,
+  glyph position, palette and language properties remain unchanged.
+- Added Playwright OPFS test: right-click a real directory, create
+  a named zero-byte file and verify the filesystem entry exists.
+- The legacy action is restored for directory/root contexts.
