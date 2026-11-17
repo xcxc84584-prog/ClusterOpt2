@@ -44,3 +44,15 @@ Automated exact-head checks passed on SHA `6a2ee4078c5c72cf9b1ef0cdbe94ef3063b31
 The Descriptor v1 and read-only shared Property can run in an actual
 Chromium-loaded ClusterOpt2 page and a Node 22 environment.
 Pending Catalog discovery/permissions are separate subsequent sub-PRs.
+
+## PR02.02 — Upstream comparison and executable improvement
+Review [VS Code extension-service descriptions](https://github.com/microsoft/vscode/blob/main/src/vs/workbench/services/extensions/common/extensions.ts), [AsyncAPI operations](https://github.com/asyncapi/spec/blob/master/spec/asyncapi.md) and [Theia plugin host](https://github.com/eclipse-theia/theia/tree/master/packages/plugin-ext).
+Separate self-description from execution: Object.ocda.APIDescriptors adds metadata
+but existing Object.ocda.Request remains the authoritative list of callable
+actions; authorization.visibility must agree with declared visibility.
+Never synthesize a new privilege from metadata. The internal URU API
+`describeAPI` exposes validated immutable descriptors for the later Catalog,
+but **must not** be directly exposed as an unauthenticated user-facing method.
+Object registration and removal immediately affect the internal index.
+Node unit tests and real Chromium tests validate this without changing
+the legacy Editor/Save route.

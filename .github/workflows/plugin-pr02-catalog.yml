@@ -3,9 +3,13 @@ on:
   pull_request:
     paths:
       - "Implementation/LinkCore/LinkCore.js"
+      - "Implementation/LinkCore/ObjectContract.js"
+      - "Implementation/LinkCore/UnifiedRegistrationUnit.js"
       - "Implementation/property/APIDescriptorPolicy.js"
       - "Implementation/tests/api-descriptor.test.js"
+      - "Implementation/tests/object-api-descriptors.test.js"
       - "Implementation/e2e/plugin-pr02-descriptor.spec.js"
+      - "Implementation/e2e/plugin-pr02-object-api.spec.js"
       - "PR/PR10/PLUGIN PR/**"
       - ".github/workflows/plugin-pr02-catalog.yml"
   workflow_dispatch:
@@ -20,7 +24,9 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --no-audit --no-fund
-      - run: node --test Implementation/tests/api-descriptor.test.js
+      - run: >
+          node --test Implementation/tests/api-descriptor.test.js
+          Implementation/tests/object-api-descriptors.test.js
       - run: npm run check
   browser:
     runs-on: ubuntu-24.04
@@ -34,4 +40,5 @@ jobs:
       - run: >
           npx playwright test
           Implementation/e2e/plugin-pr02-descriptor.spec.js
+          Implementation/e2e/plugin-pr02-object-api.spec.js
           --config Implementation/e2e/playwright.config.js

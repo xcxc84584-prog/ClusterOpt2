@@ -8,7 +8,7 @@
 | Small PR | Scope | Status |
 | --- | --- | --- |
 | PR02.01 | API Descriptor Schema v1 & real LinkCore property | PASS (exact-head dedicated CI + OCDA + Chromium + Windows) |
-| PR02.02 | Object Contract descriptor declaration | TODO |
+| PR02.02 | Object Contract descriptor declaration | implemented / exact-head CI pending |
 | PR02.03 | Property Descriptor Schema | TODO |
 | PR02.04 | URU/EDPMU Catalog collection | TODO |
 | PR02.05 | read-only list/describe/query, pagination | TODO |

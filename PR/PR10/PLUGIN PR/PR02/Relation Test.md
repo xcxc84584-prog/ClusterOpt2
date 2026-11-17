@@ -25,3 +25,12 @@ Exact-head commit `6a2ee4078c5c72cf9b1ef0cdbe94ef3063b31376`:
 
 **PR02.01 result: PASS for executable API Descriptor Schema v1 scope.**
 PR02.02–PR02.10 remain TODO. Entire PR02 remains **not merged**.
+
+## PR02.02 — executable contract tests
+- Node: actual LinkCore/URU registration, bounded descriptor snapshot,
+  UserAPI request 200, unregister cleanup 404.
+- Node: wrong owner/action/visibility and duplicate metadata return
+  registration false with EHU 400.
+- Chromium: register dynamic Object, describe validated immutable
+  metadata via internal URU, actual Request 200, unregister 404.
+- Check exact-head CI for both tests before declaring PASS.

@@ -43,3 +43,18 @@ The descriptor result is deeply frozen and detached from caller input,
 so future service registries can read stable metadata. The Property
 registration remains in one LinkCore location; it neither permits
 cross-Object calls nor changes any existing REQ/REP route.
+
+## PR02.02 — URU internal descriptor projection
+```mermaid
+flowchart LR
+ Object[Object.ocda.APIDescriptors] --> Contract[ObjectContract validation]
+ Contract --> Policy[APIDescriptorPolicy v1]
+ Contract --> URU[URU registered Object]
+ URU --> Describe[URU.describeAPI internal]
+ Describe --> Future[Future HubCatalog - PR02.04]
+ URU --> Hub[Existing HubUnit Request dispatch]
+```
+Contract validation occurs at actual URU registration, not a mock Catalog.
+Malformed/duplicate/deceptive descriptors are rejected with registration
+EHU 400. This subPR adds no browser-facing unrestricted API; the external
+Catalog in PR02.05/06 will filter source visibility and authority.
