@@ -75,6 +75,7 @@ export async function restoreReviewedPlugins(core) {
   const saved = await core.listReviewedPlugins();
   if (!saved.ok) return saved;
   let restored = 0;
+  let enabledRestored = 0;
   for (const entry of saved.value) {
     if (!PLUGINS.some(plugin=>plugin.id===entry.providerId)) continue;
     try {
@@ -85,13 +86,16 @@ export async function restoreReviewedPlugins(core) {
       if (!manifest) continue;
       const enabled = core.setProviderEnabled(
         manifest.objectId,entry.providerId,entry.enabled);
-      if (enabled.ok) restored++;
+      if (enabled.ok) {
+        restored++;
+        if (entry.enabled) enabledRestored++;
+      }
     } catch {
       core.omu.record("EHU","ui","Plugin.ReviewedRestore",500,
         entry.providerId);
     }
   }
-  return {ok:true,status:200,value:{restored}};
+  return {ok:true,status:200,value:{restored,enabledRestored}};
 }
 
 export function renderResources(doc, host, options) {
