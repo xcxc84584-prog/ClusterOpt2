@@ -59,7 +59,12 @@ function harness(promptValue = token) {
     env, agent, get socket() { return socket; },
     grant() {
       const target = manifest.provider.objectId;
-      env.core.register({ id: target, receive: async () => null });
+      env.core.register({ id: target, receive: async () => null,
+        ocda: {
+          Request: ["getStatus", "describe"], Response: [],
+          UserAPI: [], AgentAPI: [], Property: [],
+          Program: "TestProvider", EHU: [], Log: []
+        } });
       assert.equal(env.core.registerProvider(
         target, manifest.provider).status, 200);
       assert.equal(env.core.grantPluginPermission(
