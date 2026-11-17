@@ -276,53 +276,71 @@ export function mountPluginManagerUI(core,doc,options={}) {
       "pm-muted",t("沒有符合的插件","No matching plugins")));
   }
 
-  /** Read-only discovery of the live HubUnit-connected registries. */
+  /**
+   * HubUnit is the authorized read boundary for OCDA API and Property
+   * descriptors. Provider service contracts are projected from live URU.
+   * No cached registration, forged schema or independent registry.
+   */
   function apiEntries() {
-    const result=core.catalog.collect();
-    if(!result.ok)return [];
     const entries=new Map();
     const add=(kind,id,owner,descriptor,providerId="")=>{
-      const key=kind+"|"+owner+"|"+id;
+      const key=kind+"|"+owner+"|"+id+"|"+
+        (descriptor.action??"");
       entries.set(key,{key,kind,id,owner,descriptor,providerId});
     };
-    for(const item of result.value.apis) {
-      const d=item.descriptor;
-      if(d.visibility!=="Private")
-        add("Request",d.id,item.owner,d);
+    const collect=(kind)=>{
+      let offset=0;
+      const collected=[];
+      while(offset<4096) {
+        const result=core.discover("ui","list",kind,{},{
+          origin:"user",offset,limit:100
+        });
+        if(!result.ok)return collected;
+        collected.push(...result.value.items);
+        if(result.value.nextOffset===null)break;
+        offset=result.value.nextOffset;
+      }
+      return collected;
+    };
+    for(const item of collect("api")) {
+      const descriptor=item.descriptor;
+      add("Request",descriptor.id,item.owner,descriptor);
     }
-    for(const item of result.value.properties) {
-      const d=item.descriptor;
-      if(d.visibility!=="Private")
-        add("Property",item.name,d.owners.join(", "),d);
+    for(const item of collect("property")) {
+      const descriptor=item.descriptor;
+      add("Property",item.name,descriptor.owners.join(", "),descriptor);
     }
-    // Provider Manifests appear immediately after authorized registration.
     for(const provider of providers()) {
       if(disabled(provider))continue;
-      for(const item of provider.provides??[]) {
-        add("Provider",item.service,provider.objectId,{
-          apiVersion:1,id:item.service,owner:provider.objectId,
-          action:item.action,version:item.version,visibility:"Public",
-          inputSchema:item.inputSchema,outputSchema:item.outputSchema
+      for(const service of provider.provides??[]) {
+        add("Provider",service.service,provider.objectId,{
+          id:service.service,owner:provider.objectId,
+          action:service.action,version:service.version,
+          visibility:"Public",inputSchema:service.inputSchema,
+          outputSchema:service.outputSchema,
+          permissions:provider.permissions??[]
         },provider.providerId);
       }
     }
-    // Legacy properties have metadata but no schema. Never invent one.
-    for(const item of core.edpmu.list()) {
-      if(item.visibility==="Private")continue;
-      const key="Property|"+item.owners.join(", ")+"|"+item.name;
-      if(!entries.has(key)) {
-        add("Property",item.name,item.owners.join(", "),{
-          name:item.name,owners:item.owners,visibility:item.visibility,
-          note:"No registered schema descriptor"
-        });
-      }
-    }
     return [...entries.values()].sort((a,b)=>
-      a.kind.localeCompare(b.kind)||a.id.localeCompare(b.id));
+      a.kind.localeCompare(b.kind)||a.id.localeCompare(b.id)||
+      a.owner.localeCompare(b.owner));
   }
+
+  function schemaSummary(schema) {
+    if(!schema)return t("未宣告","Not declared");
+    if(schema.type!=="object"||!schema.properties)
+      return schema.type??t("未宣告","Not declared");
+    const required=new Set(schema.required??[]);
+    const fields=Object.entries(schema.properties).map(([name,value])=>
+      name+(required.has(name)?"*":"")+":"+
+      (value.type??"?"));
+    return fields.length?fields.join(", "):"{}";
+  }
+
   function renderAPIs() {
     const entries=apiEntries();
-    const section=card(t("HubUnit API 契約","HubUnit API Contracts"));
+    const section=card(t("HubUnit API 列表","HubUnit API List"));
     const body=dom(doc,"div","pm-api-browser");
     section.append(body);
     if(selectedAPI) {
@@ -340,35 +358,77 @@ export function mountPluginManagerUI(core,doc,options={}) {
     input.type="search";
     input.id="pluginApiSearch";
     input.value=apiQuery;
-    input.placeholder=t("搜尋 API、Owner、Action、版本...",
-      "Search API, owner, action, version...");
+    input.placeholder=t("搜尋 API／Owner／Request／Response...",
+      "Search API / owner / request / response...");
     input.setAttribute("aria-label",t("搜尋 API 契約",
       "Search API contracts"));
-    const list=dom(doc,"div","pm-api-list");
-    body.append(input,list);
+    const container=dom(doc,"div","pm-api-table-wrap");
+    const table=dom(doc,"table","pm-api-table");
+    const head=dom(doc,"thead");
+    const headings=dom(doc,"tr");
+    for(const title of [
+      t("種類","Kind"),"API / Action",t("所屬物件","Owner"),
+      t("Request 輸入","Request input"),
+      t("Response 輸出","Response output"),
+      t("權限","Permission")
+    ]) {
+      headings.append(dom(doc,"th","",title));
+    }
+    head.append(headings);
+    const rows=dom(doc,"tbody");
+    table.append(head,rows);
+    container.append(table);
+    body.append(input,container);
+
     function update() {
       apiQuery=input.value;
-      const terms=apiQuery.toLowerCase().trim().split(/\s+/)
+      const terms=apiQuery.toLowerCase().trim().split(/\\s+/)
         .filter(Boolean);
-      list.replaceChildren();
-      const matching=entries.filter(x=>{
-        const text=[x.kind,x.id,x.owner,x.providerId,
-          x.descriptor.action,x.descriptor.version,
-          x.descriptor.visibility,x.descriptor.description]
-          .filter(Boolean).join(" ").toLowerCase();
-        return terms.every(term=>text.includes(term));
+      rows.replaceChildren();
+      const matching=entries.filter(entry=>{
+        const descriptor=entry.descriptor;
+        const searchText=[
+          entry.kind,entry.id,entry.owner,entry.providerId,
+          descriptor.action,descriptor.version,
+          descriptor.visibility,descriptor.description,
+          schemaSummary(descriptor.inputSchema),
+          schemaSummary(descriptor.outputSchema),
+          ...(descriptor.permissions??[])
+        ].filter(Boolean).join(" ").toLowerCase();
+        return terms.every(term=>searchText.includes(term));
       });
       for(const entry of matching) {
-        const label=entry.kind+" · "+entry.id+" · "+entry.owner+
-          (entry.descriptor.version?
-            " · v"+entry.descriptor.version:"");
-        const button=btn(doc,label,()=>{
-          selectedAPI=entry.key;render();
-        },"pm-api-entry");
-        list.append(button);
+        const descriptor=entry.descriptor;
+        const row=dom(doc,"tr","pm-api-table-row");
+        const values=[
+          entry.kind,entry.id+(descriptor.action?
+            " / "+descriptor.action:""),entry.owner,
+          schemaSummary(descriptor.inputSchema),
+          schemaSummary(descriptor.outputSchema),
+          (descriptor.permissions??[]).join(", ")||
+            descriptor.visibility||t("未宣告","Not declared")
+        ];
+        values.forEach((value,index)=>{
+          const cell=dom(doc,"td",index===3||index===4?
+            "pm-api-schema-cell":"",value);
+          if(index===1) {
+            const link=btn(doc,value,()=>{
+              selectedAPI=entry.key;render();
+            },"pm-api-row-link");
+            cell.replaceChildren(link);
+          }
+          row.append(cell);
+        });
+        rows.append(row);
       }
-      if(!matching.length)list.append(dom(doc,"p","pm-muted",
-        t("沒有符合的 API 契約","No matching API contracts")));
+      if(!matching.length) {
+        const empty=dom(doc,"tr");
+        const cell=dom(doc,"td","pm-muted",
+          t("沒有符合的 API 契約","No matching API contracts"));
+        cell.colSpan=6;
+        empty.append(cell);
+        rows.append(empty);
+      }
     }
     input.addEventListener("input",update);
     update();
