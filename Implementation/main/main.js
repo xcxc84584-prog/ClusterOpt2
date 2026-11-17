@@ -1,6 +1,7 @@
 import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
 import { mountPaletteUI } from "./palette-ui.js";
+import { mountPluginManagerUI } from "./plugin-manager-ui.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
@@ -40,6 +41,7 @@ workspace.onSaveProgress = doc => {
 };
 new ToolTabManager(linkCore);
 const pluginWindow = document.getElementById("pluginWindow");
+const pluginManager = mountPluginManagerUI(linkCore, document);
 let toolState = { open: false, active: false, position: 0 };
 let pluginCategory = "performance";
 let observedWorkspaceActiveId = null;
@@ -518,6 +520,7 @@ function render() {
   }
   legacyPSMUI?.syncTabs();
   pluginWindow.hidden = !toolActive;
+  if (toolActive) pluginManager.refresh();
   if (!toolActive) {
     // LanguageManager invokes render() before Plugin controls bind.
     // Access the actual DOM here to avoid a TDZ on initial startup.
@@ -1419,6 +1422,7 @@ pluginBtn.addEventListener("click", () => {
     index: workspace.documents.length,
     documentCount: workspace.documents.length
   }).then(() => {
+    pluginManager.refresh();
     void renderPluginBudget();
   });
 });

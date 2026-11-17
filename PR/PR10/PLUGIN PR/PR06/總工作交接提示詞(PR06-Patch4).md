@@ -1,0 +1,3 @@
+# ClusterOpt2 PR10 / PLUGIN PR06 Patch4 Handoff
+
+Base main bf622427d92a564478e593006b70894a56ec6f33; major PR #47 Draft; branch plugin/pr06-security-runtime. Patch3 SHA aeec8013ef89b61dff8a56cde60c556bb54be8be had exact-head 5/5 PASS and restore backup/plugin-pr06-sub07-09-10-verified-aeec801. Patch4 implements four separate Plugin Manager pages in existing tool tab, preserves legacy Plugin Tool, reads live URU/OMU, denies UI self-grants. Before next patch read Plan, ArcD, Relation Test, global properties and outstanding problems. Verify exact-head 5 workflows and restore before PASS; implement explicit secure consent approval ceremony (PR06.08) and true isolated-origin untrusted extension sandbox before PR06 major merge. Product version 0.0.11 draft.

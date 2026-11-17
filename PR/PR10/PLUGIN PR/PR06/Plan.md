@@ -20,3 +20,6 @@ Permission checks O(1); message validation O(bytes) bounded to 64 KiB, depth 8 a
 
 ## Patch3 Provenance and adversarial testing
 Use a bounded 1MiB Uint8Array snapshot and SHA-256 verified against a trusted pre-pinned expected digest. This detects modification but is not signer authenticity; no execution on success. Probe invalid digest, mutable bytes, crafted message prototypes, forged RPC results, and timeouts. Check EHU is status-only without payload secrets. User consent UI and strong origin separation remain future gate.
+
+## Patch4 — Four-page Plugin Manager
+The user-approved sketch is implemented as four separate views: Plugin List, Plugin Permission, API List, EHU Log. Existing slice budget/highlighter/processor/committer control remains reachable through Plugin Tool. URU provides only live registration data; OMU provides EHU; permissions are read-only plus already-authorized revocation, never synthetic grants. PR06.08 approval ceremony remains separate and NOT complete. Responsive layout and Playwright real browser verification required.

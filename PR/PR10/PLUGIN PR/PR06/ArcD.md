@@ -11,3 +11,6 @@ No arbitrary source URL or remote code enters this chain. Timeouts terminate Wor
 
 ## Patch3 Integrity gate
 Trusted expected SHA-256 + detached file bytes → PluginArtifactPolicy.verify → 200 hash metadata or 400/412/503. No Provider activation, worker import, network access, or side effects. Worker failure → TrustedPluginWorkerUnit → OMU.EHU (status/operation only), terminate and release active quota.
+
+## Patch4 — Four-page Plugin Manager
+The user-approved sketch is implemented as four separate views: Plugin List, Plugin Permission, API List, EHU Log. Existing slice budget/highlighter/processor/committer control remains reachable through Plugin Tool. URU provides only live registration data; OMU provides EHU; permissions are read-only plus already-authorized revocation, never synthetic grants. PR06.08 approval ceremony remains separate and NOT complete. Responsive layout and Playwright real browser verification required.

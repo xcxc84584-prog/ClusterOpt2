@@ -115,7 +115,9 @@
                 <h2 id="pluginDialogTitle">插件管理</h2>
                 <p id="pluginDialogIntro">管理編輯器擴充功能與效能設定。</p>
               </div>
-              <div class="plugin-category-control">
+              <button id="pluginToolToggle" type="button"
+                aria-pressed="false">Plugin Tool</button>
+              <div class="plugin-category-control" id="pluginLegacyMenu" hidden>
                 <button id="pluginCategoryBtn" type="button"
                   aria-haspopup="menu" aria-expanded="false"
                   aria-controls="pluginCategoryMenu">
@@ -148,7 +150,8 @@
               </div>
             </div>
             <div class="plugin-workbench-body">
-        <div class="plugin-dialog-content">
+              <div id="pluginManagerPages"></div>
+        <div class="plugin-dialog-content" id="pluginLegacySettings" hidden>
           <section id="pluginPerformanceOptions" data-plugin-panel="performance">
             <div class="plugin-panel-heading">
               <div>

@@ -7,3 +7,6 @@ Node mock transport verifies owner checking, builtin allowlist, message shape, t
 
 ## Patch3 Relation Test
 Node: plugin-pr06-adversarial.test.js checks digest mismatch, mutable input, oversized/revoked source, malformed Worker return and no leakage. Chromium: plugin-pr06-security.spec.js validates WebCrypto SHA-256 and denies remote plugins. Existing 5 CI workflows still required before acceptance; no manual 5GiB/third-party sandbox claims.
+
+## Patch4 — Four-page Plugin Manager
+The user-approved sketch is implemented as four separate views: Plugin List, Plugin Permission, API List, EHU Log. Existing slice budget/highlighter/processor/committer control remains reachable through Plugin Tool. URU provides only live registration data; OMU provides EHU; permissions are read-only plus already-authorized revocation, never synthetic grants. PR06.08 approval ceremony remains separate and NOT complete. Responsive layout and Playwright real browser verification required.
