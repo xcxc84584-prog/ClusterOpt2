@@ -187,3 +187,52 @@ test("PR14.5 missing model grant cannot start tasks", async ({ page }) => {
   });
   expect(result.status).toBe(403);
 });
+
+test("PR14.5 full authenticated model result reaches isolated UI",
+  async ({ page }) => {
+    await page.goto("/");
+    expect((await mountWithMockAgent(page)).status).toBe(201);
+    await page.locator(".plugin-extension-button").click();
+    const frame = page.frameLocator(".plugin-extension-frame");
+    await frame.locator('[data-agent-action="pair"]').click();
+    await page.locator("dialog[open] input[type=password]")
+      .fill(token);
+    await page.locator("dialog[open] button[type=submit]").click();
+    await expect(frame.locator("[data-agent-status]"))
+      .toHaveText("已連線");
+    await frame.locator("textarea").fill("Explain one function");
+    await frame.locator('form button[type="submit"]').click();
+    await expect.poll(() => page.evaluate(() =>
+      window.__modelSent.find(item => item.type === "task")
+        ?.requestId ?? null)).not.toBeNull();
+    // The poll above proves a task WebSocket send, not a named field
+    // inside a diagnostic object. Retrieve its actual correlation ID.
+    const id = await page.evaluate(() =>
+      window.__modelSent.find(item => item.type === "task").requestId);
+    expect(id).toMatch(/^[0-9a-f-]{36}$/i);
+    await page.evaluate(taskId => {
+      const socket = window.__modelSocket;
+      socket.onmessage({
+        data: JSON.stringify({
+          type: "task_result", requestId: taskId,
+          text: "A function maps inputs to outputs."
+        })
+      });
+      socket.onmessage({
+        data: JSON.stringify({
+          type: "task_status", requestId: taskId,
+          status: "completed", message: "Completed"
+        })
+      });
+    }, id);
+    await expect(frame.locator("[data-model-output]"))
+      .toContainText("A function maps inputs to outputs.");
+    await expect.poll(() => page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      return linkCore.pluginHostInstaller.uiHost.views.get(
+        "cluster.ai-agent-mcp").modelTask.snapshot().activeId;
+    })).toBe(null);
+    await expect(frame.locator('[data-model-action="cancel"]'))
+      .toBeDisabled();
+  });
