@@ -112,3 +112,29 @@ test("PR13 HubUnit catalog returns only declared Request/Response schema", () =>
     "boolean");
   assert.equal(env.core.discover("unknown","list","api").status,404);
 });
+
+test("PR13 HubUnit lists only exposed legacy UserAPI actions", () => {
+  const env = new VirtualTestEnvironment();
+  env.core.register({
+    id: "API.Legacy", receive: async () => null,
+    authorization: { default: "Public" },
+    ocda: {
+      Request: ["echo", "secret"], Response: [],
+      UserAPI: ["echo"], AgentAPI: [],
+      Property: [], Program: "Test", EHU: [], Log: []
+    }
+  });
+  const listed = env.core.listActionContracts("VTE");
+  assert.equal(listed.status, 200);
+  const action = listed.value.items.find(item =>
+    item.owner === "API.Legacy" && item.action === "echo");
+  assert.equal(action.described, false);
+  assert.equal(action.inputSchema, null);
+  assert.equal(action.outputSchema, null);
+  assert.equal(listed.value.items.some(item =>
+    item.action === "secret"), false);
+  assert.equal(env.core.listActionContracts("unknown").status, 404);
+  assert.equal(env.core.listActionContracts("VTE", {
+    limit: 0
+  }).status, 400);
+});
