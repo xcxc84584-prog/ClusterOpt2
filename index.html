@@ -237,11 +237,22 @@
       <span id="statusLamp" class="lamp green"></span>
       <span id="status" aria-live="polite">就緒</span>
       <span class="grow"></span>
-      <span id="position">Ln 1, Col 1</span>
+      <button id="goToLineBtn" type="button" title="Go to Line" aria-haspopup="dialog">Ln ↗</button>
+       <span id="position">Ln 1, Col 1</span>
       <span>UTF-8</span>
       <span id="fileType">純文字</span>
     </footer>
   </div>
+    <dialog id="goToLineDialog" class="file-tool-dialog"
+      aria-labelledby="goToLineTitle">
+      <form id="goToLineForm" method="dialog" class="file-tool-dialog-body">
+        <label id="goToLineTitle" for="goToLineInput">跳轉行</label>
+        <input id="goToLineInput" type="number" min="1" step="1"
+          required autocomplete="off">
+        <p id="goToLineError" role="status" aria-live="polite"></p>
+        <button id="goToLineSubmit" type="submit">跳轉</button>
+      </form>
+    </dialog>
     <dialog id="blockedTypesDialog" class="file-tool-dialog"
       aria-labelledby="blockedTypesTitle">
       <div class="file-tool-dialog-head">
