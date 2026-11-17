@@ -7,6 +7,7 @@ import { ProviderManifestPolicy } from "./ProviderManifestPolicy.js";
 const MAX_BYTES = 65536;
 const MAX_LABEL = 128;
 const ENTRY = /^[A-Za-z0-9_./-]+\.m?js$/;
+const UI_ENTRY = /^[A-Za-z0-9_./-]+\.html?$/;
 const FIELDS = new Set([
   "packageVersion", "name", "entry", "uiEntry",
   "provider", "description"
