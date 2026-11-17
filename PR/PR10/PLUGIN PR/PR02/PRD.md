@@ -58,3 +58,7 @@ Automatic bounded JSON and Markdown documentation generated through
 source-filtered HubUnit discovery, never from raw registries. Returns
 immutable in-memory text; no public browser facade or file write.
 Status IMPLEMENTED / exact-head CI PENDING.
+
+CI corrective maintenance: PR02.06/07 AgentAPI regression test now
+passes origin through options (fifth argument) rather than unrecognized
+query selector. Latest exact-head CI remains pending.
