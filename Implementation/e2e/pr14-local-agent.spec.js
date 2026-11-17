@@ -153,8 +153,8 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
       .locator('[data-agent-action="pair"]').click();
     await page.locator("dialog[open] input").fill(token);
     await page.locator("dialog[open] button[type=submit]").click();
-    await page.frameLocator(".plugin-extension-frame")
-      .locator('[data-agent-status]').waitFor();
+    await expect(page.frameLocator(".plugin-extension-frame")
+      .locator('[data-agent-status]')).toHaveText("已連線");
     await toolbox.locator('[data-right="ps"]').check();
     await expect.poll(() => page.evaluate(() =>
       window.__agentSent.some(item =>
@@ -201,8 +201,8 @@ test("PR14.8 explicit MCP read-only tool bridge returns metadata",
       .locator('[data-agent-action="pair"]').click();
     await page.locator("dialog[open] input").fill(token);
     await page.locator("dialog[open] button[type=submit]").click();
-    await page.frameLocator(".plugin-extension-frame")
-      .locator('[data-agent-status]').waitFor();
+    await expect(page.frameLocator(".plugin-extension-frame")
+      .locator('[data-agent-status]')).toHaveText("已連線");
     await page.locator(".plugin-agent-toolbox > button").click();
     const box = page.locator(".plugin-agent-toolbox");
     await box.locator('[data-right="mcp"]').check();
