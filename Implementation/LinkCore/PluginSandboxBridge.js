@@ -95,7 +95,8 @@ window.addEventListener("message", event => {
 const CSP = "default-src 'none'; script-src 'unsafe-inline' data: blob:; " +
   "connect-src 'none'; img-src data:; style-src 'unsafe-inline'; " +
   "font-src 'none'; object-src 'none'; worker-src blob:; " +
-  "child-src 'none'; frame-src 'none'; navigate-to 'none'; " +
+  // Chromium ignores navigate-to in this meta CSP; sandbox remains opaque.
+  "child-src 'none'; frame-src 'none'; " +
   "form-action 'none'; base-uri 'none'";
 
 function reject(status, error) {
