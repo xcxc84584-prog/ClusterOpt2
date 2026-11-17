@@ -62,7 +62,7 @@ window.addEventListener("message", event => {
     const url = URL.createObjectURL(new Blob([workerScript],
       {type:"text/javascript"}));
     try {
-      runner = new Worker(url, {type:"module"});
+      runner = new Worker(url, {type:"classic"});
     } finally {
       URL.revokeObjectURL(url);
     }
