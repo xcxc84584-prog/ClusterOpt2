@@ -8,3 +8,6 @@ A manifest claim is never a grant. Host-run grant records are volatile; privileg
 
 ## Patch2 Scope
 PR06.03/04/06 candidate: approved, application-shipped trusted Worker operations only; messages are bounded and cloned; source policy rejects external/remote/blob/code URLs. Worker is same origin and cannot provide arbitrary third-party isolation. PR06.07–10 and cross-origin sandbox are pending.
+
+## Patch3 Security acceptance candidate
+PR06.07 content SHA-256 pre-pinned integrity check. Verification is not signature identity, not an installation approval and never authorizes arbitrary JS. PR06.09 sanitize Worker failure EHU without payload. PR06.10 injection, forged response, oversized artifact and Chromium negative tests. Untrusted isolated-origin plugin runtime / user consent still pending.

@@ -4,3 +4,6 @@ Node: plugin-pr06-security.test.js. Reject unknown permission, Core claim escala
 
 ## Patch2 Automated Tests
 Node mock transport verifies owner checking, builtin allowlist, message shape, timeout termination, malformed/replayed response fails closed. Real Chromium browser E2E exercises bundled Worker echo/lineCount and source denial. Existing PR04/05 integration and all five CI workflows still required.
+
+## Patch3 Relation Test
+Node: plugin-pr06-adversarial.test.js checks digest mismatch, mutable input, oversized/revoked source, malformed Worker return and no leakage. Chromium: plugin-pr06-security.spec.js validates WebCrypto SHA-256 and denies remote plugins. Existing 5 CI workflows still required before acceptance; no manual 5GiB/third-party sandbox claims.

@@ -8,3 +8,6 @@ Event chains: register → inspect capabilities → authorize host grant / deny 
 Host LinkCore → HubUnit verified owner + execution.isolation='worker' → PluginSourcePolicy(builtin only) → TrustedPluginWorkerUnit → PluginMessagePolicy (request) → fixed TrustedPluginWorker.js → PluginMessagePolicy(response) → terminate → OMU Log/EHU.
 
 No arbitrary source URL or remote code enters this chain. Timeouts terminate Worker instances; cancellation cannot prevent all external side-effects, which is why untrusted source execution remains disabled.
+
+## Patch3 Integrity gate
+Trusted expected SHA-256 + detached file bytes → PluginArtifactPolicy.verify → 200 hash metadata or 400/412/503. No Provider activation, worker import, network access, or side effects. Worker failure → TrustedPluginWorkerUnit → OMU.EHU (status/operation only), terminate and release active quota.
