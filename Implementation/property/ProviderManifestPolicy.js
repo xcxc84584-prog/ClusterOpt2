@@ -50,7 +50,13 @@ function dataTree(value, depth = 0, seen = new Set()) {
     return false;
   }
   const descriptors = Object.getOwnPropertyDescriptors(value);
-  if (Reflect.ownKeys(value).length !== keys.length) return false;
+  const ownKeys = Reflect.ownKeys(value);
+  if (Array.isArray(value)) {
+    if (keys.length !== value.length ||
+        ownKeys.length !== keys.length + 1) return false;
+  } else if (ownKeys.length !== keys.length) {
+    return false;
+  }
   const valid = keys.every(key => {
     const property = descriptors[key];
     return Object.hasOwn(property, "value") &&
