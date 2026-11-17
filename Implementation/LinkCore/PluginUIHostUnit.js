@@ -1,3 +1,5 @@
+import { PluginModelTaskObject } from
+  "../object/PluginModelTaskObject.js";
 import { PluginLocalAgentObject } from
   "../object/PluginLocalAgentObject.js";
 
@@ -104,7 +106,7 @@ export class PluginUIHostUnit {
       panel.id = "plugin-extension-panel-" + provider.objectId;
       const view = {
         button, panel, frame, labels, enabled: true,
-        snapshot, provider, localAgent: null
+        snapshot, provider, localAgent: null, modelTask: null
       };
       if (provider.permissions.includes("network.request") &&
           provider.permissions.includes("local-agent.pair")) {
@@ -115,6 +117,20 @@ export class PluginUIHostUnit {
         }
         view.localAgent = agent;
         pendingAgent = agent;
+        if (provider.permissions.includes("model.configure") &&
+            provider.permissions.includes("model.task")) {
+          const task = new PluginModelTaskObject(
+            this.core, provider.providerId, agent.id, update => {
+              frame.contentWindow?.postMessage({
+                type: "cluster-model-event", update
+              }, "*");
+            });
+          if (!this.core.register(task)) {
+            throw Error("Model Task object registration failed");
+          }
+          view.modelTask = task;
+          agent.modelTaskId = task.id;
+        }
         const publish = response => {
           frame.contentWindow?.postMessage({
             type: "cluster-local-agent-status",
@@ -135,15 +151,30 @@ export class PluginUIHostUnit {
           };
           const action = Object.hasOwn(actions, kind) ?
             actions[kind] : null;
-          if (!action) return;
-          // The OCDA Object rechecks the live grant on every Request
-          // and writes an EHU for rejected attempts.
-          const result = await this.core.request("ui", agent.id,
-            action, {}, { origin: "user" });
-          publish({ state: agent.state });
+          const modelActions = {
+            "cluster-model-configure": "configure",
+            "cluster-model-info": "modelInfo",
+            "cluster-model-submit": "submit",
+            "cluster-model-cancel": "cancel"
+          };
+          const modelAction = Object.hasOwn(modelActions, kind) ?
+            modelActions[kind] : null;
+          if (!action && !modelAction) return;
+          const target = modelAction ? view.modelTask : agent;
+          if (!target) return;
+          const data = modelAction === "submit" ? {
+            prompt: event.data.prompt
+          } : {};
+          // Each operation is checked by HubUnit and the target OCDA
+          // Object against currently granted capabilities.
+          const result = await this.core.request("ui", target.id,
+            modelAction ?? action, data, { origin: "user" });
+          if (action) publish({ state: agent.state });
           frame.contentWindow?.postMessage({
-            type: "cluster-local-agent-result",
-            action, status: result.status, ok: result.ok
+            type: modelAction ? "cluster-model-response" :
+              "cluster-local-agent-result",
+            action: modelAction ?? action,
+            status: result.status, ok: result.ok
           }, "*");
         };
         this.doc.defaultView.addEventListener("message", receive);
@@ -201,6 +232,7 @@ export class PluginUIHostUnit {
         this.doc.removeEventListener("click", closeForWorkbench);
         view.unlistenAgent?.();
         view.localAgent?.close();
+        if (view.modelTask) this.core.unregister(view.modelTask.id);
         if (view.localAgent) this.core.unregister(view.localAgent.id);
         frame.srcdoc = "";
         panel.remove();
@@ -214,6 +246,9 @@ export class PluginUIHostUnit {
     } catch {
       if (pendingAgent) {
         pendingAgent.close();
+        if (pendingAgent.modelTaskId) {
+          this.core.unregister(pendingAgent.modelTaskId);
+        }
         this.core.unregister(pendingAgent.id);
       }
       return { ok: false, status: 400 };
