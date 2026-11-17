@@ -174,7 +174,9 @@ export class PluginUIHostUnit {
             type: modelAction ? "cluster-model-response" :
               "cluster-local-agent-result",
             action: modelAction ?? action,
-            status: result.status, ok: result.ok
+            status: result.status, ok: result.ok,
+            taskActive: modelAction ?
+              Boolean(view.modelTask?.activeId) : undefined
           }, "*");
         };
         this.doc.defaultView.addEventListener("message", receive);
