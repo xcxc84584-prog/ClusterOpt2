@@ -74,3 +74,11 @@ PR/PR9/FinalAcceptance-20261117.md.
   PowerShell parity remain OPEN.
 - Patch4 addresses PSM version and CMD source mismatch; do not
   equate an exact-head green CI with full system acceptance.
+
+## PR9 Patch6 — PowerShell setup syntax failure (2026-11-17)
+Issue: install-current.ps1 line 2 malformed regex/unterminated
+quote and full duplicated body. Observed Windows PowerShell ParserError.
+Fix branch: pr9/patch6-fix-native-agent-installer-parser.
+Status: FIX IMPLEMENTED; pending exact-head Windows PowerShell
+5.1 / 7 parser CI and real Windows native agent pairing.
+Do NOT classify the whole PR9 as PASS yet.
