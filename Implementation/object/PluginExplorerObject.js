@@ -85,7 +85,8 @@ export class PluginExplorerObject {
 
   status() {
     return {
-      selected: Boolean(this.root), label: this.label,
+      selected: Boolean(this.root),
+      folderName: this.root?.name ?? "",
       permissions: { ...this.rights }
     };
   }
