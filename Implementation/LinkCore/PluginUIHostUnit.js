@@ -106,7 +106,8 @@ export class PluginUIHostUnit {
         button, panel, frame, labels, enabled: true,
         snapshot, provider, localAgent: null
       };
-      if (provider.permissions.includes("network.request")) {
+      if (provider.permissions.includes("network.request") &&
+          provider.permissions.includes("local-agent.pair")) {
         const agent = new PluginLocalAgentObject(
           this.core, provider.providerId, this.doc);
         if (!this.core.register(agent)) {
