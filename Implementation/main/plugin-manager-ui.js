@@ -2,14 +2,7 @@ import { Language } from "../property/Language.js";
 import { PluginPermissionPolicy } from
   "../property/PluginPermissionPolicy.js";
 
-const VIEWS = Object.freeze([
-  ["overview","Overview（總覽）"],
-  ["list","Plugin List（插件列表）"],
-  ["permissions","Plugin Permission（權限）"],
-  ["api","API List（API）"],
-  ["ehu","EHU Log（EHU 日誌）"],
-  ["performance","效能化（Performance）"]
-]);
+const VIEWS=Object.freeze(["permissions","api","ehu","performance"]);
 function dom(doc,tag,cls="",value) {
   const el=doc.createElement(tag);
   if(cls) el.className=cls;
@@ -50,7 +43,6 @@ export function mountPluginManagerUI(core,doc) {
   const shell=dom(doc,"div","pm-shell");
   const sidebar=dom(doc,"aside","pm-sidebar");
   const main=dom(doc,"main","pm-main");
-  const top=dom(doc,"section","pm-hero");
   const nav=dom(doc,"div","pm-tabs");
   nav.setAttribute("role","tablist");
   const page=dom(doc,"section","pm-page");
@@ -58,18 +50,16 @@ export function mountPluginManagerUI(core,doc) {
   const filter=dom(doc,"select","pm-filter");
   const items=dom(doc,"div","pm-list");
   const toolbar=dom(doc,"div","pm-search-row");
-  let selected="",active="overview",query="",mode="all",pending=null;
+  let selected="",active="permissions",query="",mode="all",pending=null;
+  let selectedAPI=null;
   search.type="search"; search.id="pluginManagerSearch";
   search.placeholder="Search plugin...";
   filter.id="pluginManagerFilter";
   filter.setAttribute("aria-label","Plugin filter");
   toolbar.append(search,filter);
-  const install=btn(doc,"＋ Install Plugin（安裝插件）",()=>{
-    info("External plugin installation is not available.");
-  },"pm-install");
-  sidebar.append(dom(doc,"header","pm-side-heading",
-    "插件列表  Plugin List"),toolbar,items,install);
-  main.append(top,nav,page);shell.append(sidebar,main);
+  const sideHeading=dom(doc,"header","pm-side-heading");
+  sidebar.append(sideHeading,toolbar,items);
+  main.append(nav,page);shell.append(sidebar,main);
   root.replaceChildren(shell);
 
   // Migrate existing configured controls and event listeners unchanged.
@@ -111,7 +101,7 @@ export function mountPluginManagerUI(core,doc) {
     if(modal.open || PluginPermissionPolicy.level(permission)==="core")
       return;
     pending={p,permission};
-    heading.textContent="確認插件授權 / Confirm Permission";
+    heading.textContent=t("確認插件授權","Confirm Plugin Permission");
     explanation.textContent=p.providerId+" · "+permission+
       " · 本次工作階段有效";
     approve.hidden=false;modal.showModal();
@@ -125,6 +115,12 @@ export function mountPluginManagerUI(core,doc) {
   const disabled=p=>core.uru.disabledProviders.has(p.providerId);
   const current=()=>providers().find(x=>x.providerId===selected)||null;
   const logs=()=>core.getSnapshot().logs??[];
+  const viewName=key=>({
+    permissions:t("權限","Permission"),
+    api:t("API 列表","API List"),
+    ehu:t("EHU 日誌","EHU Log"),
+    performance:t("效能","Performance")
+  })[key];
   const card=(name,action)=> {
     const section=dom(doc,"section","pm-card");
     const h=dom(doc,"header","pm-card-heading");
@@ -162,10 +158,9 @@ export function mountPluginManagerUI(core,doc) {
     section.append(body);return section;
   }
   function apiCard(p) {
-    const section=card("API Capability List（API 能力列表）");
-    section.append(tabular(doc,["API ID","API Name","Description"],
-      (p.provides??[]).map((x,i)=>[
-        "API-"+String(i+1).padStart(3,"0"),x.action,x.service])));
+    const section=card(t("插件 API","Plugin APIs"));
+    section.append(tabular(doc,["Service","Action","Version"],
+      (p.provides??[]).map(x=>[x.service,x.action,x.version])));
     return section;
   }
   function logCard(p) {
@@ -221,84 +216,38 @@ export function mountPluginManagerUI(core,doc) {
     if(!items.childElementCount)
       items.append(dom(doc,"p","pm-muted",t("沒有插件","No plugins")));
   }
-  function hero(p) {
-    top.replaceChildren();
-    if(!p) {
-      top.append(dom(doc,"p","pm-muted",
-        t("選擇左側插件查看資訊","Select a plugin from the list")));
-      return;
-    }
-    const info=dom(doc,"div","pm-hero-info");
-    info.append(dom(doc,"h2","",p.providerId),
-      dom(doc,"p","",p.objectId+" / HubUnit"),
-      dom(doc,"p","pm-muted","Version: "+
-        (p.provides?.[0]?.version??"—")+"  |  Status: "+
-        (disabled(p)?"Disabled":"Enabled")));
-    const actions=dom(doc,"div","pm-hero-actions");
-    const switcher=dom(doc,"label","pm-switch");
-    const check=dom(doc,"input");
-    check.type="checkbox";check.checked=!disabled(p);
-    check.setAttribute("aria-label","Enable / Disable");
-    check.addEventListener("change",()=>{
-      if(core.uru.getProvider(p.providerId)!==p)return render();
-      const result=core.setProviderEnabled(
-        p.objectId,p.providerId,check.checked);
-      if(!result.ok)check.checked=!check.checked;
-      render();
-    });
-    switcher.append(dom(doc,"span","","Enable / Disable"),check);
-    const buttons=dom(doc,"div","pm-action-buttons");
-    buttons.append(btn(doc,"↻ Update（更新）",()=>
-      infoMessage("Verified update pipeline is unavailable."),"pm-button"),
-      btn(doc,"▤ Uninstall（移除）",()=>{
-        if(!doc.defaultView.confirm("Unregister "+p.providerId+"?"))
-          return;
-        if(core.uru.getProvider(p.providerId)!==p)return render();
-        const removed=core.unregisterProvider(p.objectId,p.providerId);
-        if(removed.ok)selected="";
-        render();
-      },"pm-button"));
-    actions.append(switcher,buttons);
-    top.append(dom(doc,"span","pm-hero-cube","◇"),info,actions);
-  }
-  const infoMessage=info;
   function render() {
     const all=providers();
     if(selected&&!all.some(x=>x.providerId===selected))selected="";
     if(!selected&&all.length)selected=all[0].providerId;
     renderSidebar();
+    sideHeading.textContent=t("插件清單","Plugin List");
     const p=current();
-    hero(p);
     nav.replaceChildren();
-    for(const [key,label] of VIEWS) {
-      const item=btn(doc,label,()=>activate(key),"pm-tab");
+    for(const key of VIEWS) {
+      const item=btn(doc,viewName(key),()=>activate(key),"pm-tab");
       item.setAttribute("role","tab");
       item.setAttribute("aria-selected",String(active===key));
       nav.append(item);
     }
     page.replaceChildren();
-    // Keep settings connected: main.js resolves existing elements by ID.
     page.append(migrated);
     migrated.hidden=active!=="performance";
     legacyMenu.hidden=active!=="performance";
     oldSettings.hidden=active!=="performance";
     if(active==="performance")return;
-    if(!p){page.append(dom(doc,"p","pm-muted",
-      t("目前沒有註冊插件","No registered plugins")));return;}
-    if(active==="overview")overview(p);
-    if(active==="list") {
-      const section=card("Plugin List（插件列表）");
-      section.append(tabular(doc,["Provider","Owner","Version"],
-        [[p.providerId,p.objectId,p.provides?.[0]?.version]]));
-      page.append(section);
+    if(active==="api")return renderAPIs();
+    if(!p) {
+      page.append(dom(doc,"p","pm-muted",
+        t("請選擇插件","Select a plugin")));
+      return;
     }
     if(active==="permissions")page.append(permissionCard(p));
-    if(active==="api")page.append(apiCard(p));
     if(active==="ehu")page.append(logCard(p));
   }
   function activate(key) {
-    if(!VIEWS.some(x=>x[0]===key))return;
-    active=key;
+    if(!VIEWS.includes(key))return;
+    active=key;selectedAPI=null;
     tool.setAttribute("aria-pressed",String(key==="performance"));
     root.hidden=false;render();
   }
@@ -311,6 +260,6 @@ export function mountPluginManagerUI(core,doc) {
   filter.addEventListener("change",()=>{mode=filter.value;renderSidebar();});
   tool.addEventListener("click",()=>activate(active==="performance"?
     "overview":"performance"));
-  activate("overview");
+  activate("permissions");
   return Object.freeze({refresh:render,select:activate});
 }
