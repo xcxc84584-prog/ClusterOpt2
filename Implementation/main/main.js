@@ -2,6 +2,7 @@ import { mountLanguageUI } from "./language-ui.js";
 import { Language } from "../property/Language.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { mountPluginManagerUI } from "./plugin-manager-ui.js";
+import { restoreReviewedPlugins } from "./plugin-resource-view.js";
 import { askSaveBeforeClose } from "./save-close-dialog.js";
 import { SyntaxOverlayController } from
   "./syntax-overlay-controller.js";
@@ -1489,6 +1490,10 @@ window.addEventListener("beforeunload", event => {
   event.returnValue = "";
 });
 render();
+// Only built-in, pre-reviewed providers may auto-restore on reload.
+void restoreReviewedPlugins(linkCore).then(result => {
+  if(result?.ok) pluginManager.refresh();
+});
 void linkCore.request("ui", "session-recovery", "restore").then(
   async result => {
     recoveryReady = true;
