@@ -1,4 +1,5 @@
 import { CatalogCollection } from "./CatalogCollection.js";
+import { createClusterAPIFacade } from "./ClusterAPIFacade.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { CatalogVisibilityPolicy } from
   "../property/CatalogVisibilityPolicy.js";
@@ -220,7 +221,8 @@ if (typeof window !== "undefined") {
     rep: () => linkCore.getSnapshot().dependencies,
     subobject: (path) => linkCore.subobjects(path),
     inheritedProperties: (path) => linkCore.inheritedProperties(path),
-    version: () => linkCore.getSnapshot().version
+    version: () => linkCore.getSnapshot().version,
+    api: createClusterAPIFacade(linkCore)
   });
   Object.defineProperty(window, "Cluster", {
     configurable: false, writable: false, value: methods
