@@ -105,3 +105,11 @@ Commit da2672e8315afb64a8cd8255c0b49acbec587d02:
 | Invalid command/context | 400 EHU |
 | No raw value, handler execution, unsafe Cluster facade | no side effects |
 | Exact-head Node/Chromium/OCDA/Windows | pending CI |
+
+## PR02.06 failed-run diagnosis and repair
+Exact-head f4d4b13 dedicated workflow 44025082253 FAILED: 3 Node
+and 1 Chromium tests. Root cause: legacy caller had no strict OCDA
+APIDescriptors, so CatalogCollection returned 400 rather than empty
+metadata, causing protected query tests to fail. Repair: skip these
+legacy objects in catalog, retain their URU registration and add
+catalog-collection regression. Re-run full workflow; PASS pending.
