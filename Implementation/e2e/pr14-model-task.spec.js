@@ -29,6 +29,25 @@ async function mountWithMockAgent(page) {
     const agent = linkCore.pluginHostInstaller.uiHost.views
       .get("cluster.ai-agent-mcp").localAgent;
     window.__modelSent = [];
+    window.__modelTrace = [];
+    const task = linkCore.pluginHostInstaller.uiHost.views
+      .get("cluster.ai-agent-mcp").modelTask;
+    const reset = task.reset.bind(task);
+    task.reset = () => {
+      window.__modelTrace.push({ kind: "reset",
+        before: task.snapshot(),
+        stack: String(new Error().stack).slice(0, 600) });
+      return reset();
+    };
+    const submit = task.submit.bind(task);
+    task.submit = async payload => {
+      window.__modelTrace.push({ kind: "submit-before",
+        before: task.snapshot() });
+      const result = await submit(payload);
+      window.__modelTrace.push({ kind: "submit-after",
+        after: task.snapshot() });
+      return result;
+    };
     agent.createSocket = () => {
       const socket = {
         onopen: null, onmessage: null, onclose: null,
@@ -120,6 +139,7 @@ test("PR14.5 model credential stays in host, task route and cancel",
         "cluster.ai-agent-mcp");
       return {
         task: view.modelTask.snapshot(),
+        trace: window.__modelTrace,
         agent: view.localAgent.state,
         errors: linkCore.getSnapshot().logs.filter(x =>
           x.kind === "EHU").slice(0,7).map(x => ({
