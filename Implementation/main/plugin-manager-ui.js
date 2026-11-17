@@ -399,7 +399,8 @@ export function mountPluginManagerUI(core,doc,options={}) {
     if(active==="resources") {
       renderResources(doc,page,{
         t,settings:migrated,providers,disabled,apiEntries,logs,core,
-        getActivePreview:options.getActivePreview
+        getActivePreview:options.getActivePreview,
+        onPluginInstalled:options.onPluginInstalled
       });
       return;
     }
