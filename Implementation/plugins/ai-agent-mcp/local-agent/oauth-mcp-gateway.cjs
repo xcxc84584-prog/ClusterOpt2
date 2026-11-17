@@ -16,7 +16,7 @@ const readonlyTools=new Set([
  'cluster.get_status','cluster.get_task_status','cluster.list_files',
  'cluster.get_editor_state','cluster.read_file'
 ]);
-const port=Number(process.env.CLUSTER_OAUTH_PORT||43881);
+const port=Number(process.env.CLUSTER_OAUTH_PORT||43879);
 const adminPath=path.join(dir,'oauth-approval-password');
 const bearerPath=path.join(dir,'remote-mcp-token');
 if(!fs.existsSync(adminPath))fs.writeFileSync(adminPath,crypto.randomBytes(24).toString('base64url')+'\n',{mode:0o600,flag:'wx'});
@@ -131,7 +131,7 @@ const server=http.createServer(async(req,res)=>{
     }
    }
    const internal=fs.readFileSync(bearerPath,'utf8').trim();
-   const upstream=await fetch('http://127.0.0.1:43880/mcp',{method:req.method,headers:{Authorization:'Bearer '+internal,'Content-Type':'application/json','Accept':'application/json, text/event-stream'},...(payload!==undefined?{body:payload}:{}),signal:AbortSignal.timeout(
+   const upstream=await fetch('http://127.0.0.1:'+(process.env.CLUSTER_MCP_PORT||43880)+'/mcp',{method:req.method,headers:{Authorization:'Bearer '+internal,'Content-Type':'application/json','Accept':'application/json, text/event-stream'},...(payload!==undefined?{body:payload}:{}),signal:AbortSignal.timeout(
      rpc?.method==='tools/call' &&
      session.scope==='cluster.control' ? 145000 : 18000)});
    const upstreamBytes=Buffer.from(await upstream.arrayBuffer());
