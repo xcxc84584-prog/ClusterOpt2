@@ -44,3 +44,22 @@ test("PR9 Go to Line dialog stays above status bar",
     await expect(dialog).toBeHidden();
     await expect(page.locator("#editor")).toHaveValue("one\ntwo\nthree");
   });
+
+test("PR9 restores legacy setup wizard and terminal controls",
+  async ({ page }) => {
+    await page.goto("/");
+    await page.locator("#explorerPowerShell").click();
+    await expect(page.locator("#powershellManagerPane")).toBeVisible();
+    await expect(page.locator(".psm-intro")).toBeVisible();
+    await expect(page.locator(".psm-setup-step")).toHaveCount(3);
+    await expect(page.locator('[data-psm-action="download"]'))
+      .toBeVisible();
+    await expect(page.locator('[data-psm-action="check"]'))
+      .toBeVisible();
+    await page.locator('[data-psm-action="tool"]').click();
+    await expect(page.locator(".psm-menu")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".psm-menu")).toBeHidden();
+    await expect(page.locator(".psm-terminal-head")).toHaveCount(1);
+    await expect(page.locator(".psm-native-wrap")).toHaveCount(1);
+  });
