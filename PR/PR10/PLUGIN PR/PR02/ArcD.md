@@ -64,3 +64,28 @@ The internal URU validated metadata index is available only to trusted
 internal callers. No anonymous public Catalog was exposed. Runtime
 registration, response and unregister reflect a single URU truth.
 Validated on exact-head Node and Chromium tests; no new routing bypass.
+
+## PR02.03 — Single-authority Property Descriptor
+```mermaid
+flowchart LR
+  Caller[Trusted registration] --> HUB[HubUnit.registerProperty]
+  HUB --> URU[URU.registerProperty]
+  URU --> EDP[EDPMU register]
+  EDP --> VALID[PropertyDescriptorPolicy validate]
+  VALID -->|200| META[Frozen descriptor + existing value]
+  VALID -->|400/413| EHU[HubUnit -> OMU EHU]
+  META --> INSPECT[EDPMU.describeProperty internal]
+  HUB --> READ[HubUnit.readProperty existing auth]
+```
+New Property: PropertyDescriptorPolicy, LinkCore-owned and Public (schema
+validator only). No new Object or duplicated Property registry.
+
+EventChain:
+1. Hub registration -> URU -> EDPMU -> validator -> single record (201).
+2. Bad metadata or mismatched name/owner/visibility -> 400/413 + EHU,
+   no partial register and no duplicate record.
+3. Trusted describeProperty -> detached frozen metadata or null/404.
+4. Actual value read still traverses HubUnit authorization (200/403/404).
+Relations: existing HubUnit-URU/EDPMU/OMU edges reused. No newly
+permitted cross-Object relation. Metadata is not a capability token.
+Distinct properties can register independently; same name is unique.
