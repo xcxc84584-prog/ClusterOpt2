@@ -90,3 +90,18 @@ Commit da2672e8315afb64a8cd8255c0b49acbec587d02:
 | Dynamic removal reflected on next query | added | catalog test |
 | Original Cluster facade and API Request | catalog test | added |
 | Exact-head PR02/OCDA/Windows | pending | pending |
+
+## PR02.06 verification matrix (CI pending)
+| Case | Expected |
+| --- | --- |
+| Guest sees only Public exposed API | 200, filtered count |
+| Protected visible to owner/descendant | 200, no sibling leak |
+| Private API visible only to owner | 200 owner / hidden guest |
+| UserAPI-only / AgentAPI-only origin | independent exposure |
+| Non-readable property | excluded despite Public visibility |
+| Private/Protected Property per EDPMU owners | filtered |
+| Invisible describe vs unknown descriptor | both 404 |
+| Unknown source | 404 EHU, no lazy factory |
+| Invalid command/context | 400 EHU |
+| No raw value, handler execution, unsafe Cluster facade | no side effects |
+| Exact-head Node/Chromium/OCDA/Windows | pending CI |
