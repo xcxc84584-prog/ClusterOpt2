@@ -1,6 +1,6 @@
 {
   "name": "clusteropt2-local-agent",
-  "version": "0.0.9-pr9.patch6",
+  "version": "0.0.9-pr9.patch7",
   "private": true,
   "type": "module",
   "scripts": {
