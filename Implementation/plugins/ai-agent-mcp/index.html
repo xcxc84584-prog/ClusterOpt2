@@ -192,9 +192,13 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
     }
     if (event.data?.type === "cluster-model-response") {
       const value = event.data;
-      if (value.action === "submit" && value.ok !== true) {
+      if (value.action === "submit") {
         taskPending = false;
-        taskActive = false;
+        taskActive = value.taskActive === true;
+        if (value.ok && taskActive) taskInput.value = "";
+      }
+      if (value.action === "cancel") {
+        taskActive = value.taskActive === true;
       }
       if (value.ok !== true) {
         appendMessage((labels.connectionError || "Error") +
