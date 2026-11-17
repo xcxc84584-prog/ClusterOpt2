@@ -23,7 +23,8 @@ async function mount(page) {
       manifestText, files
     }, { consented: true, approvedPermissions: [
       "network.request", "local-agent.pair",
-      "model.configure", "model.task"
+      "model.configure", "model.task",
+      "shell.execute", "mcp.read"
     ] });
   });
 }
