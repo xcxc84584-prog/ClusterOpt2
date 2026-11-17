@@ -157,3 +157,65 @@ test("PR14.3 failed UI-plugin upgrade restores previous view",
     await expect(page.frameLocator(".plugin-extension-frame")
       .getByText("連結本地 AI Agent")).toBeVisible();
   });
+
+test("PR14.9 reinstall does not preserve ToolBox folder authority",
+  async ({ page }) => {
+    await page.goto("/");
+    expect((await installAgentUI(page)).installed).toBe(201);
+    await page.evaluate(() => {
+      window.showDirectoryPicker = async () => ({
+        kind: "directory", name: "Project",
+        queryPermission: async () => "granted",
+        requestPermission: async () => "granted"
+      });
+      window.prompt = () => ["C:", "Work", "Project"].join("\\\\");
+    });
+    await page.locator(".plugin-extension-button").click();
+    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.getByRole("button", {
+      name: /選取本地資料夾/
+    }).click();
+    await page.locator('[data-right="read"]').check();
+    const before = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      return linkCore.pluginHostInstaller.uiHost.views.get(
+        "cluster.ai-agent-mcp").explorerAccess.status();
+    });
+    expect(before.selected).toBe(true);
+    expect(before.permissions.read).toBe(true);
+    const after = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const installer = linkCore.pluginHostInstaller;
+      const id = "cluster.ai-agent-mcp";
+      const disabled = installer.disable(id);
+      const restored = installer.enable(id);
+      const view = installer.uiHost.views.get(id);
+      const reenabled = view.explorerAccess.status();
+      const removed = installer.uninstall(id);
+      const installed = await installer.install(
+        window.__pr14TestSnapshot, {
+          consented: true, approvedPermissions: [
+            "network.request", "local-agent.pair",
+            "model.configure", "model.task"
+          ]
+        });
+      const next = installer.uiHost.views.get(id)
+        .explorerAccess.status();
+      return {
+        disabled: disabled.status,
+        restored: restored.status,
+        removed: removed.status,
+        installed: installed.status, reenabled, next
+      };
+    });
+    expect(after.disabled).toBe(200);
+    expect(after.restored).toBe(200);
+    expect(after.removed).toBe(200);
+    expect(after.installed).toBe(201);
+    expect(after.reenabled.selected).toBe(false);
+    expect(after.next.selected).toBe(false);
+    expect(after.next.permissions.read).toBe(false);
+    expect(after.next.permissions.ps).toBe(false);
+  });
