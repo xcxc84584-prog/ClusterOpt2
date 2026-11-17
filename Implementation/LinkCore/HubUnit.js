@@ -41,6 +41,9 @@ export class HubUnit {
     // Internal-only declarative snapshot; URU remains Provider authority.
     this.replaceRoutes = Object.freeze([]);
     this.routeGeneration = 0;
+    this.routeHistory = new Map([[0, this.replaceRoutes]]);
+    this.routeInflight = new Map();
+    this.routeDrainWaiters = new Map();
     this.routeTransactions = new RouteTransactionUnit(this);
   }
 
@@ -491,6 +494,10 @@ export class HubUnit {
     // Route selection is synchronous; inflight calls retain their target.
     this.replaceRoutes = parsed.value.routes;
     this.routeGeneration++;
+    this.routeHistory.set(this.routeGeneration, this.replaceRoutes);
+    while (this.routeHistory.size > 8) {
+      this.routeHistory.delete(this.routeHistory.keys().next().value);
+    }
     this.omu.record("Log", "LinkCore",
       "Service.Route.Configure", 200, "HubUnit",
       { count: this.replaceRoutes.length });
@@ -521,6 +528,61 @@ export class HubUnit {
     return this.routeTransactions.abort(id);
   }
 
+  /** Bounded previous-generation restore, revalidated before CAS swap. */
+  rollbackRouteGeneration(generation, expectedGeneration) {
+    if (!Number.isSafeInteger(generation) || generation < 0 ||
+        !Number.isSafeInteger(expectedGeneration) ||
+        expectedGeneration !== this.routeGeneration) {
+      this.omu.record("EHU", "LinkCore", "Service.Route.Rollback", 409);
+      return { ok: false, status: 409 };
+    }
+    const routes = this.routeHistory.get(generation);
+    if (!routes) {
+      this.omu.record("EHU", "LinkCore", "Service.Route.Rollback", 404);
+      return { ok: false, status: 404 };
+    }
+    const result = this.configureServiceRoutes(
+      { schemaVersion: 1, routes }, false,
+      { expectedGeneration });
+    this.omu.record(result.ok ? "Log" : "EHU",
+      "LinkCore", "Service.Route.Rollback", result.status);
+    return result;
+  }
+
+  /** Wait only for calls that already selected a given generation. */
+  awaitRouteDrain(generation) {
+    if (!Number.isSafeInteger(generation) || generation < 0 ||
+        generation > this.routeGeneration) {
+      return Promise.resolve({ ok: false, status: 400 });
+    }
+    if (!this.routeInflight.get(generation)) {
+      return Promise.resolve({ ok: true, status: 200 });
+    }
+    return new Promise(resolve => {
+      const waiters = this.routeDrainWaiters.get(generation) ?? [];
+      waiters.push(resolve);
+      this.routeDrainWaiters.set(generation, waiters);
+    });
+  }
+
+  enterRouteGeneration(generation) {
+    this.routeInflight.set(generation,
+      (this.routeInflight.get(generation) ?? 0) + 1);
+  }
+
+  leaveRouteGeneration(generation) {
+    const remaining = (this.routeInflight.get(generation) ?? 1) - 1;
+    if (remaining > 0) {
+      this.routeInflight.set(generation, remaining);
+      return;
+    }
+    this.routeInflight.delete(generation);
+    for (const resolve of this.routeDrainWaiters.get(generation) ?? []) {
+      resolve({ ok: true, status: 200 });
+    }
+    this.routeDrainWaiters.delete(generation);
+  }
+
   /**
    * Map a logical Service to one Object, then reuse the entire
    * existing Hub request, authorization, scheduler and EHU path.
@@ -544,6 +606,8 @@ export class HubUnit {
     const origin = options.origin === "user" ||
       options.origin === "agent" ? options.origin : null;
     const snapshot = this.routeSnapshot();
+    this.enterRouteGeneration(snapshot.generation);
+    try {
     const route = this.serviceResolver.resolve(
       service, action, source, origin, snapshot.routes);
     if (!route.ok) {
@@ -577,6 +641,9 @@ export class HubUnit {
     }
     return this.executeResponsePipeline(source, route.value,
       result, options);
+    } finally {
+      this.leaveRouteGeneration(snapshot.generation);
+    }
   }
 
 

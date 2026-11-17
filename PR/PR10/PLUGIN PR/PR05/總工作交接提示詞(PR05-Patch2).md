@@ -1,0 +1,3 @@
+# ClusterOpt2 PLUGIN PR05 Patch2 Handoff
+
+Read PR05 PRD/Plan/ArcD/Patch1/Patch2/Relation Test and latest property registry before further changes. PR05.01–03 validated on ed2c5e4 with 5/5 CI PASS; restore backup/plugin-pr05-sub01-03-verified-ed2c5e4. Patch2 implements inflight generation drain, rollback, fail-closed and restart regression candidates. Next resolve PR05.05 cooperative cancellation / Provider unload lifecycle; verify exact-head CI and browser then create final restore. Do not merge until all ten subPRs accepted. main baseline backup/pre-plugin-pr05-20261117. Current release remains 0.0.10.

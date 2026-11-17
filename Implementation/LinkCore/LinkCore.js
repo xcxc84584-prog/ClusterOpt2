@@ -266,6 +266,13 @@ export class LinkCore {
   abortRouteTransaction(id) {
     return this.hub.abortRouteTransaction(id);
   }
+  rollbackRouteGeneration(generation, expectedGeneration) {
+    return this.hub.rollbackRouteGeneration(generation,
+      expectedGeneration);
+  }
+  awaitRouteDrain(generation) {
+    return this.hub.awaitRouteDrain(generation);
+  }
   /** Trusted host only: identity is verified by the embedding host. */
   configureOwnedRoutes(source, table) {
     return this.hub.configureOwnedRoutes(source, table);

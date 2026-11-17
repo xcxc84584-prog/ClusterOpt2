@@ -13,6 +13,11 @@ export class RouteTransactionUnit {
   }
 
   begin(candidate) {
+    for (const [id, entry] of this.pending) {
+      if (entry.generation !== this.hub.routeGeneration) {
+        this.pending.delete(id);
+      }
+    }
     if (this.pending.size >= 16) {
       return this.record("Begin", 429);
     }
