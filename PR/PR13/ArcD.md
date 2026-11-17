@@ -137,3 +137,7 @@ Current UI Language (zh-Hant/en) -> Template Generator
 ```
 The protocol metadata is deliberately separate from runtime grants or
 execution. No duplicate URU/Provider registry or editable static ACLs.
+
+HubUnit.listActionContracts uses AccessPolicy + URU Object ocda.UserAPI
+as its sole source; the API List projects only permitted actions and
+marks undocumented schemas absent. No parallel catalog or authority.
