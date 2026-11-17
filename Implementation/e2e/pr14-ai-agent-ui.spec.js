@@ -24,9 +24,11 @@ async function installAgentUI(page) {
       formatVersion: 1, manifestText: raw, files
     };
     window.__pr14TestSnapshot = snapshot;
-    const denied = await linkCore.pluginHostInstaller.install(snapshot);
+    const denied = await linkCore.pluginHostInstaller.install(snapshot, {
+      approvedPermissions: ["network.request"]
+    });
     const installed = await linkCore.pluginHostInstaller.install(
-      snapshot, { consented: true, approvedPermissions: [] });
+      snapshot, { consented: true, approvedPermissions: ["network.request"] });
     return { denied: denied.status, installed: installed.status };
   });
 }
@@ -135,7 +137,7 @@ test("PR14.3 failed UI-plugin upgrade restores previous view",
         "export const invalid = ;");
       const result = await linkCore.pluginHostInstaller.upgrade(
         "cluster.ai-agent-mcp", snapshot,
-        { consented: true, approvedPermissions: [] });
+        { consented: true, approvedPermissions: ["network.request"] });
       const restored = linkCore.uru.getProvider(
         "cluster.ai-agent-mcp");
       return {
