@@ -185,6 +185,12 @@ export class LinkCore {
 
   register(object) { return this.hub.register(object); }
   unregister(id) { return this.hub.unregister(id); }
+  registerProvider(source, manifest) {
+    return this.hub.registerProvider(source, manifest);
+  }
+  unregisterProvider(source, providerId) {
+    return this.hub.unregisterProvider(source, providerId);
+  }
   request(source, target, action, payload = {}, options = {}) {
     return this.hub.request(source, target, action, payload, options);
   }
