@@ -40,7 +40,7 @@ export const PluginLocalAgentPolicy = Object.freeze({
         message.name.length > 100 ||
         !message.args || typeof message.args !== "object" ||
         Array.isArray(message.args))) {
-      return { ok: false, status: 400 };
+      return { ok: false, status: 403 };
     }
     if (message.type === "pong" &&
         (typeof message.requestId !== "string" ||
