@@ -340,11 +340,26 @@ export class FileWorkspace {
             suggestedName: doc.name
           });
         }
+        // Respect existing external/internal reconciliation policy.
+        if (doc.handle && handle === doc.handle) {
+          const priority = this.core.readProperty(
+            this.id, "StoragePriority").value;
+          const check = await this.core.request(this.id, doc.id,
+            "reconcile", { priority });
+          if (!check.ok || (check.value &&
+              priority === StoragePriority.EXTERNAL)) {
+            const error = new Error(check.error ||
+              "External changes require manual review");
+            error.status = check.status ?? 409;
+            throw error;
+          }
+        }
         const result = await this.core.request(this.id, doc.id,
           "save", { handle });
-        if (!result.ok) {
-          const error = new Error(result.error || "Save failed");
-          error.status = result.status;
+        if (!result.ok || doc.status !== DocumentStatus.SYNCED) {
+          const error = new Error(result.error ||
+            "Document changed during save");
+          error.status = result.ok ? 409 : result.status;
           throw error;
         }
       }
