@@ -62,7 +62,7 @@ function Read-Host {
 }
 
 function Stop-Process {
-    param($Id, $Force, $ErrorAction)
+    param($Id, [switch]$Force, $ErrorAction)
     if ($Id -ne $script:OwnerPid) {
         throw 'Attempted to stop unexpected PID'
     }
