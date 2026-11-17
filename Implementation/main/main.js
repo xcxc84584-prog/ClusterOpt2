@@ -45,6 +45,7 @@ const pluginWindow = document.getElementById("pluginWindow");
 let toolState = { open: false, active: false, position: 0 };
 let pluginCategory = "performance";
 let observedWorkspaceActiveId = null;
+let nativePowerShell = null;
 
 function saveToolView() {
   try {
@@ -406,7 +407,7 @@ function localized(key, args = {}) {
 }
 const notify = message => { ui.statusText.textContent = message; };
 
-const nativePowerShell = mountNativePowerShell({
+nativePowerShell = mountNativePowerShell({
   core: linkCore,
   button: document.getElementById("nativePowerShellBtn"),
   host: document.getElementById("clusterEditorColumn"),
