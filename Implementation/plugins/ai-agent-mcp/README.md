@@ -1,6 +1,19 @@
 # AI AGENT MCP(ChatGPT) — PR14 / PR15 resource package
 
-In ClusterOpt2 Resources, download the AI Agent ZIP, extract it, then\nselect the extracted ai-agent-mcp folder with **Mount folder**.\nDo not select the ZIP itself. Run\n\`local-agent/Quick-Setup.cmd\` on Windows for opt-in Node.js setup,\nlocal dependency installation and pairing-token display.\nInstalling the browser plugin never\nstarts its included Windows local-agent scripts.
+In ClusterOpt2 Resources, download the complete plugin ZIP only to install
+the browser plugin. Extract it and mount the plugin folder.
+
+For Windows Local Agent setup, open the AI Agent tab and click
+**下載 Quick-Setup.cmd**. This downloads one CMD file, not the ZIP.
+The CMD downloads a revision-pinned setup helper and Agent files
+after confirmation, then installs dependencies and starts a loopback
+service. Nothing runs automatically from the browser.
+
+If port 43879 is occupied, choose **P** to select another port,
+**C** to cancel safely, or **O** to inspect owning PID(s) and require
+typing OVERRIDE before terminating any process. Enter the selected
+port and pairing token in the trusted host pairing dialog.
+
 Review and approve the six requested privileged capabilities:
 `network.request`, `local-agent.pair`, `model.configure`,
 `model.task`, `shell.execute`, `mcp.read`. Each is separately revocable.
