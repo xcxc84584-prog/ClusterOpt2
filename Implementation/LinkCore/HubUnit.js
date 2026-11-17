@@ -2,6 +2,8 @@ import { ParallelExecutionPolicy } from "../property/ParallelExecutionPolicy.js"
 import { AccessPolicy } from "../property/AccessPolicy.js";
 import { ProviderSharedPropertyPolicy } from
   "../property/ProviderSharedPropertyPolicy.js";
+import { ProviderManifestPolicy } from
+  "../property/ProviderManifestPolicy.js";
 import { ExecutionScheduler } from "./ExecutionScheduler.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
@@ -51,10 +53,12 @@ export class HubUnit {
       this.omu.record("EHU", source, "Provider.Register", 403);
       return { ok: false, status: 403, error: "Provider owner mismatch" };
     }
-    const claims = ProviderSharedPropertyPolicy.inspect(
-      manifest, this.properties);
+    const parsed = ProviderManifestPolicy.validate(manifest);
+    const claims = parsed.ok ?
+      ProviderSharedPropertyPolicy.inspect(parsed.value, this.properties) :
+      parsed;
     const result = claims.ok ?
-      this.registry.registerProvider(manifest) : claims;
+      this.registry.registerProvider(parsed.value) : claims;
     this.omu.record(result.ok ? "Log" : "EHU", source,
       "Provider.Register", result.status, manifest?.providerId ?? "");
     return result;
