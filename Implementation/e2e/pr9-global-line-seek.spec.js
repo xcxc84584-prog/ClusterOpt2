@@ -14,7 +14,7 @@ test("PR9 global line jump loads distant virtual page in old UI", async ({
       type: "write", position: 0, data: "HEADER\n"
     });
     await writer.write({
-      type: "write", position: 65536, data: "MIDDLE\n"
+      type: "write", position: 131065, data: "MIDDLE\n"
     });
     await writer.write({
       type: "write", position: 131072, data: "TAIL"
