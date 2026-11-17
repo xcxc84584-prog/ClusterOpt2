@@ -82,3 +82,13 @@ The short model task dispatch releases HubUnit's per-object lock before
 the asynchronous model completes. The Windows Agent owns the live task
 AbortController and 90-second timeout. Task status ingest is sequenced
 by the Task Object; other Objects may continue in parallel.
+ 
+## Patch(+3) EventChain correction
+```text
+ModelTask.submit -> Hub -> LocalAgent.taskStart -> WebSocket.send
+                -> Hub response / scheduler release
+                -> queued reply (next event-loop turn)
+                -> LocalAgent -> Hub -> ModelTask.ingest
+```
+Each queued reply is discarded if the observed connection generation
+does not equal the current generation. EHU covers rejected replies.

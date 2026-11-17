@@ -50,3 +50,10 @@ All are separate privileged grants and rechecked on invocation.
 - No `bridge_register`, `tool_call`, shell, file or OAuth action.
 - Actual browser-to-Windows integration and provider inference are
   outside mock transport test coverage.
+
+## Patch(+3) scheduling refinement
+LocalAgentObject maintains a FIFO promise chain for model protocol
+notifications, yielding once to the event loop before HubUnit ingestion.
+The connection generation guards stale replies. This prevents nested
+ModelTask -> LocalAgent -> ModelTask cyclic waits. Reconfiguration is
+denied while an active task would otherwise block cancellation.
