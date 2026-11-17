@@ -26,11 +26,13 @@ async function installAgentUI(page) {
     window.__pr14TestSnapshot = snapshot;
     const denied = await linkCore.pluginHostInstaller.install(snapshot, {
       approvedPermissions: ["network.request", "local-agent.pair",
-      "model.configure", "model.task"]
+      "model.configure", "model.task",
+      "shell.execute", "mcp.read"]
     });
     const installed = await linkCore.pluginHostInstaller.install(
       snapshot, { consented: true, approvedPermissions: ["network.request", "local-agent.pair",
-      "model.configure", "model.task"] });
+      "model.configure", "model.task",
+      "shell.execute", "mcp.read"] });
     return { denied: denied.status, installed: installed.status };
   });
 }
@@ -140,7 +142,8 @@ test("PR14.3 failed UI-plugin upgrade restores previous view",
       const result = await linkCore.pluginHostInstaller.upgrade(
         "cluster.ai-agent-mcp", snapshot,
         { consented: true, approvedPermissions: ["network.request", "local-agent.pair",
-      "model.configure", "model.task"] });
+      "model.configure", "model.task",
+      "shell.execute", "mcp.read"] });
       const restored = linkCore.uru.getProvider(
         "cluster.ai-agent-mcp");
       return {
@@ -198,7 +201,8 @@ test("PR14.9 reinstall does not preserve ToolBox folder authority",
         window.__pr14TestSnapshot, {
           consented: true, approvedPermissions: [
             "network.request", "local-agent.pair",
-            "model.configure", "model.task"
+            "model.configure", "model.task",
+      "shell.execute", "mcp.read"
           ]
         });
       const next = installer.uiHost.views.get(id)
