@@ -71,10 +71,6 @@ export class PluginExplorerObject {
     if (!Object.hasOwn(this.rights, name)) {
       return this.fail("RightInvalid", 400);
     }
-    if (name === "ps" && enabled) {
-      // Reserved for separately reviewed PR14.7 OS command bridge.
-      return this.fail("PowerShellUnavailable", 403);
-    }
     if (!this.root && enabled) {
       return this.fail("RootRequired", 409);
     }
