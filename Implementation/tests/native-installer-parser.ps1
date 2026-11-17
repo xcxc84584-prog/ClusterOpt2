@@ -32,6 +32,12 @@ $rules = @{
     NoDuplicatedBody = @($content -split 'function Download-AgentFile').Count -eq 2
     HasVersionValidation = $content.Contains('[ValidatePattern(')
     UsesExpectedVersion = $content.Contains('$ExpectedVersion')
+    DetachedBackgroundLaunch = $content.Contains("WindowStyle = 'Hidden'")
+    EphemeralTokenSource = $content.Contains('RandomNumberGenerator')
+    TokenToChildProcess = $content.Contains('CLUSTEROPT_PAIRING_TOKEN')
+    TokenNotLogged = -not $content.Contains('RedirectStandardOutput')
+    CopyBeforeExit = $content.Contains('Copy the port and token')
+    SuccessExits = $content.Contains('exit 0')
     UsesCurrentRepository = $content.Contains('ClusterOpt2/main/Implementation')
 }
 foreach ($name in $rules.Keys) {
