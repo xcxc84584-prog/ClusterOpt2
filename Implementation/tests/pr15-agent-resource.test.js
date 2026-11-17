@@ -27,8 +27,9 @@ test("PR15.1 all downloadable files exist and form an installable package",
         return { ok: false };
       }
     });
-    assert.equal(Object.keys(fetched).length, 17);
-    assert.equal(new Set(AI_AGENT_PACKAGE_FILES).size, 17);
+    assert.equal(Object.keys(fetched).length, AI_AGENT_PACKAGE_FILES.length);
+    assert.equal(new Set(AI_AGENT_PACKAGE_FILES).size,
+      AI_AGENT_PACKAGE_FILES.length);
     const manifest = JSON.parse(fetched["plugin.json"]);
     assert.equal(manifest.provider.providerId, "cluster.ai-agent-mcp");
     assert.deepEqual(manifest.provider.permissions, [
@@ -43,7 +44,8 @@ test("PR15.1 all downloadable files exist and form an installable package",
     }).status, 200);
     const zip = createTemplateZip(fetched);
     assert.equal(Buffer.from(zip).readUInt32LE(0), 0x04034b50);
-    assert.equal(Buffer.from(zip).readUInt16LE(zip.length - 22 + 10), 17);
+    assert.equal(Buffer.from(zip).readUInt16LE(zip.length - 22 + 10),
+      AI_AGENT_PACKAGE_FILES.length);
   });
 
 test("PR15.1 source publisher refuses missing or over-budget assets",
