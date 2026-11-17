@@ -58,3 +58,10 @@ Legacy Explorer calls `cluster.list_roots`, `cluster.list_directory`, `cluster.r
 ## C/P/O port selection
 
 Every local service launcher uses `Port-CPO.ps1`. C cancels; P chooses a new valid unused port; O requires inspecting a PID and executable path followed by typing `OVERRIDE` before any non-protected listener is stopped. All selections persist to a user-local service-ports.json so internal services communicate using selected ports. The default ports are Local Agent **43881**, MCP **43880**, OAuth **43879**. If OAuth changes, update your HTTPS proxy route; if Local Agent changes, enter that port in the trusted browser pairing dialog. Never publicly forward the Local Agent or bearer MCP port.
+
+## Fixed public service name: clusteropt2
+
+The MCP OAuth public hostname is reserved as **clusteropt2**. An OAuth issuer must be an actual DNS-resolvable HTTPS origin, not the bare single-label name `https://clusteropt2`. Configure a hostname whose first DNS label is `clusteropt2` under a domain you own (for example, `https://clusteropt2.your-domain.example` is a *template only*, not an operational URL). The new MCP setup prompts for the actual full HTTPS issuer and rejects unrelated host labels. Configure DNS/TLS and reverse proxy to the **OAuth Gateway 127.0.0.1:43879**; do not expose the Agent 43881 or MCP bearer 43880 ports. A named Cloudflare tunnel can have a stable *tunnel name*, but public ChatGPT access still needs a real hostname and valid HTTPS certificate.
+
+### Download errors
+If the standalone CMD reports `DOWNLOAD FAILED: <URL>`, check that the fixed revision exists, that Windows can reach `raw.githubusercontent.com`, and that all five files are downloadable. The script shows the exact failed filename and PowerShell exception, rather than only `[ERROR] Setup incomplete`. Avoid running CMD as Administrator.
