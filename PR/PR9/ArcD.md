@@ -120,3 +120,23 @@ boundaries and never place the secret in OMU logs.
 
 The parser CI can run independent Windows OS versions in parallel.
 Local download and npm stages stay serial to avoid corrupted installs.
+
+## Patch(+7) Port ownership event chain
+Explicit user native console input P/C/O
+ -> Select-LoopbackPort
+ -> Get-PortListeners(Port) [Get-NetTCPConnection]
+ -> if P: validate alternate numeric port; loop
+ -> if C: return error without termination
+ -> if O: Release-OccupiedPort [CIM owner identity]
+ -> print PID/Name/Path + warn user of unsaved changes
+ -> Read-Host OVERRIDE (second, exact confirmation)
+ -> recheck Owner PID/CreationDate/Name and listeners
+ -> Stop-Process -Force on verified owners only
+ -> bounded loop verifies port released
+ -> Select-LoopbackPort -> native Agent launch.
+A refusal/identity change/partial release aborts startup; errors are
+reported locally and never forged as successful HubUnit responses.
+
+The installer process sits outside browser OCDA runtime. Browser
+PowerShellClient still pairs only with a verified loopback agent;
+HubUnit Req/Rep, OMU Log/EHU and VTE remain unchanged.
