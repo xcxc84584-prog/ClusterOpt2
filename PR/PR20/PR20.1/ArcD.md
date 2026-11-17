@@ -28,3 +28,15 @@ Quick Setup CMD → revision-pinned PowerShell downloads → Local Agent (43879)
 OAuth token scope `cluster.read` → 5-tool allowlist → MCP gateway → local Agent → authorized browser bridge; unlisted/mutating calls receive JSON-RPC denial before the proxy. Local stdio and local bearer gateway expose 14 contract descriptions, but actual mutation must pass ToolBox capabilities and user approval.
 
 No new EDPMU Property, global version writer, or URU registry introduced. The only host interface extension is a named, reviewed installer download event.
+
+## Patch(+3) capability flow
+```text
+ChatGPT OAuth(scope=cluster.control)
+  -> OAuth scoped token validation (43881)
+  -> MCP tool contract and routing (43880)
+  -> Local Agent authenticated bridge (43879)
+  -> Browser ToolBox explicit grant verification
+  -> authorized file CRUD or PowerShell exact-command approval
+  -> result and existing OMU EHU/Log
+```
+The OAuth scope enables requesting an action only; it never grants actual file or shell permissions. Permission revocation at ToolBox denies execution independently of token expiry.
