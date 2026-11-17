@@ -9,6 +9,7 @@ import { ServiceRegistry } from "./ServiceRegistry.js";
 import { ServiceRequestResolver } from "./ServiceRequestResolver.js";
 import { RouteTablePolicy } from
   "../property/RouteTablePolicy.js";
+import { RouteTransactionUnit } from "./RouteTransactionUnit.js";
 import { RouteContractPolicy } from
   "../property/RouteContractPolicy.js";
 import { ResponsePipelinePolicy } from
@@ -39,6 +40,8 @@ export class HubUnit {
       services ?? new ServiceRegistry(registry), registry);
     // Internal-only declarative snapshot; URU remains Provider authority.
     this.replaceRoutes = Object.freeze([]);
+    this.routeGeneration = 0;
+    this.routeTransactions = new RouteTransactionUnit(this);
   }
 
   register(object) {
@@ -383,7 +386,15 @@ export class HubUnit {
    * Trusted declarative route activation. PR04.04/05: chain/fanout
    * cannot bypass HubUnit.request or mint a caller identity.
    */
-  configureServiceRoutes(candidate, replaceOnly = false) {
+  configureServiceRoutes(candidate, replaceOnly = false,
+    control = {}) {
+    if (control.expectedGeneration !== undefined &&
+        control.expectedGeneration !== this.routeGeneration) {
+      this.omu.record("EHU", "LinkCore",
+        "Service.Route.Configure", 409);
+      return { ok: false, status: 409,
+        error: "Stale route generation" };
+    }
     const parsed = RouteTablePolicy.validate(candidate);
     if (!parsed.ok) {
       this.omu.record("EHU", "LinkCore", "Service.Route.Configure",
@@ -472,13 +483,42 @@ export class HubUnit {
         "HubUnit", { error: graph.error });
       return graph;
     }
-    // Existing in-flight requests hold their already resolved Object.
+    if (control.dryRun === true) {
+      return { ok: true, status: 200,
+        value: Object.freeze({ generation: this.routeGeneration,
+          count: parsed.value.routes.length }) };
+    }
+    // Route selection is synchronous; inflight calls retain their target.
     this.replaceRoutes = parsed.value.routes;
+    this.routeGeneration++;
     this.omu.record("Log", "LinkCore",
       "Service.Route.Configure", 200, "HubUnit",
       { count: this.replaceRoutes.length });
     return { ok: true, status: 200,
-      value: Object.freeze({ count: this.replaceRoutes.length }) };
+      value: Object.freeze({ count: this.replaceRoutes.length,
+        generation: this.routeGeneration }) };
+  }
+
+  /** Host-only transaction methods; no browser/Agent mutation facade. */
+  routeSnapshot() {
+    return Object.freeze({ generation: this.routeGeneration,
+      routes: this.replaceRoutes });
+  }
+
+  beginRouteTransaction(candidate) {
+    return this.routeTransactions.begin(candidate);
+  }
+
+  validateRouteTransaction(id) {
+    return this.routeTransactions.validate(id);
+  }
+
+  commitRouteTransaction(id) {
+    return this.routeTransactions.commit(id);
+  }
+
+  abortRouteTransaction(id) {
+    return this.routeTransactions.abort(id);
   }
 
   /**
@@ -503,8 +543,9 @@ export class HubUnit {
     }
     const origin = options.origin === "user" ||
       options.origin === "agent" ? options.origin : null;
+    const snapshot = this.routeSnapshot();
     const route = this.serviceResolver.resolve(
-      service, action, source, origin, this.replaceRoutes);
+      service, action, source, origin, snapshot.routes);
     if (!route.ok) {
       this.omu.record("EHU", source, "Service.Resolve",
         route.status, typeof service === "string" ? service : "",
@@ -514,7 +555,8 @@ export class HubUnit {
     this.omu.record("Log", source, "Service.Resolve", 200,
       route.value.objectId, {
         service: route.value.service,
-        providerId: route.value.providerId
+        providerId: route.value.providerId,
+        routeVersion: snapshot.generation
       });
     let result;
     if (route.value.mode === "chain") {

@@ -1,0 +1,3 @@
+# ClusterOpt2 PR10 / PLUGIN PR05 Patch1 Handoff
+
+Base main e7ae73c8348f609c514d6fe033a37db48abc065a (merged PR04 #45). Branch plugin/pr05-route-transactions. Changes: PR05.01–03 candidate implementation. Before next work read this, PRD/Plan/ArcD/Relation Test, global Property list and outstanding checks. Need exact-head CI validation and restore checkpoint before labeling subPR PASS. Remain on one major Draft PR05 until PR05.01–10 all verified. Next PR05.04 inflight response binding, PR05.05 draining, PR05.06 fallback, PR05.07 rollback, PR05.08 registry reload, PR05.09 EHU and PR05.10 pressure acceptance. Release only on major Gate, version remains 0.0.10 while Draft.
