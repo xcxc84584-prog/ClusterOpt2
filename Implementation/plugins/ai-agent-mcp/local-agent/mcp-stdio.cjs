@@ -5,7 +5,17 @@ const fs=require('node:fs');
 const path=require('node:path');
 const readline=require('node:readline');
 const tokenPath=path.join(process.env.LOCALAPPDATA||path.join(require('node:os').homedir(),'AppData','Local'),'ClusterTerminalAgent','pairing-token');
-const endpoint='http://127.0.0.1:'+(process.env.CLUSTER_TERMINAL_PORT||43879);
+const configPath=path.join(process.env.LOCALAPPDATA||
+  path.join(require('node:os').homedir(),'AppData','Local'),
+  'ClusterOpt2','AI-Agent-MCP','service-ports.json');
+let configuredPort=43881;
+try {
+ const data=JSON.parse(fs.readFileSync(configPath,'utf8'));
+ const port=Number(data.terminal);
+ if(Number.isInteger(port)&&port>=1024&&port<=65535)configuredPort=port;
+} catch { /* No config yet: use canonical default. */ }
+const endpoint='http://127.0.0.1:'+
+  (process.env.CLUSTER_TERMINAL_PORT||configuredPort);
 function respond(id,result){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,result})+'\n');}
 function error(id,code,message){process.stdout.write(JSON.stringify({jsonrpc:'2.0',id,error:{code,message}})+'\n');}
 async function local(route,call){
