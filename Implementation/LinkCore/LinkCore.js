@@ -253,6 +253,15 @@ export class LinkCore {
   removeStoredPluginBundle(providerId) {
     return this.pluginPackageStore.remove(providerId);
   }
+  rememberReviewedPlugin(providerId) {
+    return this.pluginPackageStore.rememberReviewed(providerId);
+  }
+  listReviewedPlugins() {
+    return this.pluginPackageStore.listReviewed();
+  }
+  forgetReviewedPlugin(providerId) {
+    return this.pluginPackageStore.forgetReviewed(providerId);
+  }
 
   /** Host-only file intake: never exposed on the Cluster public API. */
   stageLocalPluginDirectory(directory) {
