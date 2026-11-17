@@ -1,3 +1,5 @@
+import { PluginMCPReadOnlyObject } from
+  "../object/PluginMCPReadOnlyObject.js";
 import { PluginShellApprovalObject } from
   "../object/PluginShellApprovalObject.js";
 import { PluginExplorerObject } from
@@ -111,7 +113,8 @@ export class PluginUIHostUnit {
       const view = {
         button, panel, frame, labels, enabled: true,
         snapshot, provider, localAgent: null, modelTask: null,
-        explorerAccess: null, shellApproval: null
+        explorerAccess: null, shellApproval: null,
+        mcpReadOnly: null
       };
 
       // Trusted host-side ToolBox; never run a file picker in a sandbox.
@@ -183,7 +186,9 @@ export class PluginUIHostUnit {
               return;
             }
             view.shellApproval?.revoke();
+            view.mcpReadOnly?.revoke();
             view.localAgent?.disableShellBridge();
+            view.localAgent?.disableReadBridge();
             access.setRoot(handle, path);
             rootStatus.textContent =
               "已取得所選資料夾授權：" + access.label;
@@ -198,7 +203,8 @@ export class PluginUIHostUnit {
         });
         menu.append(rootButton, rootStatus);
         const rights = [
-          ["ps", "PowerShell (PR14.7)"],
+          ["ps", "PowerShell"],
+          ["mcp", "MCP Read-only"],
           ["create", "File Create"],
           ["update", "File Update"],
           ["read", "File Read"],
@@ -215,7 +221,7 @@ export class PluginUIHostUnit {
           checkbox.addEventListener("change", async () => {
             try {
               if (checkbox.checked && name !== "read" &&
-                  name !== "ps") {
+                  name !== "ps" && name !== "mcp") {
                 const selected = access.root;
                 if (!selected ||
                     await selected.requestPermission({
@@ -237,13 +243,29 @@ export class PluginUIHostUnit {
                   view.localAgent.disableShellBridge();
                 }
                 view.shellApproval.setEnabled(enabled);
+              } else if (name === "mcp") {
+                if (!view.mcpReadOnly || !view.localAgent) {
+                  throw Error("MCP adapter unavailable");
+                }
+                if (enabled) {
+                  const bridge = view.localAgent.registerReadBridge(
+                    view.mcpReadOnly.id);
+                  if (!bridge.ok) throw Error("MCP bridge unavailable");
+                } else {
+                  view.localAgent.disableReadBridge();
+                }
+                view.mcpReadOnly.setEnabled(enabled);
               }
-              access.setRight(name, enabled);
+              if (name !== "mcp") access.setRight(name, enabled);
             } catch {
               checkbox.checked = false;
               if (name === "ps") {
                 view.shellApproval?.revoke();
                 view.localAgent?.disableShellBridge();
+              }
+              if (name === "mcp") {
+                view.mcpReadOnly?.revoke();
+                view.localAgent?.disableReadBridge();
               }
               access.audit("PermissionRejected", 403);
             }
@@ -257,7 +279,9 @@ export class PluginUIHostUnit {
         revoke.addEventListener("click", () => {
           access.revoke();
           view.shellApproval?.revoke();
+          view.mcpReadOnly?.revoke();
           view.localAgent?.disableShellBridge();
+          view.localAgent?.disableReadBridge();
           rootStatus.textContent = "";
           for (const checkbox of menu.querySelectorAll(
             'input[type="checkbox"]')) checkbox.checked = false;
@@ -290,6 +314,12 @@ export class PluginUIHostUnit {
             throw Error("Shell approval registration failed");
           }
           view.shellApproval = shell;
+          const read = new PluginMCPReadOnlyObject(
+            this.core, provider.providerId, agent.id);
+          if (!this.core.register(read)) {
+            throw Error("MCP read object registration failed");
+          }
+          view.mcpReadOnly = read;
         }
         if (provider.permissions.includes("model.configure") &&
             provider.permissions.includes("model.task")) {
@@ -433,7 +463,12 @@ export class PluginUIHostUnit {
         view.unlistenAgent?.();
         view.localAgent?.close();
         view.shellApproval?.revoke();
+        view.mcpReadOnly?.revoke();
         view.localAgent?.disableShellBridge();
+        view.localAgent?.disableReadBridge();
+        if (view.mcpReadOnly) {
+          this.core.unregister(view.mcpReadOnly.id);
+        }
         if (view.shellApproval) {
           this.core.unregister(view.shellApproval.id);
         }
@@ -473,7 +508,9 @@ export class PluginUIHostUnit {
       view.localAgent?.close();
       view.explorerAccess?.revoke();
       view.shellApproval?.revoke();
+      view.mcpReadOnly?.revoke();
       view.localAgent?.disableShellBridge();
+      view.localAgent?.disableReadBridge();
       view.resetToolBox?.();
       view.panel.hidden = true;
       view.button.setAttribute("aria-pressed", "false");
