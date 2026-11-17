@@ -45,3 +45,13 @@ large file restore after delayed permissions and reload.
   pairing secret not stored, and no implicit local system privilege.
 - Browser tests must exercise native pairing using a synthetic WebSocket,
   then real Windows ConPTY acceptance separately.
+
+## Patch3 revised user acceptance: old PowerShell 1:1
+- Revert Patch2 custom PowerShell sidebar, restore old PSM module, native
+  agent client and original UI CSS. Header button follows Explorer switch.
+- Compatibility adapters expose the current shared Language/UI_COLOR to
+  the legacy module, keeping all document state independently owned.
+- Maintain original setup, multi-tab creation, terminal, settings and
+  palette interfaces. Real Windows acceptance remains a separate gate.
+- Risk: legacy PSM bypasses internal LinkCore Request/Response in its
+  OS boundary; document as compatibility seam pending future formal wrapper.
