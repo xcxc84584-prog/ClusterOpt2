@@ -47,7 +47,8 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
 <body>
 <header>
   <strong data-i18n="heading">AI Agent</strong>
-  <span class="state" data-i18n="disconnected">尚未連線</span>
+  <span class="state" role="status" aria-live="polite"
+    data-agent-status data-i18n="disconnected">尚未連線</span>
 </header>
 <main>
   <aside>
@@ -57,8 +58,14 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
     <div class="controls">
       <button type="button" disabled data-i18n="settings">模型設定</button>
       <button type="button" disabled data-i18n="connection">連線教學</button>
-      <button type="button" disabled data-i18n="ping">測試連線</button>
+      <button type="button" data-agent-action="pair"
+        data-i18n="connect">配對</button>
+      <button type="button" data-agent-action="ping"
+        disabled data-i18n="ping">測試連線</button>
+      <button type="button" data-agent-action="disconnect"
+        disabled data-i18n="disconnect">斷線</button>
     </div>
+    <p data-agent-error role="alert"></p>
   </aside>
   <section class="feed">
     <div class="messages" role="log" aria-live="polite">
@@ -78,8 +85,50 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
 (() => {
   "use strict";
   const labels = {};
+  let agentState = "disconnected";
+  function updateAgentState() {
+    const status = document.querySelector("[data-agent-status]");
+    const key = agentState === "connected" ? "connected" :
+      agentState === "connecting" ? "connecting" : "disconnected";
+    status.textContent = labels[key] || key;
+    document.querySelector('[data-agent-action="pair"]').disabled =
+      agentState !== "disconnected";
+    document.querySelector('[data-agent-action="ping"]').disabled =
+      agentState !== "connected";
+    document.querySelector('[data-agent-action="disconnect"]').disabled =
+      agentState === "disconnected";
+  }
+  document.querySelectorAll("[data-agent-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      const action = button.dataset.agentAction;
+      if (!["pair", "ping", "disconnect"].includes(action)) return;
+      window.parent.postMessage({
+        type: "cluster-local-agent-" + action
+      }, "*");
+    });
+  });
   window.addEventListener("message", event => {
     if (event.source !== window.parent) return;
+    if (event.data?.type === "cluster-local-agent-status") {
+      const state = event.data.state;
+      if (["connected", "connecting", "disconnected"].includes(state)) {
+        agentState = state;
+        updateAgentState();
+      }
+      return;
+    }
+    if (event.data?.type === "cluster-local-agent-result") {
+      const value = event.data;
+      const status = Number(value.status);
+      if (!value.ok && Number.isInteger(status)) {
+        const field = document.querySelector("[data-agent-error]");
+        field.textContent = (labels.connectionError ||
+          "Connection error") + " (" + status + ")";
+      } else {
+        document.querySelector("[data-agent-error]").textContent = "";
+      }
+      return;
+    }
     if (event.data?.type === "cluster-plugin-theme") {
       const names = ["background", "panel", "text", "border", "control"];
       for (const name of names) {
@@ -103,6 +152,7 @@ textarea { resize:vertical; min-height:48px; max-height:150px;
       const value = labels[node.dataset.i18n];
       if (typeof value === "string") node.textContent = value;
     }
+    updateAgentState();
     for (const node of document.querySelectorAll("[data-placeholder]")) {
       const value = labels[node.dataset.placeholder];
       if (typeof value === "string") node.placeholder = value;
