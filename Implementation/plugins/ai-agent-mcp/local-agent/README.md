@@ -39,3 +39,12 @@ Windows account. Prefer changing this storage before production use.
 
 The original local services must be explicitly started by the user.
 No service is auto-installed, auto-started or silently upgraded.
+
+## Standalone MCP Quick Setup
+
+Run `MCP-Quick-Setup.cmd` **after** Local Agent setup to download the
+reviewed MCP/OAuth services and open their loopback consoles. For the
+public ChatGPT connection, configure HTTPS termination separately and
+supply the exact issuer origin in the OAuth console. The remote OAuth
+scope `cluster.read` is server-enforced to five read-only tools.
+See `../MCP-SETUP.md` for the full walkthrough and tool matrix.
