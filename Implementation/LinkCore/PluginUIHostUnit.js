@@ -154,15 +154,35 @@ export class PluginUIHostUnit {
             const handle = await this.doc.defaultView.showDirectoryPicker({
               mode: "read"
             });
-            // User-supplied absolute path is descriptive only. Authority
-            // comes exclusively from this browser-selected handle.
-            const label = this.doc.defaultView.prompt(
-              "已選取 " + handle.name +
-              "。可選填絕對路徑作為顯示名稱；不會擴大權限。",
-              handle.name);
-            if (label === null) return;
-            access.setRoot(handle, label);
-            rootStatus.textContent = access.status().label;
+            // Browser handles are the only filesystem authority.
+            // Browsers do not disclose a folder's absolute OS path.
+            if (await handle.queryPermission({ mode: "read" }) !==
+                "granted") {
+              rootStatus.textContent = "未取得資料夾授權";
+              access.audit("BrowserPermissionDenied", 403);
+              return;
+            }
+            const entered = this.doc.defaultView.prompt(
+              "已選取：" + handle.name +
+              "\n輸入絕對路徑確認（不會授權其他路徑）：", "");
+            if (entered === null) return;
+            const path = entered.trim();
+            const unified = path.replace(/\\/g, "/");
+            const parts = unified.split("/").filter(Boolean);
+            const basename = parts.at(-1);
+            const absolute = /^[A-Za-z]:\//.test(unified) ||
+              unified.startsWith("//") || unified.startsWith("/");
+            if (!absolute || path.length > 512 ||
+                !basename ||
+                basename.toLowerCase() !== handle.name.toLowerCase()) {
+              rootStatus.textContent =
+                "絕對路徑無效或與所選資料夾名稱不符";
+              access.audit("PathConfirmationRejected", 400);
+              return;
+            }
+            access.setRoot(handle, path);
+            rootStatus.textContent =
+              "已取得所選資料夾授權：" + access.label;
             for (const checkbox of menu.querySelectorAll(
               'input[type="checkbox"]')) checkbox.checked = false;
           } catch (error) {
