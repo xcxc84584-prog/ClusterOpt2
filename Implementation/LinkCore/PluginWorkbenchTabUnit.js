@@ -19,9 +19,8 @@ export class PluginWorkbenchTabUnit {
       if (!event.target.closest?.(
         "#tabs .tab:not(.plugin-agent-tab), " +
         "#explorerPowerShell, #pluginBtn")) return;
-      if (event.target.closest?.('#tabs .tab[data-tab-kind="tool"]') &&
-          this.column?.classList.contains("psm-mode")) {
-        this.doc.getElementById("explorerPowerShell")?.click();
+      if (event.target.closest?.('#tabs .tab[data-tab-kind="tool"]')) {
+        this.suspendPowerShell();
       }
       this.deactivate();
     };
@@ -81,12 +80,23 @@ export class PluginWorkbenchTabUnit {
     }
   }
 
+  suspendPowerShell() {
+    if (!this.column?.classList.contains("psm-mode")) return;
+    // Hide the PowerShell surface without closing its native session.
+    // Its own tab remains available and restores the original session.
+    const pane = this.doc.getElementById("powershellManagerPane");
+    if (pane) pane.hidden = true;
+    this.column.classList.remove("psm-mode");
+    this.doc.getElementById("explorerPowerShell")?.setAttribute(
+      "aria-pressed", "false");
+    for (const tab of this.tabs.querySelectorAll(".psm-tab")) {
+      tab.classList.remove("active");
+    }
+  }
+
   open() {
     if (!this.view.enabled) return;
-    // Use the native PowerShell toggle to close its own session surface.
-    if (this.column?.classList.contains("psm-mode")) {
-      this.doc.getElementById("explorerPowerShell")?.click();
-    }
+    this.suspendPowerShell();
     if (!this.tab) this.tabs.append(this.ensureTab());
     this.active = true;
     this.applyVisibility();
