@@ -57,3 +57,15 @@ No real 5GiB editor or physical file-permission acceptance is claimed.
   alter primary REP. Every sidecar uses guarded HubUnit.request.
 - Existing Request/Response dependencies remain 10/01; VTE remains isolated.
 - Exact-head Node+browser CI and rollback checkpoint required for PASS.
+
+## PR04.07 — Response Pipeline Relation Tests
+- Existing v1 routes without responsePipeline remain valid and unchanged.
+- validate true continues; false returns 422 and stops downstream stages.
+- transform checks input/output contracts; malformed 502 fails closed.
+- fanout-only first-stage aggregate collects ordered branch values.
+- Missing/disabled Processor 404 and contract mismatch 409; atomic old
+  route remains usable. Hostile getter/unknown fields/repeat rejected 400.
+- Original source and origin used for each HubUnit.request; ACL 403 EHU.
+- Primary failures bypass pipeline; no plugin controls status/event fields.
+- Node/VTE and existing browser CI must be PASS at exact head; no new
+  redundant workflow; verify immutable restore ref before acceptance.

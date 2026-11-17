@@ -99,3 +99,23 @@ to 8, with one primary and at least one observer. Approximate dispatch
 cost is O(number of observers); primary path does not await observer I/O.
 Upstream comparison: OpenTelemetry's separation of telemetry export from
 business results and VS Code's contribution-based provider boundaries.
+
+## PR04.07 — Response Pipeline (bounded response-value processing)
+Reference: OpenTelemetry collector processor pipeline and VS Code
+contribution/Provider routing. Keep HubUnit as the single ingress and
+response authority: optional responsePipeline field extends the v1 route
+schema without changing older valid tables. At most four stages, each
+{kind: validate|transform|aggregate, providerId}; no functions or direct
+status/event/source/receiver mutation. Aggregate is fanout-only and first;
+validate returns boolean true to continue or 422 to reject; transform
+returns a schema-checked replacement value. Resolver checks live URU
+identity on every call. Activate only when every processor contract is
+compatible at configuration; otherwise reject the entire route table.
+All stages dispatch through HubUnit.request with original caller/origin,
+ACL, scheduler and OMU EHU/Log/Dependency. Intermediate values are
+bounded (1 MiB per stage) and copied/frozen before dispatch to prevent
+accidental prior-value mutation. Failed primary bypasses pipeline; stage
+403/404/422/502 fails closed, without exposing partial outputs. Envelope
+metadata is produced solely by core. Time: O(stages * payload bytes),
+space: O(max stage bytes), max four sequential stages. No extra runtime,
+EDPMU authority, UI privilege, new CI workflow or release bump.

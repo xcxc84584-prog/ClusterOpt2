@@ -1,4 +1,5 @@
 import { CapabilityIdPolicy } from "./CapabilityIdPolicy.js";
+import { ResponsePipelinePolicy } from "./ResponsePipelinePolicy.js";
 
 /**
  * PR04.02: data-only bounded Route Table schema.
@@ -15,7 +16,7 @@ const ORIGINS = new Set(["user", "agent"]);
 const TABLE_KEYS = new Set(["schemaVersion", "routes"]);
 const ROUTE_KEYS = new Set([
   "routeId", "service", "action", "mode", "providers",
-  "sourceFilter", "priority", "timeoutMs"
+  "sourceFilter", "priority", "timeoutMs", "responsePipeline"
 ]);
 const FILTER_KEYS = new Set(["origins", "objects"]);
 const DENIED = new Set(["__proto__", "prototype", "constructor"]);
@@ -81,7 +82,11 @@ function sourceFilterValid(value) {
 }
 
 function routeValid(route) {
-  if (!exact(route, ROUTE_KEYS) ||
+  if ((!exact(route, ROUTE_KEYS) &&
+       !(plain(route) && Object.keys(route).length ===
+         ROUTE_KEYS.size - 1 &&
+         !Object.hasOwn(route, "responsePipeline") &&
+         Object.keys(route).every(key => ROUTE_KEYS.has(key)))) ||
       !boundedId(route.routeId, ROUTE_ID) ||
       !CapabilityIdPolicy.validate(route.service).ok ||
       !boundedId(route.action, ACTION, 64) ||
@@ -97,6 +102,9 @@ function routeValid(route) {
       !route.providers.every(id =>
         CapabilityIdPolicy.validate(id).ok) ||
       !unique(route.providers)) return false;
+  if (Object.hasOwn(route, "responsePipeline") &&
+      !ResponsePipelinePolicy.validate(
+        route.responsePipeline, route.mode)) return false;
   if (route.mode === "replace" && route.providers.length !== 1) {
     return false;
   }

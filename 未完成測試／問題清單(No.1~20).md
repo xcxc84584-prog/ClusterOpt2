@@ -102,3 +102,9 @@ PR1 is not considered accepted based on source code alone.
   remain deferred; timeoutMs does not force running Provider termination.
 - External route-config ACL remains PR04.08, no public mutation API.
 - Physical 5GiB and file permissions remain unverified.
+
+## PLUGIN PR04.07 verification
+- Response Pipeline Node/VTE tests and production code submitted.
+- Exact-head five CI workflows and restore ref required before PASS.
+- Inflight hard cancellation, external Route ACL, routeVersion/CAS,
+  untrusted Worker sandbox and manual 5GiB File I/O remain deferred.

@@ -11,6 +11,8 @@ import { RouteTablePolicy } from
   "../property/RouteTablePolicy.js";
 import { RouteContractPolicy } from
   "../property/RouteContractPolicy.js";
+import { ResponsePipelinePolicy } from
+  "../property/ResponsePipelinePolicy.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { AuthorizedCatalogCollection } from
   "./AuthorizedCatalogCollection.js";
@@ -301,6 +303,39 @@ export class HubUnit {
         return { ok: false, status: 409,
           error: "Chain contract mismatch" };
       }
+      let previous = route.mode === "fanout" ?
+        ResponsePipelinePolicy.fanoutSchema :
+        route.mode === "chain" ?
+          contracts[contracts.length - 1].outputSchema :
+          contracts[0].outputSchema;
+      for (const stage of route.responsePipeline ?? []) {
+        const provider = found.ok && found.value.find(item =>
+          item.providerId === stage.providerId &&
+          this.registry.objects.has(item.objectId));
+        const contract = provider && provider.provides.find(item =>
+          item.service === route.service &&
+          item.action === route.action);
+        if (!contract) {
+          this.omu.record("EHU", "LinkCore",
+            "Service.Route.Configure", 404, route.routeId);
+          return { ok: false, status: 404,
+            error: "Response Provider unavailable" };
+        }
+        if (!RouteContractPolicy.compatible(
+          previous, contract.inputSchema) ||
+            (stage.kind === "validate" &&
+             !RouteContractPolicy.compatible(
+               contract.outputSchema,
+               ResponsePipelinePolicy.booleanSchema))) {
+          this.omu.record("EHU", "LinkCore",
+            "Service.Route.Configure", 409, route.routeId);
+          return { ok: false, status: 409,
+            error: "Response Pipeline contract mismatch" };
+        }
+        if (stage.kind !== "validate") {
+          previous = contract.outputSchema;
+        }
+      }
     }
     // Existing in-flight requests hold their already resolved Object.
     this.replaceRoutes = parsed.value.routes;
@@ -346,20 +381,25 @@ export class HubUnit {
         service: route.value.service,
         providerId: route.value.providerId
       });
+    let result;
     if (route.value.mode === "chain") {
-      return this.executeChain(source, route.value,
+      result = await this.executeChain(source, route.value,
         payload, options);
-    }
-    if (route.value.mode === "fanout") {
-      return this.executeFanout(source, route.value,
+    } else if (route.value.mode === "fanout") {
+      result = await this.executeFanout(source, route.value,
         payload, options);
-    }
-    if (route.value.mode === "observe") {
-      return this.executeObserve(source, route.value,
+    } else if (route.value.mode === "observe") {
+      result = await this.executeObserve(source, route.value,
         payload, options);
+    } else {
+      result = await this.request(source, route.value.objectId,
+        route.value.action, payload, options);
     }
-    return this.request(source, route.value.objectId,
-      route.value.action, payload, options);
+    if (!result.ok || !route.value.responsePipeline?.length) {
+      return result;
+    }
+    return this.executeResponsePipeline(source, route.value,
+      result, options);
   }
 
 
@@ -473,6 +513,41 @@ export class HubUnit {
       });
     }
     return result;
+  }
+
+  /**
+   * PR04.07: response-only, bounded sequential contract pipeline.
+   * Each trusted Provider sees detached validated value, never the
+   * original Hub REP envelope or caller identity as payload.
+   */
+  async executeResponsePipeline(source, route, primary, options) {
+    let value = primary.value;
+    for (const [index, stage] of route.responsePipeline.entries()) {
+      if (!RouteContractPolicy.validate(value, stage.inputSchema)) {
+        return this.routeFailure(source, route, 502,
+          "Response input contract failed", index);
+      }
+      const input = ResponsePipelinePolicy.clone(value);
+      const response = await this.request(source, stage.objectId,
+        route.action, input, options);
+      if (!response.ok) return response;
+      if (!RouteContractPolicy.validate(
+        response.value, stage.outputSchema)) {
+        return this.routeFailure(source, route, 502,
+          "Response output contract failed", index);
+      }
+      if (stage.kind === "validate") {
+        if (response.value !== true) {
+          return this.routeFailure(source, route, 422,
+            "Response validation rejected", index);
+        }
+      } else {
+        value = ResponsePipelinePolicy.clone(response.value);
+      }
+    }
+    // Keep original request/response status and provenance. Providers
+    // cannot construct or overwrite the protected envelope.
+    return { ...primary, value };
   }
 
   routeObservationFailure(source, route, status, stage) {

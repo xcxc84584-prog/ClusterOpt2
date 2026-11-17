@@ -68,6 +68,23 @@ export class ServiceRequestResolver {
           outputSchema: contract.outputSchema
         }));
       }
+      const responsePipeline = [];
+      for (const item of declaration.responsePipeline ?? []) {
+        const provider = matches.find(entry =>
+          entry.providerId === item.providerId);
+        if (!provider || !this.registry.objects.has(provider.objectId)) {
+          return { ok: false, status: 404,
+            error: "Response Provider unavailable" };
+        }
+        const contract = provider.provides.find(entry =>
+          entry.service === service && entry.action === action);
+        responsePipeline.push(Object.freeze({
+          kind: item.kind, providerId: item.providerId,
+          objectId: provider.objectId,
+          inputSchema: contract.inputSchema,
+          outputSchema: contract.outputSchema
+        }));
+      }
       return { ok: true, status: 200,
         value: Object.freeze({
           service, action,
@@ -75,7 +92,8 @@ export class ServiceRequestResolver {
           objectId: stages[0].objectId,
           mode: declaration.mode,
           routeId: declaration.routeId,
-          stages: Object.freeze(stages)
+          stages: Object.freeze(stages),
+          responsePipeline: Object.freeze(responsePipeline)
         }) };
     }
     if (matches.length > 1) {

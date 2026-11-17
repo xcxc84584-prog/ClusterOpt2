@@ -138,3 +138,25 @@ never receive original payload/response; each one still faces the original
 ACL/UserAPI/AgentAPI checks. Observer failures do not affect REP. OMU
 records the same normal 10/01 dependency edges for successful calls and
 EHU for rejected observation.
+
+## PR04.07 — Response Pipeline ArcD
+```mermaid
+flowchart TD
+  Source[Caller + origin] --> Resolver[ServiceRequestResolver]
+  Resolver --> Primary[Primary chain fanout observe via HubUnit]
+  Primary -->|success value| Gate[Schema validation + detached data]
+  Gate --> Stage[Bounded response Provider via HubUnit.request]
+  Stage -->|validate true| Gate
+  Stage -->|transform or aggregate| Gate
+  Gate --> Final[Original Hub REP envelope, final value]
+  Stage -->|403 404 422 502| EHU[OMU EHU, fail closed]
+```
+New pure helper: ResponsePipelinePolicy; no new Object or EDPMU shared
+Property. RouteTablePolicy optional descriptor, Resolver resolves URU
+Processor manifest; HubUnit enforces contract compatibility at atomic
+route install and runtime contracts at each hop. Primary response status,
+source and target are never a plugin-controlled payload envelope.
+Each pipeline Provider uses original source and origin, its own complete
+Hub request/response and 10/01 OMU Dependency edges. Any failure returns
+its guarded error or a recorded pipeline EHU, never a partial success.
+No Event ID is fabricated or rewritten; OMU remains lineage authority.

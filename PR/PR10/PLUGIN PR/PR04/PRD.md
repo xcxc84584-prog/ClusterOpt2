@@ -41,3 +41,10 @@ Chain: sequential Provider route with strict per-step schema check.
 Fan-out: bounded asynchronous Provider routes with deterministic
 all-or-nothing aggregation. Use HubUnit authorization at every call.
 Timeout metadata does not promise hard termination of running calls.
+
+## PR04.07 implemented scope
+Optional bounded declarative responsePipeline attached to a v1 Route
+entry: validate, transform, fanout-only aggregate. Provider contract
+compatibility checked atomically, live URU checked at request time, and
+core-owned status/lineage preserved. Each hop has existing HubUnit
+permission and OMU tracing. No browser route-edit API or untrusted code.
