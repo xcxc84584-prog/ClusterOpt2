@@ -79,31 +79,46 @@ export function renderResources(doc,host,options) {
   download.href="./Implementation/plugins/multilang-highlighter.js";
   download.download="multilang-highlighter.js";
   sample.append(download);
+  const fileName=el(doc,"input","pm-resource-search");
+  fileName.type="text";
+  fileName.value="example.js";
+  fileName.maxLength=160;
+  fileName.setAttribute("aria-label",t("測試檔名","Sample filename"));
+  sample.append(fileName);
   const sampleInput=el(doc,"textarea","pm-sample-editor",
     "const answer = 42; // sample");
   sampleInput.setAttribute("aria-label",t("語法測試文字","Syntax sample"));
   const sampleResult=el(doc,"pre","pm-sample-preview");
   sampleResult.setAttribute("aria-live","polite");
+  sampleInput.maxLength=65536;
   sample.append(sampleInput,button(doc,t("測試插件","Run plugin test"),
     async()=>{
       const response=await core.requestService("ui",
         "editor.syntax.highlight","highlight",{
-          text:sampleInput.value,fileName:"example.js"
+          text:sampleInput.value,fileName:fileName.value
         },{origin:"user"});
       sampleResult.replaceChildren();
       if(!response.ok) {
         sampleResult.textContent="HTTP "+response.status;
         return;
       }
-      const payload=response.value;
-      const value=payload?.value??payload;
+      const value=response.value;
       if(!Array.isArray(value?.tokens)) {
         sampleResult.textContent="Invalid plugin output";
         return;
       }
+      const allowed=new Set([
+        "plain","keyword","string","number","comment","operator"
+      ]);
       for(const token of value.tokens) {
-        const part=el(doc,"span","pm-token-"+token.type,token.text);
-        sampleResult.append(part);
+        if(typeof token?.text!=="string" ||
+          !allowed.has(token.type)) {
+          sampleResult.textContent=t(
+            "插件回傳資料格式錯誤","Invalid plugin result");
+          return;
+        }
+        sampleResult.append(el(doc,"span",
+          "pm-token-"+token.type,token.text));
       }
     }),sampleResult);
   left.append(sample);
@@ -139,8 +154,10 @@ export function renderResources(doc,host,options) {
       const result=module.install(core);
       if(result.ok) renderCards();
       mountStatus.textContent=result.ok?t(
-        "201：插件已裝載並向 HubUnit 註冊。",
-        "201: Plugin mounted and registered with HubUnit.") :
+        result.alreadyInstalled ? "插件已註冊。" :
+          "201：插件已裝載並向 HubUnit 註冊。",
+        result.alreadyInstalled ? "Already mounted." :
+          "201: Plugin mounted and registered with HubUnit.") :
         "HTTP "+result.status;
     } catch(error) {
       mountStatus.textContent="HTTP 500: "+String(error);
@@ -173,9 +190,13 @@ export function renderResources(doc,host,options) {
         t("提供服務","Services")+": "+
         provider.provides.map(item=>item.service+
           " (v"+item.version+")").join(", ")));
-      card.append(el(doc,"p","pm-resource-unavailable",
-        t("插件套件下載路徑：未註冊",
-          "Plugin package download URL: not registered")));
+      const packaged=provider.providerId===
+        "cluster.sample.multilang-highlighter";
+      card.append(el(doc,"p",
+        packaged?"pm-muted":"pm-resource-unavailable",
+        packaged?"Implementation/plugins/multilang-highlighter.js":
+          t("插件套件下載路徑：未註冊",
+            "Plugin package download URL: not registered")));
       card.append(button(doc,t("下載 Manifest JSON",
         "Download Manifest JSON"),()=>downloadJSON(doc,
         "plugin-"+provider.providerId.replace(/[^a-zA-Z0-9._-]/g,"_")+
