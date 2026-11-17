@@ -23,6 +23,7 @@ async function installAgentUI(page) {
       format: "cluster-plugin-folder",
       formatVersion: 1, manifestText: raw, files
     };
+    window.__pr14TestSnapshot = snapshot;
     const denied = await linkCore.pluginHostInstaller.install(snapshot);
     const installed = await linkCore.pluginHostInstaller.install(
       snapshot, { consented: true, approvedPermissions: [] });
@@ -120,4 +121,34 @@ test("PR14.3 no UI is mounted when consent is denied",
     expect(state.status).toBe(400);
     await expect(page.locator(
       ".plugin-extension-button")).toHaveCount(0);
+  });
+
+test("PR14.3 failed UI-plugin upgrade restores previous view",
+  async ({ page }) => {
+    await page.goto("/");
+    expect((await installAgentUI(page)).installed).toBe(201);
+    const attempt = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const snapshot = structuredClone(window.__pr14TestSnapshot);
+      snapshot.files["worker.js"] = btoa(
+        "export const invalid = ;");
+      const result = await linkCore.pluginHostInstaller.upgrade(
+        "cluster.ai-agent-mcp", snapshot,
+        { consented: true, approvedPermissions: [] });
+      const restored = linkCore.uru.getProvider(
+        "cluster.ai-agent-mcp");
+      return {
+        status: result.status,
+        restored: Boolean(restored),
+        buttons: document.querySelectorAll(
+          ".plugin-extension-button").length
+      };
+    });
+    expect(attempt.restored).toBe(true);
+    expect(attempt.buttons).toBe(1);
+    expect(attempt.status).toBeGreaterThanOrEqual(400);
+    await page.locator(".plugin-extension-button").click();
+    await expect(page.frameLocator(".plugin-extension-frame")
+      .getByText("連結本地 AI Agent")).toBeVisible();
   });
