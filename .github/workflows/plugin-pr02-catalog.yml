@@ -6,6 +6,10 @@ on:
       - "Implementation/LinkCore/ObjectContract.js"
       - "Implementation/LinkCore/UnifiedRegistrationUnit.js"
       - "Implementation/property/APIDescriptorPolicy.js"
+      - "Implementation/property/PropertyDescriptorPolicy.js"
+      - "Implementation/LinkCore/EntireDomainPropertyManagementUnit.js"
+      - "Implementation/tests/property-descriptor.test.js"
+      - "Implementation/e2e/plugin-pr02-property.spec.js"
       - "Implementation/tests/api-descriptor.test.js"
       - "Implementation/tests/object-api-descriptors.test.js"
       - "Implementation/e2e/plugin-pr02-descriptor.spec.js"
@@ -27,6 +31,7 @@ jobs:
       - run: >
           node --test Implementation/tests/api-descriptor.test.js
           Implementation/tests/object-api-descriptors.test.js
+          Implementation/tests/property-descriptor.test.js
       - run: npm run check
   browser:
     runs-on: ubuntu-24.04
@@ -41,4 +46,5 @@ jobs:
           npx playwright test
           Implementation/e2e/plugin-pr02-descriptor.spec.js
           Implementation/e2e/plugin-pr02-object-api.spec.js
+          Implementation/e2e/plugin-pr02-property.spec.js
           --config Implementation/e2e/playwright.config.js
