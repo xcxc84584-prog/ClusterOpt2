@@ -97,6 +97,65 @@ export function renderResources(doc, host, options) {
         action: item.action, status: item.status
       }))
     })));
+  // Portable multi-file plugin bundles are data, not permission grants.
+  actions.append(button(doc, t("下載插件包", "Export plugin bundle"),
+    async () => {
+      const stored = await core.listStoredPluginBundles();
+      if (!stored.ok) return;
+      downloadJSON(doc, "clusteropt2-plugin-bundle.json", {
+        format: "cluster-plugin-collection", formatVersion: 1,
+        packages: stored.value.map(item => item.snapshot)
+      });
+    }));
+  const bundlePicker = el(doc, "input", "pm-native-picker");
+  bundlePicker.type = "file";
+  bundlePicker.accept = ".json,application/json";
+  bundlePicker.setAttribute("aria-label", t("導入插件包",
+    "Import plugin bundle"));
+  const importStatus = el(doc, "p", "pm-muted");
+  importStatus.setAttribute("role", "status");
+  bundlePicker.addEventListener("change", async () => {
+    const file = bundlePicker.files?.[0];
+    bundlePicker.value = "";
+    if (!file) return;
+    if (file.size > 25165824) {
+      importStatus.textContent = t("插件包過大。", "Bundle too large.");
+      return;
+    }
+    try {
+      const archive = JSON.parse(await file.text());
+      if (archive?.format !== "cluster-plugin-collection" ||
+          archive.formatVersion !== 1 ||
+          !Array.isArray(archive.packages) ||
+          archive.packages.length > 32) {
+        throw Error("Invalid bundle");
+      }
+      // Validate all packages before persisting any, avoiding partial
+      // imports when one entry is invalid.
+      for (const snapshot of archive.packages) {
+        if (!core.inspectPluginBundle(snapshot).ok) {
+          throw Error("Invalid package contents");
+        }
+      }
+      let saved = 0;
+      for (const snapshot of archive.packages) {
+        const result = await core.savePluginBundle(snapshot);
+        if (!result.ok) break;
+        saved++;
+      }
+      importStatus.textContent = saved === archive.packages.length ?
+        t("插件包已匯入待審核儲存區，未啟用或授權。",
+          "Bundle imported as inactive packages; no grants.") :
+        t("部分套件無法儲存，請檢查瀏覽器儲存權限。",
+          "Some packages could not be stored.");
+    } catch {
+      importStatus.textContent = t("插件包格式錯誤，已拒絕導入。",
+        "Invalid bundle; import rejected.");
+    }
+  });
+  actions.append(button(doc, t("導入插件包", "Import plugin bundle"),
+    () => bundlePicker.click()));
+  exports.append(bundlePicker, importStatus);
   exports.append(actions);
   exports.append(el(doc, "p", "pm-muted", t(
     "匯出內容不包含敏感 Payload。",
@@ -203,11 +262,20 @@ export function renderResources(doc, host, options) {
     status.textContent = t("正在讀取所選插件包...",
       "Reading selected plugin package...");
     const result = await core.localPluginPackage.selectAndStage();
-    status.textContent = result.ok ?
-      t("套件契約已驗證；執行與裝載功能尚未開放。",
-        "Package contract validated; activation is not available yet.") :
-      t("插件包驗證失敗（狀態 ", "Package validation failed (status ") +
-        result.status + ").";
+    if (result.ok && result.value.snapshot) {
+      const saved = await core.savePluginBundle(result.value.snapshot);
+      status.textContent = saved.ok ?
+        t("整個插件資料夾已保存，重載後可恢復待審核套件；尚未執行。",
+          "Full plugin folder saved for reload; execution is pending.") :
+        t("套件驗證通過，但儲存失敗。",
+          "Package validated, but storage failed.");
+    } else {
+      status.textContent = result.ok ?
+        t("插件已驗證，但目前瀏覽器不支援完整資料夾保存。",
+          "Plugin validated, but full folder storage is unavailable.") :
+        t("插件包驗證失敗（狀態 ",
+          "Package validation failed (status ") + result.status + ").";
+    }
   });
   localPackage.setAttribute("aria-label", t(
     "選擇本地資料夾並驗證自製插件",
