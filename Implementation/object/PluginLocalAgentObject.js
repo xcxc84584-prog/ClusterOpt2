@@ -226,7 +226,9 @@ export class PluginLocalAgentObject {
             (typeof fileName !== "string" ||
              fileName.length === 0 || fileName.length > 255 ||
              fileName === "." || fileName === ".." ||
-             /[\\\\/\\u0000-\\u001f]/.test(fileName))) {
+             fileName.includes("/") ||
+             fileName.includes("\\\\") ||
+             [...fileName].some(ch => ch.charCodeAt(0) < 32))) {
           result = { error: "Invalid Explorer file name" };
         } else {
         const combined = message.name === "cluster.create_file" ?
