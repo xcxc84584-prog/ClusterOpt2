@@ -1,3 +1,4 @@
+import {ReleaseVersion} from "../property/ReleaseVersion.js";
 import { test, expect } from "@playwright/test";
 
 test("PR03.01 real Chromium reads canonical shared policy", async ({ page }) => {
@@ -25,6 +26,6 @@ test("PR03.01 real Chromium reads canonical shared policy", async ({ page }) => 
   expect(result).toEqual({
     status: 200, valid: 200, invalid: 400, conflict: 409,
     propertyRegistered: true, legacy: true,
-    version: "0.0.12", dependencies: 0
+    version: ReleaseVersion.product, dependencies: 0
   });
 });
