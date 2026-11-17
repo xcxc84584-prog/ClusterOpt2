@@ -34,6 +34,8 @@ test("PR9 current version propagates into UI installer and CMD filename", () => 
 test("PR9 installer never kills an unrelated listener", () => {
   assert.ok(nativeInstaller.includes("[P]ick another port / [C]ancel"));
   assert.ok(nativeInstaller.includes("CLUSTEROPT_AGENT_VERSION"));
+  assert.ok(nativeInstaller.includes("$manifest.version -ne $ExpectedVersion"));
+  assert.ok(nativeInstaller.includes("Agent release mismatch"));
   assert.ok(nativeInstaller.includes("ClusterOpt2/main/Implementation"));
   assert.equal(nativeInstaller.includes("Stop-Process"), false);
   assert.ok(nativeServer.includes("process.env.CLUSTEROPT_AGENT_VERSION"));
