@@ -1,0 +1,18 @@
+{
+  "heading": "AI Agent",
+  "disconnected": "尚未連線",
+  "setupTitle": "連結本地 AI Agent",
+  "setupNotice": "本地 Agent 配對將在 PR14.4 提供。",
+  "settings": "模型設定",
+  "connection": "連線教學",
+  "ping": "測試連線",
+  "stop": "中斷",
+  "close": "關閉",
+  "prompt": "輸入任務需求…",
+  "submit": "送出",
+  "feed": "任務輸出",
+  "unavailable": "AI 模型與任務服務尚未啟用。",
+  "status": "目前階段：介面預覽",
+  "workspace": "工作區",
+  "features": "尚未取得檔案及 PowerShell 權限。"
+}
