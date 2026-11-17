@@ -90,3 +90,13 @@ and verifies listener identities before Stop-Process -Force.
 Testing: native PowerShell AST parser 5.1/7 and Node structural
 regressions required; manual Windows ConPTY and actual port override
 remain OPEN. Never mark the overall PR9 PASS only from CI.
+
+## PR9 Patch8 — Native viewport + detached CMD (2026-11-17)
+User screenshot: prompt under footer, escaped CRLF disconnection
+message and inability to close setup CMD conveniently.
+Branch: pr9/patch8-terminal-layout-detached-agent.
+Source fix: xterm FitAddon+ResizeObserver+flex viewport, native socket
+status; one-time random token and detached hidden Local Agent process;
+node-pty import prerequisite. Code/tests added; real Windows closing
+CMD, tabs, shell editing and session persistence remain OPEN until
+physical acceptance. Do not claim global PR9 PASS on automated CI.

@@ -295,3 +295,54 @@
 .psm-pane.psm-connected .psm-terminal-connection {
   color:var(--ui-text-on-panel,#f1f2f5)!important;
 }
+
+
+/* PR9 Patch8: the native terminal owns the available flex area.
+   Never let xterm render beneath the footer or a fixed legacy input. */
+#clusterEditorColumn.psm-mode .psm-pane.psm-connected {
+  inset: 0;
+  min-height: 0;
+  overflow: hidden !important;
+}
+.psm-pane.psm-connected .psm-terminal-classic:not([hidden]) {
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+.psm-pane.psm-connected .psm-native-wrap {
+  display: block;
+  flex: 1 1 0;
+  height: 0;
+  min-width: 0;
+  min-height: 0 !important;
+  max-height: 100%;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+.psm-pane.psm-connected .psm-native-wrap[hidden],
+.psm-pane.psm-connected .psm-native-session[hidden] {
+  display: none !important;
+}
+.psm-pane.psm-connected .psm-native-session,
+.psm-pane.psm-connected .xterm,
+.psm-pane.psm-connected .xterm-screen,
+.psm-pane.psm-connected .xterm-viewport {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.psm-pane.psm-connected .xterm {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.psm-pane.psm-connected .xterm-viewport {
+  overflow-y: auto !important;
+}
+/* Old browser-only input strip is not used by ConPTY. */
+.psm-pane.psm-connected .psm-terminal-input,
+.psm-pane.psm-connected .psm-terminal-output {
+  display: none !important;
+}

@@ -140,3 +140,40 @@ reported locally and never forged as successful HubUnit responses.
 The installer process sits outside browser OCDA runtime. Browser
 PowerShellClient still pairs only with a verified loopback agent;
 HubUnit Req/Rep, OMU Log/EHU and VTE remain unchanged.
+
+## Patch(+8): native terminal viewport and detached setup EventChain
+Source: UI SystemVersion -> generated CMD -> installer
+ -> current-repo manifest validation -> verified native node-pty
+ -> RandomNumberGenerator(32 bytes)
+ -> child env CLUSTEROPT_PAIRING_TOKEN
+ -> Start-Process node -WindowStyle Hidden
+ -> Agent consumes and deletes env token
+ -> loopback HTTP+WS server listening
+ -> installer prints port/token once and waits for Enter
+ -> CMD exits; native process continues independently.
+The separate native OS boundary remains user-initiated; no token
+moves through browser HubUnit, OMU Log or EHU.
+
+Runtime:
+PowerShell tab -> PowerShellClient authenticated WebSocket
+ -> native-terminal.mjs -> ConPTY.
+xterm ResizeObserver -> requestAnimationFrame
+ -> FitAddon.fit -> WS resize(cols,rows) -> ConPTY resize.
+Each tab's native socket, observer and terminal are isolated and
+disposed on close. Width/height resize is bounded to the active
+visible session. Native disconnect updates the native-specific
+status instead of claiming a healthy terminal.
+
+| Operation | PASS | Fail/EHU |
+| --- | --- | --- |
+| Native add-on import | native pty spawn available | npm setup abort |
+| Detached background startup | loopback owner PID matches child | timeout/exit abort |
+| Agent handshake | correct version and bearer token | 401/version mismatch |
+| Native socket | ready and interactive | WS close/error displayed |
+| Resize | measured valid geometry | invalid/offscreen skipped |
+| Installer token | copied before user exits | must reinstall if lost |
+| Tabs | independent fitted native session | dispose on close |
+
+Parallelism: the browser's different terminal sessions run
+independently via distinct WebSocket/ConPTY objects. Layout observers
+coalesce into animation-frame callbacks and do not read document bytes.

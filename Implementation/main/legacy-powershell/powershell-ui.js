@@ -44,7 +44,7 @@ export function mountPowerShellUI({host,button,language,version,
  // Native ConPTY is the only terminal. No textarea or HTTP-command fallback.
  const nativeWrap=document.createElement('div');
  nativeWrap.className='psm-native-wrap';nativeWrap.hidden=true;
- nativeWrap.style.cssText='flex:1;min-height:220px;background:var(--ui-editor,#000);color:var(--ui-text,#fff);padding:8px;overflow:hidden';
+ nativeWrap.style.cssText='flex:1 1 auto;min-height:0;min-width:0;background:var(--ui-editor,#000);color:var(--ui-text,#fff);padding:8px;overflow:hidden';
  terminal.append(nativeWrap);
  function terminalTheme(){
    const css=getComputedStyle(document.documentElement);
@@ -74,22 +74,24 @@ export function mountPowerShellUI({host,button,language,version,
  syncTerminalPalette();
  let nativeLoading=null;
  async function loadNativeTerminal(){
-   if(window.Terminal)return;
+   if(window.Terminal&&window.FitAddon?.FitAddon)return;
    if(!nativeLoading)nativeLoading=(async()=>{
      const css=document.createElement('link');css.rel='stylesheet';css.href='https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css';document.head.append(css);
      await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js';script.onload=resolve;script.onerror=()=>reject(Error('XTERM_LOAD_FAILED'));document.head.append(script);});
+     await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js';script.onload=resolve;script.onerror=()=>reject(Error('XTERM_FIT_LOAD_FAILED'));document.head.append(script);});
    })().catch(error=>{nativeLoading=null;throw error;});
    return nativeLoading;
  }
  function disposeNative(session){
    session.generation++;
+   session.resizeObserver?.disconnect();session.resizeObserver=null;
    session.socket?.close();session.socket=null;
    session.terminal?.dispose();session.terminal=null;
    session.container?.remove();session.container=null;
  }
  function showNative(session){
    for(const other of sessions)if(other.container)other.container.hidden=other!==session;
-   if(session.container){nativeWrap.hidden=false;session.terminal?.focus();}
+   if(session.container){nativeWrap.hidden=false;session.resize?.();session.terminal?.focus();}
  }
  async function startNativeTerminal(session){
    if(!session||!connected||session.socket||session.startingNative)return;
@@ -100,31 +102,54 @@ export function mountPowerShellUI({host,button,language,version,
      if(generation!==session.generation||!sessions.includes(session)||!connected)return;
      const container=document.createElement('div');
      container.className='psm-native-session';
-     container.style.cssText='height:100%;width:100%;overflow:hidden';
+     container.style.cssText='height:100%;width:100%;min-height:0;min-width:0;overflow:hidden';
      nativeWrap.append(container);session.container=container;
      const term=new window.Terminal({cursorBlink:true,convertEol:false,fontFamily:'Consolas, monospace',fontSize:13,theme:terminalTheme(),scrollback:10000});
      session.terminal=term;
+     const fit=new window.FitAddon.FitAddon();
+     term.loadAddon(fit);
+     session.fit=fit;
      nativeWrap.hidden=false;
      showNative(sessions.find(x=>x.id===selected)||session);
      term.open(container);
      const ws=remote.openNativeTerminal();session.socket=ws;
+     session.nativeStatus='connecting';
+     translate();
      ws.addEventListener('message',event=>{
        if(generation!==session.generation)return;
        let message;try{message=JSON.parse(event.data);}catch{return;}
        if(message.type==='data')term.write(message.data);
-       if(message.type==='ready')term.write('\\r\\n[ConPTY connected]\\r\\n');
-       if(message.type==='error')term.write('\\r\\n'+message.message+'\\r\\n');
-       if(message.type==='exit')term.write('\\r\\n[Shell exited: '+message.exitCode+']\\r\\n');
+       if(message.type==='ready'){
+         session.nativeStatus='connected';translate();
+         term.write('\r\n[ConPTY connected]\r\n');
+       }
+       if(message.type==='error'){
+         session.nativeStatus='error';translate();
+         term.write('\r\n'+message.message+'\r\n');
+       }
+       if(message.type==='exit'){
+         session.nativeStatus='disconnected';translate();
+         term.write('\r\n[Shell exited: '+message.exitCode+']\r\n');
+       }
      });
-     ws.addEventListener('close',()=>{if(generation===session.generation){session.socket=null;term.write('\\r\\n[Native terminal disconnected]\\r\\n');}});
+     ws.addEventListener('close',()=>{if(generation===session.generation){session.socket=null;session.nativeStatus='disconnected';translate();
+       term.write('\r\n[Native terminal disconnected]\r\n');}});
      term.onData(data=>{if(ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'input',data}));});
      const resize=()=>{
        if(generation!==session.generation||ws.readyState!==WebSocket.OPEN||session.id!==selected)return;
-       const cols=Math.max(20,Math.floor(container.clientWidth/8)),rows=Math.max(8,Math.floor(container.clientHeight/17));
-       term.resize(cols,rows);ws.send(JSON.stringify({type:'resize',cols,rows}));
+       if(container.hidden||nativeWrap.hidden||!container.clientWidth||!container.clientHeight)return;
+       fit.fit();
+       const cols=term.cols,rows=term.rows;
+       if(cols>=10&&rows>=5&&cols<=500&&rows<=200){
+         ws.send(JSON.stringify({type:'resize',cols,rows}));
+       }
      };
-     ws.addEventListener('open',resize);
+     ws.addEventListener('open',()=>requestAnimationFrame(resize));
      session.resize=resize;
+     session.resizeObserver=new ResizeObserver(()=>requestAnimationFrame(resize));
+     session.resizeObserver.observe(nativeWrap);
+     session.resizeObserver.observe(container);
+     requestAnimationFrame(resize);
      if(session.id===selected)term.focus();
    }catch(e){
      if(generation===session.generation){
@@ -163,7 +188,7 @@ export function mountPowerShellUI({host,button,language,version,
    q('[data-psm-action="close"]').title=msg.close;
    q('[data-psm-action="close"]').setAttribute('aria-label',msg.close);
    q('[data-psm-action="close"]').textContent=msg.close;
-   const extra=language.value==='en'?{downloadTitle:'Download setup CMD',downloadHint:'Run CMD to start the agent and see its token. If port 43881 is busy, choose a different port or cancel; other processes are never stopped.',download:'Download .cmd',pairTitle:'Pair local agent',pairHint:'Copy the 64-character token shown in CMD. It is held for this browser tab session.',pair:'Pair',verifyTitle:'Verify connection',verifyHint:'Click Check connection. Never expose the local port publicly.'}:{downloadTitle:'下載快速配置 CMD',downloadHint:'執行 CMD 後顯示 Token。若 43881 已占用，請選擇其他埠或取消；不會終止其他程式。',download:'下載 .cmd',pairTitle:'配對本地代理',pairHint:'複製 CMD 顯示的 64 字元 Token，僅保留於此瀏覽器分頁的工作階段。',pair:'配對',verifyTitle:'驗證連線',verifyHint:'點擊下方「檢查連線」，勿公開本地連接埠。'};
+   const extra=language.value==='en'?{downloadTitle:'Download setup CMD',downloadHint:'Run CMD, copy the port and token, then press Enter to close it. The agent stays running in the background. If port 43881 is busy, choose P, C or explicit O override.',download:'Download .cmd',pairTitle:'Pair local agent',pairHint:'Copy the 64-character token shown in CMD. It is held for this browser tab session.',pair:'Pair',verifyTitle:'Verify connection',verifyHint:'Click Check connection. Never expose the local port publicly.'}:{downloadTitle:'下載快速配置 CMD',downloadHint:'執行 CMD，複製 Port 與 Token 後按 Enter 關閉視窗；代理會留在背景運行。若 43881 被占用，可選 P、C 或需二次確認的 O。',download:'下載 .cmd',pairTitle:'配對本地代理',pairHint:'複製 CMD 顯示的 64 字元 Token，僅保留於此瀏覽器分頁的工作階段。',pair:'配對',verifyTitle:'驗證連線',verifyHint:'點擊下方「檢查連線」，勿公開本地連接埠。'};
    for(const key of ['downloadTitle','downloadHint','pairTitle','pairHint','verifyTitle','verifyHint'])q('[data-psm-extra="'+key+'"]').textContent=extra[key];
    q('[data-psm-action="download"]').textContent=extra.download;
    q('[data-psm-action="pair"]').textContent=extra.pair;
@@ -171,7 +196,13 @@ export function mountPowerShellUI({host,button,language,version,
    const labels=language.value==='en'?{heading:'PowerShell',mode:'Connected',settings:'PowerShell tools',version:'PowerShell version',location:'Current directory',clear:'Clear output','new-session':'+ Session','close-session':'Close session'}:{heading:'PowerShell',mode:'已連線',settings:'PowerShell 工具',version:'PowerShell 版本',location:'目前目錄',clear:'清除輸出','new-session':'+工作階段','close-session':'關閉工作階段'};
    const runLabel=language.value==='en'?'Run':'執行';
    for(const [key,value] of Object.entries(labels)){const node=terminal.querySelector('[data-psm-terminal="'+key+'"]')||terminal.querySelector('[data-psm-action="'+key+'"]');if(node)node.textContent=value;}
-   q('[data-psm="status"]').textContent=connected?(language.value==='en'?'Connected':'已連線'):msg.status;
+   const activeSession=sessions.find(item=>item.id===selected);
+   const state=activeSession?.nativeStatus;
+   const nativeMode=q('[data-psm-terminal="mode"]');
+   if(connected&&state==='disconnected')nativeMode.textContent=language.value==='en'?'Native disconnected':'原生終端已斷線';
+   if(connected&&state==='connecting')nativeMode.textContent=language.value==='en'?'Connecting...':'正在連線';
+   if(connected&&state==='error')nativeMode.textContent=language.value==='en'?'Native error':'原生終端錯誤';
+   q('[data-psm="status"]').textContent=connected?(language.value==='en'?'Agent connected':'代理已連線'):msg.status;
  }
  function renderTabs(){
    // Document tabs are owned by main.js; only append our own session cards.
@@ -198,7 +229,7 @@ export function mountPowerShellUI({host,button,language,version,
    renderMode();translate();syncTabs();const active=sessions.find(x=>x.id===id);showNative(active);if(connected)requestAnimationFrame(()=>{if(active.socket){active.terminal?.focus();active.resize?.();}else startNativeTerminal(active);});
  }
  function createSession(){
-   const session={id:++sequence,feedback:'',output:[],socket:null,terminal:null,container:null,generation:0,startingNative:false,resize:null};sessions.push(session);
+   const session={id:++sequence,feedback:'',output:[],socket:null,terminal:null,container:null,generation:0,startingNative:false,resize:null,resizeObserver:null,nativeStatus:'connecting'};sessions.push(session);
    selectSession(session.id);return session.id;
  }
  function hide(){closeToolMenu();open=false;pane.hidden=true;host.classList.remove('psm-mode');button.setAttribute('aria-pressed','false');closeToolMenu();syncTabs();}

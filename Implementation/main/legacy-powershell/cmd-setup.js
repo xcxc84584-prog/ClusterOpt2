@@ -37,8 +37,7 @@ export function createSetupCmd({ version } = {}) {
       "-File \"%AGENT_DIR%\\install-current.ps1\" " +
       "-ExpectedVersion \"" + version + "\"",
     "if errorlevel 1 goto failed",
-    "echo ClusterOpt2 agent setup complete.",
-    "pause",
+    "echo ClusterOpt2 agent setup complete. Background agent remains running.",
     "exit /b 0",
     ":failed",
     "echo [ERROR] Setup failed; no existing listener was terminated.",
