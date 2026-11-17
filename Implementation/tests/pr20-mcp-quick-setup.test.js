@@ -26,9 +26,9 @@ test("PR20 MCP installer downloads pinned gateway assets with diagnostics", () =
   const cmd = asset("local-agent/MCP-Quick-Setup.cmd");
   assert.ok(cmd.includes(
     "REV=9e9055421f6b0d6c021297b28deedbee964b526a"));
-  assert.ok(cmd.includes("echo Fetching %%F"));
+  assert.ok(cmd.includes("Write-Host ('Fetching '+$name)"));
   assert.ok(cmd.includes("DOWNLOAD FAILED:"));
-  assert.ok(cmd.includes("Failed to download %%F"));
+  assert.ok(cmd.includes("Failed to download gateway assets"));
   assert.ok(cmd.includes("Port-CPO.ps1"));
   assert.ok(cmd.includes("SERVICE_NAME=clusteropt2"));
   assert.ok(cmd.includes("https://clusteropt2"));
