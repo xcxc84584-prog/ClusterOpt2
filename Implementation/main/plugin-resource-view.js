@@ -62,7 +62,36 @@ async function mountReviewedFile(doc, plugin, file, core) {
   // File text is not imported or executed. Only the bundled reviewed
   // module can register an Object and Provider through HubUnit.
   const module = await import("../plugins/multilang-highlighter.js");
-  return module.install(core);
+  const installed = module.install(core);
+  if (installed.ok) await core.rememberReviewedPlugin(plugin.id,true);
+  return installed;
+}
+
+/**
+ * Restore only pre-reviewed, shipped code. Imported user source stays inert
+ * until the untrusted sandbox and per-call ACL are fully validated.
+ */
+export async function restoreReviewedPlugins(core) {
+  const saved = await core.listReviewedPlugins();
+  if (!saved.ok) return saved;
+  let restored = 0;
+  for (const entry of saved.value) {
+    if (!PLUGINS.some(plugin=>plugin.id===entry.providerId)) continue;
+    try {
+      const module = await import("../plugins/multilang-highlighter.js");
+      const result = module.install(core);
+      if (!result.ok) continue;
+      const manifest = core.uru.getProvider(entry.providerId);
+      if (!manifest) continue;
+      const enabled = core.setProviderEnabled(
+        manifest.objectId,entry.providerId,entry.enabled);
+      if (enabled.ok) restored++;
+    } catch {
+      core.omu.record("EHU","ui","Plugin.ReviewedRestore",500,
+        entry.providerId);
+    }
+  }
+  return {ok:true,status:200,value:{restored}};
 }
 
 export function renderResources(doc, host, options) {
