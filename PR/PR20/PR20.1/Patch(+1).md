@@ -14,3 +14,9 @@
 - Fixed critical scope mismatch: OAuth `cluster.read` now filters tool list and refuses non-readonly tool calls.
 - Updated UI guide, E2E and node contract tests.
 - Work remains Draft pending CI, Windows local installation, HTTPS/OAuth tests and actual ToolBox / PS execution.
+
+## Patch(+3) — separate control authorization
+- OAuth Gateway scope accepts explicit `cluster.control`, stores it in the authorization code and access token, and offers a control-specific warning at user consent.
+- `tools/list` exposes all existing 14 tools only to `cluster.control`; `cluster.read` stays filtered to five.
+- `tools/call` denies write/shell tools for `cluster.read`. Actual execution is still enforced by trusted Local Agent and browser ToolBox/PS approval.
+- Automated contract coverage updated. Real Windows and OAuth browser security tests remain pending.
