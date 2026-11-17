@@ -398,7 +398,7 @@ export function mountPluginManagerUI(core,doc) {
     oldSettings.hidden=active!=="resources";
     if(active==="resources") {
       renderResources(doc,page,{
-        t,settings:migrated,providers,disabled,apiEntries,logs
+        t,settings:migrated,providers,disabled,apiEntries,logs,core
       });
       return;
     }
