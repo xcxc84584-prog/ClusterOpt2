@@ -1,5 +1,7 @@
 import { CatalogCollection } from "./CatalogCollection.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
+import { ProviderManifestPolicy } from
+  "../property/ProviderManifestPolicy.js";
 import { createClusterAPIFacade } from "./ClusterAPIFacade.js";
 import { CatalogQuery } from "./CatalogQuery.js";
 import { CatalogVisibilityPolicy } from
@@ -58,6 +60,10 @@ export class LinkCore {
       undefined, this.catalog);
     this.catalogQuery = new CatalogQuery(this.catalog);
     this.version = "0.0.9-pr9.patch9";
+    this.hub.registerProperty("ProviderManifestPolicy",
+      ProviderManifestPolicy, {
+        owners: ["LinkCore"], visibility: "Public"
+      });
     this.hub.registerProperty("CapabilityIdPolicy", CapabilityIdPolicy, {
       owners: ["LinkCore"], visibility: "Public"
     });
