@@ -41,3 +41,23 @@ flowchart TD
 No silent Provider choice, no implicit factory execution, no
 authorization or origin bypass, no change to legacy target-ID semantics.
 Full route generation / atomic replacement are future PR04/PR05 tasks.
+
+## PR04.02 — RouteTablePolicy
+New independent property policy module:
+`Implementation/property/RouteTablePolicy.js` (NOT EDPMU-registered).
+Input: untrusted declarative data. Output: 400 or immutable canonical
+Route Table snapshot. It never writes HubUnit, URU or EDPMU.
+
+```mermaid
+flowchart LR
+  Manifest[Route Table data] --> Policy[RouteTablePolicy.validate]
+  Policy -->|200| Frozen[Immutable snapshot only]
+  Policy -->|400| Reject[Reject without side effects]
+  Frozen -. future PR04.03 .-> Hub[HubUnit routing]
+  Hub --> URU[URU providers]
+```
+
+EventChain: local validation only; no Request or Response dispatch, no
+new Dependency edge, no EHU mutation. Future callers must use HubUnit
+for route operations, permission checking and EHU/Log; this pure policy
+cannot authorize its own input. Relation Code 00 for validation itself.

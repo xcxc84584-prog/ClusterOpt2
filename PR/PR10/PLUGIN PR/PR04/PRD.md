@@ -25,3 +25,8 @@ UI, file operations, new release or implicit Provider factories.
 The later L3 highlighter must use extensible programming-language IDs
 and language-specific tokenizer/grammar Provider registration, with a
 safe plain-text fallback. This is independent of the UI locale Property.
+
+## PR04.02 scope
+Immutable Route Table schema, bounded source/provider selection metadata
+and validation only. No route activation, ACL elevation or Service
+execution; these are gated on PR04.03–08.

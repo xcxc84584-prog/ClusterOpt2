@@ -14,3 +14,13 @@
 ## Gate
 Pending exact latest-head CI success. Code submission is NOT proof.
 No real 5GiB editor or physical file-permission acceptance is claimed.
+
+## PR04.02 — Schema and regression assertions
+- Valid input returns detached deeply frozen schemaVersion=1 data.
+- Replace, Chain, Fanout, Observe are declared but NOT executed.
+- Invalid schema, key injection, accessors, cyclic structures and sparse
+  arrays fail 400 without side effects or getter evaluation.
+- Reject duplicate route IDs, same selector/priority collisions,
+  provider duplication, invalid source/origin, unsupported timeouts.
+- Existing HubUnit request/requestService remain unchanged.
+- Exact-head Node and Chromium CI results must be checked after push.

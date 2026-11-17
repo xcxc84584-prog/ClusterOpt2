@@ -32,3 +32,19 @@ Reuse existing CI with per-PR concurrency supersession; the Node and
 Chromium test files enter existing standard suites. No duplicate PR04
 workflow is necessary at this stage. Five latest-head workflows must
 PASS before PR04.01 acceptance. No release version changes while Draft.
+
+## PR04.02 — Bounded declarative Route Table
+Schema version 1 accepts at most 32 routes and 32 KiB of data.
+Each route declares routeId, service/action, mode, ordered provider IDs,
+sourceFilter origins/objects, integer priority (-100..100), and timeoutMs
+(1..30000). Replace requires exactly one provider; other modes allow up
+to eight, with execution deferred to PR04.03–07. Reject duplicate IDs,
+selector/priority collisions, sparse arrays, functions, accessors,
+non-plain prototypes, cycles and unknown fields. Return detached deeply
+frozen data; never register or activate it in this PR.
+
+References: VS Code manifest contribution points and Eclipse Theia
+plugin host dependency injection. Explicit contribution metadata improves
+composability without granting permissions by declaration alone.
+Complexity O(bytes + routes * providers); no persistent changes, DOM,
+network, additional workflow or separate service registry.
