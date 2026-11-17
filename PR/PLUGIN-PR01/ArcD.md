@@ -106,3 +106,6 @@ flowchart LR
  P --> R[3 verified 64KiB windows]
 ```
 `openBoundedFileSource` 僅為測試專用輸入適配器，不是 L2 的生產 Route/Provider；`UTF8SlicePolicy` 不變。Context/API 與檔案寫入權限沒有越界。
+
+## Patch(+7-Fix1) invariance
+No Object, Property, Relation edge, EventChain, EHU, resource budget or adapter contract changes. Only indentation in `ocda-largefile-probe.mjs` is corrected; no new global Property.

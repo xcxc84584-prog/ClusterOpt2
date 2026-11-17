@@ -90,32 +90,32 @@ export async function runSparseProbe() {
         await openBoundedFileSource(path, size);
       const blob = source.blob;
       try {
-      const chunk = UTF8SlicePolicy.defaultChunkBytes;
-      const count = UTF8SlicePolicy.count(blob.size, chunk);
-      const before = process.memoryUsage().heapUsed;
-      const started = performance.now();
-      const first = await UTF8SlicePolicy.read(blob, 0, chunk);
-      const middle = await UTF8SlicePolicy.read(blob,
-        Math.floor(count / 2), chunk);
-      const last = await UTF8SlicePolicy.read(blob, count - 1, chunk);
-      const elapsedMs = Math.round(performance.now() - started);
-      const heapDelta = process.memoryUsage().heapUsed - before;
-      ensure(first.text.startsWith("OPEN"), "first marker");
-      ensure(last.text.endsWith("END"), "last marker");
-      ensure(first.text.length <= EXPECTED_BYTES, "first chunk bound");
-      ensure(middle.text.length <= EXPECTED_BYTES, "middle chunk bound");
-      ensure(last.text.length <= EXPECTED_BYTES, "last chunk bound");
-      ensure(last.end === blob.size, "large offset boundary");
-      ensure(info.allocatedBytes === null ||
-        info.allocatedBytes < 4 * MiB,
-      "expected sparse backing allocation");
-      rows.push({
-        sizeMiB: mib, backend, ...info, sliceCount: count,
-        inspectedBytes: first.end - first.start +
-          middle.end - middle.start + last.end - last.start,
-        elapsedMs, heapDeltaBytes: heapDelta,
-        lastByteOffset: last.start
-      });
+        const chunk = UTF8SlicePolicy.defaultChunkBytes;
+        const count = UTF8SlicePolicy.count(blob.size, chunk);
+        const before = process.memoryUsage().heapUsed;
+        const started = performance.now();
+        const first = await UTF8SlicePolicy.read(blob, 0, chunk);
+        const middle = await UTF8SlicePolicy.read(blob,
+          Math.floor(count / 2), chunk);
+        const last = await UTF8SlicePolicy.read(blob, count - 1, chunk);
+        const elapsedMs = Math.round(performance.now() - started);
+        const heapDelta = process.memoryUsage().heapUsed - before;
+        ensure(first.text.startsWith("OPEN"), "first marker");
+        ensure(last.text.endsWith("END"), "last marker");
+        ensure(first.text.length <= EXPECTED_BYTES, "first chunk bound");
+        ensure(middle.text.length <= EXPECTED_BYTES, "middle chunk bound");
+        ensure(last.text.length <= EXPECTED_BYTES, "last chunk bound");
+        ensure(last.end === blob.size, "large offset boundary");
+        ensure(info.allocatedBytes === null ||
+          info.allocatedBytes < 4 * MiB,
+        "expected sparse backing allocation");
+        rows.push({
+          sizeMiB: mib, backend, ...info, sliceCount: count,
+          inspectedBytes: first.end - first.start +
+            middle.end - middle.start + last.end - last.start,
+          elapsedMs, heapDeltaBytes: heapDelta,
+          lastByteOffset: last.start
+        });
       } finally {
         await source.close();
       }
