@@ -140,6 +140,30 @@ test("PR16 ToolBox remains a trusted host menu and does not cover header",
     });
     expect(positions.toolboxTop - positions.frameTop)
       .toBeGreaterThanOrEqual(50);
+    await page.setViewportSize({ width: 420, height: 720 });
+    const frame = page.frameLocator(".plugin-extension-frame");
+    const barHeight = await frame.locator(".cai-bar")
+      .evaluate(node => node.getBoundingClientRect().height);
+    await expect.poll(() => page.evaluate(() => {
+      const panel = document.querySelector(".plugin-extension-panel");
+      const menu = document.querySelector(
+        ".plugin-agent-toolbox > div");
+      const area = panel.getBoundingClientRect();
+      const bounds = menu.getBoundingClientRect();
+      return {
+        xSafe: bounds.left >= area.left &&
+          bounds.right <= area.right + 2,
+        top: bounds.top - area.top
+      };
+    })).toMatchObject({
+      xSafe: true, top: expect.any(Number)
+    });
+    const bounds = await page.locator(
+      ".plugin-agent-toolbox > div").boundingBox();
+    const area = await page.locator(
+      ".plugin-extension-panel").boundingBox();
+    expect(bounds.y).toBeGreaterThanOrEqual(
+      area.y + barHeight - 3);
   });
 
 test("PR16 switching PowerShell and AI does not create extra sessions",
