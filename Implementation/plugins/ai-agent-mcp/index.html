@@ -485,7 +485,7 @@ padding:10px
       const phase = names[activity.phase];
       const tool = activity.tool;
       if (phase && typeof tool === "string" &&
-          /^cluster\\.[a-z_]+$|^local-agent\\.protocol$/.test(tool)) {
+          /^(cluster\.[a-z_]+|local-agent\.protocol)$/.test(tool)) {
         const suffix = Number.isInteger(activity.status) ?
           " [" + activity.status + "]" : "";
         appendMessage(phase + " · " + tool + suffix,
@@ -504,7 +504,7 @@ padding:10px
         String(result.stderr ?? "").slice(0, 32768),
         String(result.error ?? "").slice(0, 512),
         result.truncated ? "(output truncated)" : ""
-      ].filter(Boolean).join("\\n");
+      ].filter(Boolean).join("\n");
       appendMessage(output, failed ? "error" : "info");
       return;
     }
