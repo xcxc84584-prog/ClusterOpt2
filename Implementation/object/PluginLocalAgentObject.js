@@ -345,10 +345,31 @@ export class PluginLocalAgentObject {
   }
 
   /**
+   * Stage a single host-owned credential for the next Hub-routed pair.
+   * Never pass credentials through Hub Request payload or iframe RPC.
+   */
+  stageHostPairing(port, token) {
+    if (this.state !== "disconnected" ||
+        !Policy.validPort(port) ||
+        !Policy.validToken(token)) return false;
+    this.pendingHostPairing = { port, token };
+    return true;
+  }
+
+  discardHostPairing() {
+    this.pendingHostPairing = null;
+  }
+
+  /**
    * The credential form belongs to the trusted host document.
    * No frame, Worker or Hub payload receives its input value.
    */
   askToken() {
+    if (this.pendingHostPairing) {
+      const credentials = this.pendingHostPairing;
+      this.pendingHostPairing = null;
+      return Promise.resolve(credentials);
+    }
     if (!this.doc.createElement) {
       return Promise.resolve(this.doc.defaultView.prompt(
         "Local Agent pairing token (64 hexadecimal characters)"));
