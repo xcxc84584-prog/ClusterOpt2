@@ -283,16 +283,12 @@ padding:10px
 <strong>02 · PS BIND / PAIRING TOKEN</strong>
 <p data-i18n="setupNotice">請在可信任的主頁配對視窗輸入 64 字元 Token，金鑰不交給插件。
 </p>
-<label for="caiTokenPreview">Pairing Token</label>
-<input
-  id="caiTokenPreview"
-  readonly
-  placeholder="Trusted host pairing dialog"
-  aria-label="Host-managed pairing token">
-<button
-  class="cai-primary"
-  data-agent-action="pair" data-i18n="connect"
-  type="button">連線</button>
+<div
+  id="caiTrustedPairSlot"
+  role="group"
+  aria-label="Local Agent port and token"
+  style="height:116px;max-width:620px">
+</div>
 </div>
 <div
   class="cai-step">
@@ -403,8 +399,6 @@ padding:10px
       agentState : "disconnected";
     document.querySelector("[data-agent-status]").textContent =
       labels[key] || key;
-    document.querySelector('[data-agent-action="pair"]').disabled =
-      agentState !== "disconnected";
     document.querySelector('[data-agent-action="ping"]').disabled =
       agentState !== "connected";
     document.querySelector('[data-agent-action="disconnect"]').disabled =
@@ -413,6 +407,7 @@ padding:10px
       agentState === "connected";
     document.getElementById("caiWorkspace").hidden =
       agentState !== "connected";
+    publishPairLayout();
   }
 
   function send(type) {
@@ -448,6 +443,28 @@ padding:10px
     }, "*");
   });
   observer.observe(toolbar);
+  const pairingSlot = document.getElementById("caiTrustedPairSlot");
+  const setupScroll = document.getElementById("caiSetup");
+  function publishPairLayout() {
+    const bounds = pairingSlot.getBoundingClientRect();
+    const visible = setupScroll.getBoundingClientRect();
+    window.parent.postMessage({
+      type: "cluster-plugin-pair-layout",
+      top: bounds.top,
+      left: bounds.left,
+      width: bounds.width,
+      visible: agentState === "disconnected" &&
+        bounds.bottom > visible.top &&
+        bounds.top < visible.bottom
+    }, "*");
+  }
+  const pairObserver = new ResizeObserver(publishPairLayout);
+  pairObserver.observe(pairingSlot);
+  setupScroll.addEventListener("scroll", publishPairLayout,
+    { passive: true });
+  window.addEventListener("resize", publishPairLayout);
+  document.addEventListener("visibilitychange", publishPairLayout);
+
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
     guide.hidden = true;
