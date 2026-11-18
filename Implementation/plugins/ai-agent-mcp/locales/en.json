@@ -3,7 +3,7 @@
   "disconnected": "Disconnected",
   "setupTitle": "Connect local AI Agent",
   "setupNotice": "Enter the pairing token in the trusted browser prompt. No token is stored or shared with the plugin.",
-  "connection": "Connection guide",
+  "connection": "Connection settings",
   "ping": "Test connection",
   "close": "Close",
   "feed": "Agent output",
@@ -30,5 +30,7 @@
   "guideStep5": "Run MCP Quick-Setup.cmd to start MCP Gateway on 43880 and OAuth Gateway on 43879.",
   "guideStep6": "Set up a real public HTTPS hostname beginning with clusteropt2, valid TLS, and a proxy only to OAuth loopback 43879.",
   "guideStep7": "In ChatGPT, add a custom MCP server using the full HTTPS origin plus /mcp; complete OAuth.",
-  "guideStep8": "cluster.read offers five read-only tools; cluster.control needs separate consent, and each PS command requires local approval."
+  "guideStep8": "cluster.read offers five read-only tools; cluster.control needs separate consent, and each PS command requires local approval.",
+  "startAgent": "Start using AI Agent",
+  "returnWorkspace": "Return to AI Agent"
 }
