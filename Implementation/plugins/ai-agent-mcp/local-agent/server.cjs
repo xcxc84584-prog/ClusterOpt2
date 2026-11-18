@@ -7,6 +7,7 @@ const path=require('node:path');
 const {spawn}=require('node:child_process');
 const {WebSocketServer}=require('ws');
 const pty=require('node-pty');
+const secureStore=require('./secure-store.cjs');
 const PORT=Number(process.env.CLUSTER_TERMINAL_PORT||43881);
 const ORIGIN=process.env.CLUSTER_TERMINAL_ORIGIN;
 if(!ORIGIN||!/^https:\/\/[^/]+(?:\/[^?#]*)?$/.test(ORIGIN)){
@@ -15,19 +16,35 @@ if(!ORIGIN||!/^https:\/\/[^/]+(?:\/[^?#]*)?$/.test(ORIGIN)){
 const allowedOrigin=new URL(ORIGIN).origin;
 const configDir=path.join(process.env.LOCALAPPDATA||path.join(require('node:os').homedir(),'AppData','Local'),'ClusterTerminalAgent');
 fs.mkdirSync(configDir,{recursive:true});
-const tokenFile=path.join(configDir,'pairing-token');
-let token;
-if(fs.existsSync(tokenFile)){
- token=fs.readFileSync(tokenFile,'utf8').trim();
- if(!/^[a-f0-9]{64}$/.test(token))throw Error('Invalid stored pairing token');
-}else{
- token=crypto.randomBytes(32).toString('hex');
- fs.writeFileSync(tokenFile,token+'\n',{flag:'wx',mode:0o600});
-}
+const tokenFile=path.join(configDir,'pairing-token.dpapi');
+const legacyTokenFile=path.join(configDir,'pairing-token');
+const tokenValid=value=>/^[a-f0-9]{64}$/.test(value);
+let token=secureStore.loadOrMigrate(tokenFile,legacyTokenFile,
+ tokenValid,()=>crypto.randomBytes(32).toString('hex'));
 
-const providerFile=path.join(configDir,'ai-provider.json');
-function readProvider(){try{const p=JSON.parse(fs.readFileSync(providerFile,'utf8'));return {apiKey:p.apiKey||'',model:p.model||'gpt-4.1-mini'};}catch{return {apiKey:'',model:'gpt-4.1-mini'};}}
-function saveProvider(p){fs.writeFileSync(providerFile,JSON.stringify(p),{mode:0o600});}
+const providerFile=path.join(configDir,'ai-provider.dpapi');
+const legacyProviderFile=path.join(configDir,'ai-provider.json');
+function readProvider(){
+ if(!fs.existsSync(providerFile)&&!fs.existsSync(legacyProviderFile)){
+  return {apiKey:'',model:'gpt-4.1-mini'};
+ }
+ // A failed migration or decrypt must fail closed, never reset the key.
+ const value=secureStore.loadOrMigrate(providerFile,legacyProviderFile,
+  raw=>{
+   try{
+    const p=JSON.parse(raw);
+    return typeof p.apiKey==='string'&&p.apiKey.length<=512&&
+     typeof p.model==='string'&&p.model.length<=100;
+   }catch{return false;}
+  },()=>JSON.stringify({apiKey:'',model:'gpt-4.1-mini'}));
+ return JSON.parse(value);
+}
+function saveProvider(p){
+ secureStore.protectFile(providerFile,JSON.stringify(p));
+ if(fs.existsSync(legacyProviderFile))fs.unlinkSync(legacyProviderFile);
+}
+// Migrate existing provider keys before binding any local listener.
+readProvider();
 const MAX_SESSIONS=8,MAX_MESSAGE=65536;
 const roots=new Map();const sessions=new Map();
 const gatewayStarted=Date.now();
@@ -193,7 +210,7 @@ wss.on('connection',ws=>{
    }
    if(m.type==='revoke'){
     token=crypto.randomBytes(32).toString('hex');
-    fs.writeFileSync(tokenFile,token+'\n',{mode:0o600});
+    secureStore.protectFile(tokenFile,token);
     for(const id of [...sessions.keys()])closeSession(id);
     roots.clear();
     // Revoke access and terminate the local listener. Port 43881 must be released.
@@ -236,7 +253,7 @@ server.on('error',e=>{if(e.code==='EADDRINUSE'){console.error('Port '+PORT+' alr
 server.listen(PORT,'127.0.0.1',()=>{
  console.log('Cluster Terminal Agent listening on 127.0.0.1:'+PORT);
  console.log('Allowed origin: '+allowedOrigin);
- console.log('Pairing token (keep private; persists across Agent restarts): '+token);
+ console.log('Pairing token (keep private; DPAPI-protected on disk): '+token);
  console.log('Keep this window open while using terminals. Do not share the token.');
 });
 process.on('SIGINT',()=>{for(const id of [...sessions.keys()])closeSession(id);server.close(()=>process.exit(0));});

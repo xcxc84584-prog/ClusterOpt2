@@ -33,7 +33,9 @@ test("PR17 port override uses two-step consent and PID recheck",
   async () => {
     const setup = await readFile(new URL("Setup-Quick.ps1", root), "utf8");
     const cpo = await readFile(new URL("Port-CPO.ps1", root), "utf8");
-    assert.match(setup, /Select-ServicePort 'terminal'/);
+    const background = await readFile(new URL("Background-Agent.ps1", root), "utf8");
+    assert.match(setup, /Background-Agent\.ps1/);
+    assert.match(background, /Select-ServicePort 'terminal'/);
     assert.match(cpo, /function Select-ServicePort/);
     assert.match(cpo, /'P'\s*\{/);
     assert.match(cpo, /'C'\s*\{/);
@@ -41,6 +43,6 @@ test("PR17 port override uses two-step consent and PID recheck",
     assert.match(cpo, /Type OVERRIDE/);
     assert.match(cpo, /CreationDate -ne \$owner\.CreationDate/);
     assert.match(cpo, /Stop-Process -Id \$owner\.ProcessId/);
-    assert.match(setup, /CLUSTER_TERMINAL_PORT/);
+    assert.match(background, /CLUSTER_TERMINAL_PORT/);
     assert.match(setup, /install-scripts approve node-pty/);
   });

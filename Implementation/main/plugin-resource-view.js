@@ -101,7 +101,7 @@ export async function restoreReviewedPlugins(core) {
   let restored = 0;
   let enabledRestored = 0;
   for (const entry of saved.value) {
-    if (!PLUGINS.some(plugin=>plugin.kind!=="template"&&plugin.id===entry.providerId)) continue;
+    if (entry.providerId !== "cluster.sample.multilang-highlighter") continue;
     try {
       const module = await import("../plugins/multilang-highlighter.js");
       const result = module.install(core);

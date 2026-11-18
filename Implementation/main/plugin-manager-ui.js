@@ -215,7 +215,12 @@ export function mountPluginManagerUI(core,doc,options={}) {
         core.unregisterProvider(p.objectId,p.providerId);
       if(result.ok) {
         selected="";
-        void core.forgetReviewedPlugin(p.providerId);
+        if (p.providerId === "cluster.ai-agent-mcp") {
+          // An explicit removal is remembered as an opt-out.
+          void core.rememberReviewedPlugin(p.providerId, false);
+        } else {
+          void core.forgetReviewedPlugin(p.providerId);
+        }
         void core.removeStoredPluginBundle(p.providerId);
       } else if(result.status===409) {
         doc.defaultView.alert(t(

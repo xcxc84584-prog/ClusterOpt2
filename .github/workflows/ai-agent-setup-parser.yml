@@ -7,6 +7,10 @@ on:
       - "Implementation/plugins/ai-agent-mcp/local-agent/Quick-Setup.cmd"
       - "Implementation/plugins/ai-agent-mcp/local-agent/MCP-Quick-Setup.cmd"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Port-CPO.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Background-Agent.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/secure-store.cjs"
+      - "Implementation/tests/pr21-3-secure-store.test.js"
+      - "Implementation/tests/pr21-3-background-agent-windows.test.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Start-*.ps1"
       - "Implementation/tests/pr20-port-cpo-windows.test.ps1"
       - ".github/workflows/ai-agent-setup-parser.yml"
@@ -38,7 +42,7 @@ jobs:
             $parseErrors | ForEach-Object { Write-Host $_.ToString() }
             exit 1
           }
-          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1')) {
+          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1')) {
             $file = Join-Path $env:GITHUB_WORKSPACE ("Implementation/plugins/ai-agent-mcp/local-agent/" + $name)
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
@@ -47,6 +51,9 @@ jobs:
           }
           ./Implementation/tests/pr20-port-cpo-windows.test.ps1
           Write-Host "Windows PowerShell 5.1 parse PASS"
+      - name: Test Windows DPAPI credential encryption and migration
+        shell: pwsh
+        run: node --test Implementation/tests/pr21-3-secure-store.test.js
       - name: Parse Setup-Quick.ps1 in PowerShell 7
         shell: pwsh
         run: |
@@ -59,7 +66,7 @@ jobs:
             $parseErrors | ForEach-Object { Write-Host $_.ToString() }
             exit 1
           }
-          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1')) {
+          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1')) {
             $file = Join-Path $env:GITHUB_WORKSPACE ("Implementation/plugins/ai-agent-mcp/local-agent/" + $name)
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
@@ -68,3 +75,26 @@ jobs:
           }
           ./Implementation/tests/pr20-port-cpo-windows.test.ps1
           Write-Host "PowerShell 7 parse PASS"
+
+  background-native:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install native Local Agent dependencies
+        shell: pwsh
+        working-directory: Implementation/plugins/ai-agent-mcp/local-agent
+        run: |
+          npm install --omit=dev --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          npm rebuild node-pty --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node -e "require('node-pty');require('ws')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Real Windows background lifecycle and PID defense
+        shell: powershell
+        run: |
+          ./Implementation/tests/pr21-3-background-agent-windows.test.ps1
