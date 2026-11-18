@@ -19,17 +19,17 @@ test("PR21.3 bundled Agent is offered without any implicit grants",
     await expect(page.locator(".plugin-extension-button")).toHaveCount(0);
   });
 
-test("PR21.3 opt-out survives reload; no silent plugin restart",
+test("PR21.3 temporary dismissal resets on reload without grants",
   async ({ page }) => {
     await page.goto("/");
     const launcher = page.locator("#pluginBundledAgentLauncher");
     await expect(launcher).toBeVisible();
     await launcher.getByRole("button", {
-      name: "Disable default AI Agent"
+      name: "Hide AI Agent for this page"
     }).click();
     await expect(launcher).toHaveCount(0);
     await page.reload();
-    await expect(launcher).toHaveCount(0);
+    await expect(launcher).toBeVisible();
     await expect(page.locator(".plugin-extension-button")).toHaveCount(0);
   });
 
