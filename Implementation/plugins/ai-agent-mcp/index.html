@@ -434,6 +434,11 @@ padding:10px
     "click", () => send("cluster-plugin-panel-close"));
   toolbox.addEventListener("click",
     () => send("cluster-plugin-toolbox-toggle"));
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    guide.hidden = true;
+    send("cluster-plugin-toolbox-close");
+  });
   document.querySelector("[data-legacy-guide]").addEventListener(
     "click", () => { guide.hidden = !guide.hidden; });
   document.querySelector("[data-guide-dismiss]").addEventListener(
