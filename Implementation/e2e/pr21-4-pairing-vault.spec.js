@@ -61,3 +61,57 @@ test("PR21.4 previous Cluster localStorage pairing migrates and clears",
     });
     expect(result).toEqual({ imported: true, cleared: true });
   });
+
+
+test("PR21.4 saved token activates host-only reconnect, not iframe credential",
+  async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(async () => {
+      const { TrustedPairingVault } = await import(
+        "/Implementation/LinkCore/TrustedPairingVault.js");
+      await new TrustedPairingVault(window).save({
+        token: "c".repeat(64), port: 43881
+      });
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const files = {};
+      const names = [
+        "plugin.json", "worker.js", "index.html", "README.md",
+        "locales/en.json", "locales/zh-Hant.json"
+      ];
+      for (const name of names) {
+        const response = await fetch(
+          "/Implementation/plugins/ai-agent-mcp/" + name);
+        files[name] = btoa(String.fromCharCode(
+          ...new Uint8Array(await response.arrayBuffer())));
+      }
+      const manifestText = new TextDecoder().decode(
+        Uint8Array.from(atob(files["plugin.json"]), c => c.charCodeAt(0)));
+      const response = await linkCore.pluginHostInstaller.install({
+        format: "cluster-plugin-folder",
+        formatVersion: 1, manifestText, files
+      }, { consented: true, approvedPermissions: [
+        "network.request", "local-agent.pair",
+        "model.configure", "model.task",
+        "shell.execute", "mcp.read"
+      ] });
+      if (response.status !== 201) throw Error("Fixture mount denied");
+    });
+    await page.locator(".plugin-extension-button").click();
+    const frame = page.frameLocator(".plugin-extension-frame");
+    await expect(frame.locator("[data-saved-connect]")).toBeVisible();
+    await expect(page.locator(".plugin-agent-inline-pair")).toBeHidden();
+    const alert = page.waitForEvent("dialog");
+    await frame.locator("[data-saved-connect]").click();
+    const dialog = await alert;
+    expect(dialog.type()).toBe("confirm");
+    expect(dialog.message()).toContain("Token");
+    await dialog.dismiss();
+    await expect(frame.locator("[data-saved-connect]")).toBeVisible();
+    expect(await frame.locator("input[type=password]").count()).toBe(0);
+    await page.evaluate(async () => {
+      const { TrustedPairingVault } = await import(
+        "/Implementation/LinkCore/TrustedPairingVault.js");
+      await new TrustedPairingVault(window).clear();
+    });
+  });
