@@ -8,6 +8,8 @@ $env:CLUSTER_MCP_PORT = [string]$selected
 $env:CLUSTER_TERMINAL_PORT = [string]$ports.terminal
 $node = Get-Command node.exe -ErrorAction Stop
 Write-Host ("MCP port: {0}; Local Agent: {1}" -f $selected,$ports.terminal)
+Show-PortInventory -Phase 'SELECTED PORT / BEFORE BIND' -PairService 'terminal'
 Write-Host 'Service is starting in foreground; listener status follows.'
 & $node.Source (Join-Path $PSScriptRoot 'remote-mcp.cjs')
+Show-PortInventory -Phase 'AFTER MCP EXIT' -PairService 'terminal'
 if ($LASTEXITCODE -ne 0) { throw 'MCP gateway failed' }
