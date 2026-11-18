@@ -126,6 +126,13 @@ font-size:13px
 margin-top:14px;
 background:var(--plugin-control,#243b5a)
 }
+.cai-pair-actions{
+display:flex;
+align-items:center;
+flex-wrap:wrap;
+gap:8px;
+margin-top:14px
+}
 .cai-workspace{
 display:flex;
 flex-direction:column;
@@ -303,9 +310,14 @@ padding:10px
 <strong>02 · PS BIND / PAIRING TOKEN</strong>
 <p data-i18n="setupNotice">請在可信任的主頁配對視窗輸入 64 字元 Token，金鑰不交給插件。
 </p>
+<div class="cai-pair-actions">
 <button
   type="button" data-saved-connect hidden
   data-i18n="startAgent">開始使用AI AGENT功能</button>
+<button
+  type="button" data-repair-connect hidden
+  data-i18n="repairAgent">重新配對</button>
+</div>
 <div
   id="caiTrustedPairSlot"
   role="group"
@@ -386,6 +398,8 @@ padding:10px
       agentState !== "connected" || showingSetup;
     document.querySelector("[data-saved-connect]").hidden =
       !savedPairing || agentState !== "disconnected";
+    document.querySelector("[data-repair-connect]").hidden =
+      !savedPairing || agentState !== "disconnected";
     document.querySelector("[data-return-workspace]").hidden =
       agentState !== "connected" || !showingSetup;
     document.getElementById("caiTrustedPairSlot").hidden =
@@ -410,6 +424,8 @@ padding:10px
     "click", () => send("cluster-plugin-download-package"));
   document.querySelector("[data-saved-connect]").addEventListener(
     "click", () => send("cluster-local-agent-use-saved"));
+  document.querySelector("[data-repair-connect]").addEventListener(
+    "click", () => send("cluster-local-agent-repair"));
   document.querySelector("[data-return-workspace]").addEventListener(
     "click", () => { showingSetup = false; updateAgentState(); });
   document.querySelector("[data-legacy-close]").addEventListener(
