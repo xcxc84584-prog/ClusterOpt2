@@ -101,12 +101,13 @@ test("PR21.4 saved token activates host-only reconnect, not iframe credential",
     const frame = page.frameLocator(".plugin-extension-frame");
     await expect(frame.locator("[data-saved-connect]")).toBeVisible();
     await expect(page.locator(".plugin-agent-inline-pair")).toBeHidden();
-    const alert = page.waitForEvent("dialog");
-    await frame.locator("[data-saved-connect]").click();
-    const dialog = await alert;
+    const confirmation = page.waitForEvent("dialog");
+    const activation = frame.locator("[data-saved-connect]").click();
+    const dialog = await confirmation;
     expect(dialog.type()).toBe("confirm");
     expect(dialog.message()).toContain("Token");
     await dialog.dismiss();
+    await activation;
     await expect(frame.locator("[data-saved-connect]")).toBeVisible();
     expect(await frame.locator("input[type=password]").count()).toBe(0);
     await page.evaluate(async () => {
