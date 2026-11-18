@@ -4,7 +4,8 @@ import { PluginLocalAgentPolicy as Policy } from
 /**
  * Host-owned OCDA Object: one explicitly approved local connection.
  * MCP calls require a registered bridge and trusted ToolBox decisions.
- * PS commands need a separate browser approval; no ambient privilege.
+ * PS commands require an explicit ToolBox session grant; no ambient
+ * privilege, and each command is rechecked against current permissions.
  * Pairing token exists only in a local function scope during auth.
  */
 export class PluginLocalAgentObject {
@@ -96,7 +97,8 @@ export class PluginLocalAgentObject {
 
   /**
    * Only trusted ToolBox code can enable the legacy MCP bridge.
-   * Every shell request is separately approved by a host-owned Object.
+   * Each shell request is rechecked by a host-owned Object against
+   * the current session-scoped ToolBox grant.
    */
   registerShellBridge(objectId) {
     if (typeof objectId !== "string" ||
