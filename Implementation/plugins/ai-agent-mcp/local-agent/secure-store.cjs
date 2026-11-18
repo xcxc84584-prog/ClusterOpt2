@@ -50,7 +50,13 @@ function dpapi(mode, data, spawn = spawnSync) {
     });
   if (result.error || result.status !== 0 ||
       !/^[A-Za-z0-9+/]+={0,2}$/.test((result.stdout || '').trim())) {
-    throw Error('Windows credential protection failed');
+    // Never print stdin; stderr contains only PowerShell diagnostics.
+    const code = String(result.status ?? 'spawn-error');
+    const diagnostic = String(result.stderr || result.error?.code || '')
+      .replace(/[A-Za-z0-9+/]{40,}={0,2}/g, '[redacted]')
+      .slice(0, 300);
+    throw Error('Windows credential protection failed [' +
+      code + ']: ' + diagnostic);
   }
   const output = Buffer.from(result.stdout.trim(), 'base64');
   if (output.length > MAX_SECRET_BYTES) {
