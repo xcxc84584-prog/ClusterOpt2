@@ -17,7 +17,9 @@ function ReadRecord($name){
 function SaveRecord($name,$value){
  New-Item -ItemType Directory -Path $root -Force|Out-Null
  $p=RecordPath $name;$tmp=$p+'.new'
- $value|ConvertTo-Json -Depth 4|Set-Content -LiteralPath $tmp -Encoding UTF8
+ $json = $value | ConvertTo-Json -Depth 4
+ $utf8 = New-Object System.Text.UTF8Encoding($false)
+ [System.IO.File]::WriteAllText($tmp, $json, $utf8)
  Move-Item -LiteralPath $tmp -Destination $p -Force
 }
 function Inspect($procId){
@@ -182,7 +184,6 @@ function Confirm-PublicMcp([string]$origin){
  throw ('Public MCP URL failed HTTPS/OAuth preflight: '+$lastError+
    '. Check Cloudflare tunnel and retry with a fresh URL.')
 }
-Show-PortInventory -Phase 'BEFORE ACTION' -PairService 'terminal'
 switch($Action){
  'Status' {
   foreach($service in @('mcp','oauth')){
@@ -219,18 +220,15 @@ switch($Action){
     Write-Host ('Removed expired '+$service+' record')
    }
   }
-  Show-PortInventory -Phase 'AFTER OAUTH STOP' -PairService 'terminal'
   Write-Host 'Local OAuth/tunnel registration stopped'
  }
  'StopMCP' {
   if(Owned (ReadRecord 'oauth') 'oauth'){throw 'Stop OAuth first'}
   StopOwned 'mcp'
-  Show-PortInventory -Phase 'AFTER MCP STOP' -PairService 'terminal'
   Write-Host 'MCP stopped'
  }
  'StartMCP' {
   if(Owned (ReadRecord 'mcp') 'mcp'){
-   Show-PortInventory -Phase 'MCP ALREADY RUNNING' -PairService 'terminal'
    Write-Host 'MCP already running';break
   }
   $ports=Get-ServicePorts
@@ -238,7 +236,6 @@ switch($Action){
   $env:CLUSTER_MCP_PORT=[string]$port
   $env:CLUSTER_TERMINAL_PORT=[string]$ports.terminal
   SaveRecord 'mcp' (StartNode 'mcp' 'remote-mcp.cjs' $port)
-  Show-PortInventory -Phase 'AFTER MCP START' -PairService 'terminal'
   Write-Host ('Background MCP ready on 127.0.0.1:'+$port)
  }
  'StartOAuth' {
@@ -248,7 +245,6 @@ switch($Action){
   if(Owned $old 'oauth'){
    try {
     Confirm-PublicMcp ([string]$old.issuer)
-    Show-PortInventory -Phase 'REUSED OAUTH' -PairService 'terminal'
     Write-Host ('Verified existing ChatGPT MCP URL: '+$old.issuer+'/mcp')
     break
    } catch {
@@ -301,7 +297,6 @@ switch($Action){
     $oauth.issuer=$candidate
     SaveRecord 'oauth' $oauth
     if($tunnel){SaveRecord 'tunnel' $tunnel.process}
-    Show-PortInventory -Phase 'AFTER OAUTH START' -PairService 'terminal'
     Write-Host ('Verified ChatGPT MCP URL: '+$candidate+'/mcp')
     Write-Host 'OAuth continues running when this setup window is closed.'
     $verified=$true
