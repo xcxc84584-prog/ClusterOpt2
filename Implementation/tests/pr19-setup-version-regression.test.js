@@ -12,7 +12,7 @@ test("PR19 release version is centralized at 0.0.15b", async () => {
   assert.equal(JSON.parse(await readFile(
     new URL("../local-agent/package.json", import.meta.url), "utf8"
   )).version, ReleaseVersion.product);
-  assert.match(setupFilename("0.0.15b"), /0\.0\.15a\.cmd$/);
+  assert.match(setupFilename("0.0.15b"), /0\.0\.15b\.cmd$/);
 });
 
 test("PR19 CMD does not mistake CHOICE=Y for a failed mkdir", async () => {
