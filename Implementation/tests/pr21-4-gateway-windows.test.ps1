@@ -15,6 +15,7 @@ foreach($name in @('remote-mcp.cjs','oauth-mcp-gateway.cjs',
 $original=$null
 $mcpRunning=$false
 $oauthRunning=$false
+$oauthChild=$null
 function Check($value,$reason){if(-not $value){throw $reason}}
 try{
  Check (-not (Test-Path (Join-Path $root 'gateway-mcp.json'))) 'MCP preexisting in CI'
@@ -24,7 +25,32 @@ try{
  $mcp=Get-Content (Join-Path $root 'gateway-mcp.json') -Raw|ConvertFrom-Json
  Check ([int]$mcp.pid -gt 4) 'MCP PID missing'
  Check (@(Get-NetTCPConnection -LocalPort ([int]$mcp.port) -State Listen -ErrorAction SilentlyContinue|Where-Object {$_.OwningProcess -eq [int]$mcp.pid}).Count -gt 0) 'MCP not listening'
- & $manager -Action StartOAuth -Issuer 'https://clusteropt2.example.test'|Out-Null
+ # This is a loopback lifecycle test. Starting OAuth through the public
+ # preflight would incorrectly require a publicly resolvable fake issuer.
+ # Launch the real OAuth Node process and record its verified identity.
+ . $manager -Action Status | Out-Null
+ $ports=Get-ServicePorts
+ $oauthPort=Select-ServicePort 'oauth'
+ $env:CLUSTER_OAUTH_PORT=[string]$oauthPort
+ $env:CLUSTER_MCP_PORT=[string]$mcp.port
+ $env:CLUSTER_OAUTH_ISSUER='https://clusteropt2.example.test'
+ $oauthScript=Join-Path $root 'oauth-mcp-gateway.cjs'
+ $oauthChild=Start-Process -FilePath (NodeExe) -PassThru `
+  -WindowStyle Hidden -WorkingDirectory $root `
+  -ArgumentList ('"'+$oauthScript+'"')
+ $ready=$false
+ for($i=0;$i -lt 50;$i++){
+  Start-Sleep -Milliseconds 250
+  $owner=@(Listeners $oauthPort | Where-Object {
+   $_.OwningProcess -eq $oauthChild.Id
+  })
+  if($owner.Count -gt 0){$ready=$true;break}
+  if($oauthChild.HasExited){break}
+ }
+ Check $ready 'OAuth Node listener did not bind'
+ $oauth=Snapshot $oauthChild $oauthScript $oauthPort
+ $oauth.issuer='https://clusteropt2.example.test'
+ SaveRecord 'oauth' $oauth
  $oauthRunning=$true
  $oauthFile=Join-Path $root 'gateway-oauth.json'
  $oauth=Get-Content $oauthFile -Raw|ConvertFrom-Json
@@ -52,4 +78,7 @@ try{
  if($original){Set-Content -LiteralPath (Join-Path $root 'gateway-oauth.json') -Value $original -Encoding UTF8}
  if($oauthRunning){try{& $manager -Action StopOAuth *> $null}catch{}}
  if($mcpRunning){try{& $manager -Action StopMCP *> $null}catch{}}
+ if($oauthChild -and !$oauthChild.HasExited){
+  Stop-Process -Id $oauthChild.Id -Force -ErrorAction SilentlyContinue
+ }
 }
