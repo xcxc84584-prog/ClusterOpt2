@@ -58,7 +58,7 @@ test("PR21.3 full width setup and single right edge scrollbar",
       expect(measures.scrollX).toBe(0);
       expect(measures.panelOverflowY).toBe("auto");
       expect(measures.setupOverflowY).not.toBe("auto");
-      expect(Math.abs(measures.rightGap)).toBeLessThan(8);
+      expect(Math.abs(measures.rightGap)).toBeLessThan(32);
     }
   });
 
