@@ -23,6 +23,8 @@ export const AI_AGENT_PACKAGE_FILES = Object.freeze([
   "local-agent/Background-Agent.ps1",
   "local-agent/Background-Gateway.ps1",
   "local-agent/Setup-MCP.ps1",
+  "local-agent/Background-Gateway.ps1",
+  "local-agent/Setup-MCP.ps1",
   "local-agent/Start-MCP.ps1",
   "local-agent/Start-OAuth.ps1",
   "local-agent/Quick-Setup.cmd",
