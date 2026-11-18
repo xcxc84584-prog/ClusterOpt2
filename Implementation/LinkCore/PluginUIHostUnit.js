@@ -792,6 +792,11 @@ export class PluginUIHostUnit {
           .removeEventListener("message", onQuickSetup);
       }
       this.views.set(provider.providerId, view);
+      if (provider.providerId === "cluster.ai-agent-mcp") {
+        // Both user-selected and bundled activation replace the
+        // unprivileged launcher with the real plugin toolbar entry.
+        this.doc.getElementById("pluginBundledAgentLauncher")?.remove();
+      }
       return { ok: true, status: 200 };
     } catch {
       if (pendingMCP) this.core.unregister(pendingMCP.id);
