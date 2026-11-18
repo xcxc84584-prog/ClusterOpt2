@@ -142,7 +142,8 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
       window.prompt = () => ["C:", "Work", "Project"].join("\\\\");
     });
     await page.locator(".plugin-extension-button").click();
-    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
     await page.getByRole("button", {
       name: /選取本地資料夾/
     }).click();
@@ -203,7 +204,8 @@ test("PR14.8 explicit MCP read-only tool bridge returns metadata",
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");
-    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
     const box = page.locator(".plugin-agent-toolbox");
     await box.locator('[data-right="mcp"]').check();
     await expect.poll(() => page.evaluate(() =>
