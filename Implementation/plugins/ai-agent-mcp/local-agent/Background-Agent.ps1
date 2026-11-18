@@ -139,7 +139,7 @@ switch ($Action) {
     Move-Item -LiteralPath $temporary -Destination $recordPath -Force
     Write-Host ('Local Agent started in background on port {0}' -f $port)
     Write-Host 'Use Background-Agent.ps1 -Action Status / Stop / Token.'
-    Show-Token
+    Write-Host 'To reveal the token, explicitly run -Action Token locally.'
     break
   }
 }
