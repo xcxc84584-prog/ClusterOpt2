@@ -420,6 +420,104 @@ export class PluginUIHostUnit {
         }
         view.localAgent = agent;
         pendingAgent = agent;
+
+        // The pairing fields belong to the trusted host, not the
+        // opaque-origin plugin. The iframe only reserves their layout.
+        const pairForm = this.doc.createElement("form");
+        pairForm.className = "plugin-agent-inline-pair";
+        pairForm.style.cssText =
+          "position:absolute;z-index:18;display:grid;gap:8px;" +
+          "max-width:calc(100% - 20px);box-sizing:border-box;" +
+          "color:var(--ui-text-on-panel,#ececec);" +
+          "font:12px system-ui;background:transparent;";
+        const pairFields = this.doc.createElement("div");
+        pairFields.style.cssText =
+          "display:grid;grid-template-columns:minmax(0,1fr) " +
+          "minmax(0,3fr);gap:10px;min-width:0;";
+        const makeField = (caption, type) => {
+          const label = this.doc.createElement("label");
+          label.textContent = caption;
+          label.style.cssText =
+            "display:flex;flex-direction:column;gap:5px;min-width:0;";
+          const input = this.doc.createElement("input");
+          input.type = type;
+          input.required = true;
+          input.autocomplete = "off";
+          input.spellcheck = false;
+          input.style.cssText =
+            "width:100%;min-width:0;box-sizing:border-box;" +
+            "padding:10px;background:var(--ui-editor,#0c0c0c);" +
+            "color:var(--ui-text-on-panel,#fff);" +
+            "border:1px solid var(--ui-border,#444);" +
+            "border-radius:6px;font:13px ui-monospace,monospace;";
+          label.append(input);
+          return { label, input };
+        };
+        const portField = makeField("Port", "number");
+        portField.input.min = "1024";
+        portField.input.max = "65535";
+        portField.input.step = "1";
+        portField.input.value = String(agent.pairPort);
+        portField.input.setAttribute("aria-label", "Local Agent port");
+        const tokenField = makeField("Token", "password");
+        tokenField.input.maxLength = 64;
+        tokenField.input.pattern = "[a-fA-F0-9]{64}";
+        tokenField.input.setAttribute("aria-label", "Pairing token");
+        pairFields.append(portField.label, tokenField.label);
+        const pairSubmit = this.doc.createElement("button");
+        pairSubmit.type = "submit";
+        pairSubmit.textContent = "配對 / Pair";
+        pairSubmit.style.cssText =
+          "justify-self:start;padding:8px 14px;" +
+          "background:var(--ui-control,#23314a);" +
+          "color:var(--ui-text-on-panel,#fff);" +
+          "border:1px solid var(--ui-border,#555);" +
+          "border-radius:6px;cursor:pointer;";
+        const pairError = this.doc.createElement("span");
+        pairError.setAttribute("role", "alert");
+        pairError.style.cssText = "color:#f2b7bc;font-size:11px;";
+        pairForm.append(pairFields, pairSubmit, pairError);
+        panel.append(pairForm);
+        view.pairForm = pairForm;
+        view.layoutPairForm = layout => {
+          const { top, left, width, visible } = layout ?? {};
+          if (![top, left, width].every(Number.isFinite) ||
+              width < 100 || width > 8192 ||
+              top < -10000 || top > 10000 ||
+              left < -10000 || left > 10000) return;
+          pairForm.style.top = Math.round(top) + "px";
+          pairForm.style.left = Math.round(left) + "px";
+          pairForm.style.width = Math.round(width) + "px";
+          pairForm.hidden = !visible || agent.state !== "disconnected";
+        };
+        pairForm.hidden = true;
+        pairForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const port = Number(portField.input.value);
+          const token = tokenField.input.value.trim();
+          if (!Number.isInteger(port) || port < 1024 ||
+              port > 65535 || !/^[a-f0-9]{64}$/i.test(token)) {
+            pairError.textContent = "Port 或 Token 格式無效";
+            return;
+          }
+          if (!agent.stageHostPairing(port, token)) {
+            pairError.textContent = "本地 Agent 不可配對";
+            return;
+          }
+          tokenField.input.value = "";
+          pairError.textContent = "";
+          pairSubmit.disabled = true;
+          try {
+            const reply = await this.core.request("ui", agent.id,
+              "pair", {}, { origin: "user" });
+            if (!reply.ok) {
+              pairError.textContent = "連線失敗 (" + reply.status + ")";
+            }
+          } finally {
+            agent.discardHostPairing();
+            pairSubmit.disabled = false;
+          }
+        });
         if (view.explorerAccess) {
           view.explorerAccess.authorizeAgent(agent.id);
           const attached = agent.registerExplorer(
@@ -460,6 +558,9 @@ export class PluginUIHostUnit {
           agent.modelTaskId = task.id;
         }
         const publish = response => {
+          if (response.state !== "disconnected") {
+            if (view.pairForm) view.pairForm.hidden = true;
+          }
           if (response.state === "disconnected") {
             const hadBridge = view.shellApproval?.active ||
               view.mcpReadOnly?.enabled;
@@ -487,6 +588,10 @@ export class PluginUIHostUnit {
               !this.views.has(provider.providerId) ||
               !view.enabled) return;
           const kind = event.data?.type;
+          if (kind === "cluster-plugin-pair-layout") {
+            view.layoutPairForm?.(event.data);
+            return;
+          }
           if (kind === "cluster-plugin-toolbox-toggle") {
             view.positionToolBox?.(event.data?.toolbarHeight);
             view.toggleToolBox?.();
@@ -627,6 +732,7 @@ export class PluginUIHostUnit {
         view.unlistenAgent?.();
         view.disposeToolBox?.();
         view.localAgent?.close();
+        view.pairForm?.remove();
         view.shellApproval?.revoke();
         view.mcpReadOnly?.revoke();
         view.localAgent?.disableShellBridge();
