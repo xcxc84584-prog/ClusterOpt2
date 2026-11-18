@@ -171,9 +171,24 @@ switch($Action){
   }
  }
  'StopOAuth' {
-  StopOwned 'oauth'
-  if(ReadRecord 'tunnel'){StopOwned 'tunnel'}
-  Write-Host 'OAuth and tunnel stopped'
+  # Called only after explicit local revocation confirmation.
+  # Never kill a PID which cannot be identity verified.
+  foreach($service in @('oauth','tunnel')){
+   $record=ReadRecord $service
+   if(!$record){continue}
+   if(Owned $record $service){
+    StopOwned $service
+   }else{
+    $process=if($record.pid){Inspect ([int]$record.pid)}else{$null}
+    if($process -and !$process.HasExited){
+     throw ('Unverified '+$service+
+       ' process still exists. Refusing to discard ownership record.')
+    }
+    Remove-Item -LiteralPath (RecordPath $service) -Force
+    Write-Host ('Removed expired '+$service+' record')
+   }
+  }
+  Write-Host 'Local OAuth/tunnel registration stopped'
  }
  'StopMCP' {
   if(Owned (ReadRecord 'oauth') 'oauth'){throw 'Stop OAuth first'}
@@ -193,7 +208,20 @@ switch($Action){
   $mcp=ReadRecord 'mcp'
   if(!(Owned $mcp 'mcp')){throw 'Start MCP first'}
   $old=ReadRecord 'oauth'
-  if(Owned $old 'oauth'){Write-Host ('OAuth already running: '+$old.issuer+'/mcp');break}
+  if(Owned $old 'oauth'){
+   try {
+    Confirm-PublicMcp ([string]$old.issuer)
+    Write-Host ('Verified existing ChatGPT MCP URL: '+$old.issuer+'/mcp')
+    break
+   } catch {
+    throw ('Existing OAuth process is running but its URL is not valid. '+
+     'Use Setup-MCP to explicitly revoke and recreate the local tunnel. '+
+     $_.Exception.Message)
+   }
+  }
+  if($old -or (ReadRecord 'tunnel')){
+   throw 'Existing OAuth/tunnel records require review. Run Setup-MCP to reuse or revoke.'
+  }
   $port=Select-ServicePort 'oauth'
   $tunnel=$null;$oauth=$null
   try{
