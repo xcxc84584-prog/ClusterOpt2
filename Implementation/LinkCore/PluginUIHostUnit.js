@@ -245,8 +245,16 @@ export class PluginUIHostUnit {
           "letter-spacing:.1em;opacity:.8;border-top:1px solid " +
           "var(--ui-border,#435269);padding-top:12px;";
         menu.append(permissionsTitle);
+        const shellNotice = this.doc.createElement("p");
+        shellNotice.textContent =
+          "PS 授權後，AI 可在所選 Workspace 自動執行命令；" +
+          "不再逐次詢問。取消勾選即撤銷。" +
+          " / PS grant allows unattended commands until revoked.";
+        shellNotice.style.cssText =
+          "font-size:11px;line-height:1.5;opacity:.85;margin:4px 0;";
+        menu.append(shellNotice);
         const rights = [
-          ["ps", "PowerShell"],
+          ["ps", "PowerShell · 自動執行 / Auto-run"],
           ["mcp", "MCP Read-only"],
           ["create", "File Create"],
           ["update", "File Update"],
