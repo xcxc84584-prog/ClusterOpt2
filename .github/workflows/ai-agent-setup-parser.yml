@@ -13,6 +13,7 @@ on:
       - "Implementation/tests/pr21-3-background-agent-windows.test.ps1"
       - "Implementation/tests/pr21-4-gateway-windows.test.ps1"
       - "Implementation/tests/pr22-mcp-stale-record-windows.test.ps1"
+      - "Implementation/tests/pr22-tunnel-dns-windows.test.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Background-Gateway.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Setup-MCP.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/remote-mcp.cjs"
@@ -114,6 +115,10 @@ jobs:
         shell: powershell
         run: |
           ./Implementation/tests/pr22-mcp-stale-record-windows.test.ps1
+      - name: Local Tunnel DNS diagnostics (offline)
+        shell: powershell
+        run: |
+          ./Implementation/tests/pr22-tunnel-dns-windows.test.ps1
       - name: Agent port switching and HTTP 403 regression
         shell: pwsh
         run: |

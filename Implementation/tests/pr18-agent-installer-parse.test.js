@@ -17,7 +17,9 @@ test("PR18 pinned CMD fetches corrected complete setup helper", async () => {
   assert.match(ps, /'node-pty remains unavailable'/);
   assert.match(ps, /Background-Agent\.ps1/);
   assert.match(ps, /-Action Start -Origin \$origin/);
-  assert.match(ps, /You can close this setup window/);
+  assert.match(ps, /No Local Agent listener record/);
+  assert.match(ps, /Get-NetTCPConnection -LocalPort \$activePort/);
+  assert.match(ps, /-Action Token/);
   assert.match(ps.trimEnd(), /\}\s*finally\s*\{\s*Pop-Location\s*\}$/);
 });
 
