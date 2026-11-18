@@ -107,7 +107,6 @@ if($consent -match '^[Yy]$'){
  if(-not $?){throw 'OAuth background start failed'}
 
 }
-& $manager -Action Status
 # Single final connection summary; credentials never enter saved log files.
 $mcpRecord = Join-Path $root 'gateway-mcp.json'
 $oauthRecord = Join-Path $root 'gateway-oauth.json'
