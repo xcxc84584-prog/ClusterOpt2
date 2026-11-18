@@ -86,7 +86,26 @@ switch ($Action) {
     $saved = Read-Record
     $item = Verify-Agent $saved
     if (-not $item) {
-      throw 'Cannot confirm Agent identity. Refusing to stop a process.'
+      # A previously saved PID may have exited. Clear its stale record
+      # only if there is no process with that PID. Never kill an unknown PID.
+      $oldPid = 0
+      if ($saved -and $saved.pid -and
+          [int]::TryParse([string]$saved.pid, [ref]$oldPid) -and
+          $oldPid -gt 0) {
+        $stillExists = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
+        if ($stillExists) {
+          throw ('Agent PID ' + $oldPid +
+            ' exists but does not match the saved identity. ' +
+            'Refusing to stop or discard the record.')
+        }
+      }
+      if (-not $saved) {
+        Write-Host 'No previous Local Agent record to revoke.'
+        break
+      }
+      Remove-Item -LiteralPath $recordPath -Force -ErrorAction Stop
+      Write-Host 'Expired Local Agent record removed; no process stopped.'
+      break
     }
     # Last-moment revalidation prevents a stale PID from being targeted.
     if (-not (Verify-Agent $saved)) {
