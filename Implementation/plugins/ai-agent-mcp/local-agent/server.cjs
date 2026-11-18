@@ -43,6 +43,8 @@ function saveProvider(p){
  secureStore.protectFile(providerFile,JSON.stringify(p));
  if(fs.existsSync(legacyProviderFile))fs.unlinkSync(legacyProviderFile);
 }
+// Migrate existing provider keys before binding any local listener.
+readProvider();
 const MAX_SESSIONS=8,MAX_MESSAGE=65536;
 const roots=new Map();const sessions=new Map();
 const gatewayStarted=Date.now();
