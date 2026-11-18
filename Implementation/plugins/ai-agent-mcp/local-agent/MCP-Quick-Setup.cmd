@@ -1,17 +1,16 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title ClusterOpt2 - ChatGPT MCP Quick Setup
-set "REV=079110435ef499f87774c064da4bd6eff750af77"
+set "SERVICE_NAME=clusteropt2"
+set "REV=9e9055421f6b0d6c021297b28deedbee964b526a"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "BASE=https://raw.githubusercontent.com/xcxc84584-prog/ClusterOpt2/%REV%/Implementation/plugins/ai-agent-mcp/local-agent"
 echo ====================================================
 echo ClusterOpt2 ChatGPT MCP - Quick Setup
 echo ====================================================
-echo Download source: https://github.com/xcxc84584-prog/ClusterOpt2
-echo This setup downloads reviewed scripts and starts loopback services.
-echo It does NOT publish a public HTTPS endpoint or grant file access.
-echo Start and pair the Local Agent in ClusterOpt2 first.
-echo.
+echo This downloads verified scripts to local app data.
+echo It never opens a public HTTPS port or grants file access.
+echo Pair the Local Agent before configuring MCP.
 choice /M "Continue"
 if errorlevel 2 exit /b 0
 if errorlevel 1 goto confirmed
@@ -20,12 +19,12 @@ goto failed
 :confirmed
 where node.exe >nul 2>&1
 if errorlevel 1 (
-  echo Node.js 20+ is required. Run AI Agent Quick-Setup first.
+  echo Node.js 20+ is required. Run Local Agent Quick-Setup first.
   goto failed
 )
 node.exe -e "process.exit(parseInt(process.versions.node,10)>=20?0:1)"
 if errorlevel 1 (
-  echo Update Node.js to version 20 or later.
+  echo Node.js 20+ is required.
   goto failed
 )
 if not exist "%ROOT%" (
@@ -33,40 +32,41 @@ if not exist "%ROOT%" (
   if errorlevel 1 goto failed
 )
 echo [1/3] Downloading pinned MCP and OAuth files...
-for %%F in (remote-mcp.cjs oauth-mcp-gateway.cjs Start-MCP.ps1 Start-OAuth.ps1 Port-CPO.ps1) do (
-  powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $url=$env:BASE+'/%%F'; $target=Join-Path $env:ROOT '%%F'; $temp=$target+'.download'; try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $temp -TimeoutSec 45; if((Get-Item -LiteralPath $temp).Length -lt 100){throw 'Incomplete download'}; Move-Item -LiteralPath $temp -Destination $target -Force } finally { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue }"
-  if errorlevel 1 goto failed
+powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $names=@('remote-mcp.cjs','oauth-mcp-gateway.cjs','Start-MCP.ps1','Start-OAuth.ps1','Port-CPO.ps1'); foreach($name in $names){ $url=$env:BASE+'/'+$name; $target=Join-Path $env:ROOT $name; $temp=$target+'.download'; Write-Host ('Fetching '+$name); try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $temp -TimeoutSec 45; if((Get-Item -LiteralPath $temp).Length -lt 100){throw 'Incomplete download'}; Move-Item -LiteralPath $temp -Destination $target -Force } catch { Write-Host ('DOWNLOAD FAILED: '+$url+' : '+$_.Exception.Message) -ForegroundColor Red; exit 1 } finally { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }"
+if errorlevel 1 (
+  echo Failed to download gateway assets. Check the error above.
+  goto failed
 )
+echo All five gateway assets downloaded.
 echo [2/3] Starting local bearer-protected MCP on 127.0.0.1:43880...
 echo If MCP port is occupied, the new window prompts C/P/O.
 start "ClusterOpt2 MCP Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\Start-MCP.ps1"
-echo.
-echo Wait until MCP has completed any C/P/O port selection.
-echo The configured port is shared with OAuth automatically.
+echo Wait until MCP completes any C/P/O port selection.
 pause
+
 echo [3/3] Optional OAuth Gateway setup
-echo Configure a trusted, stable HTTPS reverse proxy only to 127.0.0.1:43879.
-echo Never expose ports 43881 or 43880 to the Internet.
+echo OAuth runs on 127.0.0.1:43879 by default.
+echo You need a REAL public HTTPS hostname starting with clusteropt2.
+echo Only forward the OAuth port; never expose 43881 or 43880.
 choice /M "Start interactive OAuth configuration"
 if errorlevel 2 goto finish
 if errorlevel 1 goto oauth
 goto failed
 
 :oauth
-echo If OAuth port is occupied, the new window prompts C/P/O.
-start "ClusterOpt2 OAuth Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "$issuer=Read-Host 'Trusted public HTTPS issuer (origin only)'; if($issuer -notmatch '^https://[^/?#]+$'){throw 'Invalid issuer origin'}; & (Join-Path $env:ROOT 'Start-OAuth.ps1') -Issuer $issuer"
-echo In the new OAuth window enter an exact HTTPS origin.
-echo Connect ChatGPT with the same origin plus /mcp.
+start "ClusterOpt2 OAuth Gateway" powershell.exe -NoExit -NoProfile -ExecutionPolicy Bypass -Command "$issuer=Read-Host 'HTTPS origin (https://clusteropt2.YOUR-DOMAIN)'; try { $u=[uri]$issuer } catch { throw 'Invalid HTTPS URL' }; if($u.Scheme -ne 'https' -or $u.Host -notmatch '^clusteropt2\.' -or $u.AbsolutePath -ne '/' -or $u.Query -or $u.Fragment){throw 'Specify a real HTTPS hostname starting with clusteropt2.'}; & (Join-Path $env:ROOT 'Start-OAuth.ps1') -Issuer $issuer"
+echo In the OAuth window enter the actual HTTPS origin.
+echo Configure your HTTPS proxy to forward only to OAuth.
+echo ChatGPT MCP endpoint is the same HTTPS origin plus /mcp.
 
 :finish
-echo.
-echo MCP local setup initiated. Verify both spawned windows.
-echo Connect ChatGPT to your HTTPS /mcp URL and approve OAuth.
-echo Current OAuth scope cluster.read is READ ONLY.
-echo Explorer changes and PowerShell require separate approved authorization.
+echo Setup launched. Check the gateway windows for errors.
+echo OAuth scope cluster.read is READ ONLY.
+echo File writes and PowerShell still require local authorization.
 pause
 exit /b 0
+
 :failed
-echo [ERROR] MCP setup incomplete. Existing user processes were not stopped.
+echo [ERROR] MCP setup incomplete. No user process was stopped.
 pause
 exit /b 1
