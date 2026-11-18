@@ -192,8 +192,14 @@ export class PluginUIHostUnit {
             });
             // Browser handles are the only filesystem authority.
             // Browsers do not disclose a folder's absolute OS path.
-            if (await handle.queryPermission({ mode: "read" }) !==
-                "granted") {
+            // A picker may return "prompt" even after the user selects
+            // the directory. Request the browser grant from this click.
+            let readGrant = await handle.queryPermission({ mode: "read" });
+            if (readGrant !== "granted" &&
+                typeof handle.requestPermission === "function") {
+              readGrant = await handle.requestPermission({ mode: "read" });
+            }
+            if (readGrant !== "granted") {
               rootStatus.textContent = "未取得資料夾授權";
               access.audit("BrowserPermissionDenied", 403);
               return;
@@ -261,9 +267,25 @@ export class PluginUIHostUnit {
           checkbox.dataset.right = name;
           checkbox.disabled = false;
           checkbox.addEventListener("change", async () => {
+            const requested = checkbox.checked;
+            checkbox.disabled = true;
             try {
-              if (checkbox.checked && name !== "read" &&
-                  name !== "ps" && name !== "mcp") {
+              if (requested && !access.root) {
+                throw Error("請先選取本地資料夾 / Select folder first");
+              }
+              if (requested && name === "read") {
+                const folder = access.root;
+                let grant = await folder.queryPermission({ mode: "read" });
+                if (grant !== "granted" &&
+                    typeof folder.requestPermission === "function") {
+                  grant = await folder.requestPermission({ mode: "read" });
+                }
+                if (grant !== "granted") {
+                  throw Error("Browser read permission denied");
+                }
+              }
+              if (requested && ["create", "update", "delete"]
+                .includes(name)) {
                 const selected = access.root;
                 if (!selected ||
                     await selected.requestPermission({
@@ -307,8 +329,13 @@ export class PluginUIHostUnit {
                 view.mcpReadOnly.setEnabled(enabled);
               }
               if (name !== "mcp") access.setRight(name, enabled);
-            } catch {
+              rootStatus.textContent = enabled ?
+                label + "：已授權 / Granted" :
+                label + "：已撤銷 / Revoked";
+            } catch (error) {
               checkbox.checked = false;
+              rootStatus.textContent = error?.message ||
+                "Permission rejected / 權限未授權";
               if (name === "ps") {
                 view.shellApproval?.revoke();
                 view.localAgent?.disableShellBridge();
@@ -317,7 +344,11 @@ export class PluginUIHostUnit {
                 view.mcpReadOnly?.revoke();
                 view.localAgent?.disableReadBridge();
               }
-              access.audit("PermissionRejected", 403);
+              access.audit("PermissionRejected", 403, {
+                right: name, requested
+              });
+            } finally {
+              checkbox.disabled = false;
             }
           });
           row.append(checkbox, this.doc.createTextNode(label));
