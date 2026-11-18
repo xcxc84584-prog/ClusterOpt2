@@ -173,7 +173,17 @@ wss.on('connection',ws=>{
       if(typeof command!=='string'||!command.trim()||command.length>2000){gatewayResponse(pending.res,422,{error:'Invalid approved command'});return;}
       runApprovedPowerShell(m.requestId,command).then(result=>{send(browserBridge,{type:'powershell_execution_result',command,result});gatewayResponse(pending.res,200,{result});}).catch(e=>{send(browserBridge,{type:'powershell_execution_result',command,error:e.message});gatewayResponse(pending.res,422,{error:e.message});});return;
      }
-     gatewayResponse(pending.res,m.error?422:200,m.error?{error:String(m.error).slice(0,300)}:{result:m.result});return;}
+     if(pending.name==='cluster.powershell_request'&&
+        m.result?.approved!==true){
+      gatewayResponse(pending.res,403,{error:'PowerShell authorization denied'});return;
+     }
+     if(m.result?.error){
+      gatewayResponse(pending.res,403,{
+       error:String(m.result.error).slice(0,300)
+      });return;
+     }
+     gatewayResponse(pending.res,m.error?422:200,
+      m.error?{error:String(m.error).slice(0,300)}:{result:m.result});return;}
     if(m.type==='provider_get'){const p=readProvider();send(ws,{type:'provider_info',configured:!!p.apiKey,model:p.model});return;}
     if(m.type==='provider_set'){
      if(typeof m.apiKey!=='string'||!/^sk-[\w-]{10,256}$/.test(m.apiKey)||typeof m.model!=='string'||/^[\w.:-]{1,100}$/.test(m.model)===false)throw Error('Invalid API key or model');
