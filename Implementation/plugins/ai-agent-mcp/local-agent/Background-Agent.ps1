@@ -130,20 +130,53 @@ switch ($Action) {
     $port = Select-ServicePort 'terminal'
     $env:CLUSTER_TERMINAL_ORIGIN = $Origin
     $env:CLUSTER_TERMINAL_PORT = [string]$port
-    $child = Start-Process -FilePath $node.Source -WorkingDirectory (
-      $PSScriptRoot) -ArgumentList ('"' + $scriptPath + '"') `
-      -WindowStyle Hidden -PassThru -ErrorAction Stop
+    # Capture stderr in an isolated temporary file. Without this, a
+    # hidden Node process can fail immediately with no useful diagnostic.
+    $diagnosticPath = Join-Path $env:TEMP (
+      'cluster-agent-start-' + [guid]::NewGuid().ToString('N') + '.err')
+    $child = $null
     $ready = $false
-    for ($i = 0; $i -lt 30; $i++) {
-      Start-Sleep -Milliseconds 250
-      $owners = @(Listeners $port | Where-Object {
-        $_.OwningProcess -eq $child.Id
-      })
-      if ($owners.Count -gt 0) { $ready = $true; break }
-      if ($child.HasExited) { break }
-    }
-    if (-not $ready) {
-      throw 'Hidden Local Agent did not bind; no PID recorded.'
+    try {
+      $child = Start-Process -FilePath $node.Source -WorkingDirectory (
+        $PSScriptRoot) -ArgumentList ('"' + $scriptPath + '"') `
+        -RedirectStandardError $diagnosticPath `
+        -WindowStyle Hidden -PassThru -ErrorAction Stop
+      for ($i = 0; $i -lt 30; $i++) {
+        Start-Sleep -Milliseconds 250
+        $owners = @(Listeners $port | Where-Object {
+          $_.OwningProcess -eq $child.Id
+        })
+        if ($owners.Count -gt 0) { $ready = $true; break }
+        $child.Refresh()
+        if ($child.HasExited) { break }
+      }
+      if (-not $ready) {
+        $detail = ''
+        if (Test-Path -LiteralPath $diagnosticPath) {
+          $detail = (Get-Content -LiteralPath $diagnosticPath -Raw `
+            -ErrorAction SilentlyContinue)
+        }
+        # Never repeat credentials or arbitrary output from the agent.
+        # Show only actionable, fixed diagnostic categories.
+        $reason = if ($detail -match 'node-pty|pty\\.node|MODULE_NOT_FOUND') {
+          'node-pty native module failed; approve and rebuild install scripts.'
+        } elseif ($detail -match 'EADDRINUSE') {
+          'Port was occupied when Node attempted to bind.'
+        } elseif ($detail -match 'DPAPI|credential protection') {
+          'Windows credential protection failed under this user account.'
+        } elseif ($detail -match 'CLUSTER_TERMINAL_ORIGIN') {
+          'Agent origin configuration is invalid.'
+        } elseif ($child.HasExited) {
+          'Node exited with code ' + $child.ExitCode + '.'
+        } else {
+          'Node did not open the expected listener.'
+        }
+        throw ('Local Agent failed to bind on port ' + $port +
+          ' (PID ' + $child.Id + '): ' + $reason)
+      }
+    } finally {
+      Remove-Item -LiteralPath $diagnosticPath -Force `
+        -ErrorAction SilentlyContinue
     }
     $item = Process-Fingerprint ([int]$child.Id)
     if (-not $item) { throw 'Cannot verify Agent process identity.' }
