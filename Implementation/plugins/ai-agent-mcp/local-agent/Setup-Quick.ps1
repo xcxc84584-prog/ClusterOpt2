@@ -72,11 +72,27 @@ if ($existingAgent) {
     if ((Read-Host 'Confirm restart? Type RESTART') -cne 'RESTART') {
       exit 0
     }
-    if (-not (Test-Path -LiteralPath $oldManager)) {
-      throw 'Cannot verify the previous Agent. No process stopped.'
+    # The previous installer can leave a JSON record after the PID exits.
+    # Its manager might not include the newer stale-record cleanup yet.
+    $saved = Get-Content -LiteralPath $agentRecord -Raw |
+      ConvertFrom-Json -ErrorAction Stop
+    $savedPid = 0
+    $hasPid = $saved.pid -and
+      [int]::TryParse([string]$saved.pid, [ref]$savedPid) -and
+      $savedPid -gt 0
+    $present = if ($hasPid) {
+      Get-Process -Id $savedPid -ErrorAction SilentlyContinue
+    } else { $null }
+    if (-not $present) {
+      Remove-Item -LiteralPath $agentRecord -Force -ErrorAction Stop
+      Write-Host 'Expired Agent record removed; no process was terminated.'
+    } else {
+      if (-not (Test-Path -LiteralPath $oldManager)) {
+        throw 'Cannot verify a running previous Agent; refusing to stop.'
+      }
+      & $oldManager -Action Stop
+      if (-not $?) { throw 'Could not stop the verified previous Agent' }
     }
-    & $oldManager -Action Stop
-    if (-not $?) { throw 'Could not stop the previous Agent' }
   }
 }
 
