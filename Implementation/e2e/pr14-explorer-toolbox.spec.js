@@ -155,7 +155,9 @@ test("PR22 ToolBox explains missing root and requests prompt grants",
     await page.frameLocator(".plugin-extension-frame")
       .locator("[data-toolbox-toggle]").click();
     const menu = page.locator(".plugin-agent-toolbox > div");
-    await menu.locator('[data-right="create"]').check();
+    // A deliberately rejected grant unchecks itself; use click rather
+    // than Playwright.check(), which insists the checkbox stays checked.
+    await menu.locator('[data-right="create"]').click();
     await expect(menu.getByRole("status"))
       .toContainText("Select folder first");
     await expect(menu.locator('[data-right="create"]'))
