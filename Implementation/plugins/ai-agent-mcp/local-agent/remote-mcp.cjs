@@ -23,7 +23,7 @@ function agentUpstream(){
  let port=Number(process.env.CLUSTER_TERMINAL_PORT||43881);
  if(fs.existsSync(agentRecord)){
   let entry;
-  try{entry=JSON.parse(fs.readFileSync(agentRecord,'utf8'))}
+  try{entry=JSON.parse(fs.readFileSync(agentRecord,'utf8').replace(/^\uFEFF/,''))}
   catch{throw Error('Local Agent state is unreadable; restart Agent CMD')}
   const active=Number(entry.port),pid=Number(entry.pid);
   if(!Number.isInteger(active)||active<1024||active>65535||
