@@ -190,7 +190,7 @@ switch($Action){
    $saved=ReadRecord $service
    Write-Host ($service+': '+$(if(Owned $saved $service){'running'}else{'not running'}))
    if($service -eq 'oauth' -and (Owned $saved $service)){
-    Write-Host ('ChatGPT MCP URL: '+$saved.issuer+'/mcp')
+    Write-Host 'ChatGPT MCP URL: available (see connection summary)'
    }
   }
  }
