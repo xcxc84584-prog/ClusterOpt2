@@ -80,6 +80,13 @@ if(@($existing).Count -gt 0){
   }
   & $manager -Action StopOAuth
   if(-not $?){throw 'Unable to revoke existing local OAuth/tunnel records'}
+  # The old Node process keeps its pre-update module in memory.
+  # D is an explicit restart consent; refresh the verified MCP process.
+  if(Test-Path -LiteralPath (Join-Path $root 'gateway-mcp.json')){
+   & $manager -Action StopMCP
+   if(-not $?){throw 'Unable to restart the previous verified MCP'}
+   Write-Host 'Previous verified MCP stopped for code update.'
+  }
  }
 }
 . (Join-Path $root 'Port-CPO.ps1')
