@@ -49,6 +49,7 @@ function Verify-Agent($record) {
   return $item
 }
 function Show-Token {
+  Add-Type -AssemblyName System.Security
   $file = Join-Path $env:LOCALAPPDATA (
     'ClusterTerminalAgent\pairing-token.dpapi')
   if (-not (Test-Path -LiteralPath $file)) {
