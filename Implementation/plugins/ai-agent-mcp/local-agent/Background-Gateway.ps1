@@ -123,6 +123,43 @@ function Tunnel($port){
   throw
  }
 }
+# A listening local OAuth gateway is not proof ChatGPT can reach its URL.
+# Check its public metadata and the expected unauthenticated MCP challenge.
+function Confirm-PublicMcp([string]$origin){
+ $lastError='No response'
+ for($attempt=1;$attempt -le 5;$attempt++){
+  try{
+   $oauth=Invoke-RestMethod -Uri ($origin+
+     '/.well-known/oauth-authorization-server') -TimeoutSec 10
+   $resource=Invoke-RestMethod -Uri ($origin+
+     '/.well-known/oauth-protected-resource/mcp') -TimeoutSec 10
+   if($oauth.issuer -cne $origin -or
+      $resource.resource -cne ($origin+'/mcp') -or
+      @($resource.authorization_servers) -cnotcontains $origin){
+    throw 'Public OAuth discovery metadata does not match tunnel issuer'
+   }
+   $status=0
+   try{
+    $response=Invoke-WebRequest -UseBasicParsing -Uri ($origin+'/mcp') `
+      -TimeoutSec 10 -ErrorAction Stop
+    $status=[int]$response.StatusCode
+   }catch{
+    if($_.Exception.Response){
+     $status=[int]$_.Exception.Response.StatusCode
+    }else{throw}
+   }
+   if($status -ne 401){
+    throw ('Public /mcp should require OAuth (401); got HTTP '+$status)
+   }
+   return
+  }catch{
+   $lastError=$_.Exception.Message
+   if($attempt -lt 5){Start-Sleep -Seconds ([int]$attempt*2)}
+  }
+ }
+ throw ('Public MCP URL failed HTTPS/OAuth preflight: '+$lastError+
+   '. Check Cloudflare tunnel and retry with a fresh URL.')
+}
 switch($Action){
  'Status' {
   foreach($service in @('mcp','oauth')){
@@ -171,10 +208,13 @@ switch($Action){
    $oauth=StartNode 'oauth' 'oauth-mcp-gateway.cjs' $port
    $meta=Invoke-RestMethod ('http://127.0.0.1:'+$port+'/.well-known/oauth-authorization-server') -TimeoutSec 4
    if($meta.issuer -cne $Issuer){throw 'OAuth issuer mismatch'}
+   # Publish the URL only once the Cloudflare-facing OAuth discovery
+   # and the expected MCP 401 challenge are actually reachable.
+   Confirm-PublicMcp $Issuer
    $oauth.issuer=$Issuer
    SaveRecord 'oauth' $oauth
    if($tunnel){SaveRecord 'tunnel' $tunnel.process}
-   Write-Host ('ChatGPT MCP URL: '+$Issuer+'/mcp')
+   Write-Host ('Verified ChatGPT MCP URL: '+$Issuer+'/mcp')
    Write-Host 'OAuth continues running when this setup window is closed.'
   }catch{
    if($oauth -and (Owned $oauth 'oauth')){Stop-Process -Id $oauth.pid -Force -ErrorAction SilentlyContinue}
