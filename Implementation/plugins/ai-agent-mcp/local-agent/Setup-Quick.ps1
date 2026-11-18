@@ -35,7 +35,7 @@ function Ensure-Node {
 }
 function Ensure-Files {
   New-Item -ItemType Directory -Path $agentDir -Force | Out-Null
-  foreach ($name in @('server.cjs','package.json','Port-CPO.ps1')) {
+  foreach ($name in @('server.cjs','secure-store.cjs','package.json','Port-CPO.ps1')) {
     $target = Join-Path $agentDir $name
     # Refresh reviewed code to prevent stale Agent binaries after upgrades.
     $temp = $target + '.download'
