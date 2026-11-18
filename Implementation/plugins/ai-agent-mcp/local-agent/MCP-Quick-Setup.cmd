@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 title ClusterOpt2 ChatGPT MCP - Legacy OneClick Background
-set "REV=9d12f69c81c39535e155e326a240af4f13a8c70b"
+set "REV=c25a03f793ac42f999a9ca9f132b0aaf116f1610"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "SCRIPT=%ROOT%\Setup-MCP.ps1"
 echo ====================================================
