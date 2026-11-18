@@ -36,8 +36,10 @@ test("PR20.2 all three launchers use shared CPO with service mapping", () => {
     assert.ok(source.includes("$env:" + portKey));
   }
   const boot = read("Setup-Quick.ps1");
-  assert.match(boot, /Select-ServicePort 'terminal'/);
-  assert.match(boot, /Port-CPO\.ps1/);
+  const background = read("Background-Agent.ps1");
+  assert.match(boot, /Background-Agent\.ps1/);
+  assert.match(background, /Select-ServicePort 'terminal'/);
+  assert.match(background, /Port-CPO\.ps1/);
   const cmd = read("MCP-Quick-Setup.cmd");
   assert.match(cmd, /Port-CPO\.ps1/);
   assert.match(cmd, /127\.0\.0\.1:43879/);
