@@ -82,6 +82,8 @@ if(@($existing).Count -gt 0){
   if(-not $?){throw 'Unable to revoke existing local OAuth/tunnel records'}
  }
 }
+. (Join-Path $root 'Port-CPO.ps1')
+Show-PortInventory -Phase 'BEFORE GATEWAY START' -PairService 'terminal'
 Write-Host 'Launching the existing Cluster local MCP in the background...'
 & $manager -Action StartMCP
 if(-not $?){throw 'MCP background start failed'}
@@ -117,4 +119,5 @@ if($consent -match '^[Yy]$'){
  }
 }
 & $manager -Action Status
+Show-PortInventory -Phase 'AFTER GATEWAY SETUP' -PairService 'terminal'
 Write-Host 'To check/stop, run Background-Gateway.ps1 -Action Status/StopOAuth/StopMCP.'
