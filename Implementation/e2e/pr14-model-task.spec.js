@@ -3,6 +3,14 @@ import { test, expect } from "@playwright/test";
 const token = "f".repeat(64);
 const secret = "sk-" + "a".repeat(20);
 
+async function pairInline(page, tokenValue) {
+  const pair = page.locator(".plugin-agent-inline-pair");
+  await expect(pair).toBeVisible();
+  await pair.getByLabel("Local Agent port").fill("43881");
+  await pair.getByLabel("Pairing token").fill(tokenValue);
+  await pair.locator('button[type="submit"]').click();
+}
+
 async function mountWithMockAgent(page) {
   return page.evaluate(async () => {
     const { linkCore } = await import(
@@ -117,10 +125,7 @@ test("PR14.5 model credential stays in host, task route and cancel",
     expect((await mountWithMockAgent(page)).status).toBe(201);
     await page.locator(".plugin-extension-button").click();
     const frame = page.frameLocator(".plugin-extension-frame");
-    await frame.locator('[data-agent-action="pair"]').click();
-    const tokenDialog = page.locator("dialog[open]");
-    await tokenDialog.locator('input[type="password"]').fill(token);
-    await tokenDialog.locator('button[type="submit"]').click();
+    await pairInline(page, token);
     await expect(frame.locator("[data-agent-status]"))
       .toHaveText("已連線");
     const configured = page.evaluate(async () => {
@@ -227,10 +232,7 @@ test("PR14.5 full authenticated model result reaches isolated UI",
     expect((await mountWithMockAgent(page)).status).toBe(201);
     await page.locator(".plugin-extension-button").click();
     const frame = page.frameLocator(".plugin-extension-frame");
-    await frame.locator('[data-agent-action="pair"]').click();
-    await page.locator("dialog[open] input[type=password]")
-      .fill(token);
-    await page.locator("dialog[open] button[type=submit]").click();
+    await pairInline(page, token);
     await expect(frame.locator("[data-agent-status]"))
       .toHaveText("已連線");
     await expect(frame.locator("textarea")).toHaveCount(0);
