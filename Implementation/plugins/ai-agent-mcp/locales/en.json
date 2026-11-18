@@ -2,7 +2,7 @@
   "heading": "AI Agent",
   "disconnected": "Disconnected",
   "setupTitle": "Connect local AI Agent",
-  "setupNotice": "Enter the pairing token in the trusted browser prompt. No token is stored or shared with the plugin.",
+  "setupNotice": "For first-time pairing, run Background-Agent.ps1 -Action Token locally and enter it in the trusted host. If already remembered, select Start using AI Agent.",
   "connection": "Connection settings",
   "ping": "Test connection",
   "close": "Close",
