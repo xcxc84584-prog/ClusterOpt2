@@ -148,7 +148,7 @@ test("PR22 ToolBox explains missing root and requests prompt grants",
         }
       };
       window.showDirectoryPicker = async () => folder;
-      window.prompt = () => "C:\\Work\\Project";
+      window.prompt = () => ["C:", "Work", "Project"].join("\\");
     });
     expect((await mount(page)).status).toBe(201);
     await page.locator(".plugin-extension-button").click();
