@@ -80,6 +80,9 @@ try {
   & (Join-Path $agentDir 'Background-Agent.ps1') -Action Start -Origin $origin
   if (-not $?) { throw 'Background Local Agent failed' }
   Write-Host 'You can close this setup window; Local Agent remains running.'
+  Write-Host 'To show your private token explicitly, run:'
+  Write-Host '  powershell -NoProfile -File "Background-Agent.ps1" -Action Token'
+  Write-Host 'Do not paste the token into chat or save it in plaintext.'
   Write-Host 'To stop: run Background-Agent.ps1 -Action Stop.'
 } finally {
   Pop-Location
