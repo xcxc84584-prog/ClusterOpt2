@@ -2,7 +2,7 @@
   "heading": "AI Agent",
   "disconnected": "尚未連線",
   "setupTitle": "連結本地 AI Agent",
-  "setupNotice": "請在瀏覽器的可信任配對視窗輸入 Token。配對碼不會儲存或交給插件。",
+  "setupNotice": "首次配對：於已安裝的 Background-Agent.ps1 執行 -Action Token，在可信任主頁輸入。若已記住 Token，直接點選「開始使用AI AGENT功能」。",
   "connection": "連線設定",
   "ping": "測試連線",
   "close": "關閉",
