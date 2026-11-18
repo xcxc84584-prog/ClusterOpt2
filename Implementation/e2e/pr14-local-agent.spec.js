@@ -163,10 +163,10 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
     await expect.poll(() => page.evaluate(() =>
       window.__agentSent.some(item =>
         item.type === "bridge_register"))).toBe(true);
-    let commandPreview = "";
+    let commandDialogs = 0;
     page.on("dialog", async dialog => {
-      commandPreview = dialog.message();
-      await dialog.accept();
+      commandDialogs++;
+      await dialog.dismiss();
     });
     await page.evaluate(() => window.__agentSocket.onmessage({
       data: JSON.stringify({
@@ -178,7 +178,7 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
     await expect.poll(() => page.evaluate(() =>
       window.__agentSent.some(item => item.type === "tool_result" &&
         item.result?.approved === true))).toBe(true);
-    expect(commandPreview).toContain("Get-Location");
+    expect(commandDialogs).toBe(0);
     await toolbox.locator('[data-right="ps"]').uncheck();
     await page.evaluate(() => window.__agentSocket.onmessage({
       data: JSON.stringify({

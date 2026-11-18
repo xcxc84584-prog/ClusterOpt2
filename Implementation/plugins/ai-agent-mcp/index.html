@@ -474,6 +474,40 @@ padding:10px
       toolbox.setAttribute("aria-expanded", String(data.open === true));
       return;
     }
+    if (data?.type === "cluster-agent-activity") {
+      const activity = data.activity ?? {};
+      const names = {
+        requested: "請求 / Requested",
+        accepted: "已接收 / Accepted",
+        denied: "拒絕 / Denied",
+        completed: "完成 / Completed"
+      };
+      const phase = names[activity.phase];
+      const tool = activity.tool;
+      if (phase && typeof tool === "string" &&
+          /^(cluster\.[a-z_]+|local-agent\.protocol)$/.test(tool)) {
+        const suffix = Number.isInteger(activity.status) ?
+          " [" + activity.status + "]" : "";
+        appendMessage(phase + " · " + tool + suffix,
+          activity.phase === "denied" ? "error" : "info");
+      }
+      return;
+    }
+    if (data?.type === "cluster-agent-shell-result") {
+      const result = data.result ?? {};
+      const code = result.exitCode;
+      const failed = result.error ||
+        (Number.isInteger(code) && code !== 0);
+      const output = [
+        "PowerShell · Exit " + String(code ?? "error"),
+        String(result.stdout ?? "").slice(0, 32768),
+        String(result.stderr ?? "").slice(0, 32768),
+        String(result.error ?? "").slice(0, 512),
+        result.truncated ? "(output truncated)" : ""
+      ].filter(Boolean).join("\n");
+      appendMessage(output, failed ? "error" : "info");
+      return;
+    }
     if (data?.type === "cluster-model-event") {
       const update = data.update;
       if (update?.kind === "result") {

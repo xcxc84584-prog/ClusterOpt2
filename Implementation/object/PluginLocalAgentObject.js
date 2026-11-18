@@ -4,7 +4,8 @@ import { PluginLocalAgentPolicy as Policy } from
 /**
  * Host-owned OCDA Object: one explicitly approved local connection.
  * MCP calls require a registered bridge and trusted ToolBox decisions.
- * PS commands need a separate browser approval; no ambient privilege.
+ * PS commands require an explicit ToolBox session grant; no ambient
+ * privilege, and each command is rechecked against current permissions.
  * Pairing token exists only in a local function scope during auth.
  */
 export class PluginLocalAgentObject {
@@ -35,6 +36,7 @@ export class PluginLocalAgentObject {
     this.state = "disconnected";
     this.onState = () => {};
     this.onShellResult = () => {};
+    this.onActivity = () => {};
     this.waiting = null;
     this.pendingPing = null;
     this.cancelPrompt = null;
@@ -95,7 +97,8 @@ export class PluginLocalAgentObject {
 
   /**
    * Only trusted ToolBox code can enable the legacy MCP bridge.
-   * Every shell request is separately approved by a host-owned Object.
+   * Each shell request is rechecked by a host-owned Object against
+   * the current session-scoped ToolBox grant.
    */
   registerShellBridge(objectId) {
     if (typeof objectId !== "string" ||
@@ -152,6 +155,9 @@ export class PluginLocalAgentObject {
 
   async dispatchShellTool(message) {
     const requestId = message.requestId;
+    // Match legacy Cluster's request/result activity feed, without
+    // echoing command text, tokens, or file contents to the iframe.
+    this.onActivity({ phase: "requested", tool: message.name });
     let result = message.name === "cluster.powershell_request" ?
       { approved: false } : { error: "Tool access denied" };
     if (message.name === "cluster.powershell_request" &&
@@ -301,8 +307,13 @@ export class PluginLocalAgentObject {
       this.socket.send(JSON.stringify({
         type: "tool_result", requestId, result
       }));
-      const permitted = result?.approved === true ||
-        (result && !result.error);
+      const permitted = !result?.error &&
+        result?.approved !== false;
+      this.onActivity({
+        phase: permitted ? "accepted" : "denied",
+        tool: message.name,
+        status: permitted ? 200 : 403
+      });
       this.audit(permitted ? 200 : 403,
         permitted ? "ToolApproved" : "ToolDenied");
     } catch {
@@ -543,6 +554,12 @@ export class PluginLocalAgentObject {
                    this.bridgeRegistered) {
           this.audit(200, "ShellResultReceived");
           this.onShellResult(checked.value);
+          this.onActivity({
+            phase: "completed",
+            tool: "cluster.powershell_request",
+            status: Number(checked.value.result?.exitCode) === 0 &&
+              !checked.value.error ? 200 : 500
+          });
         } else if (["provider_info", "task_status", "task_result"]
         .includes(checked.value.type) &&
           this.state === "connected" && this.modelTaskId) {
@@ -572,6 +589,11 @@ export class PluginLocalAgentObject {
           this.onPong?.(checked.value.requestId);
         } else {
           // Unrequested tool_call/provider_set/etc is never executed.
+          const type = checked.value.type;
+          this.onActivity({
+            phase: "denied", tool: "local-agent.protocol",
+            status: 403, detail: type
+          });
           this.close();
           this.audit(403, "UnexpectedAction");
         }

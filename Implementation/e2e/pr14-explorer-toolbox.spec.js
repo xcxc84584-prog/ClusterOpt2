@@ -129,3 +129,48 @@ test("PR14.6 rejects path mismatch and refused browser consent",
     await pick.click();
     expect((await state()).selected).toBe(false);
   });
+
+test("PR22 ToolBox explains missing root and requests prompt grants",
+  async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() => {
+      window.__grantCalls = [];
+      const folder = {
+        kind: "directory", name: "Project",
+        queryPermission: async ({ mode }) =>
+          window.__grantCalls.includes(mode) ? "granted" : "prompt",
+        requestPermission: async ({ mode }) => {
+          window.__grantCalls.push(mode);
+          return "granted";
+        },
+        async *entries() {
+          yield ["safe.txt", { kind: "file" }];
+        }
+      };
+      window.showDirectoryPicker = async () => folder;
+      window.prompt = () => ["C:", "Work", "Project"].join("\\");
+    });
+    expect((await mount(page)).status).toBe(201);
+    await page.locator(".plugin-extension-button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
+    const menu = page.locator(".plugin-agent-toolbox > div");
+    // A deliberately rejected grant unchecks itself; use click rather
+    // than Playwright.check(), which insists the checkbox stays checked.
+    await menu.locator('[data-right="create"]').click();
+    await expect(menu.getByRole("status"))
+      .toContainText("Select folder first");
+    await expect(menu.locator('[data-right="create"]'))
+      .not.toBeChecked();
+    await menu.getByRole("button", {
+      name: /選取本地資料夾/
+    }).click();
+    await expect(menu.getByRole("status"))
+      .toContainText("已取得所選資料夾授權");
+    await menu.locator('[data-right="read"]').check();
+    await expect(menu.getByRole("status")).toContainText("Granted");
+    await menu.locator('[data-right="create"]').check();
+    await expect(menu.getByRole("status")).toContainText("Granted");
+    expect(await page.evaluate(() => window.__grantCalls))
+      .toEqual(["read", "readwrite"]);
+  });

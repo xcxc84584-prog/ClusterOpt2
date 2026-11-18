@@ -192,8 +192,14 @@ export class PluginUIHostUnit {
             });
             // Browser handles are the only filesystem authority.
             // Browsers do not disclose a folder's absolute OS path.
-            if (await handle.queryPermission({ mode: "read" }) !==
-                "granted") {
+            // A picker may return "prompt" even after the user selects
+            // the directory. Request the browser grant from this click.
+            let readGrant = await handle.queryPermission({ mode: "read" });
+            if (readGrant !== "granted" &&
+                typeof handle.requestPermission === "function") {
+              readGrant = await handle.requestPermission({ mode: "read" });
+            }
+            if (readGrant !== "granted") {
               rootStatus.textContent = "未取得資料夾授權";
               access.audit("BrowserPermissionDenied", 403);
               return;
@@ -239,8 +245,16 @@ export class PluginUIHostUnit {
           "letter-spacing:.1em;opacity:.8;border-top:1px solid " +
           "var(--ui-border,#435269);padding-top:12px;";
         menu.append(permissionsTitle);
+        const shellNotice = this.doc.createElement("p");
+        shellNotice.textContent =
+          "PS 授權後，AI 可在所選 Workspace 自動執行命令；" +
+          "不再逐次詢問。取消勾選即撤銷。" +
+          " / PS grant allows unattended commands until revoked.";
+        shellNotice.style.cssText =
+          "font-size:11px;line-height:1.5;opacity:.85;margin:4px 0;";
+        menu.append(shellNotice);
         const rights = [
-          ["ps", "PowerShell"],
+          ["ps", "PowerShell · 自動執行 / Auto-run"],
           ["mcp", "MCP Read-only"],
           ["create", "File Create"],
           ["update", "File Update"],
@@ -261,9 +275,25 @@ export class PluginUIHostUnit {
           checkbox.dataset.right = name;
           checkbox.disabled = false;
           checkbox.addEventListener("change", async () => {
+            const requested = checkbox.checked;
+            checkbox.disabled = true;
             try {
-              if (checkbox.checked && name !== "read" &&
-                  name !== "ps" && name !== "mcp") {
+              if (requested && name !== "mcp" && !access.root) {
+                throw Error("請先選取本地資料夾 / Select folder first");
+              }
+              if (requested && name === "read") {
+                const folder = access.root;
+                let grant = await folder.queryPermission({ mode: "read" });
+                if (grant !== "granted" &&
+                    typeof folder.requestPermission === "function") {
+                  grant = await folder.requestPermission({ mode: "read" });
+                }
+                if (grant !== "granted") {
+                  throw Error("Browser read permission denied");
+                }
+              }
+              if (requested && ["create", "update", "delete"]
+                .includes(name)) {
                 const selected = access.root;
                 if (!selected ||
                     await selected.requestPermission({
@@ -307,8 +337,13 @@ export class PluginUIHostUnit {
                 view.mcpReadOnly.setEnabled(enabled);
               }
               if (name !== "mcp") access.setRight(name, enabled);
-            } catch {
+              rootStatus.textContent = enabled ?
+                label + "：已授權 / Granted" :
+                label + "：已撤銷 / Revoked";
+            } catch (error) {
               checkbox.checked = false;
+              rootStatus.textContent = error?.message ||
+                "Permission rejected / 權限未授權";
               if (name === "ps") {
                 view.shellApproval?.revoke();
                 view.localAgent?.disableShellBridge();
@@ -317,7 +352,11 @@ export class PluginUIHostUnit {
                 view.mcpReadOnly?.revoke();
                 view.localAgent?.disableReadBridge();
               }
-              access.audit("PermissionRejected", 403);
+              access.audit("PermissionRejected", 403, {
+                right: name, requested
+              });
+            } finally {
+              checkbox.disabled = false;
             }
           });
           row.append(checkbox, this.doc.createTextNode(label));
@@ -358,9 +397,9 @@ export class PluginUIHostUnit {
             "PowerShell exit: " + String(code ?? "error"),
             stdout.slice(0, 32768), stderr.slice(0, 32768)
           ].join("\n").slice(0, 65536);
+          // Keep the feed in view. ToolBox output remains available
+          // if the user opens the panel; do not steal focus.
           shellOutput.hidden = false;
-          menu.hidden = false;
-          trigger.setAttribute("aria-expanded", "true");
         };
         toolbox.append(trigger, menu);
         panel.append(toolbox);
@@ -627,8 +666,34 @@ export class PluginUIHostUnit {
           }, "*");
         };
         agent.onState = publish;
+        // The sandbox receives only a bounded, host-approved view.
+        // Never forward shell command text, secrets or filesystem handles.
+        agent.onActivity = activity => {
+          if (!view.enabled) return;
+          frame.contentWindow?.postMessage({
+            type: "cluster-agent-activity",
+            activity: {
+              phase: activity.phase,
+              tool: activity.tool,
+              status: activity.status,
+              detail: activity.detail
+            }
+          }, "*");
+        };
         agent.onShellResult = message => {
-          if (view.enabled) view.showShellResult?.(message);
+          if (!view.enabled) return;
+          view.showShellResult?.(message);
+          const result = message?.result ?? {};
+          frame.contentWindow?.postMessage({
+            type: "cluster-agent-shell-result",
+            result: {
+              exitCode: result.exitCode,
+              stdout: String(result.stdout ?? "").slice(0, 32768),
+              stderr: String(result.stderr ?? "").slice(0, 32768),
+              error: String(message?.error ?? "").slice(0, 512),
+              truncated: result.truncated === true
+            }
+          }, "*");
         };
         const receive = async event => {
           if (event.source !== frame.contentWindow ||
