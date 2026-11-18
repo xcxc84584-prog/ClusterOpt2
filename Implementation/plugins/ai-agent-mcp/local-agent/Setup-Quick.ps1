@@ -96,6 +96,10 @@ if ($existingAgent) {
   }
 }
 
+if (Test-Path -LiteralPath (Join-Path $agentDir 'Port-CPO.ps1')) {
+  . (Join-Path $agentDir 'Port-CPO.ps1')
+  Show-PortInventory -Phase 'BEFORE INSTALL' -PairService 'terminal'
+}
 Write-Host 'AI AGENT MCP(ChatGPT) - local setup'
 Write-Host ('Source: ' + $SourceRevision)
 $node = Ensure-Node
@@ -142,6 +146,8 @@ try {
     throw ('Local Agent not listening on recorded port '+$activePort+
       '. Token alone cannot establish a connection.')
   }
+  . (Join-Path $agentDir 'Port-CPO.ps1')
+  Show-PortInventory -Phase 'AFTER INSTALL' -PairService 'terminal'
   Write-Host '===================================================='
   Write-Host ('Local Agent pairing PORT: '+$activePort)
   Write-Host ('WebSocket endpoint: ws://127.0.0.1:'+$activePort+'/agent')
