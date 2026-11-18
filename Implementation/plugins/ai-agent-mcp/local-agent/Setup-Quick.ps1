@@ -49,6 +49,37 @@ function Ensure-Files {
     }
   }
 }
+# Existing local Agent state needs an explicit user decision.
+# Reuse does not rotate the protected pairing credential.
+$agentRecord = Join-Path $agentDir 'background-agent.json'
+$existingAgent = Test-Path -LiteralPath $agentRecord
+$agentDecision = 'N'
+if ($existingAgent) {
+  Write-Warning 'An existing Local Agent background record was found.'
+  $oldManager = Join-Path $agentDir 'Background-Agent.ps1'
+  if (Test-Path -LiteralPath $oldManager) {
+    & $oldManager -Action Status
+  }
+  Write-Host '[R] Reuse existing Agent and pairing token.'
+  Write-Host '[D] Stop the verified old Agent before reinstalling.'
+  Write-Host '[C] Cancel, keeping the previous Agent unchanged.'
+  do {
+    $agentDecision = (Read-Host 'Choose R/D/C').Trim().ToUpperInvariant()
+  } while ($agentDecision -notin @('R','D','C'))
+  if ($agentDecision -eq 'C') { exit 0 }
+  if ($agentDecision -eq 'D') {
+    Write-Host 'Existing DPAPI pairing token will be preserved.'
+    if ((Read-Host 'Confirm restart? Type RESTART') -cne 'RESTART') {
+      exit 0
+    }
+    if (-not (Test-Path -LiteralPath $oldManager)) {
+      throw 'Cannot verify the previous Agent. No process stopped.'
+    }
+    & $oldManager -Action Stop
+    if (-not $?) { throw 'Could not stop the previous Agent' }
+  }
+}
+
 Write-Host 'AI AGENT MCP(ChatGPT) - local setup'
 Write-Host ('Source: ' + $SourceRevision)
 $node = Ensure-Node
