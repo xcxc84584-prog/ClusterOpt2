@@ -160,6 +160,7 @@ function Confirm-PublicMcp([string]$origin){
  throw ('Public MCP URL failed HTTPS/OAuth preflight: '+$lastError+
    '. Check Cloudflare tunnel and retry with a fresh URL.')
 }
+Show-PortInventory -Phase 'BEFORE ACTION' -PairService 'terminal'
 switch($Action){
  'Status' {
   foreach($service in @('mcp','oauth')){
@@ -188,11 +189,13 @@ switch($Action){
     Write-Host ('Removed expired '+$service+' record')
    }
   }
+  Show-PortInventory -Phase 'AFTER OAUTH STOP' -PairService 'terminal'
   Write-Host 'Local OAuth/tunnel registration stopped'
  }
  'StopMCP' {
   if(Owned (ReadRecord 'oauth') 'oauth'){throw 'Stop OAuth first'}
   StopOwned 'mcp'
+  Show-PortInventory -Phase 'AFTER MCP STOP' -PairService 'terminal'
   Write-Host 'MCP stopped'
  }
  'StartMCP' {
@@ -263,6 +266,7 @@ switch($Action){
     $oauth.issuer=$candidate
     SaveRecord 'oauth' $oauth
     if($tunnel){SaveRecord 'tunnel' $tunnel.process}
+    Show-PortInventory -Phase 'AFTER OAUTH START' -PairService 'terminal'
     Write-Host ('Verified ChatGPT MCP URL: '+$candidate+'/mcp')
     Write-Host 'OAuth continues running when this setup window is closed.'
     $verified=$true
