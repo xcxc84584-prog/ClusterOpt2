@@ -32,3 +32,6 @@ Scroll/resize layout can run independently from bridge health. Pair/disconnect r
 
 ### Validation state
 Windows PowerShell 5.1 parsing: PASS (GitHub CI); DPAPI persistence and migration: PASS (Windows CI); Node unit suite: PASS on latest feature snapshot at 2026-11-18. Playwright full suite and real Windows background lifecycle: pending at documentation time.
+
+## PR21.3 Patch(+3) UI identity reconciliation
+On successful `PluginUIHostUnit.mount` (after `views.set`), a host-owned cleanup removes the inert default launcher for the Agent provider only. This executes on both reviewed default activation and user-selected folder installs, after the real panel has mounted. It does not add permissions or change HubUnit routes. On failed mount, existing rollback leaves the launcher available for retry.
