@@ -39,7 +39,7 @@ test("PR21.3 explicit activation creates an isolated provider",
     const launcher = page.locator("#pluginBundledAgentLauncher");
     await expect(launcher).toBeVisible();
     page.on("dialog", dialog => dialog.accept());
-    await launcher.getByRole("button", { name: /AI Agent/ }).click();
+    await launcher.locator("button").first().click();
     await expect(page.locator(".plugin-extension-button")).toHaveCount(1);
     await expect(launcher).toHaveCount(0);
     const state = await page.evaluate(async () => {
