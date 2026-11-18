@@ -46,7 +46,29 @@ function Snapshot($child,$signature,$port){
 }
 function StopOwned($service){
  $record=ReadRecord $service
- if(!(Owned $record $service)){throw ('Unverified '+$service+' process; refusing stop')}
+ if(!$record){
+  Write-Host ('No '+$service+' process record to stop.')
+  return
+ }
+ if(!(Owned $record $service)){
+  # A stale JSON record is not evidence of a running service.
+  # Never terminate or discard a record pointing to any living PID.
+  $oldPid=0
+  if(-not [int]::TryParse([string]$record.pid,[ref]$oldPid) -or
+     $oldPid -le 0){
+   throw ('Invalid '+$service+' PID record; manual review required.')
+  }
+  $live=Get-Process -Id $oldPid -ErrorAction SilentlyContinue
+  if($live){
+   throw ('Unverified '+$service+' PID '+$oldPid+
+    ' still exists; refusing to stop or discard its record. '+
+    'Check process identity and configured port before retrying.')
+  }
+  Remove-Item -LiteralPath (RecordPath $service) -Force -ErrorAction Stop
+  Write-Host ('Removed expired '+$service+' record (PID '+$oldPid+
+   ' no longer exists); no process stopped.')
+  return
+ }
  if(!(Owned $record $service)){throw 'Process identity changed'}
  Stop-Process -Id ([int]$record.pid) -Force -ErrorAction Stop
  Remove-Item -LiteralPath (RecordPath $service) -Force
