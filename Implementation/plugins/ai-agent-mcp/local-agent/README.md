@@ -61,3 +61,25 @@ scope `cluster.read` is server-enforced to five read-only tools.
 See `../MCP-SETUP.md` for the full walkthrough and tool matrix.
 
 Port selection for all three scripts uses the shared `Port-CPO.ps1` (C=cancel, P=choose another port, O=verified override with a second explicit confirmation). Selected ports are stored in `%LOCALAPPDATA%/ClusterOpt2/AI-Agent-MCP/service-ports.json`; use the actual OAuth port for HTTPS proxy routing and the actual Agent port for browser pairing. Default ports: Local Agent 43881, MCP 43880, OAuth 43879.
+
+
+### PR21.4 background MCP / OAuth
+
+The MCP Quick Setup CMD now downloads one pinned `Setup-MCP.ps1`
+bootstrapper. It preserves the legacy Cluster `remote-mcp.cjs` and
+`oauth-mcp-gateway.cjs` protocol implementations, reading the Local
+Agent pairing credential through the existing Windows DPAPI vault.
+
+Run `Background-Gateway.ps1 -Action Status` for local status. Explicit
+`-Action StartMCP` starts the loopback MCP gateway. After it is running,
+`-Action StartOAuth` optionally launches the legacy cloudflared quick
+HTTPS tunnel and the OAuth loopback gateway without persistent CMD windows.
+`-Action StopOAuth` stops the OAuth gateway and its verified tunnel,
+then `-Action StopMCP` stops MCP. Neither command stops an unknown PID.
+
+The ephemeral `trycloudflare.com` address changes when the tunnel is
+restarted and requires updating the ChatGPT connection. For persistent
+production use, configure a trusted fixed HTTPS reverse proxy and pass
+`-Issuer https://your-hostname` to `-Action StartOAuth`. Only expose
+the OAuth loopback port; never publish the MCP/terminal ports directly.
+Do not copy bearer credentials into setup scripts or CI logs.

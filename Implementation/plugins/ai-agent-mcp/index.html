@@ -253,7 +253,7 @@ padding:10px
   type="button" data-toolbox-toggle data-i18n="toolbox"
   aria-haspopup="menu" aria-expanded="false">ToolBox ▾</button>
 <button
-  type="button" data-legacy-guide data-i18n="connection">連線教學</button>
+  type="button" data-legacy-guide data-i18n="connection">連線設定</button>
 <button
   type="button"
   data-agent-action="ping" data-i18n="ping"
@@ -282,6 +282,8 @@ padding:10px
  若 43881 被占用，可選擇 P／C／O。
 </p>
 <button
+  type="button" data-package-download data-i18n="downloadPackage">下載插件包 ZIP</button>
+<button
   type="button" data-quick-setup data-i18n="downloadLocal">下載 Quick-Setup.cmd</button>
 <button
   type="button" data-mcp-quick-setup data-i18n="downloadMcp">下載 MCP 快速配置 CMD</button>
@@ -291,6 +293,9 @@ padding:10px
 <strong>02 · PS BIND / PAIRING TOKEN</strong>
 <p data-i18n="setupNotice">請在可信任的主頁配對視窗輸入 64 字元 Token，金鑰不交給插件。
 </p>
+<button
+  type="button" data-saved-connect hidden
+  data-i18n="startAgent">開始使用AI AGENT功能</button>
 <div
   id="caiTrustedPairSlot"
   role="group"
@@ -304,61 +309,13 @@ padding:10px
 <p>配對成功後切換至運行狀態；若使用 P 模式，請填入選擇的新埠。
 </p>
 </div>
+<button
+  type="button" data-return-workspace hidden
+  data-i18n="returnWorkspace">返回 AI Agent</button>
 <p data-agent-error
   id="caiError"
   role="alert">
 </p>
-</div>
-<div
-  class="cai-guide"
-  id="caiConnectGuide"
-  hidden>
-<div
-  class="cai-guide-head">
-<strong data-i18n="guideHeading">連接 ChatGPT / Connect ChatGPT</strong>
-<button
-  type="button"
-  class="cai-guide-dismiss" data-guide-dismiss
-  aria-label="Close guide">×</button>
-</div>
-<div class="cai-guide-downloads">
-<button type="button" data-package-download data-i18n="downloadPackage">
-  下載 AI AGENT MCP 插件包 ZIP</button>
-<button type="button" data-quick-setup data-i18n="downloadLocal">
-  下載 Local Agent Quick-Setup.cmd</button>
-<button type="button" data-mcp-quick-setup data-i18n="downloadMcp">
-  下載 MCP Quick-Setup.cmd</button>
-</div>
-<div
-  class="cai-guide-steps">
-<ol>
-<li data-i18n="guideStep1">下載完整 AI AGENT MCP(ChatGPT) 插件 ZIP 並在插件管理裝載。
-</li>
-<li data-i18n="guideStep2">下載 Local Agent Quick-Setup.cmd，啟動本地 Agent。
- 安裝器支援 C／P／O；配對預設使用 43881。
-</li>
-<li data-i18n="guideStep3">複製本地 Agent 顯示的配對 Token，
- 在主畫面配對視窗輸入 Token 與埠號。
-</li>
-<li data-i18n="guideStep4">在 ToolBox 選取授權資料夾，
- 再依需求個別允許 Read／Create／Update／Delete／PowerShell。
-</li>
-<li data-i18n="guideStep5">下載 MCP Quick-Setup.cmd，啟動本地 MCP 43880
- 和 OAuth 43879，保留本地服務視窗。
-</li>
-<li data-i18n="guideStep6">建立固定名稱 clusteropt2 的公開 HTTPS 網域
- （需自行擁有 DNS 與有效 TLS 憑證）。
- 只將 HTTPS 代理到 OAuth Gateway 的本機 43879。
-</li>
-<li data-i18n="guideStep7">在 ChatGPT 新增自訂 MCP 連線，
- 輸入完整 HTTPS 網址加上 /mcp，完成 OAuth 授權。
-</li>
-<li data-i18n="guideStep8">cluster.read 只有五項唯讀工具；
- cluster.control 必須另行同意授權，且檔案及 PS 指令
- 仍需要 ToolBox／逐命令確認。
-</li>
-</ol>
-</div>
 </div>
 <div
   id="caiWorkspace"
@@ -381,9 +338,9 @@ padding:10px
   "use strict";
   const labels = {};
   let agentState = "disconnected";
-  let showingGuide = false;
+  let showingSetup = false;
+  let savedPairing = false;
   const messages = document.querySelector("[data-model-output]");
-  const guide = document.getElementById("caiConnectGuide");
   const toolbox = document.querySelector("[data-toolbox-toggle]");
 
   function appendMessage(message, kind = "info") {
@@ -413,9 +370,15 @@ padding:10px
     document.querySelector('[data-agent-action="disconnect"]').disabled =
       agentState === "disconnected";
     document.getElementById("caiSetup").hidden =
-      agentState === "connected" && !showingGuide;
+      agentState === "connected" && !showingSetup;
     document.getElementById("caiWorkspace").hidden =
-      agentState !== "connected" || showingGuide;
+      agentState !== "connected" || showingSetup;
+    document.querySelector("[data-saved-connect]").hidden =
+      !savedPairing || agentState !== "disconnected";
+    document.querySelector("[data-return-workspace]").hidden =
+      agentState !== "connected" || !showingSetup;
+    document.getElementById("caiTrustedPairSlot").hidden =
+      savedPairing && agentState === "disconnected";
     publishPairLayout();
   }
 
@@ -434,6 +397,10 @@ padding:10px
   }
   document.querySelector("[data-package-download]").addEventListener(
     "click", () => send("cluster-plugin-download-package"));
+  document.querySelector("[data-saved-connect]").addEventListener(
+    "click", () => send("cluster-local-agent-use-saved"));
+  document.querySelector("[data-return-workspace]").addEventListener(
+    "click", () => { showingSetup = false; updateAgentState(); });
   document.querySelector("[data-legacy-close]").addEventListener(
     "click", () => send("cluster-plugin-panel-close"));
   const toolbar = document.querySelector(".cai-bar");
@@ -464,7 +431,7 @@ padding:10px
       top: bounds.top,
       left: bounds.left,
       width: bounds.width,
-      visible: agentState === "disconnected" &&
+      visible: agentState === "disconnected" && !savedPairing &&
         bounds.bottom > visible.top &&
         bounds.top < visible.bottom
     }, "*");
@@ -476,22 +443,16 @@ padding:10px
   window.addEventListener("resize", publishPairLayout);
   document.addEventListener("visibilitychange", publishPairLayout);
 
-  function navigateGuide(open) {
-    showingGuide = open;
-    guide.hidden = !open;
+  function navigateConnection() {
+    showingSetup = true;
     updateAgentState();
     panelScroll.scrollTo({ top: 0, behavior: "auto" });
-    publishPairLayout();
   }
   document.addEventListener("keydown", event => {
-    if (event.key !== "Escape") return;
-    if (showingGuide) navigateGuide(false);
-    send("cluster-plugin-toolbox-close");
+    if (event.key === "Escape") send("cluster-plugin-toolbox-close");
   });
   document.querySelector("[data-legacy-guide]").addEventListener(
-    "click", () => navigateGuide(true));
-  document.querySelector("[data-guide-dismiss]").addEventListener(
-    "click", () => navigateGuide(false));
+    "click", navigateConnection);
   document.addEventListener("click", event => {
     if (!event.target.closest("[data-toolbox-toggle]")) {
       send("cluster-plugin-toolbox-close");
@@ -524,9 +485,13 @@ padding:10px
       return;
     }
     if (data?.type === "cluster-local-agent-status") {
+      if (typeof data.savedPairing === "boolean") {
+        savedPairing = data.savedPairing;
+      }
       if (["connected", "connecting", "disconnected"]
         .includes(data.state)) {
         agentState = data.state;
+        if (agentState === "connected") showingSetup = false;
         updateAgentState();
       }
       return;

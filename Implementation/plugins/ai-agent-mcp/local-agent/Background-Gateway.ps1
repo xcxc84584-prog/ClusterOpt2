@@ -1,0 +1,182 @@
+# Thin background supervisor for the existing Cluster Node MCP and OAuth gateways.
+param(
+ [ValidateSet('StartMCP','StartOAuth','StopMCP','StopOAuth','Status')]
+ [string]$Action='Status',
+ [ValidatePattern('^$|^https://[^/?#]+$')] [string]$Issuer=''
+)
+$ErrorActionPreference='Stop'
+. (Join-Path $PSScriptRoot 'Port-CPO.ps1')
+$root=Join-Path $env:LOCALAPPDATA 'ClusterOpt2\AI-Agent-MCP'
+$logs=Join-Path $root 'logs'
+function RecordPath($name){ Join-Path $root ('gateway-'+$name+'.json') }
+function ReadRecord($name){
+ $p=RecordPath $name
+ if(Test-Path -LiteralPath $p){Get-Content -LiteralPath $p -Raw|ConvertFrom-Json}
+}
+function SaveRecord($name,$value){
+ New-Item -ItemType Directory -Path $root -Force|Out-Null
+ $p=RecordPath $name;$tmp=$p+'.new'
+ $value|ConvertTo-Json -Depth 4|Set-Content -LiteralPath $tmp -Encoding UTF8
+ Move-Item -LiteralPath $tmp -Destination $p -Force
+}
+function Inspect($procId){
+ if($procId -le 4 -or $procId -eq $PID){return $null}
+ Get-CimInstance Win32_Process -Filter ('ProcessId='+$procId) -ErrorAction SilentlyContinue
+}
+function Owned($record,$service){
+ if(!$record -or !$record.pid -or !$record.exe -or !$record.started -or !$record.signature){return $false}
+ $p=Inspect ([int]$record.pid)
+ if(!$p -or !$p.CreationDate -or !$p.ExecutablePath -or !$p.CommandLine){return $false}
+ if($p.ExecutablePath -ine $record.exe -or
+    $p.CreationDate.ToUniversalTime().ToString('o') -cne $record.started -or
+    $p.CommandLine.IndexOf([string]$record.signature,[StringComparison]::OrdinalIgnoreCase) -lt 0){return $false}
+ if($service -eq 'tunnel'){return ($p.CommandLine -match '(?i)\btunnel\b')}
+ if(!$record.port -or [int]$record.port -lt 1024 -or [int]$record.port -gt 65535){return $false}
+ return (@(Listeners ([int]$record.port)|Where-Object {$_.OwningProcess -eq [int]$record.pid}).Count -gt 0)
+}
+function Snapshot($child,$signature,$port){
+ $p=Inspect ([int]$child.Id)
+ if(!$p -or !$p.ExecutablePath -or !$p.CreationDate -or !$p.CommandLine -or
+    $p.CommandLine.IndexOf($signature,[StringComparison]::OrdinalIgnoreCase) -lt 0){
+  throw 'Could not identify spawned background process'
+ }
+ return @{pid=[int]$child.Id;exe=[string]$p.ExecutablePath;
+   started=$p.CreationDate.ToUniversalTime().ToString('o');signature=$signature;port=$port}
+}
+function StopOwned($service){
+ $record=ReadRecord $service
+ if(!(Owned $record $service)){throw ('Unverified '+$service+' process; refusing stop')}
+ if(!(Owned $record $service)){throw 'Process identity changed'}
+ Stop-Process -Id ([int]$record.pid) -Force -ErrorAction Stop
+ Remove-Item -LiteralPath (RecordPath $service) -Force
+}
+function NodeExe {
+ $n=Get-Command node.exe -ErrorAction Stop
+ $major=& $n.Source -p 'parseInt(process.versions.node,10)'
+ if($LASTEXITCODE -ne 0 -or [int]$major -lt 20){throw 'Node >=20 required'}
+ return $n.Source
+}
+function StartNode($service,$file,$port){
+ $scriptFile=Join-Path $root $file
+ if(!(Test-Path -LiteralPath $scriptFile)){throw ('Missing '+$file)}
+ New-Item -ItemType Directory -Path $logs -Force|Out-Null
+ $arg='"'+$scriptFile+'"'
+ $child=Start-Process -FilePath (NodeExe) -ArgumentList $arg -WorkingDirectory $root -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logs ($service+'.out')) -RedirectStandardError (Join-Path $logs ($service+'.err'))
+ try{
+  $ready=$false
+  for($i=0;$i -lt 50;$i++){
+   Start-Sleep -Milliseconds 250
+   if(@(Listeners $port|Where-Object {$_.OwningProcess -eq $child.Id}).Count -gt 0){$ready=$true;break}
+   if($child.HasExited){break}
+  }
+  if(!$ready){throw ($service+' could not bind local port')}
+  return (Snapshot $child ([IO.Path]::GetFullPath($scriptFile)) $port)
+ }catch{
+  if(!$child.HasExited){Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue}
+  throw
+ }
+}
+function CloudflaredExe {
+ $found=Get-Command cloudflared.exe -ErrorAction SilentlyContinue
+ if($found){return $found.Source}
+ $paths=@(
+  (Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'cloudflared\cloudflared.exe'),
+  (Join-Path $env:ProgramFiles 'cloudflared\cloudflared.exe'),
+  (Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Links\cloudflared.exe'))
+ foreach($p in $paths){if(Test-Path -LiteralPath $p){return $p}}
+ $winget=Get-Command winget.exe -ErrorAction SilentlyContinue
+ if(!$winget){throw 'Install cloudflared before OAuth setup'}
+ if((Read-Host 'Install cloudflared via winget? [Y/N]') -notmatch '^[Yy]$'){throw 'Cancelled'}
+ & $winget.Source install --id Cloudflare.cloudflared --exact --source winget --accept-source-agreements --accept-package-agreements --disable-interactivity
+ if($LASTEXITCODE -ne 0){throw 'cloudflared install failed'}
+ $found=Get-Command cloudflared.exe -ErrorAction SilentlyContinue
+ if($found){return $found.Source}
+ foreach($p in $paths){if(Test-Path -LiteralPath $p){return $p}}
+ throw 'Reopen installer to discover cloudflared'
+}
+function Tunnel($port){
+ New-Item -ItemType Directory -Path $logs -Force|Out-Null
+ $target='http://127.0.0.1:'+$port
+ $out=Join-Path $logs 'tunnel.out'
+ $err=Join-Path $logs 'tunnel.err'
+ $child=Start-Process -FilePath (CloudflaredExe) -ArgumentList @('tunnel','--url',$target,'--no-autoupdate') -WindowStyle Hidden -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+ try{
+  $url=''
+  for($i=0;$i -lt 90;$i++){
+   Start-Sleep -Milliseconds 500
+   if($child.HasExited){throw 'cloudflared exited'}
+   foreach($file in @($err,$out)){
+    if(Test-Path -LiteralPath $file){
+     $raw=Get-Content -LiteralPath $file -Raw -ErrorAction SilentlyContinue
+     if($raw -match 'https://[a-zA-Z0-9-]+\.trycloudflare\.com'){$url=$Matches[0];break}
+    }
+   }
+   if($url){break}
+  }
+  if(!$url){throw 'Timed out waiting for HTTPS URL'}
+  return @{issuer=$url;process=(Snapshot $child $target 0)}
+ }catch{
+  if(!$child.HasExited){Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue}
+  throw
+ }
+}
+switch($Action){
+ 'Status' {
+  foreach($service in @('mcp','oauth')){
+   $saved=ReadRecord $service
+   Write-Host ($service+': '+$(if(Owned $saved $service){'running'}else{'not running'}))
+   if($service -eq 'oauth' -and (Owned $saved $service)){
+    Write-Host ('ChatGPT MCP URL: '+$saved.issuer+'/mcp')
+   }
+  }
+ }
+ 'StopOAuth' {
+  StopOwned 'oauth'
+  if(ReadRecord 'tunnel'){StopOwned 'tunnel'}
+  Write-Host 'OAuth and tunnel stopped'
+ }
+ 'StopMCP' {
+  if(Owned (ReadRecord 'oauth') 'oauth'){throw 'Stop OAuth first'}
+  StopOwned 'mcp'
+  Write-Host 'MCP stopped'
+ }
+ 'StartMCP' {
+  if(Owned (ReadRecord 'mcp') 'mcp'){Write-Host 'MCP already running';break}
+  $ports=Get-ServicePorts
+  $port=Select-ServicePort 'mcp'
+  $env:CLUSTER_MCP_PORT=[string]$port
+  $env:CLUSTER_TERMINAL_PORT=[string]$ports.terminal
+  SaveRecord 'mcp' (StartNode 'mcp' 'remote-mcp.cjs' $port)
+  Write-Host ('Background MCP ready on 127.0.0.1:'+$port)
+ }
+ 'StartOAuth' {
+  $mcp=ReadRecord 'mcp'
+  if(!(Owned $mcp 'mcp')){throw 'Start MCP first'}
+  $old=ReadRecord 'oauth'
+  if(Owned $old 'oauth'){Write-Host ('OAuth already running: '+$old.issuer+'/mcp');break}
+  $port=Select-ServicePort 'oauth'
+  $tunnel=$null;$oauth=$null
+  try{
+   if(!$Issuer){
+    # Directly reuse the old Cluster cloudflared quick-tunnel path.
+    # Forward only OAuth loopback, never local MCP or terminal ports.
+    $tunnel=Tunnel $port;$Issuer=$tunnel.issuer
+   }
+   $env:CLUSTER_OAUTH_PORT=[string]$port
+   $env:CLUSTER_MCP_PORT=[string]$mcp.port
+   $env:CLUSTER_OAUTH_ISSUER=$Issuer
+   $oauth=StartNode 'oauth' 'oauth-mcp-gateway.cjs' $port
+   $meta=Invoke-RestMethod ('http://127.0.0.1:'+$port+'/.well-known/oauth-authorization-server') -TimeoutSec 4
+   if($meta.issuer -cne $Issuer){throw 'OAuth issuer mismatch'}
+   $oauth.issuer=$Issuer
+   SaveRecord 'oauth' $oauth
+   if($tunnel){SaveRecord 'tunnel' $tunnel.process}
+   Write-Host ('ChatGPT MCP URL: '+$Issuer+'/mcp')
+   Write-Host 'OAuth continues running when this setup window is closed.'
+  }catch{
+   if($oauth -and (Owned $oauth 'oauth')){Stop-Process -Id $oauth.pid -Force -ErrorAction SilentlyContinue}
+   if($tunnel -and (Owned $tunnel.process 'tunnel')){Stop-Process -Id $tunnel.process.pid -Force -ErrorAction SilentlyContinue}
+   throw
+  }
+ }
+}

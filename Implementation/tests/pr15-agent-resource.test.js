@@ -30,6 +30,14 @@ test("PR15.1 all downloadable files exist and form an installable package",
     assert.equal(Object.keys(fetched).length, AI_AGENT_PACKAGE_FILES.length);
     assert.equal(new Set(AI_AGENT_PACKAGE_FILES).size,
       AI_AGENT_PACKAGE_FILES.length);
+    // Regression: new gateway scripts must appear exactly once in ZIP.
+    for (const file of [
+      "local-agent/Background-Gateway.ps1",
+      "local-agent/Setup-MCP.ps1"
+    ]) {
+      assert.equal(AI_AGENT_PACKAGE_FILES.filter(
+        name => name === file).length, 1);
+    }
     const manifest = JSON.parse(fetched["plugin.json"]);
     assert.equal(manifest.provider.providerId, "cluster.ai-agent-mcp");
     assert.deepEqual(manifest.provider.permissions, [

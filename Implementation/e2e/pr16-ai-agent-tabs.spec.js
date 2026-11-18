@@ -71,7 +71,7 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     await expect(frame.locator(".cai-bar")).toBeVisible();
     await expect(frame.locator("[data-model-action]")).toHaveCount(0);
     await frame.locator("[data-legacy-guide]").click();
-    await expect(frame.locator("#caiConnectGuide")).toBeVisible();
+    await expect(frame.locator("#caiConnectGuide")).toHaveCount(0);
     const bundleDownload = page.waitForEvent("download");
     await frame.locator("[data-package-download]").click();
     const bundle = await bundleDownload;
@@ -79,8 +79,6 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
       .toBe("ClusterOpt2-AI-Agent-MCP.zip");
     const bytes = await readFile(await bundle.path());
     expect(bytes.subarray(0, 2).toString("hex")).toBe("504b");
-    await frame.locator("[data-guide-dismiss]").click();
-
     const downloading = page.waitForEvent("download");
     await frame.locator("#caiSetup [data-quick-setup]").click();
     const downloaded = await downloading;
@@ -111,9 +109,10 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     await expect(frame.locator("#caiForm")).toHaveCount(0);
     await expect(frame.locator(".cai-readonly-note")).toBeVisible();
     await frame.locator("[data-legacy-guide]").click();
-    await expect(frame.locator("#caiConnectGuide")).toBeVisible();
-    await frame.locator("[data-guide-dismiss]").click();
-    await expect(frame.locator("#caiConnectGuide")).toBeHidden();
+    await expect(frame.locator("#caiSetup")).toBeVisible();
+    await expect(frame.locator("#caiConnectGuide")).toHaveCount(0);
+    await frame.locator("[data-return-workspace]").click();
+    await expect(frame.locator("#caiWorkspace")).toBeVisible();
     await frame.locator("[data-legacy-close]").click();
     await expect(page.locator(".plugin-agent-tab")).toHaveCount(0);
   });

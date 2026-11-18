@@ -11,6 +11,9 @@ on:
       - "Implementation/plugins/ai-agent-mcp/local-agent/secure-store.cjs"
       - "Implementation/tests/pr21-3-secure-store.test.js"
       - "Implementation/tests/pr21-3-background-agent-windows.test.ps1"
+      - "Implementation/tests/pr21-4-gateway-windows.test.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Background-Gateway.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Setup-MCP.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Start-*.ps1"
       - "Implementation/tests/pr20-port-cpo-windows.test.ps1"
       - ".github/workflows/ai-agent-setup-parser.yml"
@@ -42,7 +45,7 @@ jobs:
             $parseErrors | ForEach-Object { Write-Host $_.ToString() }
             exit 1
           }
-          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1')) {
+          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1','Background-Gateway.ps1','Setup-MCP.ps1')) {
             $file = Join-Path $env:GITHUB_WORKSPACE ("Implementation/plugins/ai-agent-mcp/local-agent/" + $name)
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
@@ -66,7 +69,7 @@ jobs:
             $parseErrors | ForEach-Object { Write-Host $_.ToString() }
             exit 1
           }
-          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1')) {
+          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1','Background-Gateway.ps1','Setup-MCP.ps1')) {
             $file = Join-Path $env:GITHUB_WORKSPACE ("Implementation/plugins/ai-agent-mcp/local-agent/" + $name)
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
@@ -98,3 +101,7 @@ jobs:
         shell: powershell
         run: |
           ./Implementation/tests/pr21-3-background-agent-windows.test.ps1
+      - name: Existing Cluster MCP and OAuth gateway lifecycle
+        shell: powershell
+        run: |
+          ./Implementation/tests/pr21-4-gateway-windows.test.ps1

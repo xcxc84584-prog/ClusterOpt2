@@ -41,11 +41,14 @@ test("PR21 port CPO refuses changed PIDs without aborting setup", () => {
   assert.ok(script.includes("Release-OccupiedPort -Port $port"));
 });
 
-test("PR21 MCP setup logs each actual failed download", () => {
+test("PR21.4 MCP bootstrap reports failures and avoids faulty asset loop", () => {
   const cmd = read(
     "plugins/ai-agent-mcp/local-agent/MCP-Quick-Setup.cmd");
-  assert.ok(cmd.includes('call :download "%%F"'));
-  assert.ok(cmd.includes("Failed asset: %ASSET%"));
-  assert.ok(cmd.includes("DOWNLOAD FAILED: "));
+  const setup = read(
+    "plugins/ai-agent-mcp/local-agent/Setup-MCP.ps1");
+  assert.ok(cmd.includes("Setup-MCP.ps1"));
+  assert.ok(cmd.includes("if errorlevel 1 goto failed"));
   assert.ok(cmd.includes("exit /b 1"));
+  assert.ok(!cmd.includes("call :download"));
+  assert.ok(setup.includes("Invoke-WebRequest -UseBasicParsing"));
 });

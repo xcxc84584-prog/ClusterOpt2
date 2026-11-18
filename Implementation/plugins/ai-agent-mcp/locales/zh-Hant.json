@@ -2,8 +2,8 @@
   "heading": "AI Agent",
   "disconnected": "尚未連線",
   "setupTitle": "連結本地 AI Agent",
-  "setupNotice": "請在瀏覽器的可信任配對視窗輸入 Token。配對碼不會儲存或交給插件。",
-  "connection": "連線教學",
+  "setupNotice": "首次配對：於已安裝的 Background-Agent.ps1 執行 -Action Token，在可信任主頁輸入。若已記住 Token，直接點選「開始使用AI AGENT功能」。",
+  "connection": "連線設定",
   "ping": "測試連線",
   "close": "關閉",
   "feed": "Agent 輸出",
@@ -30,5 +30,7 @@
   "guideStep5": "下載 MCP Quick-Setup.cmd，啟動 MCP Gateway 43880 與 OAuth Gateway 43879。",
   "guideStep6": "建立固定名稱 clusteropt2 的完整公開 HTTPS 網域及 TLS 憑證；反向代理只能指向本機 OAuth 43879。",
   "guideStep7": "在 ChatGPT 新增自訂 MCP 服務器，使用完整 HTTPS 網址加 /mcp 完成 OAuth 授權。",
-  "guideStep8": "cluster.read 僅提供五項唯讀工具；cluster.control 需單獨核准，PS 每條命令仍需要本機確認。"
+  "guideStep8": "cluster.read 僅提供五項唯讀工具；cluster.control 需單獨核准，PS 每條命令仍需要本機確認。",
+  "startAgent": "開始使用AI AGENT功能",
+  "returnWorkspace": "返回 AI Agent"
 }
