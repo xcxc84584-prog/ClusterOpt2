@@ -3,6 +3,8 @@ import { Language } from "../property/Language.js";
 import { mountPaletteUI } from "./palette-ui.js";
 import { mountPluginManagerUI } from "./plugin-manager-ui.js";
 import { restoreReviewedPlugins } from "./plugin-resource-view.js";
+import { mountDefaultAIAgentLauncher } from
+  "./default-ai-agent-launcher.js";
 import { askSaveBeforeClose } from "./save-close-dialog.js";
 import { SyntaxOverlayController } from
   "./syntax-overlay-controller.js";
@@ -1491,11 +1493,13 @@ window.addEventListener("beforeunload", event => {
 });
 render();
 // Only built-in, pre-reviewed providers may auto-restore on reload.
-void restoreReviewedPlugins(linkCore).then(result => {
-  if(result?.ok) {
-    if(result.value.enabledRestored>0) syntaxOverlay.enable();
-    pluginManager.refresh();
+void restoreReviewedPlugins(linkCore).then(async result => {
+  if (result?.ok && result.value.enabledRestored > 0) {
+    syntaxOverlay.enable();
   }
+  await mountDefaultAIAgentLauncher(linkCore, document,
+    () => pluginManager.refresh());
+  pluginManager.refresh();
 });
 void linkCore.request("ui", "session-recovery", "restore").then(
   async result => {
