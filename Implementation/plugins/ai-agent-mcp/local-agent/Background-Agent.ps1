@@ -70,11 +70,13 @@ function Show-Token {
   Write-Host 'Pairing token (private; never paste into an iframe):'
   Write-Host $token
 }
+Show-PortInventory -Phase 'BEFORE ACTION' -PairService 'terminal'
 switch ($Action) {
   'Token' { Show-Token; break }
   'Status' {
     $saved = Read-Record
     if (Verify-Agent $saved) {
+      Write-Host ('Active pairing port: {0}' -f $saved.port)
       Write-Host ('Local Agent running: PID {0}, port {1}' -f
         $saved.pid, $saved.port)
     } else {
@@ -113,6 +115,7 @@ switch ($Action) {
     }
     Stop-Process -Id ([int]$saved.pid) -Force -ErrorAction Stop
     Remove-Item -LiteralPath $recordPath -Force
+    Show-PortInventory -Phase 'AFTER AGENT STOP' -PairService 'terminal'
     Write-Host 'Local Agent stopped.'
     break
   }
@@ -156,6 +159,7 @@ switch ($Action) {
     $state | ConvertTo-Json | Set-Content -LiteralPath $temporary `
       -Encoding UTF8
     Move-Item -LiteralPath $temporary -Destination $recordPath -Force
+    Show-PortInventory -Phase 'AFTER AGENT START' -PairService 'terminal'
     Write-Host ('Local Agent started in background on port {0}' -f $port)
     Write-Host 'Use Background-Agent.ps1 -Action Status / Stop / Token.'
     Write-Host 'To reveal the token, explicitly run -Action Token locally.'
