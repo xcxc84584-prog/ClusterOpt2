@@ -32,36 +32,10 @@ if(-not $?){throw 'MCP background start failed'}
 Write-Host 'MCP ready. No persistent CMD or PowerShell window is required.'
 Write-Host 'ChatGPT OAuth uses the original Cloudflare quick-tunnel process.'
 $consent=Read-Host 'Start the optional OAuth/HTTPS connection now? [Y/N]'
-if($consent -match '^[Yy]
+if($consent -match '^[Yy]$'){
  & $manager -Action StartOAuth
  if(-not $?){throw 'OAuth background start failed'}
- # Show the already-generated local OAuth approval password only on the
- # interactive setup console, never in a file, URL or service log.
- $approvalFile=Join-Path $env:LOCALAPPDATA (
-  'ClusterTerminalAgent\oauth-approval-password')
- if(Test-Path -LiteralPath $approvalFile -PathType Leaf){
-  $approvalPassword=(Get-Content -LiteralPath $approvalFile -Raw).Trim()
-  if($approvalPassword){
-   Write-Host ''
-   Write-Host '===================================================='
-   Write-Host 'ChatGPT OAuth local approval password:'
-   Write-Host $approvalPassword
-   Write-Host 'Keep this password private; enter it only on your OAuth approval page.'
-   Write-Host '===================================================='
-  }else{
-   Write-Warning 'OAuth approval password file is empty.'
-  }
- }else{
-  Write-Warning 'OAuth approval password not found; check gateway initialization.'
- }
-}
-& $manager -Action Status
-Write-Host 'To check/stop, run Background-Gateway.ps1 -Action Status/StopOAuth/StopMCP.'
-){
- & $manager -Action StartOAuth
- if(-not $?){throw 'OAuth background start failed'}
- # Show the already-generated local OAuth approval password only on the
- # interactive setup console, never in a file, URL or service log.
+ # Display only in the interactive setup console, never in a log.
  $approvalFile=Join-Path $env:LOCALAPPDATA (
   'ClusterTerminalAgent\oauth-approval-password')
  if(Test-Path -LiteralPath $approvalFile -PathType Leaf){
