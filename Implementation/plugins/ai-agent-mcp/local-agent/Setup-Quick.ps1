@@ -35,7 +35,8 @@ function Ensure-Node {
 }
 function Ensure-Files {
   New-Item -ItemType Directory -Path $agentDir -Force | Out-Null
-  foreach ($name in @('server.cjs','secure-store.cjs','package.json','Port-CPO.ps1')) {
+  foreach ($name in @('server.cjs','secure-store.cjs',
+      'package.json','Port-CPO.ps1','Background-Agent.ps1')) {
     $target = Join-Path $agentDir $name
     # Refresh reviewed code to prevent stale Agent binaries after upgrades.
     $temp = $target + '.download'
@@ -52,8 +53,6 @@ Write-Host 'AI AGENT MCP(ChatGPT) - local setup'
 Write-Host ('Source: ' + $SourceRevision)
 $node = Ensure-Node
 Ensure-Files
-. (Join-Path $agentDir 'Port-CPO.ps1')
-$port = Select-ServicePort 'terminal'
 $npm = Get-Command npm.cmd -ErrorAction Stop
 Push-Location $agentDir
 try {
@@ -77,13 +76,11 @@ try {
       throw 'node-pty remains unavailable'
     }
   }
-  $env:CLUSTER_TERMINAL_ORIGIN = $origin
-  $env:CLUSTER_TERMINAL_PORT = [string]$port
-  Write-Host ('Agent port: ' + $port)
-  Write-Host 'Copy this port and the pairing token into ClusterOpt2.'
-  Write-Host 'Keep the CMD window open while using AI Agent.'
-  & $node.Source (Join-Path $agentDir 'server.cjs')
-  if ($LASTEXITCODE -ne 0) { throw 'Agent terminated unexpectedly' }
+  Write-Host 'Starting the Local Agent without keeping CMD open...'
+  & (Join-Path $agentDir 'Background-Agent.ps1') -Action Start -Origin $origin
+  if (-not $?) { throw 'Background Local Agent failed' }
+  Write-Host 'You can close this setup window; Local Agent remains running.'
+  Write-Host 'To stop: run Background-Agent.ps1 -Action Stop.'
 } finally {
   Pop-Location
 }
