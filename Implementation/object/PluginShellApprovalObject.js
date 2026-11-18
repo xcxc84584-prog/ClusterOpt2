@@ -3,6 +3,8 @@
  *
  * The legacy local Agent executes the approved command in a separate
  * Windows process only after an authenticated browser tool_result.
+ * An explicit trusted ToolBox grant permits subsequent commands in
+ * the current session without another modal; revocation denies again.
  * The plugin iframe and Worker cannot approve a command.
  */
 export class PluginShellApprovalObject {
@@ -68,29 +70,16 @@ export class PluginShellApprovalObject {
       this.audit(400, "InvalidRequest");
       return { approved: false };
     }
-    if (this.busy) {
-      this.audit(409, "Busy");
+    // The trusted ToolBox PS checkbox is an explicit session grant.
+    // Each command is checked again against live grant, caller and
+    // workspace scope. No second browser dialog is required.
+    // The native Gateway only executes when this response approves.
+    if (!this.active || !this.explorer.rights.ps ||
+        !this.explorer.root) {
+      this.audit(403, "RevokedBeforeExecution");
       return { approved: false };
     }
-    this.busy = true;
-    try {
-      // A browser confirm is always necessary, even after the
-      // ToolBox master switch is ON. No silent blanket approval.
-      const prompt =
-        "PowerShell 指令授權 / Command approval" +
-        "\nWorkspace: " + workspace +
-        "\n\n" + command +
-        "\n\n此指令將在 Windows 使用者權限下執行。";
-      const approved = this.doc.defaultView.confirm(prompt) === true;
-      if (!this.active || !this.explorer.rights.ps) {
-        this.audit(403, "RevokedWhilePending");
-        return { approved: false };
-      }
-      this.audit(approved ? 200 : 403,
-        approved ? "Approved" : "UserDenied");
-      return { approved };
-    } finally {
-      this.busy = false;
-    }
+    this.audit(200, "SessionApproved");
+    return { approved: true };
   }
 }
