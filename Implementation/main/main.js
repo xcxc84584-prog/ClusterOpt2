@@ -50,7 +50,12 @@ const pluginWindow = document.getElementById("pluginWindow");
 const syntaxOverlay = new SyntaxOverlayController(
   linkCore, ui.editor, ui.editorSurface);
 const pluginManager = mountPluginManagerUI(linkCore, document, {
-  onPluginInstalled() { syntaxOverlay.enable(); },
+  onPluginInstalled() {
+    syntaxOverlay.enable();
+    if (linkCore.uru.getProvider("cluster.ai-agent-mcp")) {
+      document.getElementById("pluginBundledAgentLauncher")?.remove();
+    }
+  },
   getActivePreview() {
     const active = workspace.active;
     if (!active) return null;
