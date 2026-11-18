@@ -123,15 +123,25 @@ test("PR14.5 model credential stays in host, task route and cancel",
     await tokenDialog.locator('button[type="submit"]').click();
     await expect(frame.locator("[data-agent-status]"))
       .toHaveText("已連線");
-    await frame.locator('[data-model-action="configure"]').click();
+    const configured = page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const view = linkCore.pluginHostInstaller.uiHost.views
+        .get("cluster.ai-agent-mcp");
+      return linkCore.request("ui", view.modelTask.id,
+        "configure", {}, { origin: "user" });
+    });
     const modelDialog = page.locator("dialog[open]");
     await expect(modelDialog).toBeVisible();
     await modelDialog.locator('input[type="password"]').fill(secret);
     await modelDialog.locator('input[type="text"]')
       .fill("gpt-4.1-mini");
     await modelDialog.locator('button[type="submit"]').click();
-    await expect(frame.locator("[data-model-output]"))
-      .toContainText("模型已設定");
+    const configuration = await configured;
+    expect(configuration.status).toBe(200);
+    await expect.poll(() => page.evaluate(() =>
+      window.__modelSent.some(item => item.type === "provider_set")))
+      .toBe(true);
     await expect(frame.locator("textarea")).toHaveCount(0);
     const submit = await submitFromTrustedHost(
       page, "Explain a function");
@@ -156,11 +166,15 @@ test("PR14.5 model credential stays in host, task route and cancel",
     });
     diagnostic.ui = await frame.locator("[data-model-output]")
       .innerText();
-    diagnostic.cancelDisabled = await frame.locator(
-      '[data-model-action="cancel"]').isDisabled();
-    expect(JSON.stringify(diagnostic)).toContain(
-      '"cancelDisabled":false');
-    await frame.locator('[data-model-action="cancel"]').click();
+    const cancelled = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const view = linkCore.pluginHostInstaller.uiHost.views
+        .get("cluster.ai-agent-mcp");
+      return linkCore.request("ui", view.modelTask.id,
+        "cancel", {}, { origin: "user" });
+    });
+    expect(cancelled.status).toBe(200);
     await expect.poll(() => page.evaluate(() =>
       window.__modelSent.some(msg => msg.type === "task_cancel")))
       .toBe(true);
@@ -254,6 +268,6 @@ test("PR14.5 full authenticated model result reaches isolated UI",
       return linkCore.pluginHostInstaller.uiHost.views.get(
         "cluster.ai-agent-mcp").modelTask.snapshot().activeId;
     })).toBe(null);
-    await expect(frame.locator('[data-model-action="cancel"]'))
-      .toBeDisabled();
+    await expect(frame.locator("[data-model-action]"))
+      .toHaveCount(0);
   });
