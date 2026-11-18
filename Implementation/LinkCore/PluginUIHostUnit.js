@@ -644,7 +644,9 @@ export class PluginUIHostUnit {
       }
       if (provider.providerId === "cluster.ai-agent-mcp") {
         const onQuickSetup = event => {
-          if (event.source !== frame.contentWindow) return;
+          if (event.source !== frame.contentWindow ||
+              event.origin !== "null" || !view.enabled ||
+              !this.views.has(provider.providerId)) return;
           if (event.data?.type === "cluster-plugin-panel-close") {
             view.workbenchTab?.close();
             return;
