@@ -62,19 +62,25 @@ test("PR21.3 full width setup and single right edge scrollbar",
     }
   });
 
-test("PR21.3 guide stays in the same iframe and supports dismissal",
+test("PR21.4 connection settings has no duplicate guide and restores token UI",
   async ({ page }) => {
     const frame = await mountAgent(page);
-    const initial = await page.locator(
-      ".plugin-extension-frame").count();
+    const initial = await page.locator(".plugin-extension-frame").count();
     await frame.locator("[data-legacy-guide]").click();
     await expect(frame.locator("#caiSetup")).toBeVisible();
-    await expect(frame.locator("#caiConnectGuide")).toBeVisible();
+    await expect(frame.locator("#caiConnectGuide")).toHaveCount(0);
     await expect(frame.locator("[data-package-download]")).toBeVisible();
     expect(await page.locator(".plugin-extension-frame").count())
       .toBe(initial);
-    await frame.locator("[data-guide-dismiss]").click();
-    await expect(frame.locator("#caiConnectGuide")).toBeHidden();
+    await page.evaluate(() => {
+      const iframe = document.querySelector(".plugin-extension-frame");
+      iframe.contentWindow.postMessage({
+        type: "cluster-local-agent-status",
+        state: "disconnected", savedPairing: true
+      }, "*");
+    });
+    await expect(frame.locator("[data-saved-connect]")).toBeVisible();
+    await expect(frame.locator("#caiTrustedPairSlot")).toBeHidden();
   });
 
 test("PR21.3 ToolBox closes on sandbox outside click but remains usable",
