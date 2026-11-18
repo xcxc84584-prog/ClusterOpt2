@@ -54,12 +54,21 @@ export async function mountDefaultAIAgentLauncher(core, doc, refresh) {
   const saved = await core.listReviewedPlugins();
   if (!saved.ok) return saved;
   const previous = saved.value.find(item => item.providerId === ID);
-  if (previous?.enabled === false) {
-    return { ok: true, status: 200, value: "opted-out" };
-  }
-  if (!previous) {
-    const remembered = await core.rememberReviewedPlugin(ID, true);
-    if (!remembered.ok) return remembered;
+  // A dismissal is scoped to this page only, never a persistent opt-out.
+  // Previous consent is not inferred from an old disabled/opt-out record.
+  if (previous?.enabled === true && !core.uru.getProvider(ID)) {
+    try {
+      const snapshot = await trustedSnapshot(doc.defaultView);
+      const installed = await core.pluginHostInstaller.install(snapshot, {
+        consented: true, approvedPermissions: [...PERMISSIONS]
+      });
+      if (installed.ok) {
+        refresh?.();
+        return { ok: true, status: 200, value: "restored" };
+      }
+    } catch {
+      // Keep the default launcher visible if restore fails.
+    }
   }
   if (core.uru.getProvider(ID) ||
       doc.getElementById("pluginBundledAgentLauncher")) {
@@ -80,8 +89,8 @@ export async function mountDefaultAIAgentLauncher(core, doc, refresh) {
   const remove = doc.createElement("button");
   remove.type = "button";
   remove.textContent = "×";
-  remove.title = "Hide and disable default AI Agent";
-  remove.setAttribute("aria-label", "Disable default AI Agent");
+  remove.title = "Hide AI Agent until page reload";
+  remove.setAttribute("aria-label", "Hide AI Agent for this page");
   remove.style.cssText = "padding:5px;border:0;background:transparent;" +
     "color:var(--ui-text-on-panel);";
   const status = doc.createElement("span");
@@ -90,8 +99,8 @@ export async function mountDefaultAIAgentLauncher(core, doc, refresh) {
   status.hidden = true;
   remove.addEventListener("click", async event => {
     if (!event.isTrusted) return;
-    const result = await core.rememberReviewedPlugin(ID, false);
-    if (result.ok) container.remove();
+    // Hide only for this page view. Reload always brings it back.
+    container.remove();
     refresh?.();
   });
   open.addEventListener("click", async event => {
