@@ -658,8 +658,34 @@ export class PluginUIHostUnit {
           }, "*");
         };
         agent.onState = publish;
+        // The sandbox receives only a bounded, host-approved view.
+        // Never forward shell command text, secrets or filesystem handles.
+        agent.onActivity = activity => {
+          if (!view.enabled) return;
+          frame.contentWindow?.postMessage({
+            type: "cluster-agent-activity",
+            activity: {
+              phase: activity.phase,
+              tool: activity.tool,
+              status: activity.status,
+              detail: activity.detail
+            }
+          }, "*");
+        };
         agent.onShellResult = message => {
-          if (view.enabled) view.showShellResult?.(message);
+          if (!view.enabled) return;
+          view.showShellResult?.(message);
+          const result = message?.result ?? {};
+          frame.contentWindow?.postMessage({
+            type: "cluster-agent-shell-result",
+            result: {
+              exitCode: result.exitCode,
+              stdout: String(result.stdout ?? "").slice(0, 32768),
+              stderr: String(result.stderr ?? "").slice(0, 32768),
+              error: String(message?.error ?? "").slice(0, 512),
+              truncated: result.truncated === true
+            }
+          }, "*");
         };
         const receive = async event => {
           if (event.source !== frame.contentWindow ||
