@@ -32,10 +32,9 @@ if not exist "%ROOT%" (
   if errorlevel 1 goto failed
 )
 echo [1/3] Downloading pinned MCP and OAuth files...
-powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $names=@('remote-mcp.cjs','oauth-mcp-gateway.cjs','Start-MCP.ps1','Start-OAuth.ps1','Port-CPO.ps1'); foreach($name in $names){ $url=$env:BASE+'/'+$name; $target=Join-Path $env:ROOT $name; $temp=$target+'.download'; Write-Host ('Fetching '+$name); try { Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $temp -TimeoutSec 45; if((Get-Item -LiteralPath $temp).Length -lt 100){throw 'Incomplete download'}; Move-Item -LiteralPath $temp -Destination $target -Force } catch { Write-Host ('DOWNLOAD FAILED: '+$url+' : '+$_.Exception.Message) -ForegroundColor Red; exit 1 } finally { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue } }"
-if errorlevel 1 (
-  echo Failed to download gateway assets. Check the error above.
-  goto failed
+for %%F in (remote-mcp.cjs oauth-mcp-gateway.cjs Start-MCP.ps1 Start-OAuth.ps1 Port-CPO.ps1) do (
+  call :download "%%F"
+  if errorlevel 1 goto failed
 )
 echo All five gateway assets downloaded.
 echo [2/3] Starting local bearer-protected MCP on 127.0.0.1:43880...
@@ -64,6 +63,16 @@ echo Setup launched. Check the gateway windows for errors.
 echo OAuth scope cluster.read is READ ONLY.
 echo File writes and PowerShell still require local authorization.
 pause
+exit /b 0
+
+:download
+set "ASSET=%~1"
+echo Fetching %ASSET%...
+powershell.exe -NoProfile -Command "$ErrorActionPreference='Stop'; $source=$env:BASE+'/'+$env:ASSET; $target=Join-Path $env:ROOT $env:ASSET; $temp=$target+'.download'; try { Invoke-WebRequest -UseBasicParsing -Uri $source -OutFile $temp -TimeoutSec 45; if((Get-Item -LiteralPath $temp).Length -lt 100){throw 'Incomplete download'}; Move-Item -LiteralPath $temp -Destination $target -Force; Write-Host ('Verified: '+$env:ASSET) } catch { [Console]::Error.WriteLine(('DOWNLOAD FAILED: '+$source+' : '+$_.Exception.Message)); exit 1 } finally { Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue }"
+if errorlevel 1 (
+  echo Failed asset: %ASSET%
+  exit /b 1
+)
 exit /b 0
 
 :failed
