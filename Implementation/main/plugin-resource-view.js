@@ -1,6 +1,10 @@
 import { downloadPluginTemplate } from
   "./plugin-template-download.js";
-import { downloadAgentPackage } from "./plugin-agent-download.js";
+import {
+  downloadAgentPackage,
+  downloadAgentQuickSetup,
+  downloadMCPQuickSetup
+} from "./plugin-agent-download.js";
 
 /**
  * Resources: independent scroll panes and user-initiated data-only exports.
@@ -65,8 +69,8 @@ const PLUGINS = Object.freeze([{
   kind: "folder-package",
   nameZh: "AI Agent MCP（ChatGPT）",
   nameEn: "AI Agent MCP (ChatGPT)",
-  descriptionZh: "完整插件包，含本地 Agent、MCP／OAuth。下載 ZIP、解壓後選擇資料夾裝載；需明確授權。",
-  descriptionEn: "Complete AI Agent, MCP and OAuth package. Download ZIP, extract and mount folder with consent.",
+  descriptionZh: "完整插件包及新版 CMD 安裝程式（舊連線可選擇沿用／註銷）。可下載 ZIP 裝載資料夾；操作需明確授權。",
+  descriptionEn: "AI Agent package and refreshed CMD installers (reuse or revoke prior connection). Download ZIP, extract and mount with consent.",
   service: "cluster.ai-agent.status",
   version: "1.0.0"
 }]);
@@ -353,7 +357,43 @@ export function renderResources(doc, host, options) {
         const mount = button(doc, t("裝載資料夾", "Mount folder"),
           event => installLocalFolder(event));
         mount.id = "pluginAgentMount";
-        buttons.append(download, mount);
+        // Separate Windows CMD entrypoints use the same reviewed,
+        // no-store deployment assets as the ZIP package.
+        const agentCmd = button(doc, t(
+          "下載 Agent CMD", "Download Agent CMD"), async () => {
+          agentCmd.disabled = true;
+          try {
+            await downloadAgentQuickSetup(doc);
+            status.textContent = t(
+              "已開始下載 Agent CMD；執行時可確認既有連線紀錄。",
+              "Agent CMD download started; existing setup is reviewed.");
+          } catch {
+            status.textContent = t(
+              "Agent CMD 下載失敗，請重新整理後再試。",
+              "Agent CMD download failed; refresh and retry.");
+          } finally {
+            agentCmd.disabled = false;
+          }
+        });
+        agentCmd.id = "pluginAgentQuickSetupDownload";
+        const mcpCmd = button(doc, t(
+          "下載 MCP/OAuth CMD", "Download MCP/OAuth CMD"), async () => {
+          mcpCmd.disabled = true;
+          try {
+            await downloadMCPQuickSetup(doc);
+            status.textContent = t(
+              "已開始下載 MCP/OAuth CMD；舊 URL 可選擇沿用或註銷。",
+              "MCP/OAuth CMD download started; reuse or revoke old URL.");
+          } catch {
+            status.textContent = t(
+              "MCP/OAuth CMD 下載失敗，請重新整理後再試。",
+              "MCP/OAuth CMD download failed; refresh and retry.");
+          } finally {
+            mcpCmd.disabled = false;
+          }
+        });
+        mcpCmd.id = "pluginMCPQuickSetupDownload";
+        buttons.append(download, agentCmd, mcpCmd, mount);
       } else if(plugin.kind==="template") {
         const download=button(doc,t("下載 ZIP","Download ZIP"),()=>{
           const language=core.edpmu.get("Language");
