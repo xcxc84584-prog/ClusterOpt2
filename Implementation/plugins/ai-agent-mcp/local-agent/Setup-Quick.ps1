@@ -126,6 +126,27 @@ try {
   Write-Host 'Starting the Local Agent without keeping CMD open...'
   & (Join-Path $agentDir 'Background-Agent.ps1') -Action Start -Origin $origin
   if (-not $?) { throw 'Background Local Agent failed' }
+  # The printed token is useful only with the listener's actual port.
+  # When C/P/O changed 43881, the browser's default port causes WS 503.
+  $liveRecord = Join-Path $agentDir 'background-agent.json'
+  if (-not (Test-Path -LiteralPath $liveRecord)) {
+    throw 'No Local Agent listener record; refusing to present a token.'
+  }
+  $live = Get-Content -LiteralPath $liveRecord -Raw |
+    ConvertFrom-Json -ErrorAction Stop
+  $activePort = [int]$live.port
+  $listeners = @(Get-NetTCPConnection -LocalPort $activePort `
+    -State Listen -ErrorAction SilentlyContinue |
+    Where-Object { $_.OwningProcess -eq [int]$live.pid })
+  if ($listeners.Count -eq 0) {
+    throw ('Local Agent not listening on recorded port '+$activePort+
+      '. Token alone cannot establish a connection.')
+  }
+  Write-Host '===================================================='
+  Write-Host ('Local Agent pairing PORT: '+$activePort)
+  Write-Host ('WebSocket endpoint: ws://127.0.0.1:'+$activePort+'/agent')
+  Write-Host 'Enter this exact port in ClusterOpt2 (not always 43881).'
+  Write-Host '===================================================='
   Write-Host 'You can close this setup window; Local Agent remains running.'
   # Present the freshly protected pairing token in this interactive
   # Quick-Setup CMD only. Never copy it into a log or a download URL.
