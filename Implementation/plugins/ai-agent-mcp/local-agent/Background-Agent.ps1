@@ -67,10 +67,13 @@ function Show-Token {
   if ($token -cnotmatch '^[a-f0-9]{64}$') {
     throw 'Protected pairing token has invalid content.'
   }
-  Write-Host 'Pairing token (private; never paste into an iframe):'
-  Write-Host $token
+  $saved = Read-Record
+  if (-not (Verify-Agent $saved)) {
+    throw 'Cannot display pairing endpoint: Agent is not verified.'
+  }
+  Write-Host ('PORT MASSAGE : ' + $saved.port + ' : ' + $token +
+    ' (ws://127.0.0.1:' + $saved.port + '/agent)')
 }
-Show-PortInventory -Phase 'BEFORE ACTION' -PairService 'terminal'
 switch ($Action) {
   'Token' { Show-Token; break }
   'Status' {
@@ -115,7 +118,6 @@ switch ($Action) {
     }
     Stop-Process -Id ([int]$saved.pid) -Force -ErrorAction Stop
     Remove-Item -LiteralPath $recordPath -Force
-    Show-PortInventory -Phase 'AFTER AGENT STOP' -PairService 'terminal'
     Write-Host 'Local Agent stopped.'
     break
   }
@@ -189,10 +191,10 @@ switch ($Action) {
     $folder = Split-Path -Parent $recordPath
     New-Item -ItemType Directory -Path $folder -Force | Out-Null
     $temporary = $recordPath + '.new'
-    $state | ConvertTo-Json | Set-Content -LiteralPath $temporary `
-      -Encoding UTF8
+    $json = $state | ConvertTo-Json
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($temporary, $json, $utf8)
     Move-Item -LiteralPath $temporary -Destination $recordPath -Force
-    Show-PortInventory -Phase 'AFTER AGENT START' -PairService 'terminal'
     Write-Host ('Local Agent started in background on port {0}' -f $port)
     Write-Host 'Use Background-Agent.ps1 -Action Status / Stop / Token.'
     Write-Host 'To reveal the token, explicitly run -Action Token locally.'
