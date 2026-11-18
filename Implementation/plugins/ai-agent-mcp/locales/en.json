@@ -32,5 +32,6 @@
   "guideStep7": "In ChatGPT, add a custom MCP server using the full HTTPS origin plus /mcp; complete OAuth.",
   "guideStep8": "cluster.read offers five read-only tools; cluster.control needs separate consent, and each PS command requires local approval.",
   "startAgent": "Start using AI Agent",
+  "repairAgent": "Re-pair",
   "returnWorkspace": "Return to AI Agent"
 }
