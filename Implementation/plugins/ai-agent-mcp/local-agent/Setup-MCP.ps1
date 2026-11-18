@@ -90,7 +90,6 @@ if(@($existing).Count -gt 0){
  }
 }
 . (Join-Path $root 'Port-CPO.ps1')
-Show-PortInventory -Phase 'BEFORE GATEWAY START' -PairService 'terminal'
 Write-Host 'Launching the existing Cluster local MCP in the background...'
 & $manager -Action StartMCP
 if(-not $?){throw 'MCP background start failed'}
@@ -106,25 +105,25 @@ if($decision -eq 'R'){
 if($consent -match '^[Yy]$'){
  & $manager -Action StartOAuth
  if(-not $?){throw 'OAuth background start failed'}
- # Display only in the interactive setup console, never in a log.
- $approvalFile=Join-Path $env:LOCALAPPDATA (
-  'ClusterTerminalAgent\oauth-approval-password')
- if(Test-Path -LiteralPath $approvalFile -PathType Leaf){
-  $approvalPassword=(Get-Content -LiteralPath $approvalFile -Raw).Trim()
-  if($approvalPassword){
-   Write-Host ''
-   Write-Host '===================================================='
-   Write-Host 'ChatGPT OAuth local approval password:'
-   Write-Host $approvalPassword
-   Write-Host 'Keep this password private; enter it only on your OAuth approval page.'
-   Write-Host '===================================================='
-  }else{
-   Write-Warning 'OAuth approval password file is empty.'
-  }
- }else{
-  Write-Warning 'OAuth approval password not found; check gateway initialization.'
- }
+
 }
 & $manager -Action Status
-Show-PortInventory -Phase 'AFTER GATEWAY SETUP' -PairService 'terminal'
-Write-Host 'To check/stop, run Background-Gateway.ps1 -Action Status/StopOAuth/StopMCP.'
+# Single final connection summary; credentials never enter saved log files.
+$mcpRecord = Join-Path $root 'gateway-mcp.json'
+$oauthRecord = Join-Path $root 'gateway-oauth.json'
+$tokenPath = Join-Path $env:LOCALAPPDATA 'ClusterTerminalAgent\remote-mcp-token'
+if ((Test-Path $mcpRecord) -and (Test-Path $tokenPath)) {
+ $mcpState = Get-Content $mcpRecord -Raw | ConvertFrom-Json
+ $mcpToken = (Get-Content $tokenPath -Raw).Trim()
+ Write-Host ('PORT MASSAGE : MCP ' + $mcpState.port + ' : ' +
+  $mcpToken + ' (http://127.0.0.1:' + $mcpState.port + '/mcp)')
+}
+if (Test-Path $oauthRecord) {
+ $oauthState = Get-Content $oauthRecord -Raw | ConvertFrom-Json
+ $approvalPath = Join-Path $env:LOCALAPPDATA 'ClusterTerminalAgent\oauth-approval-password'
+ if (Test-Path $approvalPath) {
+  $approval = (Get-Content $approvalPath -Raw).Trim()
+  Write-Host ('PORT MASSAGE : OAUTH ' + $oauthState.port + ' : ' +
+   $approval + ' (' + $oauthState.issuer + '/mcp)')
+ }
+}
