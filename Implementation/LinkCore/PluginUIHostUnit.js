@@ -1,4 +1,5 @@
 import { PluginWorkbenchTabUnit } from "./PluginWorkbenchTabUnit.js";
+import { TrustedPairingVault } from "./TrustedPairingVault.js";
 import { downloadAgentQuickSetup, downloadMCPQuickSetup,
   downloadAgentPackage } from "../main/plugin-agent-download.js";
 import { PluginMCPReadOnlyObject } from
@@ -464,46 +465,38 @@ export class PluginUIHostUnit {
         tokenField.input.pattern = "[a-fA-F0-9]{64}";
         tokenField.input.setAttribute("aria-label", "Pairing token");
         pairFields.append(portField.label, tokenField.label);
-        // Preserve Cluster's proven opt-in "Remember pairing" behavior.
-        // Credentials stay in the trusted host, never in the plugin iframe.
-        const pairingKey = "cluster-terminal-remembered-token-v1";
-        const pairingPortKey = "cluster-terminal-remembered-port-v1";
-        const storedPairing = () => {
-          try {
-            const storage = this.doc.defaultView.localStorage;
-            const token = storage.getItem(pairingKey);
-            const raw = storage.getItem(pairingPortKey);
-            const port = raw === null ? 43881 : Number(raw);
-            return /^[a-f0-9]{64}$/i.test(token ?? "") &&
-              Number.isInteger(port) && port >= 1024 && port <= 65535 ?
-              { token, port } : null;
-          } catch { return null; }
-        };
-        view.hasSavedPairing = () => Boolean(storedPairing());
+        // Preserve the legacy opt-in Remember pairing UX, but encrypt
+        // credentials in the trusted host vault instead of localStorage.
+        const vault = new TrustedPairingVault(this.doc.defaultView);
+        let savedPairing = null;
+        const storedPairing = () => savedPairing;
+        view.hasSavedPairing = () => Boolean(savedPairing);
         const remember = this.doc.createElement("label");
         remember.style.cssText =
           "display:flex;align-items:center;gap:8px;font:12px system-ui";
         const rememberInput = this.doc.createElement("input");
         rememberInput.type = "checkbox";
-        rememberInput.checked = Boolean(storedPairing());
         remember.append(rememberInput, this.doc.createTextNode(
           "記住此裝置的配對 / Remember pairing"));
-        const setSavedPairing = value => {
-          try {
-            const storage = this.doc.defaultView.localStorage;
-            if (value) {
-              storage.setItem(pairingKey, value.token);
-              storage.setItem(pairingPortKey, String(value.port));
-            } else {
-              storage.removeItem(pairingKey);
-              storage.removeItem(pairingPortKey);
-            }
-          } catch { /* Storage denied: session-only pairing. */ }
+        const setSavedPairing = async value => {
+          if (value) {
+            await vault.save(value);
+            savedPairing = value;
+          } else {
+            savedPairing = null;
+            await vault.clear();
+          }
         };
         const announcePairing = () => frame.contentWindow?.postMessage({
           type: "cluster-local-agent-status", state: agent.state,
           savedPairing: Boolean(storedPairing())
         }, "*");
+        void vault.load().then(saved => {
+          if (!view.enabled) return;
+          savedPairing = saved;
+          rememberInput.checked = Boolean(saved);
+          announcePairing();
+        });
         const pairSubmit = this.doc.createElement("button");
         pairSubmit.type = "submit";
         pairSubmit.textContent = "配對 / Pair";
@@ -561,7 +554,7 @@ export class PluginUIHostUnit {
             if (!reply.ok) {
               pairError.textContent = "連線失敗 (" + reply.status + ")";
             } else if (agent.state === "connected") {
-              setSavedPairing(rememberInput.checked ? { token, port } : null);
+              await setSavedPairing(rememberInput.checked ? { token, port } : null);
               announcePairing();
             }
           } finally {
@@ -652,7 +645,7 @@ export class PluginUIHostUnit {
               const reply = await this.core.request("ui", agent.id,
                 "pair", {}, { origin: "user" });
               if (!reply.ok) {
-                setSavedPairing(null);
+                await setSavedPairing(null);
                 pairError.textContent = "Token 已失效，請重新配對";
               }
             } finally {
