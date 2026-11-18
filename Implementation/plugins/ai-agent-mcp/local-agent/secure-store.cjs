@@ -14,6 +14,7 @@ const MAX_SECRET_BYTES = 16384;
 
 const PS_SCRIPT = [
   '$ErrorActionPreference = "Stop"',
+  'Add-Type -AssemblyName System.Security',
   '$raw = [Console]::In.ReadToEnd()',
   '$bytes = [Convert]::FromBase64String($raw.Trim())',
   'if ($args.Count -gt 0) { throw "Unexpected args" }',
