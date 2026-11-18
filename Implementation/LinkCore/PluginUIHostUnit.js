@@ -483,6 +483,10 @@ export class PluginUIHostUnit {
             view.toggleToolBox?.();
             return;
           }
+          if (kind === "cluster-plugin-toolbox-close") {
+            view.closeToolBox?.();
+            return;
+          }
           const actions = {
             "cluster-local-agent-pair": "pair",
             "cluster-local-agent-ping": "ping",
