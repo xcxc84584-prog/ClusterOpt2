@@ -278,7 +278,7 @@ export class PluginUIHostUnit {
             const requested = checkbox.checked;
             checkbox.disabled = true;
             try {
-              if (requested && !access.root) {
+              if (requested && name !== "mcp" && !access.root) {
                 throw Error("請先選取本地資料夾 / Select folder first");
               }
               if (requested && name === "read") {
