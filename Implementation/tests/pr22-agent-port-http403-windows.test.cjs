@@ -91,6 +91,11 @@ test('MCP uses recorded Agent port and distinguishes HTTP 403',async t=>{
  save(bPort);
  response=await invoke(mcpPort,bearer,'cluster.get_status');
  assert.match(response.result.content[0].text,/"marker":"B"/);
+ // Windows PowerShell 5.1 may serialize JSON with a UTF-8 BOM.
+ // The MCP bridge must parse that legacy record without restarting.
+ fs.writeFileSync(record,'\uFEFF'+JSON.stringify({port:bPort,pid:process.pid}));
+ response=await invoke(mcpPort,bearer,'cluster.get_status');
+ assert.match(response.result.content[0].text,/"marker":"B"/);
  secure.protectFile(path.join(config,'pairing-token.dpapi'),
    crypto.randomBytes(32).toString('hex'));
  response=await invoke(mcpPort,bearer,'cluster.get_status');
