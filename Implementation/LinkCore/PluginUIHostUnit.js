@@ -479,6 +479,7 @@ export class PluginUIHostUnit {
               { token, port } : null;
           } catch { return null; }
         };
+        view.hasSavedPairing = () => Boolean(storedPairing());
         const remember = this.doc.createElement("label");
         remember.style.cssText =
           "display:flex;align-items:center;gap:8px;font:12px system-ui";
@@ -748,7 +749,7 @@ export class PluginUIHostUnit {
         if (view.localAgent) frame.contentWindow.postMessage({
           type: "cluster-local-agent-status",
           state: view.localAgent.state,
-          savedPairing: Boolean(storedPairing())
+          savedPairing: view.hasSavedPairing?.() === true
         }, "*");
         frame.contentWindow.postMessage({
           type: "cluster-plugin-theme",
