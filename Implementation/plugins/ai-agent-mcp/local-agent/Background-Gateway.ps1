@@ -199,12 +199,16 @@ switch($Action){
   Write-Host 'MCP stopped'
  }
  'StartMCP' {
-  if(Owned (ReadRecord 'mcp') 'mcp'){Write-Host 'MCP already running';break}
+  if(Owned (ReadRecord 'mcp') 'mcp'){
+   Show-PortInventory -Phase 'MCP ALREADY RUNNING' -PairService 'terminal'
+   Write-Host 'MCP already running';break
+  }
   $ports=Get-ServicePorts
   $port=Select-ServicePort 'mcp'
   $env:CLUSTER_MCP_PORT=[string]$port
   $env:CLUSTER_TERMINAL_PORT=[string]$ports.terminal
   SaveRecord 'mcp' (StartNode 'mcp' 'remote-mcp.cjs' $port)
+  Show-PortInventory -Phase 'AFTER MCP START' -PairService 'terminal'
   Write-Host ('Background MCP ready on 127.0.0.1:'+$port)
  }
  'StartOAuth' {
@@ -214,6 +218,7 @@ switch($Action){
   if(Owned $old 'oauth'){
    try {
     Confirm-PublicMcp ([string]$old.issuer)
+    Show-PortInventory -Phase 'REUSED OAUTH' -PairService 'terminal'
     Write-Host ('Verified existing ChatGPT MCP URL: '+$old.issuer+'/mcp')
     break
    } catch {
