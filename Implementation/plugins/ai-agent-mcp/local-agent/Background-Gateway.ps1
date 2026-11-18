@@ -1,4 +1,5 @@
 # Thin background supervisor for the existing Cluster Node MCP and OAuth gateways.
+# Revision: -r1 (cloudflared executable path output isolation).
 param(
  [ValidateSet('StartMCP','StartOAuth','StopMCP','StopOAuth','Status')]
  [string]$Action='Status',
@@ -87,7 +88,9 @@ function CloudflaredExe {
  $winget=Get-Command winget.exe -ErrorAction SilentlyContinue
  if(!$winget){throw 'Install cloudflared before OAuth setup'}
  if((Read-Host 'Install cloudflared via winget? [Y/N]') -notmatch '^[Yy]$'){throw 'Cancelled'}
- & $winget.Source install --id Cloudflare.cloudflared --exact --source winget --accept-source-agreements --accept-package-agreements --disable-interactivity
+ # -r1: winget writes installation messages to the success stream.
+ # Send them to the interactive console instead of returning them as paths.
+ & $winget.Source install --id Cloudflare.cloudflared --exact --source winget --accept-source-agreements --accept-package-agreements --disable-interactivity | Out-Host
  if($LASTEXITCODE -ne 0){throw 'cloudflared install failed'}
  $found=Get-Command cloudflared.exe -ErrorAction SilentlyContinue
  if($found){return $found.Source}
