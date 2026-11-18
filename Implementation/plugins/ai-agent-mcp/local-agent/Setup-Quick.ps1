@@ -104,6 +104,8 @@ Write-Host 'AI AGENT MCP(ChatGPT) - local setup'
 Write-Host ('Source: ' + $SourceRevision)
 $node = Ensure-Node
 Ensure-Files
+. (Join-Path $agentDir 'Port-CPO.ps1')
+Show-PortInventory -Phase 'AFTER ASSET DOWNLOAD / BEFORE START' -PairService 'terminal'
 $npm = Get-Command npm.cmd -ErrorAction Stop
 Push-Location $agentDir
 try {
