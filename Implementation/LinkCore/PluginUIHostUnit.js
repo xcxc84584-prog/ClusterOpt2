@@ -703,6 +703,28 @@ export class PluginUIHostUnit {
               !this.views.has(provider.providerId) ||
               !view.enabled) return;
           const kind = event.data?.type;
+          if (kind === "cluster-local-agent-repair") {
+            // A sandbox message is not a trusted user gesture; the host
+            // must confirm before clearing the encrypted pairing vault.
+            if (agent.state !== "disconnected" || !storedPairing()) return;
+            const allowed = this.doc.defaultView.confirm(
+              "重新配對本地 AI Agent？將清除本瀏覽器記住的" +
+              " Port／Token，然後顯示配對輸入欄位。" +
+              "\\nRe-pair Local Agent? Clear the remembered pairing " +
+              "on this browser and enter a new port and token.");
+            if (!allowed) return;
+            try {
+              await setSavedPairing(null);
+              rememberInput.checked = false;
+              agent.discardHostPairing();
+              tokenField.input.value = "";
+              pairError.textContent = "";
+              announcePairing();
+            } catch {
+              pairError.textContent = "清除舊配對失敗，請重試。";
+            }
+            return;
+          }
           if (kind === "cluster-local-agent-use-saved") {
             // A sandbox message is never proof of a user gesture.
             // Require consent from the trusted host before using the vault.
