@@ -14,7 +14,32 @@ const legacyPairingPath=path.join(configDir,'pairing-token');
 const secureStore=require('./secure-store.cjs');
 const accessPath=path.join(configDir,'remote-mcp-token');
 const host='127.0.0.1',port=Number(process.env.CLUSTER_MCP_PORT||43880);
-const upstream='http://127.0.0.1:'+(process.env.CLUSTER_TERMINAL_PORT||43881);
+const agentRecord=path.join(
+ process.env.LOCALAPPDATA||path.join(os.homedir(),'AppData','Local'),
+ 'ClusterOpt2','AI-Agent-MCP','background-agent.json');
+function agentUpstream(){
+ // Re-read the runtime record for each tool call. The Agent may be
+ // restarted on another C/P/O port after this MCP process started.
+ let port=Number(process.env.CLUSTER_TERMINAL_PORT||43881);
+ if(fs.existsSync(agentRecord)){
+  let entry;
+  try{entry=JSON.parse(fs.readFileSync(agentRecord,'utf8'))}
+  catch{throw Error('Local Agent state is unreadable; restart Agent CMD')}
+  const active=Number(entry.port),pid=Number(entry.pid);
+  if(!Number.isInteger(active)||active<1024||active>65535||
+     !Number.isInteger(pid)||pid<=4){
+   throw Error('Invalid Local Agent state; restart Agent CMD');
+  }
+  try{process.kill(pid,0)}
+  catch(e){
+   // A denied query does not prove the process is absent.
+   if(e.code==='ESRCH')throw Error(
+    'Local Agent is no longer running; restart Agent CMD');
+  }
+  port=active;
+ }
+ return 'http://127.0.0.1:'+port;
+}
 fs.mkdirSync(configDir,{recursive:true});
 if(!fs.existsSync(accessPath))fs.writeFileSync(accessPath,crypto.randomBytes(32).toString('hex')+'\n',{mode:0o600,flag:'wx'});
 const accessToken=fs.readFileSync(accessPath,'utf8').trim();
@@ -49,7 +74,25 @@ async function upstreamCall(name,args){
   value=>/^[a-f0-9]{64}$/.test(value),
   ()=>{throw Error('Pair Local Agent before using MCP');});
  const route=name==='cluster.get_status'?'/mcp/status':name==='cluster.get_task_status'?'/mcp/tasks':'/mcp/call';
- const response=await fetch(upstream+route,{method:route==='/mcp/call'?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(route==='/mcp/call'?{body:JSON.stringify({name,arguments:args||{}})}:{}),signal:AbortSignal.timeout(name==='cluster.powershell_request'?145000:14000)});
+ let response;
+ try{
+  response=await fetch(agentUpstream()+route,{
+   method:route==='/mcp/call'?'POST':'GET',
+   headers:{Authorization:'Bearer '+token,
+    'Content-Type':'application/json'},
+   ...(route==='/mcp/call'?
+     {body:JSON.stringify({name,arguments:args||{}})}:{}),
+   signal:AbortSignal.timeout(
+    name==='cluster.powershell_request'?145000:14000)
+  });
+ }catch(error){
+  throw Error('Local Agent unavailable: check active Agent port and '+
+    'background service. '+String(error.message).slice(0,160));
+ }
+ if(response.status===403)throw Error(
+  'Local Agent rejected the pairing token (HTTP 403). '+
+  'The Agent process and DPAPI token may be out of sync. '+
+  'Confirm restart with Agent CMD (D / RESTART), then re-pair in Cluster.');
  const data=await response.json();
  if(!response.ok)throw Error(data.error||'Local Agent HTTP '+response.status);
  return data;
