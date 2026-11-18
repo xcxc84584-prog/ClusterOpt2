@@ -70,7 +70,8 @@ const PLUGINS = Object.freeze([{
   nameZh: "AI Agent MCP（ChatGPT）",
   nameEn: "AI Agent MCP (ChatGPT)",
   descriptionZh: "完整插件包及新版 CMD 安裝程式（舊連線可選擇沿用／註銷）。可下載 ZIP 裝載資料夾；操作需明確授權。",
-  descriptionEn: "AI Agent package and refreshed CMD installers (reuse or revoke prior connection). Download ZIP, extract and mount with consent.",
+  descriptionEn: "AI Agent package and updated CMD installers. " +
+    "Reuse or revoke old connections; extract ZIP and mount with consent.",
   service: "cluster.ai-agent.status",
   version: "1.0.0"
 }]);

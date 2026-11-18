@@ -180,8 +180,16 @@ switch($Action){
    if(Owned $record $service){
     StopOwned $service
    }else{
-    $process=if($record.pid){Inspect ([int]$record.pid)}else{$null}
-    if($process -and !$process.HasExited){
+    # Inspect intentionally omits our own PID and system processes.
+    # An omitted PID is not evidence the process has terminated.
+    $oldPid=0
+    if(-not [int]::TryParse([string]$record.pid,[ref]$oldPid) -or
+       $oldPid -le 0){
+     throw ('Invalid '+$service+
+       ' PID record. Refusing automatic cleanup.')
+    }
+    $live=Get-Process -Id $oldPid -ErrorAction SilentlyContinue
+    if($live){
      throw ('Unverified '+$service+
        ' process still exists. Refusing to discard ownership record.')
     }
