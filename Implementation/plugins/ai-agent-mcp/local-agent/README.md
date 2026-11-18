@@ -33,9 +33,14 @@ its advertised five tools are not equivalent to unrestricted Explorer
 or PowerShell control. Remote MCP may expose additional operations
 behind independent local authorization; review before using.
 
-The unchanged legacy Agent persists model credentials locally.
-Encryption at rest is not verified; use a scoped key on a trusted
-Windows account. Prefer changing this storage before production use.
+PR21.3 stores the pairing token and model provider credentials in
+Windows DPAPI CurrentUser encrypted files (`pairing-token.dpapi` and
+`ai-provider.dpapi`). On the first run, validated legacy plaintext files
+are migrated and deleted after the encrypted replacement is written.
+The token remains stable across restarts and changes on explicit revoke.
+The Windows user profile must remain available for decrypting secrets.
+Do not back up or sync these protected files expecting them to work
+under a different Windows user account. Keep the machine profile secure.
 
 The original local services must be explicitly started by the user.
 No service is auto-installed, auto-started or silently upgraded.
