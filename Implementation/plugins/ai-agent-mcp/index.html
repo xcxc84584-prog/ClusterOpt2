@@ -41,7 +41,11 @@ display:flex;
 flex-direction:column;
 flex:1;
 min-height:0;
+min-width:0;
 height:100%;
+overflow-x:hidden;
+overflow-y:auto;
+scrollbar-gutter:stable;
 background:var(--plugin-background,#000);
 color:var(--plugin-text,#eee)
 }
@@ -75,9 +79,11 @@ padding:9px 14px
 filter:brightness(1.15)
 }
 .cai-setup{
-padding:30px;
-overflow:auto;
-max-width:740px;
+width:100%;
+min-width:0;
+flex:0 0 auto;
+padding:clamp(16px,3vw,30px);
+overflow:visible;
 line-height:1.8
 }
 .cai-setup h2{
@@ -114,13 +120,15 @@ background:var(--plugin-control,#243b5a)
 .cai-workspace{
 display:flex;
 flex-direction:column;
-flex:1;
+flex:1 0 auto;
+min-width:0;
 min-height:0;
-overflow:auto
+overflow:visible
 }
 .cai-feed{
 flex:1;
-overflow:auto;
+min-width:0;
+overflow:visible;
 padding:24px;
 display:flex;
 flex-direction:column;
@@ -175,8 +183,8 @@ border:1px solid var(--plugin-border,#354358);
 border-radius:8px;
 background:var(--plugin-panel,#0e131c);
 line-height:1.6;
-max-height:min(52vh,520px);
-overflow:auto
+min-width:0;
+overflow:visible
 }
 .cai-guide-head{
 display:flex;
@@ -373,6 +381,7 @@ padding:10px
   "use strict";
   const labels = {};
   let agentState = "disconnected";
+  let showingGuide = false;
   const messages = document.querySelector("[data-model-output]");
   const guide = document.getElementById("caiConnectGuide");
   const toolbox = document.querySelector("[data-toolbox-toggle]");
@@ -404,9 +413,9 @@ padding:10px
     document.querySelector('[data-agent-action="disconnect"]').disabled =
       agentState === "disconnected";
     document.getElementById("caiSetup").hidden =
-      agentState === "connected";
+      agentState === "connected" && !showingGuide;
     document.getElementById("caiWorkspace").hidden =
-      agentState !== "connected";
+      agentState !== "connected" || showingGuide;
     publishPairLayout();
   }
 
@@ -430,7 +439,8 @@ padding:10px
   const toolbar = document.querySelector(".cai-bar");
   const toolbarHeight = () =>
     Math.ceil(toolbar.getBoundingClientRect().height);
-  toolbox.addEventListener("click", () => {
+  toolbox.addEventListener("click", event => {
+    event.stopPropagation();
     window.parent.postMessage({
       type: "cluster-plugin-toolbox-toggle",
       toolbarHeight: toolbarHeight()
@@ -445,9 +455,10 @@ padding:10px
   observer.observe(toolbar);
   const pairingSlot = document.getElementById("caiTrustedPairSlot");
   const setupScroll = document.getElementById("caiSetup");
+  const panelScroll = document.getElementById("clusterAiPanel");
   function publishPairLayout() {
     const bounds = pairingSlot.getBoundingClientRect();
-    const visible = setupScroll.getBoundingClientRect();
+    const visible = panelScroll.getBoundingClientRect();
     window.parent.postMessage({
       type: "cluster-plugin-pair-layout",
       top: bounds.top,
@@ -460,20 +471,32 @@ padding:10px
   }
   const pairObserver = new ResizeObserver(publishPairLayout);
   pairObserver.observe(pairingSlot);
-  setupScroll.addEventListener("scroll", publishPairLayout,
+  panelScroll.addEventListener("scroll", publishPairLayout,
     { passive: true });
   window.addEventListener("resize", publishPairLayout);
   document.addEventListener("visibilitychange", publishPairLayout);
 
+  function navigateGuide(open) {
+    showingGuide = open;
+    guide.hidden = !open;
+    updateAgentState();
+    panelScroll.scrollTo({ top: 0, behavior: "auto" });
+    publishPairLayout();
+  }
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
-    guide.hidden = true;
+    if (showingGuide) navigateGuide(false);
     send("cluster-plugin-toolbox-close");
   });
   document.querySelector("[data-legacy-guide]").addEventListener(
-    "click", () => { guide.hidden = !guide.hidden; });
+    "click", () => navigateGuide(true));
   document.querySelector("[data-guide-dismiss]").addEventListener(
-    "click", () => { guide.hidden = true; });
+    "click", () => navigateGuide(false));
+  document.addEventListener("click", event => {
+    if (!event.target.closest("[data-toolbox-toggle]")) {
+      send("cluster-plugin-toolbox-close");
+    }
+  });
   for (const button of document.querySelectorAll("[data-agent-action]")) {
     button.addEventListener("click", () => {
       const action = button.dataset.agentAction;
