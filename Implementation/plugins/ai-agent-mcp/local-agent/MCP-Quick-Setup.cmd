@@ -1,11 +1,11 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-title ClusterOpt2 ChatGPT MCP - Legacy OneClick Background
-set "REV=c25a03f793ac42f999a9ca9f132b0aaf116f1610"
+title ClusterOpt2 ChatGPT MCP - Legacy OneClick Background -r1
+set "REV=c10fab799b94412a6817d6aa60f53c846ae805c7"
 set "ROOT=%LOCALAPPDATA%\ClusterOpt2\AI-Agent-MCP"
 set "SCRIPT=%ROOT%\Setup-MCP.ps1"
 echo ====================================================
-echo ClusterOpt2 - MCP OneClick Background
+echo ClusterOpt2 - MCP OneClick Background -r1
 echo ====================================================
 echo Uses legacy Cluster Node MCP and OAuth + cloudflared.
 echo Runs locally; the optional tunnel exposes OAuth only.
