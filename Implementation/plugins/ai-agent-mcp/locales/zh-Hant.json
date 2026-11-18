@@ -32,5 +32,6 @@
   "guideStep7": "在 ChatGPT 新增自訂 MCP 服務器，使用完整 HTTPS 網址加 /mcp 完成 OAuth 授權。",
   "guideStep8": "cluster.read 僅提供五項唯讀工具；cluster.control 需單獨核准，PS 每條命令仍需要本機確認。",
   "startAgent": "開始使用AI AGENT功能",
+  "repairAgent": "重新配對",
   "returnWorkspace": "返回 AI Agent"
 }
