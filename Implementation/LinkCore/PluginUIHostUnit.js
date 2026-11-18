@@ -521,6 +521,11 @@ export class PluginUIHostUnit {
         view.pairForm = pairForm;
         view.layoutPairForm = layout => {
           const { top, left, width, visible } = layout ?? {};
+          if (visible === false) {
+            pairForm.hidden = true;
+            pairForm.style.display = "none";
+            return;
+          }
           if (![top, left, width].every(Number.isFinite) ||
               width < 100 || width > 8192 ||
               top < -10000 || top > 10000 ||
