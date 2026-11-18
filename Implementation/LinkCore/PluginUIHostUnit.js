@@ -637,9 +637,14 @@ export class PluginUIHostUnit {
               !view.enabled) return;
           const kind = event.data?.type;
           if (kind === "cluster-local-agent-use-saved") {
-            // The sandbox can ask for a reconnect, but never sees the token.
+            // A sandbox message is never proof of a user gesture.
+            // Require consent from the trusted host before using the vault.
             const saved = storedPairing();
-            if (!saved || agent.state !== "disconnected" ||
+            if (!saved || agent.state !== "disconnected") return;
+            const allowed = this.doc.defaultView.confirm(
+              "使用已儲存的 Token 連線本地 AI Agent？" +
+              "\\nConnect with the saved Local Agent token?");
+            if (!allowed ||
                 !agent.stageHostPairing(saved.port, saved.token)) return;
             try {
               const reply = await this.core.request("ui", agent.id,
