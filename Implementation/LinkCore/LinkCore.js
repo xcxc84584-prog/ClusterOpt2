@@ -13,6 +13,7 @@ import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
 import { PluginHostInstallUnit } from "./PluginHostInstallUnit.js";
+import { PluginManagerUnit } from "./PluginManagerUnit.js";
 import { PluginFolderPackageUnit } from "./PluginFolderPackageUnit.js";
 import { PluginPackageStoreUnit } from "./PluginPackageStoreUnit.js";
 import { PluginFolderPackagePolicy } from
@@ -88,6 +89,8 @@ export class LinkCore {
       undefined, this.catalog, this.services);
     this.pluginHostInstaller = new PluginHostInstallUnit(this,
       typeof document === "undefined" ? null : document);
+    // Host-only PMU facade reuses HubUnit and existing plugin hosts.
+    this.pluginManagerUnit = new PluginManagerUnit(this);
     this.catalogQuery = new CatalogQuery(this.catalog);
     Object.defineProperty(this, "version", {
       value: ReleaseVersion.product, enumerable: true,
