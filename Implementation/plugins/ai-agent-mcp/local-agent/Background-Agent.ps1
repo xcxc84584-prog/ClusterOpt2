@@ -195,9 +195,7 @@ switch ($Action) {
     $utf8 = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($temporary, $json, $utf8)
     Move-Item -LiteralPath $temporary -Destination $recordPath -Force
-    Write-Host ('Local Agent started in background on port {0}' -f $port)
-    Write-Host 'Use Background-Agent.ps1 -Action Status / Stop / Token.'
-    Write-Host 'To reveal the token, explicitly run -Action Token locally.'
+    Write-Host 'Local Agent started; use -Action Token to show pairing details.'
     break
   }
 }
