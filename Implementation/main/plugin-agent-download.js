@@ -9,6 +9,7 @@ export const AI_AGENT_PACKAGE_FILES = Object.freeze([
   "worker.js",
   "index.html",
   "README.md",
+  "MCP-SETUP.md",
   "locales/en.json",
   "locales/zh-Hant.json",
   "local-agent/README.md",
