@@ -18,8 +18,10 @@ try {
   $env:CLUSTER_TERMINAL_PORT = [string]$selected
   Write-Host ("Local Agent port: {0}" -f $selected)
   Write-Host 'Use this port in the trusted browser pairing dialog.'
+  Show-PortInventory -Phase 'SELECTED PORT / BEFORE BIND' -PairService 'terminal'
   Write-Host 'Service is starting in foreground; listener status follows.'
   & $node.Source (Join-Path $PSScriptRoot 'server.cjs')
+  Show-PortInventory -Phase 'AFTER AGENT EXIT' -PairService 'terminal'
   if ($LASTEXITCODE -ne 0) { throw 'Local Agent failed' }
 } finally {
   Pop-Location
