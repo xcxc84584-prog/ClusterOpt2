@@ -489,8 +489,10 @@ export class PluginUIHostUnit {
           pairForm.style.left = Math.round(left) + "px";
           pairForm.style.width = Math.round(width) + "px";
           pairForm.hidden = !visible || agent.state !== "disconnected";
+          pairForm.style.display = pairForm.hidden ? "none" : "grid";
         };
         pairForm.hidden = true;
+        pairForm.style.display = "none";
         pairForm.addEventListener("submit", async event => {
           event.preventDefault();
           const port = Number(portField.input.value);
@@ -559,7 +561,10 @@ export class PluginUIHostUnit {
         }
         const publish = response => {
           if (response.state !== "disconnected") {
-            if (view.pairForm) view.pairForm.hidden = true;
+            if (view.pairForm) {
+              view.pairForm.hidden = true;
+              view.pairForm.style.display = "none";
+            }
           }
           if (response.state === "disconnected") {
             const hadBridge = view.shellApproval?.active ||
