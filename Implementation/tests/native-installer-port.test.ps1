@@ -91,22 +91,22 @@ try {
 }
 if ($script:StopCount -ne 0) { throw 'C stopped a process' }
 
-Reset-Case -Replies @('O', 'NO')
+Reset-Case -Replies @('O', 'NO', 'C')
 try {
     Select-LoopbackPort | Out-Null
     throw 'Unconfirmed O was accepted'
 } catch {
-    if ($_.Exception.Message -notlike 'Override cancelled*') { throw }
+    if ($_.Exception.Message -notlike 'Cancelled without*') { throw }
 }
 if ($script:StopCount -ne 0) { throw 'Unconfirmed O stopped a process' }
 
-Reset-Case -Replies @('O')
+Reset-Case -Replies @('O', 'C')
 $script:OwnerName = 'svchost.exe'
 try {
     Select-LoopbackPort | Out-Null
     throw 'Protected process was accepted'
 } catch {
-    if ($_.Exception.Message -notlike 'Refusing to terminate protected*') {
+    if ($_.Exception.Message -notlike 'Cancelled without*') {
         throw
     }
 }

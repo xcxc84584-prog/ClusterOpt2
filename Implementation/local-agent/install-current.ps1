@@ -222,7 +222,16 @@ function Select-LoopbackPort {
                 $port = $candidate
             }
             'O' {
-                Release-OccupiedPort -Port $port -Listeners $listeners
+                try {
+                    Release-OccupiedPort -Port $port -Listeners $listeners
+                } catch {
+                    # Fail closed if the PID or identity changed.
+                    # Keep the installer alive for P/C/O retry.
+                    Write-Warning ('Override refused: ' +
+                        $_.Exception.Message)
+                    Write-Host 'Choose P for a free port, C to cancel,'
+                    Write-Host 'or retry O after reviewing the owner.'
+                }
             }
             default { Write-Warning 'Choose P, C or O' }
         }

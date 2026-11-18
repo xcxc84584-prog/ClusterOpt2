@@ -3,6 +3,14 @@ import { test, expect } from "@playwright/test";
 const providerId = "cluster.ai-agent-mcp";
 const token = "b".repeat(64);
 
+async function pairInline(page, tokenValue) {
+  const pair = page.locator(".plugin-agent-inline-pair");
+  await expect(pair).toBeVisible();
+  await pair.getByLabel("Local Agent port").fill("43881");
+  await pair.getByLabel("Pairing token").fill(tokenValue);
+  await pair.locator('button[type="submit"]').click();
+}
+
 async function install(page) {
   return page.evaluate(async () => {
     const { linkCore } = await import(
@@ -74,11 +82,7 @@ test("PR14.4 local pairing is host-owned, authorized and revocable",
     expect(state).toEqual({ denied: 403, approved: 201 });
     await page.locator(".plugin-extension-button").click();
     const frame = page.frameLocator(".plugin-extension-frame");
-    await frame.locator('[data-agent-action="pair"]').click();
-    const dialog = page.locator("dialog[open]");
-    await expect(dialog).toBeVisible();
-    await dialog.locator('input[type="password"]').fill(token);
-    await dialog.getByRole("button", { name: "連線" }).click();
+    await pairInline(page, token);
     await expect(frame.locator("[data-agent-status]"))
       .toHaveText("已連線");
     await frame.locator('[data-agent-action="ping"]').click();
@@ -114,9 +118,7 @@ test("PR14.4 unsafe tool message terminates authorized connection",
     expect((await install(page)).approved).toBe(201);
     await page.locator(".plugin-extension-button").click();
     const frame = page.frameLocator(".plugin-extension-frame");
-    await frame.locator('[data-agent-action="pair"]').click();
-    await page.locator('dialog[open] input[type="password"]').fill(token);
-    await page.locator("dialog[open] button[type=submit]").click();
+    await pairInline(page, token);
     await expect(frame.locator("[data-agent-status]"))
       .toHaveText("已連線");
     await page.evaluate(() => window.__agentSocket.onmessage({
@@ -150,10 +152,7 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
     const toolbox = page.locator(".plugin-agent-toolbox");
     await expect(toolbox.getByRole("status"))
       .toContainText("已取得所選資料夾授權");
-    await page.frameLocator(".plugin-extension-frame")
-      .locator('[data-agent-action="pair"]').click();
-    await page.locator('dialog[open] input[type="password"]').fill(token);
-    await page.locator("dialog[open] button[type=submit]").click();
+    await pairInline(page, token);
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");
     // Trusted pairing dialogs close the dropdown on outside clicks.
@@ -202,10 +201,7 @@ test("PR14.8 explicit MCP read-only tool bridge returns metadata",
     await page.goto("/");
     expect((await install(page)).approved).toBe(201);
     await page.locator(".plugin-extension-button").click();
-    await page.frameLocator(".plugin-extension-frame")
-      .locator('[data-agent-action="pair"]').click();
-    await page.locator('dialog[open] input[type="password"]').fill(token);
-    await page.locator("dialog[open] button[type=submit]").click();
+    await pairInline(page, token);
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");
     await page.frameLocator(".plugin-extension-frame")
