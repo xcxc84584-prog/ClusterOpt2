@@ -23,6 +23,8 @@ echo [2/2] Starting background Cluster gateways...
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%" -SourceRevision "%REV%"
 if errorlevel 1 goto failed
 echo [OK] Setup completed. You may close this window.
+echo Press any key to exit this setup window.
+pause >nul
 exit /b 0
 :failed
 echo [ERROR] Setup stopped. Check the error above and retry.
