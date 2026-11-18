@@ -70,3 +70,68 @@ test("PR22.2 native gateway maps denied browser tools to 403", () => {
   assert.match(gateway, /PowerShell authorization denied/);
   assert.match(gateway, /m\.result\?\.error/);
 });
+
+test("PR22.3 authorized Agent can open PowerShell UI without prompt",
+  async () => {
+    let clicks = 0;
+    const events = [];
+    const replies = [];
+    const agent = new PluginLocalAgentObject({
+      omu: { record: () => {} },
+      request: async () => ({
+        ok: true,
+        value: {
+          selected: true,
+          permissions: { ps: true }
+        }
+      })
+    }, "agent", {
+      getElementById: id => id === "explorerPowerShell" ?
+        { click: () => { clicks++; } } : null,
+      defaultView: {}
+    });
+    agent.state = "connected";
+    agent.socket = { send: value => replies.push(JSON.parse(value)) };
+    agent.shellApprovalId = "PluginShell.agent";
+    agent.explorerId = "PluginExplorer.agent";
+    agent.onActivity = event => events.push(event);
+
+    await agent.dispatchShellTool({
+      requestId: "open-1", name: "cluster.open_powershell", args: {}
+    });
+    assert.equal(clicks, 1);
+    assert.equal(replies.at(-1).result.requested, true);
+    assert.equal(events.at(-1).phase, "accepted");
+  });
+
+test("PR22.3 PS open request is refused without ToolBox right",
+  async () => {
+    let clicks = 0;
+    const replies = [];
+    const agent = new PluginLocalAgentObject({
+      omu: { record: () => {} },
+      request: async () => ({
+        ok: true,
+        value: {
+          selected: true,
+          permissions: { ps: false }
+        }
+      })
+    }, "agent", {
+      getElementById: () => ({
+        click: () => { clicks++; }
+      }),
+      defaultView: {}
+    });
+    agent.state = "connected";
+    agent.socket = { send: value => replies.push(JSON.parse(value)) };
+    agent.shellApprovalId = "PluginShell.agent";
+    agent.explorerId = "PluginExplorer.agent";
+    await agent.dispatchShellTool({
+      requestId: "open-denied",
+      name: "cluster.open_powershell", args: {}
+    });
+    assert.equal(clicks, 0);
+    assert.equal(replies.at(-1).result.error,
+      "PowerShell permission not granted");
+  });
