@@ -48,6 +48,8 @@ test("PR21.3 full width setup and single right edge scrollbar",
             panelWidth: a.width, setupWidth: b.width,
             scrollX: panel.scrollWidth - panel.clientWidth,
             panelOverflowY: getComputedStyle(panel).overflowY,
+            contentOverflowY: getComputedStyle(
+              panel.querySelector("#caiContent")).overflowY,
             setupOverflowY: getComputedStyle(setup).overflowY,
             rightGap: a.right - b.right
           };
@@ -56,7 +58,8 @@ test("PR21.3 full width setup and single right edge scrollbar",
       expect(measures.setupWidth).toBeGreaterThan(
         measures.panelWidth * 0.92);
       expect(measures.scrollX).toBe(0);
-      expect(measures.panelOverflowY).toBe("auto");
+      expect(measures.panelOverflowY).toBe("hidden");
+      expect(measures.contentOverflowY).toBe("auto");
       expect(measures.setupOverflowY).not.toBe("auto");
       expect(Math.abs(measures.rightGap)).toBeLessThan(32);
     }
@@ -98,4 +101,41 @@ test("PR21.3 ToolBox closes on sandbox outside click but remains usable",
     await frame.locator("#caiSetup h2").press("Escape");
     await expect(menu).toBeHidden();
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+test("PR22 AI Agent toolbar stays fixed while log content scrolls",
+  async ({ page }) => {
+    const frame = await mountAgent(page);
+    await page.evaluate(() => {
+      document.querySelector(".plugin-extension-frame")
+        .contentWindow.postMessage({
+          type: "cluster-local-agent-status", state: "connected"
+        }, "*");
+    });
+    await expect(frame.locator("#caiWorkspace")).toBeVisible();
+    const geometry = await frame.locator("#clusterAiPanel")
+      .evaluate(panel => {
+        const bar = panel.querySelector(".cai-bar");
+        const content = panel.querySelector("#caiContent");
+        const log = panel.querySelector("[data-model-output]");
+        for (let i = 0; i < 65; i++) {
+          const item = document.createElement("p");
+          item.textContent = "Activity " + i;
+          log.append(item);
+        }
+        const before = bar.getBoundingClientRect().top;
+        const contentBefore = content.scrollTop;
+        content.scrollTop = content.scrollHeight;
+        return {
+          barBefore: before,
+          barAfter: bar.getBoundingClientRect().top,
+          contentBefore,
+          contentAfter: content.scrollTop,
+          toolbarVisible: bar.getBoundingClientRect().top >=
+            panel.getBoundingClientRect().top
+        };
+      });
+    expect(geometry.barAfter).toBe(geometry.barBefore);
+    expect(geometry.contentAfter).toBeGreaterThan(geometry.contentBefore);
+    expect(geometry.toolbarVisible).toBe(true);
   });

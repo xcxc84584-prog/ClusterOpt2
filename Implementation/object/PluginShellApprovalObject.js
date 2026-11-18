@@ -66,7 +66,9 @@ export class PluginShellApprovalObject {
         /[\u0000-\u0008\u000b-\u001f]/.test(command) ||
         typeof workspace !== "string" ||
         workspace !== this.explorer.root.name ||
-        !/^[a-zA-Z0-9_. -]{1,100}$/.test(workspace)) {
+        workspace.length > 100 ||
+        [...workspace].some(ch => ch.charCodeAt(0) < 32 ||
+          ch === "/" || ch.charCodeAt(0) === 92)) {
       this.audit(400, "InvalidRequest");
       return { approved: false };
     }
