@@ -12,7 +12,7 @@ test("PR22.2 agent feed forwards only tool metadata", async () => {
   const audits = [];
   const core = {
     omu: { record: (...values) => audits.push(values) },
-    request: async () => ({ ok: true, value: { entries: [] } })
+    request: async () => ({ ok: true, value: { roots: ["Project"] } })
   };
   const agent = new PluginLocalAgentObject(core, "agent",
     { defaultView: {} });
