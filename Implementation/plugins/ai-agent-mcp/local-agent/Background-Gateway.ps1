@@ -223,31 +223,69 @@ switch($Action){
    throw 'Existing OAuth/tunnel records require review. Run Setup-MCP to reuse or revoke.'
   }
   $port=Select-ServicePort 'oauth'
-  $tunnel=$null;$oauth=$null
-  try{
-   if(!$Issuer){
-    # Directly reuse the old Cluster cloudflared quick-tunnel path.
-    # Forward only OAuth loopback, never local MCP or terminal ports.
-    $tunnel=Tunnel $port;$Issuer=$tunnel.issuer
+  $env:CLUSTER_OAUTH_PORT=[string]$port
+  $env:CLUSTER_MCP_PORT=[string]$mcp.port
+  # Only the ephemeral Quick Tunnel path is recreated automatically.
+  # A caller-specified fixed issuer is never replaced.
+  $attemptLimit=if($Issuer){1}else{3}
+  $verified=$false
+  $failures=@()
+  for($attempt=1;$attempt -le $attemptLimit;$attempt++){
+   $tunnel=$null;$oauth=$null
+   $candidate=$Issuer
+   try {
+    if(!$candidate){
+     # Tunnel only forwards OAuth loopback. Do not expose MCP/Agent ports.
+     $tunnel=Tunnel $port
+     $candidate=[string]$tunnel.issuer
+    }
+    $env:CLUSTER_OAUTH_ISSUER=$candidate
+    $oauth=StartNode 'oauth' 'oauth-mcp-gateway.cjs' $port
+    $meta=Invoke-RestMethod ('http://127.0.0.1:'+$port+
+      '/.well-known/oauth-authorization-server') -TimeoutSec 4
+    if($meta.issuer -cne $candidate){throw 'Local OAuth issuer mismatch'}
+    # Do not publish an unresolvable hostname or unverified endpoint.
+    # DNS may lag shortly after a new Cloudflare Quick Tunnel appears.
+    $hostName=([uri]$candidate).DnsSafeHost
+    $dnsOk=$false
+    for($dnsAttempt=1;$dnsAttempt -le 6;$dnsAttempt++){
+     try {
+      $ips=[System.Net.Dns]::GetHostAddresses($hostName)
+      if(@($ips).Count -gt 0){$dnsOk=$true;break}
+     } catch {
+      if($dnsAttempt -eq 6){throw ('DNS lookup failed for '+
+        $hostName+': '+$_.Exception.Message)}
+     }
+     Start-Sleep -Seconds ([Math]::Min(5,$dnsAttempt))
+    }
+    if(!$dnsOk){throw ('DNS lookup returned no address for '+$hostName)}
+    Confirm-PublicMcp $candidate
+    $oauth.issuer=$candidate
+    SaveRecord 'oauth' $oauth
+    if($tunnel){SaveRecord 'tunnel' $tunnel.process}
+    Write-Host ('Verified ChatGPT MCP URL: '+$candidate+'/mcp')
+    Write-Host 'OAuth continues running when this setup window is closed.'
+    $verified=$true
+    break
+   } catch {
+    $failures+=('attempt '+$attempt+': '+$_.Exception.Message)
+    if($oauth -and (Owned $oauth 'oauth')){
+     Stop-Process -Id $oauth.pid -Force -ErrorAction SilentlyContinue
+    }
+    if($tunnel -and (Owned $tunnel.process 'tunnel')){
+     Stop-Process -Id $tunnel.process.pid -Force -ErrorAction SilentlyContinue
+    }
+    if($attempt -lt $attemptLimit){
+     Write-Warning ('Quick Tunnel not publicly ready; generating a new URL ('+
+       $attempt+'/'+$attemptLimit+').')
+     Start-Sleep -Seconds 3
+    }
    }
-   $env:CLUSTER_OAUTH_PORT=[string]$port
-   $env:CLUSTER_MCP_PORT=[string]$mcp.port
-   $env:CLUSTER_OAUTH_ISSUER=$Issuer
-   $oauth=StartNode 'oauth' 'oauth-mcp-gateway.cjs' $port
-   $meta=Invoke-RestMethod ('http://127.0.0.1:'+$port+'/.well-known/oauth-authorization-server') -TimeoutSec 4
-   if($meta.issuer -cne $Issuer){throw 'OAuth issuer mismatch'}
-   # Publish the URL only once the Cloudflare-facing OAuth discovery
-   # and the expected MCP 401 challenge are actually reachable.
-   Confirm-PublicMcp $Issuer
-   $oauth.issuer=$Issuer
-   SaveRecord 'oauth' $oauth
-   if($tunnel){SaveRecord 'tunnel' $tunnel.process}
-   Write-Host ('Verified ChatGPT MCP URL: '+$Issuer+'/mcp')
-   Write-Host 'OAuth continues running when this setup window is closed.'
-  }catch{
-   if($oauth -and (Owned $oauth 'oauth')){Stop-Process -Id $oauth.pid -Force -ErrorAction SilentlyContinue}
-   if($tunnel -and (Owned $tunnel.process 'tunnel')){Stop-Process -Id $tunnel.process.pid -Force -ErrorAction SilentlyContinue}
-   throw
+  }
+  if(!$verified){
+   throw ('Public MCP validation failed after '+$attemptLimit+
+     ' attempt(s). Check local DNS, network, and Cloudflare routing. '+
+     ($failures -join ' | '))
   }
  }
 }
