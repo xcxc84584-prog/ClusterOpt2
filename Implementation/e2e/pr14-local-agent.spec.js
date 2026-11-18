@@ -156,6 +156,10 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");
+    // Trusted pairing dialogs close the dropdown on outside clicks.
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
+    await expect(toolbox.locator('[data-right="ps"]')).toBeVisible();
     await toolbox.locator('[data-right="ps"]').check();
     await expect.poll(() => page.evaluate(() =>
       window.__agentSent.some(item =>
