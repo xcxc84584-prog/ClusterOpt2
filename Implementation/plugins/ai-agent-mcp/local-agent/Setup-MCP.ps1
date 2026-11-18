@@ -49,13 +49,51 @@ foreach($file in $assets){
  }
  if(!$complete){throw ('Download incomplete: '+$file)}
 }
+# Review saved local state before launching another gateway or tunnel.
+# Quick Tunnel hostnames are temporary; the old URL must be probed.
 $manager=Join-Path $root 'Background-Gateway.ps1'
+$existing=@('gateway-mcp.json','gateway-oauth.json','gateway-tunnel.json') |
+ Where-Object { Test-Path -LiteralPath (Join-Path $root $_) }
+$decision='N'
+if(@($existing).Count -gt 0){
+ Write-Host ''
+ Write-Warning 'Previous local MCP/OAuth connection records were found.'
+ & $manager -Action Status
+ $savedOAuth=Join-Path $root 'gateway-oauth.json'
+ if(Test-Path -LiteralPath $savedOAuth){
+  try {
+   $previous=Get-Content -LiteralPath $savedOAuth -Raw | ConvertFrom-Json
+   if($previous.issuer){Write-Host ('Previous URL: '+$previous.issuer+'/mcp')}
+  }catch{Write-Warning 'Previous OAuth record is unreadable.'}
+ }
+ Write-Host '[R] Reuse existing services and verify the public MCP URL.'
+ Write-Host '[D] Revoke local OAuth/tunnel records and create a fresh URL.'
+ Write-Host '[C] Cancel without changing running services.'
+ do { $decision=(Read-Host 'Choose R/D/C').Trim().ToUpperInvariant() }
+ while($decision -notin @('R','D','C'))
+ if($decision -eq 'C'){Write-Host 'Setup cancelled; existing services kept.';exit 0}
+ if($decision -eq 'D'){
+  Write-Warning 'A fresh trycloudflare URL requires updating the ChatGPT connector.'
+  Write-Host 'Local revocation does not delete the existing ChatGPT app connection.'
+  if((Read-Host 'Confirm local OAuth/tunnel revocation? Type REVOKE') -cne 'REVOKE'){
+   Write-Host 'No changes made to existing services.';exit 0
+  }
+  & $manager -Action StopOAuth
+  if(-not $?){throw 'Unable to revoke existing local OAuth/tunnel records'}
+ }
+}
 Write-Host 'Launching the existing Cluster local MCP in the background...'
 & $manager -Action StartMCP
 if(-not $?){throw 'MCP background start failed'}
 Write-Host 'MCP ready. No persistent CMD or PowerShell window is required.'
 Write-Host 'ChatGPT OAuth uses the original Cloudflare quick-tunnel process.'
-$consent=Read-Host 'Start the optional OAuth/HTTPS connection now? [Y/N]'
+if($decision -eq 'R'){
+ & $manager -Action StartOAuth
+ if(-not $?){throw 'Saved OAuth URL failed validation; rerun and choose D'}
+ $consent='N'
+}else{
+ $consent=Read-Host 'Start the optional OAuth/HTTPS connection now? [Y/N]'
+}
 if($consent -match '^[Yy]$'){
  & $manager -Action StartOAuth
  if(-not $?){throw 'OAuth background start failed'}
