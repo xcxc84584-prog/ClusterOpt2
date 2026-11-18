@@ -13,17 +13,41 @@ $version=& $node.Source -p 'parseInt(process.versions.node,10)'
 if($LASTEXITCODE -ne 0 -or [int]$version -lt 20){throw 'Node.js >=20 is required'}
 New-Item -ItemType Directory -Path $root -Force|Out-Null
 Write-Host 'Downloading pinned Cluster legacy MCP/OAuth gateways...'
+# A temporary GitHub/CDN 503 must not invalidate a previous good file.
+# Download into a temporary path and atomically replace only on success.
 foreach($file in $assets){
  $target=Join-Path $root $file
  $partial=$target+'.download'
+ $complete=$false
  try{
-  Invoke-WebRequest -UseBasicParsing -Uri ($base+$file) -OutFile $partial -TimeoutSec 45 -ErrorAction Stop
-  if((Get-Item -LiteralPath $partial).Length -lt 80){throw ('Incomplete asset: '+$file)}
-  Move-Item -LiteralPath $partial -Destination $target -Force
-  Write-Host ('Verified: '+$file)
+  for($attempt=1;$attempt -le 5;$attempt++){
+   try{
+    Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+    Invoke-WebRequest -UseBasicParsing -Uri ($base+$file) `
+      -OutFile $partial -TimeoutSec 45 -ErrorAction Stop
+    if(!(Test-Path -LiteralPath $partial) -or
+       (Get-Item -LiteralPath $partial).Length -lt 80){
+     throw ('Incomplete asset: '+$file)
+    }
+    Move-Item -LiteralPath $partial -Destination $target -Force
+    Write-Host ('Verified: '+$file)
+    $complete=$true
+    break
+   }catch{
+    if($attempt -eq 5){
+     throw ('Could not download '+$file+' after 5 attempts: '+
+       $_.Exception.Message)
+    }
+    $delay=[int][Math]::Min(30,[Math]::Pow(2,$attempt))
+    Write-Warning ('Download '+$file+' failed (attempt '+$attempt+
+      '/5). Retrying after '+$delay+'s: '+$_.Exception.Message)
+    Start-Sleep -Seconds $delay
+   }
+  }
  }finally{
   Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
  }
+ if(!$complete){throw ('Download incomplete: '+$file)}
 }
 $manager=Join-Path $root 'Background-Gateway.ps1'
 Write-Host 'Launching the existing Cluster local MCP in the background...'
