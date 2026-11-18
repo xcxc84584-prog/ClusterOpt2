@@ -14,26 +14,29 @@ test("PR20 MCP standalone setup is explicit and loopback-only", () => {
   assert.match(cmd, /^@echo off/);
   assert.match(cmd, /set "REV=[a-f0-9]{40}"/);
   assert.match(cmd, /choice \/M "Continue"/);
-  assert.match(cmd, /127\.0\.0\.1:43880/);
-  assert.match(cmd, /127\.0\.0\.1:43879/);
+  const manager = asset("local-agent/Background-Gateway.ps1");
+  assert.match(manager, /Select-ServicePort 'mcp'/);
+  assert.match(manager, /Select-ServicePort 'oauth'/);
+  assert.match(manager, /127\.0\.0\.1:/);
   assert.match(cmd, /Start-MCP\.ps1/);
   assert.match(cmd, /Start-OAuth\.ps1/);
-  assert.match(cmd, /cluster\.read is READ ONLY/);
+  assert.match(asset("local-agent/remote-mcp.cjs"), /cluster\.read_file/);
   assert.doesNotMatch(cmd, /Stop-Process|taskkill|netsh interface/);
 });
 
-test("PR20 MCP installer downloads pinned gateway assets with diagnostics", () => {
+test("PR21.4 MCP installer uses pinned single-helper Cluster OneClick", () => {
   const cmd = asset("local-agent/MCP-Quick-Setup.cmd");
-  assert.ok(cmd.includes(
-    "REV=9e9055421f6b0d6c021297b28deedbee964b526a"));
-  assert.ok(cmd.includes("echo Fetching %ASSET%"));
-  assert.ok(cmd.includes("DOWNLOAD FAILED:"));
-  assert.ok(cmd.includes("call :download"));
-  assert.ok(cmd.includes("Failed asset: %ASSET%"));
-  assert.ok(cmd.includes("Port-CPO.ps1"));
-  assert.ok(cmd.includes("SERVICE_NAME=clusteropt2"));
-  assert.ok(cmd.includes("https://clusteropt2"));
-  assert.ok(cmd.includes("raw.githubusercontent.com"));
+  const setup = asset("local-agent/Setup-MCP.ps1");
+  assert.match(cmd, /REV=[a-f0-9]{40}/);
+  assert.match(cmd, /Setup-MCP\.ps1/);
+  assert.match(cmd, /Invoke-WebRequest/);
+  assert.doesNotMatch(cmd, /call :download/);
+  assert.match(setup, /remote-mcp\.cjs/);
+  assert.match(setup, /oauth-mcp-gateway\.cjs/);
+  assert.match(setup, /Background-Gateway\.ps1/);
+  assert.match(setup, /-Action StartMCP/);
+  assert.match(setup, /-Action StartOAuth/);
+  assert.match(setup, /raw\.githubusercontent\.com/);
 });
 
 test("PR20 UI never submits chat, downloads through trusted host", () => {
