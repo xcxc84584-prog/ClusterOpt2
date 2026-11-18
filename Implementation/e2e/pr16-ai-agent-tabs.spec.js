@@ -69,8 +69,20 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     await expect(frame.locator("#caiSetup")).toBeVisible();
     await expect(frame.locator("#caiWorkspace")).toBeHidden();
     await expect(frame.locator(".cai-bar")).toBeVisible();
+    await expect(frame.locator("[data-model-action]")).toHaveCount(0);
+    await frame.locator("[data-legacy-guide]").click();
+    await expect(frame.locator("#caiConnectGuide")).toBeVisible();
+    const bundleDownload = page.waitForEvent("download");
+    await frame.locator("[data-package-download]").click();
+    const bundle = await bundleDownload;
+    expect(bundle.suggestedFilename())
+      .toBe("ClusterOpt2-AI-Agent-MCP.zip");
+    const bytes = await readFile(await bundle.path());
+    expect(bytes.subarray(0, 2).toString("hex")).toBe("504b");
+    await frame.locator("[data-guide-dismiss]").click();
+
     const downloading = page.waitForEvent("download");
-    await frame.locator("[data-quick-setup]").click();
+    await frame.locator("#caiSetup [data-quick-setup]").click();
     const downloaded = await downloading;
     expect(downloaded.suggestedFilename())
       .toBe("AI-Agent-MCP-Quick-Setup.cmd");
@@ -78,7 +90,7 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     expect(cmd).toContain("SourceRevision");
     expect(cmd).toContain("Setup-Quick.ps1");
     const mcpDownloading = page.waitForEvent("download");
-    await frame.locator("[data-mcp-quick-setup]").click();
+    await frame.locator("#caiSetup [data-mcp-quick-setup]").click();
     const mcpDownload = await mcpDownloading;
     expect(mcpDownload.suggestedFilename())
       .toBe("AI-Agent-MCP-Quick-Connect.cmd");
