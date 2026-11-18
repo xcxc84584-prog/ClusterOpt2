@@ -15,6 +15,7 @@ export const AI_AGENT_PACKAGE_FILES = Object.freeze([
   "local-agent/README.md",
   "local-agent/package.json",
   "local-agent/server.cjs",
+  "local-agent/secure-store.cjs",
   "local-agent/remote-mcp.cjs",
   "local-agent/mcp-stdio.cjs",
   "local-agent/oauth-mcp-gateway.cjs",
