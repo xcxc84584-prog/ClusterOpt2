@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^\d+\.\d+\.\d+(?:-pr\d+\.patch\d+(?:\.fix\d+)?)?$')]
+    [ValidatePattern('^\d+\.\d+\.\d+[a-z]?(?:-pr\d+\.patch\d+(?:\.fix\d+)?)?$')]
     [string]$ExpectedVersion
 )
 

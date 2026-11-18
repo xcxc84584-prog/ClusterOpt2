@@ -45,7 +45,7 @@ height:100%;
 background:var(--plugin-background,#000);
 color:var(--plugin-text,#eee)
 }
-.cai-bar{
+ .cai-bar{
 display:flex;
 align-items:center;
 gap:12px;
@@ -175,7 +175,7 @@ border:1px solid var(--plugin-border,#354358);
 border-radius:8px;
 background:var(--plugin-panel,#0e131c);
 line-height:1.6;
-max-height:230px;
+max-height:min(52vh,520px);
 overflow:auto
 }
 .cai-guide-head{
@@ -198,6 +198,15 @@ padding:3px 0
 .cai-guide .cai-guide-dismiss{
 min-width:30px;
 padding:3px
+}
+.cai-guide-downloads{
+display:flex;flex-wrap:wrap;gap:8px;margin:12px 0
+}
+.cai-guide-downloads button{
+background:var(--plugin-control,#202020);
+border:1px solid var(--plugin-border,#555);
+border-radius:6px;color:var(--plugin-text,#eee);
+padding:8px 11px;cursor:pointer
 }
 .cai-bar .cai-danger{
 background:#251719;
@@ -233,17 +242,8 @@ padding:10px
   role="status"
   aria-live="polite">尚未連線</span>
 <button
-  type="button"
-  data-model-action="configure" data-i18n="settings"
-  disabled>模型設定</button>
-<button
-  type="button"
-  data-model-action="modelInfo" data-i18n="modelStatus"
-  disabled>模型狀態</button>
-<button
-  type="button"
-  data-model-action="cancel" data-i18n="stop"
-  disabled>中斷</button>
+  type="button" data-toolbox-toggle data-i18n="toolbox"
+  aria-haspopup="menu" aria-expanded="false">ToolBox ▾</button>
 <button
   type="button" data-legacy-guide data-i18n="connection">連線教學</button>
 <button
@@ -254,7 +254,7 @@ padding:10px
   type="button"
   data-agent-action="disconnect"
   class="cai-danger" data-i18n="disconnect"
-  disabled>移除本地權限</button>
+  disabled>中斷連線</button>
 <button
   type="button" data-legacy-close
   aria-label="Close AI Agent">×</button>
@@ -263,9 +263,9 @@ padding:10px
   class="cai-setup"
   id="caiSetup">
 <h2 data-i18n="setupTitle">連結本地 AI Agent</h2>
-<p>沿用 Cluster PowerShell 本地 Agent；初次使用只需下載單一 Quick-Setup.cmd，並依提示完成配置。
+<p data-i18n="setupIntro">沿用 Cluster PowerShell 本地 Agent；初次使用請下載 Quick-Setup.cmd 配置。
 </p>
-<p data-i18n="modelInactive">完成本地 Agent 配對與 MCP 授權後，可於此查看操作狀態與輸出。
+<p data-i18n="setupSummary">完成本地 Agent 配對與 MCP 授權後，可於此查看操作狀態與輸出。
 </p>
 <div
   class="cai-step">
@@ -274,9 +274,9 @@ padding:10px
  若 43881 被占用，可選擇 P／C／O。
 </p>
 <button
-  type="button" data-quick-setup>下載 Quick-Setup.cmd</button>
+  type="button" data-quick-setup data-i18n="downloadLocal">下載 Quick-Setup.cmd</button>
 <button
-  type="button" data-mcp-quick-setup>下載 MCP 快速配置 CMD</button>
+  type="button" data-mcp-quick-setup data-i18n="downloadMcp">下載 MCP 快速配置 CMD</button>
 </div>
 <div
   class="cai-step">
@@ -306,57 +306,66 @@ padding:10px
 </p>
 </div>
 <div
-  id="caiWorkspace"
-  class="cai-workspace"
-  hidden>
-<div
   class="cai-guide"
   id="caiConnectGuide"
   hidden>
 <div
   class="cai-guide-head">
-<strong>連接 ChatGPT / Connect ChatGPT</strong>
+<strong data-i18n="guideHeading">連接 ChatGPT / Connect ChatGPT</strong>
 <button
   type="button"
   class="cai-guide-dismiss" data-guide-dismiss
   aria-label="Close guide">×</button>
 </div>
+<div class="cai-guide-downloads">
+<button type="button" data-package-download data-i18n="downloadPackage">
+  下載 AI AGENT MCP 插件包 ZIP</button>
+<button type="button" data-quick-setup data-i18n="downloadLocal">
+  下載 Local Agent Quick-Setup.cmd</button>
+<button type="button" data-mcp-quick-setup data-i18n="downloadMcp">
+  下載 MCP Quick-Setup.cmd</button>
+</div>
 <div
   class="cai-guide-steps">
 <ol>
-<li>點選「下載 Quick-Setup.cmd」，不需下載整個插件 ZIP。
+<li data-i18n="guideStep1">下載完整 AI AGENT MCP(ChatGPT) 插件 ZIP 並在插件管理裝載。
 </li>
-<li>執行 Quick-Setup.cmd，依提示安裝依賴。埠占用時可選 P 改埠、C 取消、O 驗證後強制停止。
+<li data-i18n="guideStep2">下載 Local Agent Quick-Setup.cmd，啟動本地 Agent。
+ 安裝器支援 C／P／O；配對預設使用 43881。
 </li>
-<li>將 CMD 顯示的 Token 與埠號填入主頁可信任配對視窗。
+<li data-i18n="guideStep3">複製本地 Agent 顯示的配對 Token，
+ 在主畫面配對視窗輸入 Token 與埠號。
 </li>
-<li>點選「模型設定」，在可信任視窗設定 OpenAI API Key 與模型。
+<li data-i18n="guideStep4">在 ToolBox 選取授權資料夾，
+ 再依需求個別允許 Read／Create／Update／Delete／PowerShell。
 </li>
-<li>再點選「下載 MCP 快速配置 CMD」執行本機 MCP 配置。它會準備 43880 MCP 與選用的 43879 OAuth；不會自動架設公開 HTTPS。
+<li data-i18n="guideStep5">下載 MCP Quick-Setup.cmd，啟動本地 MCP 43880
+ 和 OAuth 43879，保留本地服務視窗。
 </li>
-<li>設定可信任的固定 HTTPS 反向代理，僅指向本機 127.0.0.1:43879，網址必須與 OAuth Issuer 完全一致。
+<li data-i18n="guideStep6">建立固定名稱 clusteropt2 的公開 HTTPS 網域
+ （需自行擁有 DNS 與有效 TLS 憑證）。
+ 只將 HTTPS 代理到 OAuth Gateway 的本機 43879。
 </li>
-<li>在 ChatGPT 設定自訂 MCP 連線：貼上 https://你的網域/mcp，使用 OAuth 登入，於授權頁輸入本機顯示的授權密碼。
+<li data-i18n="guideStep7">在 ChatGPT 新增自訂 MCP 連線，
+ 輸入完整 HTTPS 網址加上 /mcp，完成 OAuth 授權。
 </li>
-<li>預設 cluster.read 僅提供五項唯讀工具。
- 若需要遠端檔案 CRUD／PowerShell，必須明確要求 cluster.control，
- 在 OAuth 頁面同意高權限警告，再於 Cluster ToolBox
- 分別開啟檔案與 PS 權限。
-</li>
-<li>每一條 PowerShell 命令仍須在 Cluster 視窗確認，關閉 ToolBox 對應權限即可拒絕後續請求。
+<li data-i18n="guideStep8">cluster.read 只有五項唯讀工具；
+ cluster.control 必須另行同意授權，且檔案及 PS 指令
+ 仍需要 ToolBox／逐命令確認。
 </li>
 </ol>
 </div>
 </div>
 <div
+  id="caiWorkspace"
+  class="cai-workspace"
+  hidden>
+<div
   class="cai-feed"
   id="caiFeed"
   role="log"
   aria-live="polite">
-<h2 data-i18n="feed">任務輸出</h2>
-<div
-  class="notice" data-model-notice data-i18n="modelNotConfigured">模型尚未設定
-</div>
+<h2 data-i18n="feed">Agent 輸出</h2>
 <div data-model-output>
 </div>
 </div>
@@ -368,21 +377,10 @@ padding:10px
   "use strict";
   const labels = {};
   let agentState = "disconnected";
-  let taskActive = false;
-  let taskPending = false;
-  let modelConfigured = false;
   const messages = document.querySelector("[data-model-output]");
-  function renderModelControls() {
-    const connected = agentState === "connected";
-    for (const selector of ["configure", "modelInfo"]) {
-      document.querySelector('[data-model-action="' + selector + '"]')
-        .disabled = !connected;
-    }
-    // Cancellation is available while a request is being queued too;
-    // the host still verifies the exact task ID and live grant.
-    document.querySelector('[data-model-action="cancel"]').disabled =
-      !connected || (!taskActive && !taskPending);
-  }
+  const guide = document.getElementById("caiConnectGuide");
+  const toolbox = document.querySelector("[data-toolbox-toggle]");
+
   function appendMessage(message, kind = "info") {
     const item = document.createElement("div");
     item.className = "cai-msg cai-" + kind;
@@ -392,135 +390,121 @@ padding:10px
     time.textContent = new Date().toLocaleString(
       document.documentElement.lang === "en" ? "en-US" : "zh-TW",
       { hour12: false });
-    const text = document.createElement("span");
-    text.textContent = String(message).slice(0, 65536);
-    item.append(time, text);
+    const value = document.createElement("span");
+    value.textContent = String(message ?? "").slice(0, 65536);
+    item.append(time, value);
     messages.append(item);
     if (messages.children.length > 40) messages.firstChild.remove();
-    item.scrollIntoView({ block: "nearest" });
+    messages.scrollTop = messages.scrollHeight;
   }
+
   function updateAgentState() {
-    const status = document.querySelector("[data-agent-status]");
-    const key = agentState === "connected" ? "connected" :
-      agentState === "connecting" ? "connecting" : "disconnected";
-    status.textContent = labels[key] || key;
+    const key = ["connected", "connecting"].includes(agentState) ?
+      agentState : "disconnected";
+    document.querySelector("[data-agent-status]").textContent =
+      labels[key] || key;
     document.querySelector('[data-agent-action="pair"]').disabled =
       agentState !== "disconnected";
     document.querySelector('[data-agent-action="ping"]').disabled =
       agentState !== "connected";
     document.querySelector('[data-agent-action="disconnect"]').disabled =
       agentState === "disconnected";
-    if (agentState === "disconnected") {
-      taskActive = false;
-      taskPending = false;
-      modelConfigured = false;
-    }
     document.getElementById("caiSetup").hidden =
       agentState === "connected";
     document.getElementById("caiWorkspace").hidden =
       agentState !== "connected";
-    renderModelControls();
   }
-  document.querySelector("[data-quick-setup]").addEventListener(
-    "click", () => window.parent.postMessage({
-      type: "cluster-plugin-quick-setup" }, "*"));
-  document.querySelector("[data-mcp-quick-setup]").addEventListener(
-    "click", () => window.parent.postMessage({
-      type: "cluster-plugin-mcp-quick-setup" }, "*"));
+
+  function send(type) {
+    window.parent.postMessage({ type }, "*");
+  }
+
+  for (const button of document.querySelectorAll("[data-quick-setup]")) {
+    button.addEventListener("click",
+      () => send("cluster-plugin-quick-setup"));
+  }
+  for (const button of document.querySelectorAll(
+    "[data-mcp-quick-setup]")) {
+    button.addEventListener("click",
+      () => send("cluster-plugin-mcp-quick-setup"));
+  }
+  document.querySelector("[data-package-download]").addEventListener(
+    "click", () => send("cluster-plugin-download-package"));
   document.querySelector("[data-legacy-close]").addEventListener(
-    "click", () => window.parent.postMessage({
-      type: "cluster-plugin-panel-close" }, "*"));
+    "click", () => send("cluster-plugin-panel-close"));
+  const toolbar = document.querySelector(".cai-bar");
+  const toolbarHeight = () =>
+    Math.ceil(toolbar.getBoundingClientRect().height);
+  toolbox.addEventListener("click", () => {
+    window.parent.postMessage({
+      type: "cluster-plugin-toolbox-toggle",
+      toolbarHeight: toolbarHeight()
+    }, "*");
+  });
+  const observer = new ResizeObserver(() => {
+    window.parent.postMessage({
+      type: "cluster-plugin-toolbar-layout",
+      toolbarHeight: toolbarHeight()
+    }, "*");
+  });
+  observer.observe(toolbar);
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    guide.hidden = true;
+    send("cluster-plugin-toolbox-close");
+  });
   document.querySelector("[data-legacy-guide]").addEventListener(
-    "click", () => {
-      const guide = document.getElementById("caiConnectGuide");
-      guide.hidden = !guide.hidden;
-    });
+    "click", () => { guide.hidden = !guide.hidden; });
   document.querySelector("[data-guide-dismiss]").addEventListener(
-    "click", () => document.getElementById(
-      "caiConnectGuide").hidden = true);
-  document.querySelectorAll("[data-agent-action]").forEach(button => {
+    "click", () => { guide.hidden = true; });
+  for (const button of document.querySelectorAll("[data-agent-action]")) {
     button.addEventListener("click", () => {
       const action = button.dataset.agentAction;
-      if (!["pair", "ping", "disconnect"].includes(action)) return;
-      window.parent.postMessage({
-        type: "cluster-local-agent-" + action
-      }, "*");
+      if (["pair", "ping", "disconnect"].includes(action)) {
+        send("cluster-local-agent-" + action);
+      }
     });
-  });
-  document.querySelectorAll("[data-model-action]").forEach(button => {
-    button.addEventListener("click", () => {
-      if (button.disabled) return;
-      const action = button.dataset.modelAction;
-      const messageType = action === "modelInfo" ?
-        "cluster-model-info" : "cluster-model-" + action;
-      window.parent.postMessage({ type: messageType }, "*");
-    });
-  });
+  }
+
   window.addEventListener("message", event => {
     if (event.source !== window.parent) return;
-    if (event.data?.type === "cluster-model-event") {
-      const update = event.data.update;
-      if (!update || typeof update !== "object") return;
-      if (update.kind === "model") {
-        modelConfigured = update.configured === true;
-        appendMessage(modelConfigured ?
-          (labels.modelReady || "Model ready") + ": " + update.model :
-          (labels.modelNotConfigured || "Model not configured"));
-      } else if (update.kind === "result") {
+    const data = event.data;
+    if (data?.type === "cluster-plugin-toolbox-state") {
+      toolbox.setAttribute("aria-expanded", String(data.open === true));
+      return;
+    }
+    if (data?.type === "cluster-model-event") {
+      const update = data.update;
+      if (update?.kind === "result") {
         appendMessage(update.text, "assistant");
-      } else if (update.kind === "task") {
-        taskPending = false;
-        taskActive = !["completed", "failed", "interrupted"]
-          .includes(update.status);
-        appendMessage((labels.taskState || "Task") + ": " +
-          update.status);
-      } else if (update.kind === "reset") {
-        taskActive = false;
-        taskPending = false;
+      } else if (update?.kind === "task") {
+        appendMessage((labels.taskState || "Task") +
+          ": " + update.status);
       }
-      renderModelControls();
       return;
     }
-    if (event.data?.type === "cluster-model-response") {
-      const value = event.data;
-      if (value.action === "submit") {
-        taskPending = false;
-        taskActive = value.taskActive === true;
-      }
-      if (value.action === "cancel") {
-        taskActive = value.taskActive === true;
-      }
-      if (value.ok !== true) {
-        appendMessage((labels.connectionError || "Error") +
-          " (" + value.status + ")", "error");
-      }
-      renderModelControls();
-      return;
-    }
-    if (event.data?.type === "cluster-local-agent-status") {
-      const state = event.data.state;
-      if (["connected", "connecting", "disconnected"].includes(state)) {
-        agentState = state;
+    if (data?.type === "cluster-local-agent-status") {
+      if (["connected", "connecting", "disconnected"]
+        .includes(data.state)) {
+        agentState = data.state;
         updateAgentState();
       }
       return;
     }
-    if (event.data?.type === "cluster-local-agent-result") {
-      const value = event.data;
-      const status = Number(value.status);
-      if (!value.ok && Number.isInteger(status)) {
-        const field = document.querySelector("[data-agent-error]");
-        field.textContent = (labels.connectionError ||
-          "Connection error") + " (" + status + ")";
+    if (data?.type === "cluster-local-agent-result") {
+      if (data.ok !== true && Number.isInteger(Number(data.status))) {
+        document.querySelector("[data-agent-error]").textContent =
+          (labels.connectionError || "Connection error") +
+          " (" + data.status + ")";
       } else {
         document.querySelector("[data-agent-error]").textContent = "";
       }
       return;
     }
-    if (event.data?.type === "cluster-plugin-theme") {
-      const names = ["background", "panel", "text", "border", "control"];
-      for (const name of names) {
-        const value = event.data.colors?.[name];
+    if (data?.type === "cluster-plugin-theme") {
+      for (const name of ["background", "panel", "text",
+        "border", "control"]) {
+        const value = data.colors?.[name];
         if (typeof value === "string" && value.length <= 64 &&
             (CSS.supports("color", value) || value === "")) {
           document.documentElement.style.setProperty(
@@ -529,22 +513,16 @@ padding:10px
       }
       return;
     }
-    if (event.data?.type !== "cluster-plugin-locale") return;
-    const locale = event.data.locale;
-    if (locale !== "en" && locale !== "zh-Hant") return;
-    const copy = event.data.labels;
-    if (!copy || typeof copy !== "object") return;
-    Object.assign(labels, copy);
-    document.documentElement.lang = locale;
+    if (data?.type !== "cluster-plugin-locale") return;
+    if (!["en", "zh-Hant"].includes(data.locale) ||
+        !data.labels || typeof data.labels !== "object") return;
+    Object.assign(labels, data.labels);
+    document.documentElement.lang = data.locale;
     for (const node of document.querySelectorAll("[data-i18n]")) {
       const value = labels[node.dataset.i18n];
       if (typeof value === "string") node.textContent = value;
     }
     updateAgentState();
-    for (const node of document.querySelectorAll("[data-placeholder]")) {
-      const value = labels[node.dataset.placeholder];
-      if (typeof value === "string") node.placeholder = value;
-    }
   });
 })();
 </script>

@@ -45,7 +45,8 @@ test("PR14.6 ToolBox requires browser scope and a matching path",
     });
     expect((await mount(page)).status).toBe(201);
     await page.locator(".plugin-extension-button").click();
-    const trigger = page.locator(".plugin-agent-toolbox > button");
+    const trigger = page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]");
     await trigger.click();
     const menu = page.locator(".plugin-agent-toolbox > div");
     await expect(menu).toBeVisible();
@@ -108,7 +109,8 @@ test("PR14.6 rejects path mismatch and refused browser consent",
     });
     expect((await mount(page)).status).toBe(201);
     await page.locator(".plugin-extension-button").click();
-    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
     const pick = page.getByRole("button", {
       name: /選取本地資料夾/
     });

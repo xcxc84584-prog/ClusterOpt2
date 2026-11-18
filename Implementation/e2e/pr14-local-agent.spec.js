@@ -142,7 +142,8 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
       window.prompt = () => ["C:", "Work", "Project"].join("\\\\");
     });
     await page.locator(".plugin-extension-button").click();
-    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
     await page.getByRole("button", {
       name: /選取本地資料夾/
     }).click();
@@ -155,6 +156,10 @@ test("PR14.7 ToolBox shell only approves exact command after opt-in",
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");
+    // Trusted pairing dialogs close the dropdown on outside clicks.
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
+    await expect(toolbox.locator('[data-right="ps"]')).toBeVisible();
     await toolbox.locator('[data-right="ps"]').check();
     await expect.poll(() => page.evaluate(() =>
       window.__agentSent.some(item =>
@@ -203,7 +208,8 @@ test("PR14.8 explicit MCP read-only tool bridge returns metadata",
     await page.locator("dialog[open] button[type=submit]").click();
     await expect(page.frameLocator(".plugin-extension-frame")
       .locator('[data-agent-status]')).toHaveText("已連線");
-    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
     const box = page.locator(".plugin-agent-toolbox");
     await box.locator('[data-right="mcp"]').check();
     await expect.poll(() => page.evaluate(() =>

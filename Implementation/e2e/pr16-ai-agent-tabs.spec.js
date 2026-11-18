@@ -69,8 +69,20 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     await expect(frame.locator("#caiSetup")).toBeVisible();
     await expect(frame.locator("#caiWorkspace")).toBeHidden();
     await expect(frame.locator(".cai-bar")).toBeVisible();
+    await expect(frame.locator("[data-model-action]")).toHaveCount(0);
+    await frame.locator("[data-legacy-guide]").click();
+    await expect(frame.locator("#caiConnectGuide")).toBeVisible();
+    const bundleDownload = page.waitForEvent("download");
+    await frame.locator("[data-package-download]").click();
+    const bundle = await bundleDownload;
+    expect(bundle.suggestedFilename())
+      .toBe("ClusterOpt2-AI-Agent-MCP.zip");
+    const bytes = await readFile(await bundle.path());
+    expect(bytes.subarray(0, 2).toString("hex")).toBe("504b");
+    await frame.locator("[data-guide-dismiss]").click();
+
     const downloading = page.waitForEvent("download");
-    await frame.locator("[data-quick-setup]").click();
+    await frame.locator("#caiSetup [data-quick-setup]").click();
     const downloaded = await downloading;
     expect(downloaded.suggestedFilename())
       .toBe("AI-Agent-MCP-Quick-Setup.cmd");
@@ -78,7 +90,7 @@ test("PR17 legacy setup offers a standalone quick-setup CMD",
     expect(cmd).toContain("SourceRevision");
     expect(cmd).toContain("Setup-Quick.ps1");
     const mcpDownloading = page.waitForEvent("download");
-    await frame.locator("[data-mcp-quick-setup]").click();
+    await frame.locator("#caiSetup [data-mcp-quick-setup]").click();
     const mcpDownload = await mcpDownloading;
     expect(mcpDownload.suggestedFilename())
       .toBe("AI-Agent-MCP-Quick-Connect.cmd");
@@ -112,7 +124,10 @@ test("PR16 ToolBox remains a trusted host menu and does not cover header",
     await mountAgent(page);
     await page.locator(".plugin-extension-button").click();
     const menu = page.locator(".plugin-agent-toolbox");
-    await menu.locator(":scope > button").click();
+    const button = page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]");
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
     await expect(menu.getByText("TOOLBOX  /  LOCAL ACCESS"))
       .toBeVisible();
     await expect(menu.locator("[data-right]")).toHaveCount(6);
@@ -125,6 +140,30 @@ test("PR16 ToolBox remains a trusted host menu and does not cover header",
     });
     expect(positions.toolboxTop - positions.frameTop)
       .toBeGreaterThanOrEqual(50);
+    await page.setViewportSize({ width: 420, height: 720 });
+    const frame = page.frameLocator(".plugin-extension-frame");
+    const barHeight = await frame.locator(".cai-bar")
+      .evaluate(node => node.getBoundingClientRect().height);
+    await expect.poll(() => page.evaluate(() => {
+      const panel = document.querySelector(".plugin-extension-panel");
+      const menu = document.querySelector(
+        ".plugin-agent-toolbox > div");
+      const area = panel.getBoundingClientRect();
+      const bounds = menu.getBoundingClientRect();
+      return {
+        xSafe: bounds.left >= area.left &&
+          bounds.right <= area.right + 2,
+        top: bounds.top - area.top
+      };
+    })).toMatchObject({
+      xSafe: true, top: expect.any(Number)
+    });
+    const bounds = await page.locator(
+      ".plugin-agent-toolbox > div").boundingBox();
+    const area = await page.locator(
+      ".plugin-extension-panel").boundingBox();
+    expect(bounds.y).toBeGreaterThanOrEqual(
+      area.y + barHeight - 3);
   });
 
 test("PR16 switching PowerShell and AI does not create extra sessions",

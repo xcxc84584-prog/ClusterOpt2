@@ -1,6 +1,6 @@
 import { PluginWorkbenchTabUnit } from "./PluginWorkbenchTabUnit.js";
-import { downloadAgentQuickSetup, downloadMCPQuickSetup } from
-  "../main/plugin-agent-download.js";
+import { downloadAgentQuickSetup, downloadMCPQuickSetup,
+  downloadAgentPackage } from "../main/plugin-agent-download.js";
 import { PluginMCPReadOnlyObject } from
   "../object/PluginMCPReadOnlyObject.js";
 import { PluginShellApprovalObject } from
@@ -134,12 +134,14 @@ export class PluginUIHostUnit {
         pendingExplorer = access;
         const toolbox = this.doc.createElement("div");
         toolbox.className = "plugin-agent-toolbox";
-        toolbox.style.cssText = "position:absolute;top:62px;right:16px;" +
-          "z-index:20;font:12px system-ui;color:var(--ui-text-on-panel);" +
-          "max-width:min(380px,calc(100% - 32px));";
+        toolbox.style.cssText = "position:absolute;top:59px;right:12px;" +
+          "z-index:20;max-width:calc(100% - 24px);" +
+          "pointer-events:none;font:12px system-ui;" +
+          "color:var(--ui-text-on-panel);";
         const trigger = this.doc.createElement("button");
         trigger.type = "button";
-        trigger.textContent = "⚙ ToolBox ▾";
+        trigger.textContent = "ToolBox";
+        trigger.hidden = true;
         trigger.style.cssText = "padding:8px 12px;border-radius:6px;" +
           "background:var(--ui-control,#1c2939);" +
           "border:1px solid var(--ui-border,#44546b);" +
@@ -147,8 +149,9 @@ export class PluginUIHostUnit {
         trigger.setAttribute("aria-expanded", "false");
         const menu = this.doc.createElement("div");
         menu.hidden = true;
-        menu.style.cssText = "margin-top:8px;padding:16px;" +
-          "width:340px;max-width:100%;max-height:65vh;overflow:auto;" +
+        menu.style.cssText = "margin-top:4px;padding:16px;" +
+          "width:340px;max-width:100%;max-height:65vh;" +
+          "overflow:auto;pointer-events:auto;" +
           "background:var(--ui-panel,#131c29);" +
           "border:1px solid var(--ui-border,#34516f);" +
           "border-radius:10px;box-shadow:0 18px 48px #0009;";
@@ -360,6 +363,40 @@ export class PluginUIHostUnit {
         };
         toolbox.append(trigger, menu);
         panel.append(toolbox);
+        view.positionToolBox = height => {
+          if (!Number.isFinite(height) ||
+              height < 40 || height > 320) return;
+          const top = Math.ceil(height);
+          toolbox.style.top = top + "px";
+          menu.style.maxHeight = "min(65vh, calc(100vh - " +
+            (top + 24) + "px))";
+        };
+        view.toggleToolBox = () => {
+          menu.hidden = !menu.hidden;
+          frame.contentWindow?.postMessage({
+            type: "cluster-plugin-toolbox-state",
+            open: !menu.hidden
+          }, "*");
+        };
+        view.closeToolBox = () => {
+          menu.hidden = true;
+          frame.contentWindow?.postMessage({
+            type: "cluster-plugin-toolbox-state",
+            open: false
+          }, "*");
+        };
+        const closeOnEscape = event => {
+          if (event.key === "Escape") view.closeToolBox();
+        };
+        const closeOnOutside = event => {
+          if (!toolbox.contains(event.target)) view.closeToolBox();
+        };
+        this.doc.addEventListener("keydown", closeOnEscape);
+        this.doc.addEventListener("click", closeOnOutside);
+        view.disposeToolBox = () => {
+          this.doc.removeEventListener("keydown", closeOnEscape);
+          this.doc.removeEventListener("click", closeOnOutside);
+        };
         view.resetBridgeToolBox = () => {
           for (const name of ["ps", "mcp"]) {
             const checkbox = menu.querySelector(
@@ -368,8 +405,7 @@ export class PluginUIHostUnit {
           }
         };
         view.resetToolBox = () => {
-          menu.hidden = true;
-          trigger.setAttribute("aria-expanded", "false");
+          view.closeToolBox?.();
           rootStatus.textContent = "";
           for (const checkbox of menu.querySelectorAll(
             'input[type="checkbox"]')) checkbox.checked = false;
@@ -451,6 +487,19 @@ export class PluginUIHostUnit {
               !this.views.has(provider.providerId) ||
               !view.enabled) return;
           const kind = event.data?.type;
+          if (kind === "cluster-plugin-toolbox-toggle") {
+            view.positionToolBox?.(event.data?.toolbarHeight);
+            view.toggleToolBox?.();
+            return;
+          }
+          if (kind === "cluster-plugin-toolbar-layout") {
+            view.positionToolBox?.(event.data?.toolbarHeight);
+            return;
+          }
+          if (kind === "cluster-plugin-toolbox-close") {
+            view.closeToolBox?.();
+            return;
+          }
           const actions = {
             "cluster-local-agent-pair": "pair",
             "cluster-local-agent-ping": "ping",
@@ -576,6 +625,7 @@ export class PluginUIHostUnit {
         view.unlistenQuickSetup?.();
         this.doc.removeEventListener("click", closeForWorkbench);
         view.unlistenAgent?.();
+        view.disposeToolBox?.();
         view.localAgent?.close();
         view.shellApproval?.revoke();
         view.mcpReadOnly?.revoke();
@@ -607,16 +657,21 @@ export class PluginUIHostUnit {
       }
       if (provider.providerId === "cluster.ai-agent-mcp") {
         const onQuickSetup = event => {
-          if (event.source !== frame.contentWindow) return;
+          if (event.source !== frame.contentWindow ||
+              event.origin !== "null" || !view.enabled ||
+              !this.views.has(provider.providerId)) return;
           if (event.data?.type === "cluster-plugin-panel-close") {
             view.workbenchTab?.close();
             return;
           }
           const action = event.data?.type;
-          if (action !== "cluster-plugin-quick-setup" &&
-              action !== "cluster-plugin-mcp-quick-setup") return;
-          const download = action === "cluster-plugin-quick-setup" ?
-            downloadAgentQuickSetup : downloadMCPQuickSetup;
+          const downloads = {
+            "cluster-plugin-quick-setup": downloadAgentQuickSetup,
+            "cluster-plugin-mcp-quick-setup": downloadMCPQuickSetup,
+            "cluster-plugin-download-package": downloadAgentPackage
+          };
+          if (!Object.hasOwn(downloads, action)) return;
+          const download = downloads[action];
           void download(this.doc).catch(() =>
             this.core.omu.record("EHU", "PluginUIHost",
               "Plugin.QuickSetupDownload", 503, provider.providerId));

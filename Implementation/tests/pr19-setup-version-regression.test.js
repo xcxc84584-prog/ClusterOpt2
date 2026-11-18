@@ -4,15 +4,15 @@ import { readFile } from "node:fs/promises";
 import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { setupFilename } from "../main/legacy-powershell/cmd-setup.js";
 
-test("PR19 release version is centralized at 0.0.15a", async () => {
-  assert.equal(ReleaseVersion.product, "0.0.15a");
+test("PR19 release version is centralized at 0.0.15b", async () => {
+  assert.equal(ReleaseVersion.product, "0.0.15b");
   assert.equal(JSON.parse(await readFile(
     new URL("../../package.json", import.meta.url), "utf8"
   )).version, ReleaseVersion.product);
   assert.equal(JSON.parse(await readFile(
     new URL("../local-agent/package.json", import.meta.url), "utf8"
   )).version, ReleaseVersion.product);
-  assert.match(setupFilename("0.0.15a"), /0\.0\.15a\.cmd$/);
+  assert.match(setupFilename("0.0.15b"), /0\.0\.15b\.cmd$/);
 });
 
 test("PR19 CMD does not mistake CHOICE=Y for a failed mkdir", async () => {

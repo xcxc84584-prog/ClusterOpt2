@@ -4,7 +4,7 @@
  * package.json is a checked distribution mirror, not an authority.
  */
 export const ReleaseVersion = Object.freeze({
-  product: "0.0.15a",
+  product: "0.0.15b",
   channel: "stable",
   nextRelease: "0.0.16",
   /** Read-only metadata: no route or permission is implied. */

@@ -174,7 +174,8 @@ test("PR14.9 reinstall does not preserve ToolBox folder authority",
       window.prompt = () => ["C:", "Work", "Project"].join("\\\\");
     });
     await page.locator(".plugin-extension-button").click();
-    await page.locator(".plugin-agent-toolbox > button").click();
+    await page.frameLocator(".plugin-extension-frame")
+      .locator("[data-toolbox-toggle]").click();
     await page.getByRole("button", {
       name: /選取本地資料夾/
     }).click();
