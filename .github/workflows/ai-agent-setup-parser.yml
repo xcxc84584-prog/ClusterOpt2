@@ -7,6 +7,9 @@ on:
       - "Implementation/plugins/ai-agent-mcp/local-agent/Quick-Setup.cmd"
       - "Implementation/plugins/ai-agent-mcp/local-agent/MCP-Quick-Setup.cmd"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Port-CPO.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/Background-Agent.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/secure-store.cjs"
+      - "Implementation/tests/pr21-3-secure-store.test.js"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Start-*.ps1"
       - "Implementation/tests/pr20-port-cpo-windows.test.ps1"
       - ".github/workflows/ai-agent-setup-parser.yml"
@@ -38,7 +41,7 @@ jobs:
             $parseErrors | ForEach-Object { Write-Host $_.ToString() }
             exit 1
           }
-          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1')) {
+          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1')) {
             $file = Join-Path $env:GITHUB_WORKSPACE ("Implementation/plugins/ai-agent-mcp/local-agent/" + $name)
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
@@ -47,6 +50,9 @@ jobs:
           }
           ./Implementation/tests/pr20-port-cpo-windows.test.ps1
           Write-Host "Windows PowerShell 5.1 parse PASS"
+      - name: Test Windows DPAPI credential encryption and migration
+        shell: pwsh
+        run: node --test Implementation/tests/pr21-3-secure-store.test.js
       - name: Parse Setup-Quick.ps1 in PowerShell 7
         shell: pwsh
         run: |
@@ -59,7 +65,7 @@ jobs:
             $parseErrors | ForEach-Object { Write-Host $_.ToString() }
             exit 1
           }
-          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1')) {
+          foreach ($name in @('Port-CPO.ps1','Start-LocalAgent.ps1','Start-MCP.ps1','Start-OAuth.ps1','Background-Agent.ps1')) {
             $file = Join-Path $env:GITHUB_WORKSPACE ("Implementation/plugins/ai-agent-mcp/local-agent/" + $name)
             $errors = $null
             [void][System.Management.Automation.Language.Parser]::ParseFile(
