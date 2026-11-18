@@ -9,7 +9,9 @@ const os=require('node:os');
 const crypto=require('node:crypto');
 const {URL}=require('node:url');
 const configDir=path.join(process.env.LOCALAPPDATA||path.join(os.homedir(),'AppData','Local'),'ClusterTerminalAgent');
-const pairingPath=path.join(configDir,'pairing-token');
+const pairingPath=path.join(configDir,'pairing-token.dpapi');
+const legacyPairingPath=path.join(configDir,'pairing-token');
+const secureStore=require('./secure-store.cjs');
 const accessPath=path.join(configDir,'remote-mcp-token');
 const host='127.0.0.1',port=Number(process.env.CLUSTER_MCP_PORT||43880);
 const upstream='http://127.0.0.1:'+(process.env.CLUSTER_TERMINAL_PORT||43881);
@@ -41,7 +43,11 @@ function json(res,status,obj){res.writeHead(status,{'Content-Type':'application/
 function rpcError(id,code,message){return {jsonrpc:'2.0',id,error:{code,message}};}
 function equalToken(candidate){if(typeof candidate!=='string')return false;const a=Buffer.from(candidate),b=Buffer.from(accessToken);return a.length===b.length&&crypto.timingSafeEqual(a,b);}
 async function upstreamCall(name,args){
- const token=fs.readFileSync(pairingPath,'utf8').trim();
+ // Agent tokens are now DPAPI-protected. Keep the original MCP route
+ // and tool contract; only adapt credential loading for migration.
+ const token=secureStore.loadOrMigrate(pairingPath,legacyPairingPath,
+  value=>/^[a-f0-9]{64}$/.test(value),
+  ()=>{throw Error('Pair Local Agent before using MCP');});
  const route=name==='cluster.get_status'?'/mcp/status':name==='cluster.get_task_status'?'/mcp/tasks':'/mcp/call';
  const response=await fetch(upstream+route,{method:route==='/mcp/call'?'POST':'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},...(route==='/mcp/call'?{body:JSON.stringify({name,arguments:args||{}})}:{}),signal:AbortSignal.timeout(name==='cluster.powershell_request'?145000:14000)});
  const data=await response.json();
