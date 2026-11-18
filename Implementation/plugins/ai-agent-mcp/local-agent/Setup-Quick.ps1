@@ -80,9 +80,12 @@ try {
   & (Join-Path $agentDir 'Background-Agent.ps1') -Action Start -Origin $origin
   if (-not $?) { throw 'Background Local Agent failed' }
   Write-Host 'You can close this setup window; Local Agent remains running.'
-  Write-Host 'To show your private token explicitly, run:'
-  Write-Host '  powershell -NoProfile -File "Background-Agent.ps1" -Action Token'
-  Write-Host 'Do not paste the token into chat or save it in plaintext.'
+  # Present the freshly protected pairing token in this interactive
+  # Quick-Setup CMD only. Never copy it into a log or a download URL.
+  Write-Host 'Local Agent pairing Token for the trusted connection form:'
+  & (Join-Path $agentDir 'Background-Agent.ps1') -Action Token
+  if (-not $?) { throw 'Unable to show Local Agent pairing Token' }
+  Write-Host 'Keep this Token private; only enter it in your local pairing form.'
   Write-Host 'To stop: run Background-Agent.ps1 -Action Stop.'
 } finally {
   Pop-Location
