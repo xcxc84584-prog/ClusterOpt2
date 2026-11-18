@@ -42,8 +42,14 @@ The Windows user profile must remain available for decrypting secrets.
 Do not back up or sync these protected files expecting them to work
 under a different Windows user account. Keep the machine profile secure.
 
-The original local services must be explicitly started by the user.
-No service is auto-installed, auto-started or silently upgraded.
+The standalone Quick-Setup asks for confirmation, then starts the Local
+Agent hidden under the current Windows account. It is not a machine-wide
+Windows service and does not require administrator rights.
+Use `Background-Agent.ps1 -Action Status` to query it,
+`-Action Stop` to stop only the identity-verified process, and
+`-Action Token` to display the protected pairing token locally.
+Other MCP and OAuth services still need their own explicit setup.
+No service is auto-installed or silently upgraded.
 
 ## Standalone MCP Quick Setup
 
