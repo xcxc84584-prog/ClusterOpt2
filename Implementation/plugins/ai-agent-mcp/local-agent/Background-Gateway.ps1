@@ -129,23 +129,51 @@ function Tunnel($port){
  $child=Start-Process -FilePath (CloudflaredExe) -ArgumentList @('tunnel','--url',$target,'--no-autoupdate') -WindowStyle Hidden -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
  try{
   $url=''
+  $registered=$false
   for($i=0;$i -lt 90;$i++){
    Start-Sleep -Milliseconds 500
-   if($child.HasExited){throw 'cloudflared exited'}
+   $child.Refresh()
+   if($child.HasExited){throw 'cloudflared exited before registration'}
    foreach($file in @($err,$out)){
-    if(Test-Path -LiteralPath $file){
-     $raw=Get-Content -LiteralPath $file -Raw -ErrorAction SilentlyContinue
-     if($raw -match 'https://[a-zA-Z0-9-]+\.trycloudflare\.com'){$url=$Matches[0];break}
+    if(!(Test-Path -LiteralPath $file)){continue}
+    $raw=Get-Content -LiteralPath $file -Raw -ErrorAction SilentlyContinue
+    if(!$url -and $raw -match
+       'https://[a-zA-Z0-9-]+\.trycloudflare\.com'){
+     $url=$Matches[0]
+    }
+    if($raw -match '(?i)Registered tunnel connection'){
+     $registered=$true
     }
    }
-   if($url){break}
+   if($url -and $registered){break}
   }
-  if(!$url){throw 'Timed out waiting for HTTPS URL'}
+  if(!$url){throw 'Timed out waiting for a Quick Tunnel URL'}
+  if(!$registered){
+   throw ('Quick Tunnel URL printed, but cloudflared did not register '+
+     'a connection. Check DNS and outbound TCP/UDP port 7844.')
+  }
   return @{issuer=$url;process=(Snapshot $child $target 0)}
  }catch{
   if(!$child.HasExited){Stop-Process -Id $child.Id -Force -ErrorAction SilentlyContinue}
   throw
  }
+}
+# DNS diagnostics do not change the host resolver or public routing.
+# A random Quick Tunnel hostname is not considered ready until resolvable.
+function Test-PublicDns([string]$HostName){
+ $local=$false
+ try{
+  $local=@([System.Net.Dns]::GetHostAddresses($HostName)).Count -gt 0
+ }catch{}
+ if($local){return 'local-ok'}
+ $public=$false
+ try{
+  $answers=@(Resolve-DnsName -Name $HostName -Server '1.1.1.1' `
+    -Type A -DnsOnly -ErrorAction Stop)
+  $public=@($answers|Where-Object {$_.IPAddress}).Count -gt 0
+ }catch{}
+ if($public){return 'local-resolver-failed'}
+ return 'hostname-not-resolved'
 }
 # A listening local OAuth gateway is not proof ChatGPT can reach its URL.
 # Check its public metadata and the expected unauthenticated MCP challenge.
@@ -281,18 +309,24 @@ switch($Action){
     # Do not publish an unresolvable hostname or unverified endpoint.
     # DNS may lag shortly after a new Cloudflare Quick Tunnel appears.
     $hostName=([uri]$candidate).DnsSafeHost
-    $dnsOk=$false
+    $dnsResult='hostname-not-resolved'
     for($dnsAttempt=1;$dnsAttempt -le 6;$dnsAttempt++){
-     try {
-      $ips=[System.Net.Dns]::GetHostAddresses($hostName)
-      if(@($ips).Count -gt 0){$dnsOk=$true;break}
-     } catch {
-      if($dnsAttempt -eq 6){throw ('DNS lookup failed for '+
-        $hostName+': '+$_.Exception.Message)}
+     $dnsResult=Test-PublicDns $hostName
+     if($dnsResult -eq 'local-ok'){break}
+     if($dnsResult -eq 'local-resolver-failed'){break}
+     if($dnsAttempt -lt 6){
+      Start-Sleep -Seconds ([Math]::Min(5,$dnsAttempt))
      }
-     Start-Sleep -Seconds ([Math]::Min(5,$dnsAttempt))
     }
-    if(!$dnsOk){throw ('DNS lookup returned no address for '+$hostName)}
+    if($dnsResult -eq 'local-resolver-failed'){
+     throw ('DNS_LOCAL_RESOLVER: Public DNS resolves '+$hostName+
+       ', but Windows DNS does not. Check DNS policy, filtering or VPN.')
+    }
+    if($dnsResult -ne 'local-ok'){
+     throw ('DNS_UNRESOLVED: '+$hostName+
+       ' was not resolved by Windows or 1.1.1.1. Check cloudflared '+
+       'connection logs, network DNS policies and tunnel routing.')
+    }
     Confirm-PublicMcp $candidate
     $oauth.issuer=$candidate
     SaveRecord 'oauth' $oauth
@@ -310,8 +344,8 @@ switch($Action){
      Stop-Process -Id $tunnel.process.pid -Force -ErrorAction SilentlyContinue
     }
     if($attempt -lt $attemptLimit){
-     Write-Warning ('Quick Tunnel not publicly ready; generating a new URL ('+
-       $attempt+'/'+$attemptLimit+').')
+     Write-Warning ('Quick Tunnel unavailable (attempt '+$attempt+
+       '/'+$attemptLimit+'); retrying a fresh URL.')
      Start-Sleep -Seconds 3
     }
    }
