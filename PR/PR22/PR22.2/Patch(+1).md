@@ -22,3 +22,9 @@ Changes committed to draft PR #73; real Windows integration and
 GitHub CI result must be checked before merging. The latest
 observed Gateway status was connected, Browser Editor connected;
 task status returned a transient fetch failure.
+
+## CI follow-up
+First provider-registry CI run failed code-conventions on two test
+fixtures: a literal Windows path and a credential-like test argument.
+Both fixtures were rewritten without relaxing source checks. Latest
+branch CI rerun must be verified separately; do not mark PASS yet.
