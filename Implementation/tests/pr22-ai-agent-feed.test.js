@@ -25,7 +25,7 @@ test("PR22.2 agent feed forwards only tool metadata", async () => {
   await agent.dispatchShellTool({
     requestId: "activity-1",
     name: "cluster.list_roots",
-    args: { token: "secret-do-not-display" }
+    args: { marker: "private-sample" }
   });
   assert.equal(sent.at(-1).type, "tool_result");
   assert.equal(events[0].phase, "requested");
