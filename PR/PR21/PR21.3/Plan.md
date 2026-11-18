@@ -17,3 +17,10 @@ No implicit PowerShell/file privileges; no key in source, URL, logs, events or b
 
 ## Gate
 Release version remains 0.0.15b until explicitly selected. No merge without CI and the necessary Windows security acceptance. This PR is a draft in progress.
+
+## PR21.3 Patch(+2) delivery
+- Default AI Agent launcher is host-owned and visible without implicitly granting any capability. Initial click explicitly confirms the six declared permissions, then starts the reviewed sandbox provider. Removing the built-in plugin or hiding the launcher stores an opt-out in existing PluginPackageStore reviewed records.
+- Token and model provider key are persisted using Windows DPAPI CurrentUser through local secure-store.cjs, with legacy plaintext migration, validation and delete-after-success. The browser receives no persistent bearer credential. Reconnecting the browser still requires entering the pairing token, available on the trusted Windows console.
+- The standalone Quick-Setup now installs secure-store.cjs and Background-Agent.ps1 and starts a user-scoped hidden Local Agent after the initial setup approval. Port selection delegates to the existing C/P/O helper. Background-Agent provides Start/Stop/Status/Token; Stop compares PID, creation date, executable, command line and listening port before termination.
+- Changed the existing Windows parser CI to include DPAPI integration tests, not a duplicate CI workflow. Added Playwright default launcher and responsive layout tests. Existing PR17/18/20 unit assertions follow the delegated service manager rather than obsolete foreground requirements.
+- The release remains 0.0.15b. MCP and OAuth background management are not covered by this patch. Full-browser/real-machine Windows startup and shutdown evidence is still required before merge.
