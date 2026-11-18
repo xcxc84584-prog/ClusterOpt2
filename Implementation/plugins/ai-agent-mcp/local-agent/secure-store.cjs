@@ -56,8 +56,10 @@ function dpapi(mode, data, spawn = spawnSync) {
     const diagnostic = String(result.stderr || result.error?.code || '')
       .replace(/[A-Za-z0-9+/]{40,}={0,2}/g, '[redacted]')
       .slice(0, 300);
-    throw Error('Windows credential protection failed [' +
-      code + ']: ' + diagnostic);
+    throw Error(process.env.CI === 'true' ?
+      'Windows credential protection failed [' + code +
+        ']: ' + diagnostic :
+      'Windows credential protection failed');
   }
   const output = Buffer.from(result.stdout.trim(), 'base64');
   if (output.length > MAX_SECRET_BYTES) {
