@@ -43,9 +43,7 @@ flex:1;
 min-height:0;
 min-width:0;
 height:100%;
-overflow-x:hidden;
-overflow-y:auto;
-scrollbar-gutter:stable;
+overflow:hidden;
 background:var(--plugin-background,#000);
 color:var(--plugin-text,#eee)
 }
@@ -57,7 +55,18 @@ padding:12px 16px;
 background:var(--plugin-panel,#111);
 border-bottom:1px solid var(--plugin-border,#333);
 min-height:59px;
+flex:0 0 auto;
+position:relative;
+z-index:1;
 flex-wrap:wrap
+}
+.cai-content{
+flex:1 1 auto;
+min-height:0;
+min-width:0;
+overflow-x:hidden;
+overflow-y:auto;
+scrollbar-gutter:stable;
 }
 .cai-bar strong{
 font-size:14px;
@@ -267,6 +276,7 @@ padding:10px
   type="button" data-legacy-close
   aria-label="Close AI Agent">×</button>
 </div>
+<div class="cai-content" id="caiContent">
 <div
   class="cai-setup"
   id="caiSetup">
@@ -332,6 +342,7 @@ padding:10px
 </div>
 <div class="cai-readonly-note" role="note" data-i18n="readOnlyNotice">唯讀輸出介面：請透過 ChatGPT MCP 發送操作，此處不提供聊天輸入。</div>
 </div>
+</div>
 </section>
 <script>
 (() => {
@@ -357,7 +368,7 @@ padding:10px
     item.append(time, value);
     messages.append(item);
     if (messages.children.length > 40) messages.firstChild.remove();
-    messages.scrollTop = messages.scrollHeight;
+    panelScroll.scrollTop = panelScroll.scrollHeight;
   }
 
   function updateAgentState() {
@@ -422,7 +433,7 @@ padding:10px
   observer.observe(toolbar);
   const pairingSlot = document.getElementById("caiTrustedPairSlot");
   const setupScroll = document.getElementById("caiSetup");
-  const panelScroll = document.getElementById("clusterAiPanel");
+  const panelScroll = document.getElementById("caiContent");
   function publishPairLayout() {
     const bounds = pairingSlot.getBoundingClientRect();
     const visible = panelScroll.getBoundingClientRect();
