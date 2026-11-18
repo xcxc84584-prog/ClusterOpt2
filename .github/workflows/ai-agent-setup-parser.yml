@@ -14,6 +14,8 @@ on:
       - "Implementation/tests/pr21-4-gateway-windows.test.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Background-Gateway.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Setup-MCP.ps1"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/remote-mcp.cjs"
+      - "Implementation/tests/pr22-agent-port-http403-windows.test.cjs"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Start-*.ps1"
       - "Implementation/tests/pr20-port-cpo-windows.test.ps1"
       - ".github/workflows/ai-agent-setup-parser.yml"
@@ -22,6 +24,8 @@ on:
     paths:
       - "Implementation/plugins/ai-agent-mcp/local-agent/Setup-Quick.ps1"
       - "Implementation/plugins/ai-agent-mcp/local-agent/Quick-Setup.cmd"
+      - "Implementation/plugins/ai-agent-mcp/local-agent/remote-mcp.cjs"
+      - "Implementation/tests/pr22-agent-port-http403-windows.test.cjs"
       - ".github/workflows/ai-agent-setup-parser.yml"
 
 permissions:
@@ -105,3 +109,7 @@ jobs:
         shell: powershell
         run: |
           ./Implementation/tests/pr21-4-gateway-windows.test.ps1
+      - name: Agent port switching and HTTP 403 regression
+        shell: pwsh
+        run: |
+          node --test Implementation/tests/pr22-agent-port-http403-windows.test.cjs
