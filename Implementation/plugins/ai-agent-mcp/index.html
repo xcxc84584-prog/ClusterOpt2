@@ -432,8 +432,22 @@ padding:10px
     "click", () => send("cluster-plugin-download-package"));
   document.querySelector("[data-legacy-close]").addEventListener(
     "click", () => send("cluster-plugin-panel-close"));
-  toolbox.addEventListener("click",
-    () => send("cluster-plugin-toolbox-toggle"));
+  const toolbar = document.querySelector(".cai-bar");
+  const toolbarHeight = () =>
+    Math.ceil(toolbar.getBoundingClientRect().height);
+  toolbox.addEventListener("click", () => {
+    window.parent.postMessage({
+      type: "cluster-plugin-toolbox-toggle",
+      toolbarHeight: toolbarHeight()
+    }, "*");
+  });
+  const observer = new ResizeObserver(() => {
+    window.parent.postMessage({
+      type: "cluster-plugin-toolbar-layout",
+      toolbarHeight: toolbarHeight()
+    }, "*");
+  });
+  observer.observe(toolbar);
   document.addEventListener("keydown", event => {
     if (event.key !== "Escape") return;
     guide.hidden = true;
