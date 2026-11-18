@@ -591,7 +591,9 @@ export class PluginUIHostUnit {
             const reply = await this.core.request("ui", agent.id,
               "pair", {}, { origin: "user" });
             if (!reply.ok) {
-              pairError.textContent = "連線失敗 (" + reply.status + ")";
+              pairError.textContent = reply.status === 503 ?
+                "連線失敗 (503)：本機 Agent 未連上。請確認 CMD 顯示的實際 Port 與此欄一致，並確認 Agent 正在運行。" :
+                "連線失敗 (" + reply.status + ")";
             } else if (agent.state === "connected") {
               await setSavedPairing(rememberInput.checked ? { token, port } : null);
               announcePairing();
@@ -715,8 +717,14 @@ export class PluginUIHostUnit {
               const reply = await this.core.request("ui", agent.id,
                 "pair", {}, { origin: "user" });
               if (!reply.ok) {
-                await setSavedPairing(null);
-                pairError.textContent = "Token 已失效，請重新配對";
+                // A transport outage does not invalidate stored credentials.
+                // Only explicit authentication rejection may clear them.
+                if (reply.status === 403) await setSavedPairing(null);
+                pairError.textContent = reply.status === 503 ?
+                  "本機 Agent 無法連線 (503)。請檢查 Agent 是否啟動及 Port 是否正確。" :
+                  reply.status === 403 ?
+                  "Token 驗證失敗，請重新配對" :
+                  "配對失敗 (" + reply.status + ")";
               }
             } finally {
               agent.discardHostPairing();
