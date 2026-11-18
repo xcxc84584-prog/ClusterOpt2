@@ -110,3 +110,62 @@ function Select-ServicePort([string]$Service) {
     }
   }
 }
+
+
+# Displays a bounded candidate range, never a full-system port sweep.
+# "Available" means no current TCP LISTEN socket and no other
+# Cluster service reservation; Windows may still refuse a future bind.
+function Show-PortInventory(
+  [string]$Phase = 'STATUS',
+  [string]$PairService = 'terminal'
+) {
+  $ports = Get-ServicePorts
+  $first = 43875
+  $last = 43900
+  $range = @($first..$last)
+  $range += @($ports.Values | ForEach-Object { [int]$_ })
+  $range = @($range | Sort-Object -Unique)
+  $active = @()
+  try {
+    $active = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+      Where-Object { $range -contains [int]$_.LocalPort })
+  } catch {
+    Write-Warning 'TCP listener enumeration unavailable; ports are unknown.'
+  }
+  $available = @()
+  $occupied = @()
+  $reserved = @()
+  foreach ($port in $range) {
+    $matches = @($active | Where-Object {
+      [int]$_.LocalPort -eq $port
+    })
+    $owners = @($ports.Keys | Where-Object {
+      [int]$ports[$_] -eq $port
+    } | Sort-Object)
+    $pids = @($matches | Select-Object -ExpandProperty OwningProcess -Unique)
+    if ($pids.Count -gt 0) {
+      $occupied += ('{0}(PID:{1})' -f $port,($pids -join ','))
+    } elseif ($owners.Count -gt 0) {
+      $reserved += ('{0}({1})' -f $port,($owners -join ','))
+    } else {
+      $available += [string]$port
+    }
+  }
+  Write-Host ('=== CLUSTER PORTS / '+$Phase+' ===')
+  foreach ($service in @('terminal','mcp','oauth')) {
+    $label = if ($service -eq 'terminal') {'Agent Pairing'} else {
+      $service.ToUpperInvariant()
+    }
+    Write-Host ('{0} configured port: {1}' -f $label,$ports[$service])
+  }
+  Write-Host ('Pairing port ({0}): {1}' -f $PairService,$ports[$PairService])
+  Write-Host ('Candidate range: {0}-{1} plus configured ports' -f
+    $first,$last)
+  Write-Host ('Available (no observed listener): '+
+    $(if ($available.Count) {$available -join ', '} else {'none'}))
+  Write-Host ('Occupied (TCP listeners): '+
+    $(if ($occupied.Count) {$occupied -join ', '} else {'none'}))
+  Write-Host ('Reserved (configured, not listening): '+
+    $(if ($reserved.Count) {$reserved -join ', '} else {'none'}))
+  Write-Host '=============================='
+}
