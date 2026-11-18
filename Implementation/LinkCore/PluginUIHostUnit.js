@@ -389,9 +389,9 @@ export class PluginUIHostUnit {
             "PowerShell exit: " + String(code ?? "error"),
             stdout.slice(0, 32768), stderr.slice(0, 32768)
           ].join("\n").slice(0, 65536);
+          // Keep the feed in view. ToolBox output remains available
+          // if the user opens the panel; do not steal focus.
           shellOutput.hidden = false;
-          menu.hidden = false;
-          trigger.setAttribute("aria-expanded", "true");
         };
         toolbox.append(trigger, menu);
         panel.append(toolbox);
