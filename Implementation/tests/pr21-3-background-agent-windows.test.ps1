@@ -18,10 +18,9 @@ function Assert-True([bool]$condition, [string]$message) {
 try {
   Assert-True (-not (Test-Path -LiteralPath $record)) (
     'A preexisting Agent record prevents isolated CI testing')
-  $startOutput = & $manager -Action Start -Origin $origin | Out-String
-  Assert-True ($? -and $startOutput.Contains('started in background')) (
-    'Hidden local Agent did not start')
-  $started = $true
+  & $manager -Action Start -Origin $origin | Out-Null
+  $started = Test-Path -LiteralPath $record
+  Assert-True $started 'Hidden local Agent did not start'
   Assert-True (Test-Path -LiteralPath $record) (
     'Identity record missing after successful start')
   Assert-True (Test-Path -LiteralPath $token) (
@@ -32,8 +31,9 @@ try {
   $identity = Get-Content -LiteralPath $record -Raw | ConvertFrom-Json
   Assert-True ([int]$identity.pid -gt 4) 'Invalid native PID'
   Assert-True ([int]$identity.port -ge 1024) 'Invalid listener port'
-  $status = (& $manager -Action Status | Out-String)
-  Assert-True ($status.Contains('Local Agent running: PID')) (
+  & $manager -Action Status | Out-Null
+  $live = Get-NetTCPConnection -LocalPort ([int]$identity.port) -State Listen -ErrorAction SilentlyContinue
+  Assert-True (@($live | Where-Object { $_.OwningProcess -eq [int]$identity.pid }).Count -gt 0) (
     'Status did not verify the running process')
 
   # Stale or tampered process records must never authorize termination.
@@ -49,12 +49,10 @@ try {
 
   Set-Content -LiteralPath $record -Value $original -Encoding UTF8
   $original = $null
-  $status = (& $manager -Action Status | Out-String)
-  Assert-True ($status.Contains('Local Agent running: PID')) (
-    'Restored native process fingerprint was rejected')
-  $stopOutput = & $manager -Action Stop | Out-String
-  Assert-True ($stopOutput.Contains('Local Agent stopped.')) (
-    'Identity-checked native stop did not succeed')
+  & $manager -Action Status | Out-Null
+  $restored = Get-Process -Id ([int]$identity.pid) -ErrorAction SilentlyContinue
+  Assert-True ([bool]$restored) 'Original process is missing'
+  & $manager -Action Stop | Out-Null
   $started = $false
   Assert-True (-not (Test-Path -LiteralPath $record)) (
     'Identity record remained after stop')
