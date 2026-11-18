@@ -98,14 +98,12 @@ if ($existingAgent) {
 
 if (Test-Path -LiteralPath (Join-Path $agentDir 'Port-CPO.ps1')) {
   . (Join-Path $agentDir 'Port-CPO.ps1')
-  Show-PortInventory -Phase 'BEFORE INSTALL' -PairService 'terminal'
 }
 Write-Host 'AI AGENT MCP(ChatGPT) - local setup'
 Write-Host ('Source: ' + $SourceRevision)
 $node = Ensure-Node
 Ensure-Files
 . (Join-Path $agentDir 'Port-CPO.ps1')
-Show-PortInventory -Phase 'AFTER ASSET DOWNLOAD / BEFORE START' -PairService 'terminal'
 $npm = Get-Command npm.cmd -ErrorAction Stop
 Push-Location $agentDir
 try {
@@ -149,20 +147,10 @@ try {
       '. Token alone cannot establish a connection.')
   }
   . (Join-Path $agentDir 'Port-CPO.ps1')
-  Show-PortInventory -Phase 'AFTER INSTALL' -PairService 'terminal'
-  Write-Host '===================================================='
-  Write-Host ('Local Agent pairing PORT: '+$activePort)
-  Write-Host ('WebSocket endpoint: ws://127.0.0.1:'+$activePort+'/agent')
-  Write-Host 'Enter this exact port in ClusterOpt2 (not always 43881).'
-  Write-Host '===================================================='
-  Write-Host 'You can close this setup window; Local Agent remains running.'
-  # Present the freshly protected pairing token in this interactive
-  # Quick-Setup CMD only. Never copy it into a log or a download URL.
-  Write-Host 'Local Agent pairing Token for the trusted connection form:'
+  # Present one verified port, credential and endpoint at the end.
   & (Join-Path $agentDir 'Background-Agent.ps1') -Action Token
   if (-not $?) { throw 'Unable to show Local Agent pairing Token' }
-  Write-Host 'Keep this Token private; only enter it in your local pairing form.'
-  Write-Host 'To stop: run Background-Agent.ps1 -Action Stop.'
+
 } finally {
   Pop-Location
 }
