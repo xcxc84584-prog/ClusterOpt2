@@ -363,6 +363,14 @@ export class PluginUIHostUnit {
         };
         toolbox.append(trigger, menu);
         panel.append(toolbox);
+        view.positionToolBox = height => {
+          if (!Number.isFinite(height) ||
+              height < 40 || height > 320) return;
+          const top = Math.ceil(height);
+          toolbox.style.top = top + "px";
+          menu.style.maxHeight = "min(65vh, calc(100vh - " +
+            (top + 24) + "px))";
+        };
         view.toggleToolBox = () => {
           menu.hidden = !menu.hidden;
           frame.contentWindow?.postMessage({
@@ -480,7 +488,12 @@ export class PluginUIHostUnit {
               !view.enabled) return;
           const kind = event.data?.type;
           if (kind === "cluster-plugin-toolbox-toggle") {
+            view.positionToolBox?.(event.data?.toolbarHeight);
             view.toggleToolBox?.();
+            return;
+          }
+          if (kind === "cluster-plugin-toolbar-layout") {
+            view.positionToolBox?.(event.data?.toolbarHeight);
             return;
           }
           if (kind === "cluster-plugin-toolbox-close") {
