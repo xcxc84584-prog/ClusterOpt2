@@ -4,6 +4,14 @@ $ErrorActionPreference='Stop'
 $dir=Join-Path $PSScriptRoot '../plugins/ai-agent-mcp/local-agent'
 $manager=Join-Path $dir 'Background-Gateway.ps1'
 $root=Join-Path $env:LOCALAPPDATA 'ClusterOpt2\AI-Agent-MCP'
+# The production installer places the existing gateway files here.
+# Replicate that layout without downloading or publishing any service.
+New-Item -ItemType Directory -Path $root -Force|Out-Null
+foreach($name in @('remote-mcp.cjs','oauth-mcp-gateway.cjs',
+                   'secure-store.cjs')){
+ Copy-Item -LiteralPath (Join-Path $dir $name) -Destination (
+   Join-Path $root $name) -Force
+}
 $original=$null
 $mcpRunning=$false
 $oauthRunning=$false
