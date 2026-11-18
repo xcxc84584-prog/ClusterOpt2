@@ -37,9 +37,9 @@ test("PR21 legacy bar contains no removed model UI or chat input", () => {
   }
   assert.ok(html.includes("cluster-plugin-download-package"));
   assert.ok(html.includes("data-package-download"));
-  assert.ok(html.includes("id=\"caiConnectGuide\""));
-  assert.ok(html.indexOf('id="caiConnectGuide"') <
-    html.indexOf('id="caiWorkspace"'));
+  assert.doesNotMatch(html, /id="caiConnectGuide"/);
+  assert.ok(html.includes("data-saved-connect"));
+  assert.ok(html.includes("cluster-local-agent-use-saved"));
 });
 
 test("PR21 trusted host owns ToolBox and full ZIP download", () => {
