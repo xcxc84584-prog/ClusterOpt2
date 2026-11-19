@@ -35,7 +35,6 @@ export class UICO {
     this.core = core;
     this.strictOCDA = true;
     this.surfaces = new Map();
-    this.extensions = new Map();
     this.authorization = Object.freeze({
       default: "Private",
       describe: "Public",
@@ -150,11 +149,9 @@ export class UICO {
         !this.surfaces.has(payload.uiId)) {
       return failure(404, "UI Object not registered");
     }
-    const checked = UIExtensionAPIPolicy.transition(
-      this.extensions, payload,
-      { ownerId: context.source, authorized: true });
+    const checked = this.core.uru.applyUIExtensionAPI(
+      payload, { ownerId: context.source, authorized: true });
     if (!checked.ok) return failure(checked.status, "UI extension rejected");
-    this.extensions = checked.value.state;
     return Object.freeze({
       operationCode: payload.operationCode,
       uiId: payload.uiId,
