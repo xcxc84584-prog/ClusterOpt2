@@ -126,3 +126,6 @@ Mark PR23 complete only after all seven sub-PR gates, recovery point and CI PASS
 - Decide per-plugin persistence quotas, geometry coordinate policy for zoom/scroll/docking.
 - Resolve relation-direction code compatibility with historical implementations via regression tests.
 - Define worker/iframe isolation compatibility with PR13 plugin runtime.
+
+## PR23.2 protocol-validation boundary (implemented)
+`Implementation/property/UIProtocolPolicy.js` performs bounded plain-data validation for `cluster.ui/1` Request and Response envelopes. Caller identity is deliberately absent from the plugin-supplied envelope and must be pinned by HubUnit at integration time. `capabilities` maps action to *required* capability only; it never grants rights. `validateRequest()` returns an immutable snapshot or an error; `validateResponse()` verifies event correlation fields and consistent status. PR23.3 must connect UICO to live URU/EDPMU/HubUnit authority and enforce ACL; no public API List execution endpoint exists from this policy alone. Eight isolated Node tests PASS; full Relation/VTE/E2E pending.
