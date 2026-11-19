@@ -25,7 +25,8 @@ test("PR23.1 static HTML IDs are unique", () => {
 
 test("PR23.1 inventory covers every static HTML ID", () => {
 	const document = readFileSync(audit, "utf8");
-	const recorded = new Set([...document.matchAll(
+	const staticSection = document.split("## Dynamic literal ID declarations")[0];
+	const recorded = new Set([...staticSection.matchAll(
 		/^\| ([A-Za-z][A-Za-z0-9_-]*) \|/gm
 	)].map(match => match[1]));
 	const ids = htmlIds();
