@@ -9,7 +9,8 @@ import { askSaveBeforeClose } from "./save-close-dialog.js";
 import { SyntaxOverlayController } from
   "./syntax-overlay-controller.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
-import { registerNativeUIFromDOM } from "./native-ui-registration.js";
+import { registerNativeUIFromDOM, observeNativeUIFromDOM } from
+  "./native-ui-registration.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { mountPowerShellUI } from
@@ -1485,6 +1486,7 @@ window.setInterval(async () => {
   }
 }, 2500);
 window.addEventListener("pagehide", () => {
+  disposeDynamicNativeUI();
   window.clearTimeout(recoveryTimer);
   if (recoveryReady) {
     recoveryWrites = recoveryWrites.then(() =>
@@ -1501,6 +1503,7 @@ render();
 // Host-controlled static UI registration through UICO -> URU.
 // Plugin-created DOM is excluded from this approved source inventory.
 const nativeUIRegistration = registerNativeUIFromDOM(linkCore, document);
+const disposeDynamicNativeUI = observeNativeUIFromDOM(linkCore, document);
 if (nativeUIRegistration.rejected.length) {
   linkCore.omu.record("EHU", "ui", "UICO.NativeInventory",
     422, "UICO", { rejected: nativeUIRegistration.rejected.length });
