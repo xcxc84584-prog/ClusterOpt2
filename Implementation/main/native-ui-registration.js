@@ -109,7 +109,8 @@ export function registerNativeUIFromDOM(core, doc) {
     if (!element) { results.missing.push(uiId); continue; }
     const rect = element.getBoundingClientRect();
     const geometry = () => {
-      const current = element.getBoundingClientRect();
+      const current = (doc.getElementById(uiId) ?? element)
+        .getBoundingClientRect();
       return {
         space: "viewport", x: cap(current.x), y: cap(current.y),
         width: Math.max(0, cap(current.width)),
@@ -130,4 +131,95 @@ export function registerNativeUIFromDOM(core, doc) {
     else results.rejected.push({ uiId, status: registration.status });
   }
   return results;
+}
+
+/**
+ * Audited host-created literal ID assignments from PR23.1.
+ * Dynamic IDs here are stable host controls, not inferred plugin nodes.
+ * Entries not currently present are left unregistered until they appear.
+ */
+export const NativeUIDynamicIds = Object.freeze([
+  "pluginBundledAgentLauncher",
+  "powershellManagerPane",
+  "pluginManagerSearch",
+  "pluginSidebarToggle",
+  "pluginConsentTitle",
+  "pluginApiSearch",
+  "pluginResourceSearch",
+  "pluginAgentDownload",
+  "pluginAgentMount",
+  "pluginAgentQuickSetupDownload",
+  "pluginMCPQuickSetupDownload",
+  "pluginTemplateDownload",
+  "saveCloseTitle",
+  "pr11SyntaxOverlay"
+]);
+
+/**
+ * Reconcile only the audited dynamic HOST identities. Updates caused by
+ * plugin-owned content must never acquire a host UI identity.
+ * The returned disposer releases observers on host teardown.
+ */
+export function observeNativeUIFromDOM(core, doc) {
+  const registered = new Set();
+  let scheduled = false;
+  const synchronize = () => {
+    scheduled = false;
+    for (const uiId of NativeUIDynamicIds) {
+      const element = doc.getElementById(uiId);
+      const hostOwned = element &&
+        !element.closest("[data-cluster-plugin-ui]");
+      if (!hostOwned) {
+        if (registered.delete(uiId)) {
+          core.unregister("UICO." + uiId);
+          core.uiControl.surfaces.delete(uiId);
+        }
+        continue;
+      }
+      if (registered.has(uiId) ||
+          core.uiControl.surfaces.has(uiId)) continue;
+      const geometry = () => {
+        const current = doc.getElementById(uiId);
+        if (!current || current.closest("[data-cluster-plugin-ui]")) {
+          return { space: "viewport", x: 0, y: 0,
+            width: 0, height: 0 };
+        }
+        const rect = current.getBoundingClientRect();
+        return {
+          space: "viewport", x: cap(rect.x), y: cap(rect.y),
+          width: Math.max(0, cap(rect.width)),
+          height: Math.max(0, cap(rect.height))
+        };
+      };
+      const result = core.uiControl.registerHostSurface({
+        uiId, kind: kindFor(element), parentId: "root",
+        owner: "LinkCore", revision: 0,
+        geometry: geometry(),
+        appearance: {}, interaction: {}, accessibility: {}
+      }, geometry);
+      if (result.ok) registered.add(uiId);
+      else {
+        core.omu.record("EHU", "ui", "UICO.DynamicInventory",
+          result.status, uiId);
+      }
+    }
+  };
+  const observer = new doc.defaultView.MutationObserver(() => {
+    if (scheduled) return;
+    scheduled = true;
+    doc.defaultView.queueMicrotask(synchronize);
+  });
+  observer.observe(doc.documentElement, {
+    subtree: true, childList: true,
+    attributes: true, attributeFilter: ["id"]
+  });
+  synchronize();
+  return () => {
+    observer.disconnect();
+    for (const uiId of registered) {
+      core.unregister("UICO." + uiId);
+      core.uiControl.surfaces.delete(uiId);
+    }
+    registered.clear();
+  };
 }
