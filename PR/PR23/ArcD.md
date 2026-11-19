@@ -328,3 +328,31 @@ Browser startup → LinkCore ReleaseVersion → VTE facade / UICOVTERunner
 Same-version previous PASS → no automatic run; console command → manual run
 ```
 A capability-only legacy snapshot is insufficient to prove schema equivalence and now remains UNVERIFIED even if its capability strings match. Missing/changed actions fail. Browser test runs verify the single startup event and same-version skip through the real page, not solely Node simulation. The browser executable is injected via an optional environment variable for test environments only.
+
+## PR23 Patch(+10) — Discoverable envelope and fixture audit chain
+
+```text
+Plugin / caller → HubUnit (identity, ACL)
+                → UICO (extensionAPI / uiRequest)
+                → URU / owned adapter
+HubUnit.listActionContracts → authorized descriptor projection
+                            → inputSchema / outputSchema / permissions
+UICOVTERunner → UICOContractCompatibilityPolicy (legacy breaking checks)
+              → UICOProtocolFixturePolicy (pure Req/Rep fixtures)
+              → detached VTE relation checks
+              → OMU Log/EHU (runId, reasons, issues)
+```
+
+No second URU or permission registry. Declared permissions describe
+required capability families, never authorization. The fixture policy
+does not create DOM elements or invoke native UI mutation. Existing
+UIProtocolPolicy remains the runtime Request/Response validator.
+
+**Event Chain EC-UI-VTE-08:** If a declared action's fixture fails
+runtime validation or a malformed response is accepted, mark the VTE run
+FAIL and record an OMU EHU with VTE_FIXTURE issue code. Old capability-only
+baselines with a removed API or changed permission also yield FAIL; lack of
+provable schema equivalence alone stays UNVERIFIED.
+
+Remaining: action-specific accepted-set equivalence proofs, native UI
+Object identity reconciliation, browser E2E and recovery gate.
