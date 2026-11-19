@@ -72,6 +72,8 @@ import { UnifiedRegistrationUnit } from "./UnifiedRegistrationUnit.js";
 import { ObjectManagementUnit } from "./ObjectManagementUnit.js";
 import { EntireDomainPropertyManagementUnit } from "./EntireDomainPropertyManagementUnit.js";
 import { HubUnit } from "./HubUnit.js";
+import { UICO } from "../object/UICO.js";
+import { UISP } from "../property/UISP.js";
 
 /** Stable LinkCore facade: all cross-object activity uses the HubUnit. */
 export class LinkCore {
@@ -148,6 +150,10 @@ export class LinkCore {
       });
     this.hub.registerProperty("APIDescriptorPolicy", APIDescriptorPolicy, {
       owners: ["LinkCore"], visibility: "Public"
+    });
+    this.hub.registerProperty("UISP", UISP, {
+      owners: ["LinkCore", "UICO"],
+      visibility: "Public", readOnly: true
     });
     this.hub.registerProperty("SystemVersion", this.version, {
       owners: ["LinkCore"], visibility: "Public", readOnly: true
@@ -243,6 +249,12 @@ export class LinkCore {
       SYNCED: "green", DIRTY: "yellow",
       ERROR: "red", LOADING: "blue"
     }), { owners: ["LinkCore"] });
+    // Register only the read-only UI API hub in this milestone.
+    // Native UI mappings and mutation actions are not enabled yet.
+    this.uiControl = new UICO(this);
+    if (!this.register(this.uiControl)) {
+      throw new Error("UICO registration failed");
+    }
   }
 
   /** Host-only data import/export. Never auto-registers Providers. */
