@@ -111,3 +111,26 @@ Synthetic VTE cannot replace real-browser E2E for drag/focus/iframe/CSP/performa
 
 ## PR23.3 guarded milestone (partial)
 UICO and UISP have been introduced and registered via LinkCore: strict UICO read-only `describe`/`list`; UISP immutable shared definition and descriptor validation. 12 PR23-specific Node tests reported PASS. No real UI adapters or mutation APIs are enabled. Full CI/VTE/E2E remains pending; see `Patch(+2).md`.
+
+## PR23.4 definitive amendment — 2-bit UI API operation code (2026-11-19)
+
+This section supersedes any conflicting PR23.4 authorization description above. Each UI Object must implement a UISP-facing API with **four 2-bit operation codes** (the 2-bit value identifies one operation; it is not a four-permission bitmask):
+
+| UI operation code | Operation | Meaning | Mandatory restriction |
+|---|---|---|---|
+| `00` | Add / 增 | Add a new extension API owned by the plugin for the target UI Object | Only in an explicitly extensible namespace/slot, after HubUnit authorization |
+| `01` | Delete / 刪 | Delete an API previously added by the authorized plugin | Cannot delete native UI APIs unless a separate explicit `ui.api.native.delete` authority is granted |
+| `10` | Query / 查 | Query authorized APIs, signatures, metadata and their visibility | Filter by caller identity, visibility and ownership |
+| `11` | Update / 改 | Modify an existing API extension's metadata/handler binding using versioned contract rules | Owner-scoped; native API modification requires separate explicit host grant |
+
+**Namespace separation:** these UI-operation bits are `UIOperationCode` and must never be confused with the existing **RelationCode** `00` no interaction / `10` Request / `01` Response / `11` bidirectional. One describes CRUD operations; the other describes Object-to-Object interaction direction. Always include the field name, not an unlabeled two-bit literal.
+
+**Authorization representation:** One request carries exactly one operation code; each caller's permissions are represented as an approved set of allowed operations/scopes. Two bits alone cannot represent arbitrary combinations of independent permissions. For an independent allow/deny matrix across Add/Delete/Query/Update, use four booleans/a four-bit permission mask in the authorization layer; keep the requested 2-bit code as the operation selector.
+
+**Critical distinction:** `Add`/`Delete` here operate on **API extensions attached to a UI Object**, not creation/deletion of native UI elements. UI element Create/Remove follows separate UICO actions and permissions. Native API removal is deny-by-default even for a plugin that created UI controls. Revoking a plugin must remove only its owned extension APIs.
+
+**Atomicity and safety:** bind actual caller identity at HubUnit; track API provenance `native | plugin` with immutable ownerId, apiId, revision and schema digest. Reject spoofed owner/provenance, duplicate API IDs, mutation of native definitions without special rights, dangling subscribers, version-incompatible schema and malformed payloads. Use expectedRevision optimistic checks, atomic register/unregister with URU, OMU success/failure logs and EHU for every failure. Do not grant permissions simply because API List exposes an action.
+
+**PR23.4 acceptance:** for every inventoried UI Object, test all four codes with both authorized and rejected callers; verify plugin-owned Add→Query→Update→Delete round-trip, native Delete=403, unowned Delete=403, duplicate Add=409, missing API=404, stale update=409, rollback and reload cleanup. Tests must include HubUnit/URU/OMU Event Chain and VTE; browser E2E is required where UI behavior changes.
+
+**Implementation status:** specification only in this amendment. Current UICO remains read-only and no new dynamic API mutation authority is activated.
