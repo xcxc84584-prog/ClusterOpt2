@@ -84,3 +84,27 @@ Synthetic VTE cannot replace real-browser E2E for drag/focus/iframe/CSP/performa
 - Added data-only `Implementation/property/UIProtocolPolicy.js`, immutable contract validator and action/capability metadata; it is NOT an authority and does not mutate UI or grant permission.
 - Added eight Node regression tests (8/8 PASS in X2 PowerShell isolated test). Full repo CI, real HubUnit integration, VTE and browser E2E remain pending.
 - See `Patch(+1).md` and `總工作交接提示詞(PR23.2-draft1).md`. This patch stays on draft branch; release version unchanged.
+
+## PR23 current requirements revision — 2026-11-19 (authoritative)
+**This section supersedes the earlier 23.1–23.7 phase matrix and any conflicting phase references above.** PR23 has **eight** stages. Runtime code in PR23.2 remains a preliminary contract-validation helper; phase completion is pending integrated acceptance.
+
+| Stage | Required delivery | Acceptance |
+|---|---|---|
+| PR23.1 | Inventory **all current native UI components**, actual source paths, Object IDs, existing state & APIs | DOM-to-inventory completeness and missing-UI report |
+| PR23.2 | Full high-freedom plugin-facing native UI API protocol (Req/Rep, ACL, layout semantics, lifecycle, rollback, event subscription, quotas) | Request/Response specifications and schema/security tests |
+| PR23.3 | Implement **UICO**, the UI API Hub, and **UISP**, the reusable UI standard property | HubUnit → UICO dispatch → UI Object, plus EDPMU UISP registration; unit/relation tests |
+| PR23.4 | Implement and expose UISP API for **each** UI Object | Every inventoried UI Object declares typed UISP projection and supported Request/Response |
+| PR23.5 | Validate full API data and visibility in API List | Zero gaps for registered public APIs: input schema, output schema, permissions, errors, examples |
+| PR23.6 | Gradually register all UI Objects and UISP projections via **UICO and HubUnit/URU/EDPMU** | Dynamic registration, unique identities, lifecycle and reload tests |
+| PR23.7 | Static Request/Response VTE compatibility runner comparing old and new version contracts; **on startup run once in background when LinkCore authoritative version differs from previously opened version**, emit Log/EHU | Deterministic versioned snapshots, change classification, no user-document writes, retry policy |
+| PR23.8 | Integrate UICO and UISP with HubUnit/OMU/URU and release gates | End-to-end routing, authorization, event/Log/EHU, CI/VTE/browser acceptance |
+
+### UICO hub responsibility (clarification)
+`Plugin → HubUnit → UICO → UI Object → UICO → HubUnit → Plugin`. UICO is the only **UI-domain dispatcher**; it does not replace HubUnit as the system's Req/Rep authority. HubUnit owns identity/permission checks, URU registration flow and OMU event/log/error reporting; UICO owns typed UI routing, UISP projection and UI-object adapter operations. All inter-Object requests still traverse HubUnit. To prevent routing recursion, the UI Object dispatch may use a HubUnit-managed internal Request with a trusted origin and transaction context; UICO must not bypass HubUnit ACL to mutate an unrelated Object. Build this explicit bridge in PR23.3/PR23.8.
+
+### Static VTE compatibility contract (PR23.7)
+- Capture **declarative Request/Response schema snapshots** for each authorized API at version N−1 and N, keyed by immutable action identity and contract version, not volatile runtime object handles.
+- Compare Request acceptance sets and Response shapes: removed/renamed actions, required-property additions, type narrowing/widening, new/removed error states and permission changes. Classify breaking vs additive vs documentation-only; unknown/missing snapshots are `UNVERIFIED`, never automatic PASS.
+- Execute synthetic old/new fixture pairs inside the existing VTE sandbox; do not invoke live effects. Record `eventId`, `chainId`, source/target, status and EHU for fail cases.
+- Startup condition follows **last opened LinkCore version** (not last successful VTE result): persist last-opened version and last-tested version separately. On version change run one background test and mark failed tests for explicit retry. Do not rerun on every same-version reload. Include suite fingerprint and fallback if storage unavailable.
+- No API key, absolute workstation path or test-only prompts in user UI.
