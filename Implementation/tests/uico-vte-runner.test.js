@@ -76,3 +76,14 @@ test("PR23.7 same-version no-error startup does not run", () => {
 		core, () => new VirtualTestEnvironment(), store);
 	assert.equal(runner.startup().status, "skip");
 });
+
+test("PR23.7 console remains accessible when storage is denied", async () => {
+	const core = new LinkCore();
+	const win = {};
+	Object.defineProperty(win, "localStorage", {
+		get() { throw new Error("SecurityError"); }
+	});
+	exposeVTE(win, core);
+	assert.equal(typeof win.VTE.UICO_TEST, "function");
+	assert.equal((await win.VTE.UICO_TEST()).status, "UNVERIFIED");
+});
