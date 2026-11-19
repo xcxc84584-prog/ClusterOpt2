@@ -34,6 +34,20 @@ test("PR23 tabbed plugin window and sandboxed view through Hub",
         core.grantPluginPermission(
           "plugin.demo", "plugin.demo", permission, true);
       }
+      core.pluginHostInstaller.uiHost.views.set("plugin.demo", {
+        enabled: true,
+        provider: { providerId: "plugin.demo",
+          objectId: "plugin.demo" },
+        snapshot: {
+          manifestText: JSON.stringify({
+            name: "Demo", uiEntry: "views/index.html"
+          }),
+          files: {
+            "views/settings.html": btoa(
+              "<main><h1>Installed Settings</h1></main>")
+          }
+        }
+      });
       const send = (action, payload, requestId) =>
         core.request("plugin.demo", "UICO", "uiRequest", {
           protocol: "cluster.ui/1", requestId,
@@ -56,10 +70,12 @@ test("PR23 tabbed plugin window and sandboxed view through Hub",
       const frame = window?.querySelector("iframe");
       const frameAttributes = {
         sandbox: frame?.getAttribute("sandbox"),
-        src: frame?.getAttribute("src"),
-        origin: frame?.src ? new URL(frame.src).origin : null,
-        appOrigin: location.origin
+        srcdoc: frame?.getAttribute("srcdoc"),
+        src: frame?.getAttribute("src")
       };
+      const missing = await send("UI.NavigatePluginView", {
+        uiId, viewId: "missing"
+      }, "missing-view");
       const hidden = await send("UI.SetVisibility", {
         uiId, visible: false
       }, "hide1");
@@ -76,6 +92,7 @@ test("PR23 tabbed plugin window and sandboxed view through Hub",
       return {
         manifest: manifest.status, created: created.status,
         tab: tab.status, navigated: navigated.status,
+        missing: missing.status,
         frameAttributes,
         hidden: hidden.status, wasHidden,
         visible: visible.status, removedTab: removedTab.status,
@@ -89,10 +106,12 @@ test("PR23 tabbed plugin window and sandboxed view through Hub",
     expect(result.tab).toBe(200);
     expect(result.navigated).toBe(200);
     expect(result.frameAttributes.sandbox).toBe("allow-scripts");
-    expect(result.frameAttributes.origin).toBe(
-      result.frameAttributes.appOrigin);
-    expect(result.frameAttributes.src).toContain(
-      "Implementation/plugins/plugin.demo/settings.html");
+    expect(result.frameAttributes.src).toBe(null);
+    expect(result.frameAttributes.srcdoc).toContain(
+      "Installed Settings");
+    expect(result.frameAttributes.srcdoc).toContain(
+      "Content-Security-Policy");
+    expect(result.missing).toBe(404);
     expect(result.hidden).toBe(200);
     expect(result.wasHidden).toBe(true);
     expect(result.visible).toBe(200);
