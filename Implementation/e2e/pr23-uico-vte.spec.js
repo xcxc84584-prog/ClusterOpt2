@@ -58,3 +58,53 @@ test("PR23.7 same-version startup skips duplicate background check",
 		expect(info.status).toBe("pass");
 	}
 );
+
+test("PR23.7 resumes an incomplete same-version VTE after reload",
+	async ({ page }) => {
+		await page.goto("/");
+		await page.evaluate(async () => {
+			const { UIProtocolPolicy } = await import(
+				"/Implementation/property/UIProtocolPolicy.js");
+			const { UICOActionContractDescriptors } = await import(
+				"/Implementation/property/UICOActionContractDescriptors.js");
+			const { UISP } = await import(
+				"/Implementation/property/UISP.js");
+			const version = window.Cluster.version();
+			const snapshot = {
+				version,
+				actions: UICOActionContractDescriptors.build(
+					UIProtocolPolicy.capabilities, UISP.version)
+			};
+			localStorage.setItem("cluster.uico.vte.v1", JSON.stringify({
+				openedVersion: version, currentSnapshot: snapshot,
+				baseline: snapshot, status: "pending"
+			}));
+		});
+		await page.reload();
+		await expect.poll(() => page.evaluate(() => {
+			const raw = localStorage.getItem("cluster.uico.vte.v1");
+			return raw ? JSON.parse(raw).status : null;
+		})).toBe("pass");
+		const audits = await page.evaluate(() => window.Cluster.log()
+			.filter(entry => entry.action === "UICO_TEST"));
+		expect(audits).toHaveLength(1);
+		expect(audits[0].kind).toBe("Log");
+	}
+);
+
+test("PR23.7 corrupt persistence recovers as unverified with EHU",
+	async ({ page }) => {
+		await page.goto("/");
+		await page.evaluate(() =>
+			localStorage.setItem("cluster.uico.vte.v1", "{malformed"));
+		await page.reload();
+		await expect.poll(() => page.evaluate(() => {
+			const raw = localStorage.getItem("cluster.uico.vte.v1");
+			try { return JSON.parse(raw).status; } catch { return null; }
+		})).toBe("unverified");
+		const audits = await page.evaluate(() => window.Cluster.log()
+			.filter(entry => entry.action === "UICO_TEST"));
+		expect(audits).toHaveLength(1);
+		expect(audits[0].kind).toBe("EHU");
+	}
+);
