@@ -129,3 +129,46 @@ Mark PR23 complete only after all seven sub-PR gates, recovery point and CI PASS
 
 ## PR23.2 protocol-validation boundary (implemented)
 `Implementation/property/UIProtocolPolicy.js` performs bounded plain-data validation for `cluster.ui/1` Request and Response envelopes. Caller identity is deliberately absent from the plugin-supplied envelope and must be pinned by HubUnit at integration time. `capabilities` maps action to *required* capability only; it never grants rights. `validateRequest()` returns an immutable snapshot or an error; `validateResponse()` verifies event correlation fields and consistent status. PR23.3 must connect UICO to live URU/EDPMU/HubUnit authority and enforce ACL; no public API List execution endpoint exists from this policy alone. Eight isolated Node tests PASS; full Relation/VTE/E2E pending.
+
+## PR23 revised eight-stage architecture (supersedes previous numbering)
+```mermaid
+sequenceDiagram
+    participant P as Plugin
+    participant H as HubUnit
+    participant U as UICO (UI API Hub)
+    participant R as UI Object
+    participant S as UISP / EDPMU
+    participant M as OMU
+    P->>H: Request (validated identity, ACL)
+    H->>M: Log request / Event Chain
+    H->>U: UI.* Request
+    U->>H: Internal routed UI Object request
+    H->>R: Authorized UI Object Request
+    R->>H: Property Read/Update (UISP)
+    H->>S: EDPMU property operation
+    S-->>H: Typed state / algorithm result
+    H-->>R: Property response
+    R-->>H: UI result
+    H-->>U: UI Object response
+    U-->>H: UI Response envelope
+    H->>M: Log/EHU, dependency
+    H-->>P: Authorized Response
+```
+
+**UICO is a domain hub, not a replacement for HubUnit.** HubUnit remains the authoritative path for every Object-to-Object Request/Response and Property operation, URU dynamic enrollment and OMU Log/EHU. UICO dispatches UI protocol calls and maintains domain-level UI identity resolution, but relies on trusted HubUnit-mediated calls for individual UI Objects; deny privilege escalation and circular dispatch.
+
+**Phase assignments:** PR23.3 creates UICO/UISP; PR23.4 implements individual UI Object UISP APIs; PR23.5 verifies request/response metadata and API List; PR23.6 registers all migrated UI Object instances dynamically through HubUnit; PR23.7 implements static old/new contract VTE and version-triggered background comparison; PR23.8 integrates and tests the full bridge. Prior PR23.4–23.7 descriptions above refer to the obsolete seven-stage plan.
+
+### Static compatibility Event Chains (PR23.7)
+| ID | Input | VTE verification | Logging |
+|---|---|---|---|
+| EC-UI-10 | Release version changed | Load immutable old/new API contract snapshots; compare all registered actions | OMU start and PASS/FAIL |
+| EC-UI-11 | Old request fixture on new schema | Classify request break, status and expected response | FAIL + EHU on breaking mismatch |
+| EC-UI-12 | New response vs prior contract | Validate old consumer compatibility (required/type/shape) | FAIL + EHU on mismatch |
+| EC-UI-13 | Unknown historical snapshot | Mark UNVERIFIED; do not invent PASS | EHU or flagged unverified log |
+| EC-UI-14 | Same opened version | Skip automatic job; explicit VTE manual command still supported | no duplicate auto-run |
+| EC-UI-15 | Changed version, prior failure | One automatic run; persist failure and permit manual retry | EHU always recorded |
+
+### Proposed per-Object UISP API descriptor
+`{ uiId, objectPath, parentId, uiKind, owner, properties: {geometry, layout, appearance, interaction, accessibility, lifecycle}, requests: [{action,inputSchema,outputSchema,permissions,errors}], version, revision }`.
+This is metadata; runtime registry, permission and actual UI state remain controlled by URU, HubUnit and the owning UI Object. Exact schema implementation is reserved for PR23.3–23.4.
