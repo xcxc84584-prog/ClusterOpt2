@@ -1,3 +1,6 @@
+import { PluginUIViewPolicy } from
+  "../property/PluginUIViewPolicy.js";
+
 /**
  * PR23 — bounded DOM adapter for plugin-owned controls only.
  * Native host UI stays immutable; no HTML injection or arbitrary selectors.
@@ -337,21 +340,23 @@ export class PluginUIControlAdapter {
     return { uiId, tabId, revision: item.revision };
   }
 
-  navigate(uiId, source, viewId) {
+  navigate(uiId, source, viewId, providerId) {
     const item = this.owned(uiId, source);
     if (item.kind !== "window") return fail(400, "Not a plugin window");
-    if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(viewId) ||
-        !/^[A-Za-z][A-Za-z0-9._-]{0,127}$/.test(source)) {
-      return fail(400, "Unsafe plugin view path");
+    const host = this.core.pluginHostInstaller?.uiHost;
+    const installed = host?.views.get(providerId);
+    if (!installed || installed.provider?.objectId !== source ||
+        !installed.enabled) {
+      return fail(403, "Plugin UI package unavailable");
     }
-    // Only plugin-owned same-site assets; iframe does not inherit host origin.
-    const path = "Implementation/plugins/" + encodeURIComponent(source) +
-      "/" + encodeURIComponent(viewId) + ".html";
+    const view = PluginUIViewPolicy.read(installed.snapshot, viewId);
+    if (!view.ok) return fail(view.status, "Invalid plugin view asset");
     const frame = item.frame ?? this.doc.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
     frame.setAttribute("title", viewId);
     frame.setAttribute("referrerpolicy", "no-referrer");
-    frame.src = new URL(path, this.doc.baseURI).href;
+    frame.removeAttribute("src");
+    frame.srcdoc = view.srcdoc;
     if (!item.frame) item.node.appendChild(frame);
     item.frame = frame;
     item.revision++;
