@@ -103,7 +103,8 @@ test("PR23.5 authorized API List includes full UICO and UI Object schemas", () =
   core.register({ id: "Reader", receive: async () => null });
   const before = core.listActionContracts("Reader");
   assert.equal(before.ok, true);
-  for (const action of ["describe", "list", "extensionAPI"]) {
+  for (const action of ["describe", "list", "extensionAPI",
+                       "uiRequest"]) {
     const entry = before.value.items.find(item =>
       item.owner === "UICO" && item.action === action);
     assert.equal(entry?.described, true, action);
@@ -126,4 +127,29 @@ test("PR23.5 authorized API List includes full UICO and UI Object schemas", () =
   assert.ok(entries.every(item => item.described &&
     item.inputSchema && item.outputSchema));
   assert.equal(core.listActionContracts("unknown").status, 404);
+});
+
+test("PR23.5 API List exposes typed UICO envelopes and capabilities", () => {
+  const core = new LinkCore();
+  core.register({ id: "Reader", receive: async () => null });
+  const contracts = core.listActionContracts("Reader");
+  assert.equal(contracts.status, 200);
+  const find = name => contracts.value.items.find(item =>
+    item.owner === "UICO" && item.action === name);
+  const request = find("uiRequest");
+  assert.equal(request?.described, true);
+  assert.deepEqual(request.inputSchema.required,
+    ["protocol", "requestId", "targetId", "action", "payload"]);
+  assert.deepEqual(request.outputSchema.required,
+    ["requestId", "eventId", "status", "ok"]);
+  assert.equal(request.inputSchema.additionalProperties, false);
+  assert.ok(request.permissions.includes("ui.create.own"));
+  assert.ok(request.permissions.includes("ui.window"));
+  assert.ok(request.permissions.includes("ui.read"));
+  const extension = find("extensionAPI");
+  assert.deepEqual(extension.inputSchema.required,
+    ["providerId", "uiId", "apiId", "operationCode"]);
+  assert.equal(extension.permissions.length, 4);
+  assert.ok(extension.permissions.includes("ui.api.extension.delete"));
+  assert.equal(find("list").outputSchema.type, "array");
 });
