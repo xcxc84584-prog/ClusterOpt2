@@ -33,15 +33,28 @@ export class UICOVTERunner {
 	}
 
 	readRecord() {
+		let serialized;
 		try {
-			const value = this.storage?.getItem(STORE_KEY);
-			const record = value ? JSON.parse(value) : null;
-			if (record && typeof record === "object" &&
-				!Array.isArray(record)) return record;
+			serialized = this.storage?.getItem(STORE_KEY);
 		} catch {
-			// Storage failure must not mutate application state.
+			// Storage denied: do not invent an earlier version or baseline.
+			return {};
 		}
-		return {};
+		if (!serialized) return {};
+		if (typeof serialized !== "string" ||
+			serialized.length > 262144) return { status: "error" };
+		try {
+			const record = JSON.parse(serialized);
+			if (record && typeof record === "object" &&
+				!Array.isArray(record) &&
+				(record.status === undefined ||
+				 typeof record.status === "string") &&
+				(record.openedVersion === undefined ||
+				 typeof record.openedVersion === "string")) return record;
+		} catch {
+			// Corrupted state schedules a bounded unverified VTE retry.
+		}
+		return { status: "error" };
 	}
 
 	saveRecord(record) {
@@ -69,7 +82,8 @@ export class UICOVTERunner {
 		const current = this.snapshot();
 		const record = {
 			...prior, openedVersion: this.core.version,
-			currentSnapshot: current
+			currentSnapshot: current,
+			...(decision.run ? { status: "pending" } : {})
 		};
 		if (prior.openedVersion && prior.openedVersion !==
 			this.core.version) {
