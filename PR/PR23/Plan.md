@@ -177,3 +177,11 @@ Multiple simultaneous reasons combine into **one bounded single-flight run**; a 
 - This is an **exact descriptor-equality detector**, not yet proof of equivalent accepted-request sets, response semantics, error-enum coverage, or a complete synthetically executed fixture matrix. Schema behavior changes require explicit review before release.
 - X2 focused UICO test suite 18/18 PASS (TEST_EXIT=0). Full npm run check: 468 tests, 464 pass, 4 fail before compatibility-test updates; 3 affected suites subsequently pass 16/16. Outstanding sparse backing allocation probe is environment-dependent and not accepted. Full clean check, browser E2E, CI and rollback remain pending.
 - Remaining tasks: stronger current-schema enforcement alignment, schema-specific synthetic Req/Rep fixtures, suite digest and persistent retry hardening, browser reload trigger test, complete UICO UI adapter operations.
+
+
+## PR23 Patch(+9) — Legacy baseline safety and browser VTE E2E (2026-11-19)
+- Canonical Request/Response comparator now returns UNVERIFIED for unchanged legacy capability-only snapshots (they contain no per-action schemas). A removed action or changed capability still fails rather than being treated as a safe migration.
+- Added Playwright browser startup/reload checks: a prior authoritative version triggers one UICO background test; same-version successful relaunch skips auto-run; manual `VTE.UICO_TEST()` remains callable. The tests seed only inert localStorage metadata and do not mutate user files or live UI.
+- Playwright config accepts `CLUSTER_E2E_CHROMIUM_PATH` to select an existing local Chromium executable without hardcoding machine paths; the default remains the project-installed Playwright browser.
+- X2 results: 18/18 focused UICO Node PASS; browser PR23.7 2/2 PASS and PR23.1 runtime inventory smoke 1/1 PASS using installed local Chrome. The full `npm run check` rerun did not yield a verifiable final exit and cannot be claimed green; previous check reported 464/468 with sparse-file fixture unresolved at that point.
+- Full UI inventory, deeper schema acceptance-set semantic checks, API List and UI mutation adapters remain outside this checkpoint. Do not merge or release without clean CI and recovery gate.
