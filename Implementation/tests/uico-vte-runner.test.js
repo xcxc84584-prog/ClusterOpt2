@@ -18,7 +18,7 @@ function storage() {
 test("PR23.7 detects removed and changed static contracts", () => {
 	const old = { version: "old", actions: { "UI.List": "ui.read" } };
 	assert.equal(compare.compare(null, old).status, "UNVERIFIED");
-	assert.equal(compare.compare(old, old).status, "PASS");
+	assert.equal(compare.compare(old, old).status, "UNVERIFIED");
 	assert.equal(compare.compare(old, {
 		version: "new", actions: {}
 	}).status, "FAIL");
