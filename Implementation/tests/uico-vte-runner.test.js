@@ -127,3 +127,22 @@ test("PR23.7 corrupted persisted records never produce a false PASS",
 		assert.ok(core.omu.snapshot().logs.some(entry =>
 			entry.kind === "EHU" && entry.action === "UICO_TEST"));
 	});
+
+test("PR23.7 rejects forged stored PASS with invalid version or state",
+	async () => {
+		for (const record of [
+			{ openedVersion: 42, status: "pass" },
+			{ openedVersion: "../bad", status: "pass" },
+			{ openedVersion: "0.0.15b", status: "unknown" }
+		]) {
+			const core = new LinkCore();
+			const store = storage();
+			store.setItem("cluster.uico.vte.v1", JSON.stringify(record));
+			const runner = new UICOVTERunner(
+				core, () => new VirtualTestEnvironment(), store);
+			const decision = runner.startup();
+			assert.equal(decision.run, true);
+			assert.deepEqual(decision.reasons, ["previous-error"]);
+			assert.equal((await runner.run()).status, "UNVERIFIED");
+		}
+	});
