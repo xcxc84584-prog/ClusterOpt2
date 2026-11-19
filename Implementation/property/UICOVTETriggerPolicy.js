@@ -8,7 +8,7 @@
 const VERSION = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const ERROR_STATES = new Set(["fail", "error", "unverified"]);
 const REASONS = Object.freeze([
-	"version-change", "previous-error", "manual"
+	"version-change", "previous-error", "previous-incomplete", "manual"
 ]);
 
 function validVersion(version) {
@@ -57,6 +57,10 @@ export const UICOVTETriggerPolicy = Object.freeze({
 		}
 		if (ERROR_STATES.has(previousTestStatus)) {
 			reasons.push("previous-error");
+		}
+		// A launch interrupted after scheduling must be retried on reload.
+		if (previousTestStatus === "pending") {
+			reasons.push("previous-incomplete");
 		}
 		if (manual) reasons.push("manual");
 		if (!reasons.length) return decision(false, [], "skip");
