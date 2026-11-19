@@ -189,6 +189,94 @@ export class PluginUIControlAdapter {
     return { uiId, property, value: state[property] };
   }
 
+  addTab(uiId, source, tabId, title) {
+    const item = this.owned(uiId, source);
+    if (item.kind !== "window") return fail(400, "Not a tabbed window");
+    if (item.tabs.has(tabId)) return fail(409, "Duplicate tab");
+    if (item.tabs.size >= 12 ||
+        typeof title !== "string" || title.length > 128) {
+      return fail(400, "Invalid tab metadata");
+    }
+    const button = this.doc.createElement("button");
+    button.type = "button";
+    button.textContent = title;
+    button.setAttribute("role", "tab");
+    button.dataset.pluginTab = tabId;
+    button.addEventListener("click", () => {
+      for (const [id, tab] of item.tabs) {
+        tab.setAttribute("aria-selected", String(id === tabId));
+      }
+      item.activeTab = tabId;
+    });
+    item.node.appendChild(button);
+    item.tabs.set(tabId, button);
+    if (item.tabs.size === 1) button.click();
+    item.revision++;
+    return { uiId, tabId, revision: item.revision };
+  }
+
+  removeTab(uiId, source, tabId) {
+    const item = this.owned(uiId, source);
+    const button = item.tabs.get(tabId);
+    if (!button) return fail(404, "Unknown tab");
+    button.remove();
+    item.tabs.delete(tabId);
+    if (item.activeTab === tabId) {
+      item.activeTab = null;
+      item.tabs.values().next().value?.click();
+    }
+    item.revision++;
+    return { uiId, tabId, revision: item.revision };
+  }
+
+  navigate(uiId, source, viewId) {
+    const item = this.owned(uiId, source);
+    if (item.kind !== "window") return fail(400, "Not a plugin window");
+    if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(viewId) ||
+        !/^[A-Za-z][A-Za-z0-9._-]{0,127}$/.test(source)) {
+      return fail(400, "Unsafe plugin view path");
+    }
+    // Only plugin-owned same-site assets; iframe does not inherit host origin.
+    const path = "Implementation/plugins/" + encodeURIComponent(source) +
+      "/" + encodeURIComponent(viewId) + ".html";
+    const frame = item.frame ?? this.doc.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.setAttribute("title", viewId);
+    frame.setAttribute("referrerpolicy", "no-referrer");
+    frame.src = new URL(path, this.doc.baseURI).href;
+    if (!item.frame) item.node.appendChild(frame);
+    item.frame = frame;
+    item.revision++;
+    return { uiId, viewId, revision: item.revision };
+  }
+
+  subscribe(uiId, source, subscriptionId) {
+    const item = this.owned(uiId, source);
+    item.subscriptions ??= new Map();
+    if (item.subscriptions.has(subscriptionId)) {
+      return fail(409, "Duplicate UI subscription");
+    }
+    if (item.subscriptions.size >= 10) {
+      return fail(429, "Subscription quota exceeded");
+    }
+    const listener = () => {
+      void this.core.request("UICO", source, subscriptionId,
+        { uiId }, { origin: "user" });
+    };
+    item.node.addEventListener("click", listener);
+    item.subscriptions.set(subscriptionId, listener);
+    return { uiId, subscriptionId, active: true };
+  }
+
+  unsubscribe(uiId, source, subscriptionId) {
+    const item = this.owned(uiId, source);
+    const listener = item.subscriptions?.get(subscriptionId);
+    if (!listener) return fail(404, "Subscription not found");
+    item.node.removeEventListener("click", listener);
+    item.subscriptions.delete(subscriptionId);
+    return { uiId, subscriptionId, active: false };
+  }
+
   teardownOwner(ownerId) {
     for (const [id, item] of [...this.nodes]) {
       if (item.owner === ownerId) this.remove(id, ownerId);
