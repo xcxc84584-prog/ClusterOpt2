@@ -185,3 +185,20 @@ Multiple simultaneous reasons combine into **one bounded single-flight run**; a 
 - Playwright config accepts `CLUSTER_E2E_CHROMIUM_PATH` to select an existing local Chromium executable without hardcoding machine paths; the default remains the project-installed Playwright browser.
 - X2 results: 18/18 focused UICO Node PASS; browser PR23.7 2/2 PASS and PR23.1 runtime inventory smoke 1/1 PASS using installed local Chrome. The full `npm run check` rerun did not yield a verifiable final exit and cannot be claimed green; previous check reported 464/468 with sparse-file fixture unresolved at that point.
 - Full UI inventory, deeper schema acceptance-set semantic checks, API List and UI mutation adapters remain outside this checkpoint. Do not merge or release without clean CI and recovery gate.
+
+## PR23 Patch(+10) — Typed UICO discovery and negative VTE fixtures (2026-11-20)
+- UICO now registers API descriptors for extensionAPI and uiRequest with
+  explicit envelope fields, response structures and declared permission
+  requirements. HubUnit publishes permissions only after caller-scoped
+  API discovery; no ACL behavior changes.
+- Legacy snapshot migrations are evaluated for removed actions or changed
+  capabilities before the UNVERIFIED classification, preventing those
+  breaking changes from being masked.
+- New pure UICOProtocolFixturePolicy covers each declared UI action with
+  accepted/rejected request envelopes and success/error response cases.
+  UICOVTERunner records fixture failures through existing OMU.
+- **Not accepted as full PR23.5/23.7/23.8 completion:** descriptor v1 does not
+  represent action-specific error enums or examples, fixture tests do not
+  prove full schema equivalence, and browser/native UI coverage is incomplete.
+- Local X2 PowerShell test request failed HTTP 403 Agent pairing verification.
+  Obtain explicit CI PASS evidence before altering Draft or merging.
