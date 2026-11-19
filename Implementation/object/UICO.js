@@ -182,6 +182,21 @@ export class UICO {
         payload.uiId, context.source, payload.visible);
     } else if (action === "UI.SetFocus") {
       output = this.adapter.focus(payload.uiId, context.source);
+    } else if (action === "UI.AddTab") {
+      output = this.adapter.addTab(payload.uiId, context.source,
+        payload.tabId, payload.title);
+    } else if (action === "UI.RemoveTab") {
+      output = this.adapter.removeTab(payload.uiId, context.source,
+        payload.tabId);
+    } else if (action === "UI.NavigatePluginView") {
+      output = this.adapter.navigate(payload.uiId, context.source,
+        payload.viewId);
+    } else if (action === "UI.Subscribe") {
+      output = this.adapter.subscribe(payload.uiId, context.source,
+        payload.subscriptionId);
+    } else if (action === "UI.Unsubscribe") {
+      output = this.adapter.unsubscribe(payload.uiId, context.source,
+        payload.subscriptionId);
     } else {
       return failure(501, "UI operation not yet implemented");
     }
