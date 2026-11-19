@@ -12,7 +12,7 @@ const SCHEMA_TYPE = new Set([
 const FIELDS = new Set([
   "apiVersion", "id", "owner", "action", "version", "visibility",
   "sideEffect", "inputSchema", "outputSchema", "description",
-  "since", "deprecated", "permissions"
+  "since", "deprecated", "permissions", "errors", "examples"
 ]);
 const SCHEMA_FIELDS = new Set([
   "type", "properties", "required", "items", "additionalProperties"
@@ -132,6 +132,35 @@ export const APIDescriptorPolicy = Object.freeze({
          candidate.permissions.some(value =>
            typeof value !== "string" || !NAME.test(value)))) {
       failures.push("permissions");
+    }
+    // Typed, bounded documentation metadata. Descriptions never grant
+    // privileges or become executable callbacks.
+    if (candidate.errors !== undefined &&
+        (!Array.isArray(candidate.errors) ||
+         candidate.errors.length > 16 ||
+         candidate.errors.some(item =>
+           !record(item) ||
+           Object.keys(item).some(key =>
+             !["status", "code", "message"].includes(key)) ||
+           !Number.isInteger(item.status) ||
+           item.status < 400 || item.status > 599 ||
+           typeof item.code !== "string" || !NAME.test(item.code) ||
+           typeof item.message !== "string" ||
+           item.message.length > 256))) {
+      failures.push("errors");
+    }
+    if (candidate.examples !== undefined &&
+        (!Array.isArray(candidate.examples) ||
+         candidate.examples.length > 8 ||
+         candidate.examples.some(item =>
+           !record(item) ||
+           Object.keys(item).some(key =>
+             !["title", "request", "response"].includes(key)) ||
+           typeof item.title !== "string" ||
+           item.title.length > 128 ||
+           !record(item.request) || !plainTree(item.request) ||
+           !record(item.response) || !plainTree(item.response)))) {
+      failures.push("examples");
     }
     if (failures.length) return { ok: false, status: 400, failures };
     return { ok: true, status: 200, value: frozenCopy(candidate) };
