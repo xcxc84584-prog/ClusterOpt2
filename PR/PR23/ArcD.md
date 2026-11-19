@@ -274,3 +274,16 @@ Triggers are `version-change`, `previous-error`, and `manual` (`VTE.UICO_TEST`).
 **Object/property split:** UICO owns the versioned UI action catalog and contract declarations; UISP defines property formats; `UICOVTETriggerPolicy` is a pure internal Property algorithm, not an EDPMU global authority. HubUnit routes verified requests, OMU owns audit. The VTE sandbox compares static snapshots and cannot mutate any live UI Object. Every Event Chain requires PASS/FAIL and a stable `runId`/`eventId` correlation.
 
 **Implemented as of this patch:** pure policy to derive requested run/reason set and single-flight coalescing decision (7 tests PASS). **Not implemented:** `window.VTE.UICO_TEST`, host background queue, prior-error persistence, old/new schema comparison, OMU recording and browser E2E.
+
+## PR23.7 Patch(+5) implemented VTE flow
+```text
+main.js → exposeVTE(window, linkCore)
+        → UICOVTERunner.startup()
+        → UICOVTETriggerPolicy.evaluate()
+        → detached VirtualTestEnvironment
+        → LinkCore HubUnit.request(VTE → UICO.describe / denied UI.Create)
+        → UICOContractCompatibilityPolicy.compare(old, new)
+        → production OMU Log / EHU (status, runId, reasons, issues)
+console VTE.UICO_TEST() → same runner.run(true)
+```
+The comparator currently verifies action presence and required-capability signature (with UISP version marker), not the complete per-action Request and Response JSON schemas. Do **not** label this a complete protocol equivalence proof. Stored baseline is required; missing baseline leads to UNVERIFIED/EHU. The automatic trigger uses the previous opened LinkCore version and previous UICO test status; a Promise-based single-flight guards duplicate runs. The runner reads immutable descriptors and a detached VTE sandbox, no user files/DOM. Follow-up: full snapshots, more Event Chain fixtures, stronger persisted run lifecycle, browser startup/reload testing.
