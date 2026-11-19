@@ -71,3 +71,12 @@ test("PR23.7 preserves all simultaneous trigger reasons", () => {
 	]);
 	assert.equal(Object.isFrozen(result.reasons), true);
 });
+
+test("PR23.7 retries an interrupted pending launch without mislabeling error", () => {
+	const result = policy.evaluate({
+		...baseline, previousTestStatus: "pending"
+	});
+	assert.equal(result.run, true);
+	assert.deepEqual(result.reasons, ["previous-incomplete"]);
+	assert.equal(result.status, "scheduled");
+});
