@@ -292,3 +292,14 @@ The comparator currently verifies action presence and required-capability signat
 `index.html (static markup) → scripts/pr23-ui-inventory.mjs → UI-Inventory.md` plus literal `getElementById` source references. Audit lists a stable HTML ID, tag, source line, referring JS modules and an explicit UISP API **not verified** marker. Dynamic DOM-creating modules are listed separately and require browser-level reconciliation. The scanner does not register with URU, grant capabilities, alter the DOM, or expose APIs.
 
 **Upcoming UI migration mapping:** `htmlId → stable uiId → owning OCDA Object → UISP projection → UICO routed action → HubUnit Request/Response descriptor → OMU Event Chain`. Only verified mappings qualify for PR23.5 completeness. Runtime-generated nodes and disabled or plugin-loaded views need separate entries; no inference from static IDs alone.
+
+## PR23.1 Patch(+7) — Runtime reconciliation gate
+```text
+index.html IDs (source) + JS literal ID assignments (candidate)
+  → deterministic static inventory generator
+  → UI-Inventory.md (provenance/unknown coverage)
+  → Playwright browser test (shell, menu, Plugin Manager)
+  → reconcile DOM IDs, UI Object identity, UISP API descriptors
+  → HubUnit/URU/OMU relation and API List verification
+```
+The source scan is deterministic and never mutates DOM or grants plugin capabilities. Literal `.id = "..."` occurrences may refer to OCDA Object identifiers rather than DOM nodes, so must be verified in a live browser before classifying them as UI. The Playwright test is a **committed but not yet executed** smoke test, not complete browser inventory. Audit limits remain explicit.
