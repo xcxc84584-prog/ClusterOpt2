@@ -78,8 +78,8 @@ test("PR23.5 errors/examples are immutable bounded nonexecutable data", () => {
     { errors: [{ status: 403, code: "DENY", message: "x".repeat(257) }] },
     { examples: [{ title: "JS", request: { callback: () => 1 },
       response: {} }] },
-    { examples: [{ title: "Unsafe", request: { "__proto__": 1 },
-      response: {}, extra: "hidden" }] }
+    { examples: [{ title: "Unsafe", request: Object.fromEntries(
+      [["__proto__", 1]]), response: {} }] }
   ]) {
     const denied = APIDescriptorPolicy.validate({
       ...example(), ...changed
