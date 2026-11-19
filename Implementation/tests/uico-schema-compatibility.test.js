@@ -70,3 +70,32 @@ test("PR23.7 descriptor inventory covers every policy action", () => {
 	assert.equal(policy.compare(make(actions), make(clone(actions))).status,
 		"PASS");
 });
+
+test("PR23.7 legacy migration still rejects breaking API changes", () => {
+	const legacy = make({
+		"UI.List": "ui.read",
+		"UI.Describe": "ui.read"
+	});
+	const typed = (capability = "ui.read") => item(
+		{ type: "object" }, { type: "object" }, capability);
+	const removed = make({ "UI.List": typed() });
+	assert.equal(policy.compare(legacy, removed).status, "FAIL");
+	assert.deepEqual(policy.compare(legacy, removed).issues,
+		["REMOVED:UI.Describe"]);
+
+	const changed = make({
+		"UI.List": typed("ui.admin"),
+		"UI.Describe": typed()
+	});
+	assert.equal(policy.compare(legacy, changed).status, "FAIL");
+	assert.deepEqual(policy.compare(legacy, changed).issues,
+		["CAPABILITY_CHANGED:UI.List"]);
+
+	const unchanged = make({
+		"UI.List": typed(),
+		"UI.Describe": typed()
+	});
+	assert.equal(policy.compare(legacy, unchanged).status, "UNVERIFIED");
+	assert.deepEqual(policy.compare(legacy, unchanged).issues,
+		["SCHEMA_BASELINE_MIGRATION"]);
+});
