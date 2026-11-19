@@ -1102,6 +1102,21 @@ export class HubUnit {
         }));
       }
     }
+    // Extension descriptors are URU-owned metadata, not executable native
+    // actions. Only the owning plugin can discover these pending bindings.
+    for (const entry of this.registry.listUIExtensionAPIs()) {
+      if (entry.ownerId !== source) continue;
+      const descriptor = entry.descriptor;
+      entries.push(Object.freeze({
+        owner: "UICO." + entry.uiId,
+        action: descriptor.action,
+        id: entry.apiId, version: descriptor.version,
+        visibility: descriptor.visibility,
+        inputSchema: descriptor.inputSchema,
+        outputSchema: descriptor.outputSchema,
+        described: true, executable: false
+      }));
+    }
     entries.sort((a,b)=>a.owner.localeCompare(b.owner) ||
       a.action.localeCompare(b.action));
     const result = Object.freeze({
