@@ -6,6 +6,8 @@ import { UIProtocolPolicy } from "../property/UIProtocolPolicy.js";
 import { UISP } from "../property/UISP.js";
 import { UICOActionContractDescriptors } from
 	"../property/UICOActionContractDescriptors.js";
+import { UICOProtocolFixturePolicy } from
+	"../property/UICOProtocolFixturePolicy.js";
 
 const STORE_KEY = "cluster.uico.vte.v1";
 
@@ -98,9 +100,13 @@ export class UICOVTERunner {
 			const isolated = catalog.ok === true &&
 				catalog.value?.protocol === UIProtocolPolicy.protocol &&
 				forbidden.ok === false && forbidden.status === 403;
-			const status = isolated ? compared.status : "FAIL";
-			const issues = isolated ? compared.issues :
-				[...compared.issues, "VTE_RELATION_FAILURE"];
+			const fixtures = UICOProtocolFixturePolicy.inspect();
+			const status = isolated && fixtures.ok ? compared.status : "FAIL";
+			const issues = [
+				...compared.issues,
+				...(isolated ? [] : ["VTE_RELATION_FAILURE"]),
+				...fixtures.issues.map(code => "VTE_FIXTURE:" + code)
+			];
 			const record = {
 				...prior, openedVersion: this.core.version,
 				currentSnapshot: current, status: status.toLowerCase(),
