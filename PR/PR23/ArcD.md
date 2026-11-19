@@ -303,3 +303,16 @@ index.html IDs (source) + JS literal ID assignments (candidate)
   → HubUnit/URU/OMU relation and API List verification
 ```
 The source scan is deterministic and never mutates DOM or grants plugin capabilities. Literal `.id = "..."` occurrences may refer to OCDA Object identifiers rather than DOM nodes, so must be verified in a live browser before classifying them as UI. The Playwright test is a **committed but not yet executed** smoke test, not complete browser inventory. Audit limits remain explicit.
+
+
+## PR23 Patch(+8) — Static contract snapshot chain
+```text
+UIProtocolPolicy.capabilities + UICOActionContractDescriptors
+  → UICOVTERunner.snapshot() (LinkCore version + typed actions)
+  → UICOContractCompatibilityPolicy.compare(old, current)
+  → detached VTE HubUnit read/deny relation checks
+  → production OMU Log / EHU + retry state
+```
+Each action descriptor contains `capability`, `requestSchema` and `responseSchema`. The comparator canonicalizes JSON keys and compares exact serializations (collision-free, deterministic), classifying `REMOVED`, `CAPABILITY_CHANGED`, `REQUEST_SCHEMA_CHANGED` and `RESPONSE_SCHEMA_CHANGED`. An older capability-only snapshot cannot validate the new schema layer and produces `SCHEMA_BASELINE_MIGRATION` / `UNVERIFIED`. Malformed current descriptors yield FAIL.
+
+**Authority boundary:** descriptors do not grant privileges; UICO remains read-only in this milestone. Existing HubUnit/URU/EDPMU/OMU are retained. Current metadata describes declared constraints but does not yet execute all synthetic schema fixtures; equality of descriptors is not proof of runtime compatibility. Native UI mutation, API extension CRUD and complete browser E2E are not implemented by this patch.
