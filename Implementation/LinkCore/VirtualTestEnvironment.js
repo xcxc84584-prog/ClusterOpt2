@@ -60,8 +60,14 @@ export class VirtualTestEnvironment {
 /** Read-only global methods except explicit VTE sandbox operations. */
 export function exposeVTE(win, core = null) {
   const sandbox = new VirtualTestEnvironment();
+  let storage = null;
+  try {
+    storage = win.localStorage ?? null;
+  } catch {
+    // Browser storage may be denied by policy; VTE remains available.
+  }
   const runner = core ? new UICOVTERunner(core,
-    () => new VirtualTestEnvironment(), win.localStorage) : null;
+    () => new VirtualTestEnvironment(), storage) : null;
   Object.defineProperty(win, "VTE", {
     configurable: false,
     writable: false,
