@@ -3,6 +3,7 @@
  * Never imports the production singleton or touches browser file handles.
  */
 import { LinkCore } from "./LinkCore.js";
+import { UICOVTERunner } from "./UICOVTERunner.js";
 
 export class VirtualTestEnvironment {
   constructor() {
@@ -57,8 +58,10 @@ export class VirtualTestEnvironment {
 }
 
 /** Read-only global methods except explicit VTE sandbox operations. */
-export function exposeVTE(win) {
+export function exposeVTE(win, core = null) {
   const sandbox = new VirtualTestEnvironment();
+  const runner = core ? new UICOVTERunner(core,
+    () => new VirtualTestEnvironment(), win.localStorage) : null;
   Object.defineProperty(win, "VTE", {
     configurable: false,
     writable: false,
@@ -70,7 +73,10 @@ export function exposeVTE(win) {
         sandbox.act(source, target, action, data),
       log: () => sandbox.log(),
       rep: () => sandbox.snapshot().dependencies,
-      objectlist: () => sandbox.snapshot().objects
+      objectlist: () => sandbox.snapshot().objects,
+      UICO_TEST: () => runner ? runner.run(true) :
+        Promise.resolve({ status: "UNAVAILABLE" })
     })
   });
+  if (runner) runner.startup();
 }
