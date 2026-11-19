@@ -70,10 +70,13 @@ export class UICO {
    * Host-only registration. Never callable via UICO.receive or plugin RPC.
    * Publishes a stable, immutable native UI Object through the existing URU.
    */
-  registerHostSurface(candidate) {
+  registerHostSurface(candidate, observe = null) {
     const validated = UISP.validate(candidate);
     if (!validated.ok) return { ok: false, status: 400 };
     const descriptor = validated.value;
+    if (observe !== null && typeof observe !== "function") {
+      return { ok: false, status: 400 };
+    }
     const path = "UICO." + descriptor.uiId;
     if (this.surfaces.has(descriptor.uiId) ||
         this.core.uru.objects.has(path)) {
@@ -105,8 +108,14 @@ export class UICO {
         Log: "LinkCore.OMU"
       }),
       receive: async action => {
-        if (action === "describe" || action === "getState") {
-          return descriptor;
+        if (action === "describe") return descriptor;
+        if (action === "getState") {
+          if (!observe) return descriptor;
+          const observed = UISP.validate({
+            ...descriptor, geometry: observe()
+          });
+          if (!observed.ok) return failure(422, "Invalid native UI state");
+          return observed.value;
         }
         return failure(404, "Unknown UI Object action");
       }
