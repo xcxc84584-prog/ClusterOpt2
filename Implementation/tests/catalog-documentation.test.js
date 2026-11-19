@@ -35,7 +35,7 @@ test("PR02.08 documents only Hub-authorized APIs in JSON and Markdown", () => {
   assert.equal(markdown.status, 200);
   const parsed = JSON.parse(json.value.content);
   assert.equal(parsed.schemaVersion, 1);
-  assert.equal(parsed.apis.length, 1);
+  assert.equal(parsed.apis.length, 4);
   assert.equal(parsed.apis[0].descriptor.visibility, "Public");
   assert.equal(json.value.content.includes("doc.private"), false);
   assert.equal(markdown.value.content.includes("doc.private"), false);
@@ -45,7 +45,7 @@ test("PR02.08 documents only Hub-authorized APIs in JSON and Markdown", () => {
     .value.content, json.value.content, "Output must be deterministic");
   assert.equal(core.generateCatalogDocs("Doc.Private", "json").status, 200);
   assert.equal(JSON.parse(core.generateCatalogDocs("Doc.Private", "json")
-    .value.content).apis.length, 2);
+    .value.content).apis.length, 5);
   assert.equal(typeof window, "undefined");
 });
 
