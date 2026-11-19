@@ -1,4 +1,5 @@
 import { PluginWorkbenchTabUnit } from "./PluginWorkbenchTabUnit.js";
+import { PluginUIViewCSP } from "../property/PluginUIViewPolicy.js";
 import { TrustedPairingVault } from "./TrustedPairingVault.js";
 import { downloadAgentQuickSetup, downloadMCPQuickSetup,
   downloadAgentPackage } from "../main/plugin-agent-download.js";
@@ -21,10 +22,7 @@ import { PluginLocalAgentObject } from
  * UI messages request host-owned actions; only an explicitly granted
  * network capability lets the host route them through HubUnit.
  */
-const UI_CSP = "default-src 'none'; script-src 'unsafe-inline'; " +
-  "style-src 'unsafe-inline'; img-src data:; connect-src 'none'; " +
-  "font-src 'none'; worker-src 'none'; frame-src 'none'; " +
-  "object-src 'none'; form-action 'none'; base-uri 'none'";
+const UI_CSP = PluginUIViewCSP;
 
 function decodeAsset(snapshot, path) {
   const data = snapshot?.files?.[path];
