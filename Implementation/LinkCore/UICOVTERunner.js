@@ -4,6 +4,8 @@ import { UICOContractCompatibilityPolicy } from
 	"../property/UICOContractCompatibilityPolicy.js";
 import { UIProtocolPolicy } from "../property/UIProtocolPolicy.js";
 import { UISP } from "../property/UISP.js";
+import { UICOActionContractDescriptors } from
+	"../property/UICOActionContractDescriptors.js";
 
 const STORE_KEY = "cluster.uico.vte.v1";
 
@@ -23,10 +25,8 @@ export class UICOVTERunner {
 	snapshot() {
 		return {
 			version: this.core.version,
-			actions: {
-				...UIProtocolPolicy.capabilities,
-				"UISP.version": String(UISP.version)
-			}
+			actions: UICOActionContractDescriptors.build(
+				UIProtocolPolicy.capabilities, UISP.version)
 		};
 	}
 
