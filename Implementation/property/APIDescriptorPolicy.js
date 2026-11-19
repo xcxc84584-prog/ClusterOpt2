@@ -63,17 +63,29 @@ function schemaValid(schema, depth = 0) {
   return true;
 }
 
-function plainTree(value, depth = 0) {
+function plainTree(value, depth = 0, seen = new Set()) {
   if (depth > MAX_DEPTH + 2) return false;
   if (value === null || typeof value === "boolean" ||
       typeof value === "string") return true;
   if (typeof value === "number") return Number.isFinite(value);
-  if (Array.isArray(value)) return value.length <= MAX_KEYS &&
-    value.every(item => plainTree(item, depth + 1));
-  if (!record(value)) return false;
+  if (!Array.isArray(value) && !record(value)) return false;
+  if (seen.has(value)) return false;
   const keys = Object.keys(value);
-  return keys.length <= MAX_KEYS && keys.every(key =>
-    !FORBIDDEN.has(key) && plainTree(value[key], depth + 1));
+  const own = Reflect.ownKeys(value);
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (keys.length > MAX_KEYS ||
+      (Array.isArray(value) ?
+        (keys.length !== value.length || own.length !== keys.length + 1) :
+        own.length !== keys.length)) {
+    return false;
+  }
+  seen.add(value);
+  const valid = keys.every(key =>
+    !FORBIDDEN.has(key) &&
+    Object.hasOwn(descriptors[key], "value") &&
+    plainTree(descriptors[key].value, depth + 1, seen));
+  seen.delete(value);
+  return valid;
 }
 
 function frozenCopy(value) {
