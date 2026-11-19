@@ -46,9 +46,9 @@ export class UICO {
     });
     this.ocda = Object.freeze({
       Request: Object.freeze(["describe", "list", "extensionAPI", "uiRequest"]),
-      Response: Object.freeze(["describe", "list", "extensionAPI"]),
-      UserAPI: Object.freeze(["describe", "list", "extensionAPI"]),
-      AgentAPI: Object.freeze(["describe", "list", "extensionAPI"]),
+      Response: Object.freeze(["describe", "list", "extensionAPI", "uiRequest"]),
+      UserAPI: Object.freeze(["describe", "list", "extensionAPI", "uiRequest"]),
+      AgentAPI: Object.freeze(["describe", "list", "extensionAPI", "uiRequest"]),
       Property: Object.freeze(["UISP"]),
       APIDescriptors: Object.freeze([
         apiDescriptor("UICO.describe", "UICO", "describe", "read",
