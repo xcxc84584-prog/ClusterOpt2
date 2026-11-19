@@ -18,7 +18,7 @@ const sources = [
 const htmlPattern = /<([a-z][a-z0-9-]*)\b([^>]*?)>/gi;
 const idPattern = /\bid\s*=\s*["']([^"']+)["']/i;
 const refPattern = /\bgetElementById\s*\(\s*["']([^"']+)["']\s*\)/g;
-const controlPattern = /\b(createElement|appendChild|insertBefore)\s*\(/g;
+const controlPattern = /\b(createElement|appendChild|insertBefore)\s*\(/;
 const entries = new Map();
 const files = [];
 
@@ -51,6 +51,9 @@ for (const match of html.matchAll(htmlPattern)) {
 }
 
 const dynamicFiles = [];
+const dynamicIds = [];
+const assignment = /\.id\s*=\s*["']([^"']+)["']/g;
+const attribute = /setAttribute\s*\(\s*["']id["']\s*,\s*["']([^"']+)["']/g;
 for (const file of files) {
 	const source = readFileSync(join(root, file), "utf8");
 	const references = [...source.matchAll(refPattern)].map(item => item[1]);
@@ -58,6 +61,14 @@ for (const file of files) {
 		if (entries.has(id)) entries.get(id).referencedBy.push(file);
 	}
 	if (controlPattern.test(source)) dynamicFiles.push(file);
+	for (const pattern of [assignment, attribute]) {
+		for (const match of source.matchAll(pattern)) {
+			dynamicIds.push({
+				id: match[1], source: file,
+				line: source.slice(0, match.index).split("\n").length
+			});
+		}
+	}
 }
 
 function esc(value) {
@@ -106,6 +117,18 @@ lines.push(
 );
 for (const file of dynamicFiles) lines.push("- `" + file + "`");
 lines.push(
+	"",
+	"## Dynamic literal ID declarations",
+	"",
+	"These are static assignment occurrences, not verified live DOM nodes.",
+	"Generated and nonliteral IDs require browser inspection.",
+	"",
+	"| Literal ID | Source | Static HTML ID? |",
+	"| --- | --- | --- |",
+	...dynamicIds.map(entry =>
+		"| " + esc(entry.id) + " | " + esc(entry.source) +
+		":" + entry.line + " | " +
+		(entries.has(entry.id) ? "yes" : "no") + " |"),
 	"",
 	"## Pending manual/browser verification",
 	"",
