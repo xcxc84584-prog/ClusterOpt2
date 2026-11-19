@@ -352,7 +352,7 @@ function toggleExplorer(visible = explorerPanel.hidden) {
 explorerToggle.addEventListener("click", () => toggleExplorer());
 document.getElementById("explorerClose").addEventListener(
   "click", () => toggleExplorer(false));
-exposeVTE(window);
+exposeVTE(window, linkCore);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
 const menu = document.getElementById("menu");
 const menuButton = document.getElementById("menuBtn");
