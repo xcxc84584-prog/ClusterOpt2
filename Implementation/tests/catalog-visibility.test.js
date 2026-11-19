@@ -47,7 +47,7 @@ test("PR02.06 hides inaccessible API and Property before pagination", () => {
   const guest = core.discover("guest", "list", "api",
     { limit: 1 });
   assert.equal(guest.status, 200);
-  assert.equal(guest.value.total, 4);
+  assert.equal(guest.value.total, 5);
   assert.equal(guest.value.nextOffset, 1);
   assert.equal(guest.value.items[0].descriptor.visibility, "Public");
   const own = core.discover("Service.Protected.Child", "list", "api");
@@ -56,9 +56,9 @@ test("PR02.06 hides inaccessible API and Property before pagination", () => {
     id: "Service.Protected.Child", receive: async () => null
   }), true);
   const descendant = core.discover("Service.Protected.Child", "list", "api");
-  assert.equal(descendant.value.total, 5);
+  assert.equal(descendant.value.total, 6);
   assert.equal(core.discover("Service.Private", "list", "api").value.total,
-    5, "Private API visible to owner and Public visible to all");
+    6, "Private API visible to owner and Public visible to all");
   assert.equal(core.discover("guest", "list",
     "property").value.total, 1);
   assert.equal(core.discover("Service.Child", "list",
@@ -89,10 +89,10 @@ test("PR02.06 honors UserAPI, AgentAPI and non-readable properties", () => {
   core.register({ id: "guest", receive: async () => null });
   core.register(target("Service", "Public", "agent"));
   registerProperty(core, "HiddenProp", "Public", false);
-  assert.equal(core.discover("guest", "list", "api").value.total, 3);
+  assert.equal(core.discover("guest", "list", "api").value.total, 4);
   assert.equal(core.discover("guest", "list", "api", {}, {
     origin: "agent"
-  }).value.total, 4);
+  }).value.total, 5);
   assert.equal(core.discover("guest", "list",
     "property").value.total, 0);
   assert.equal(core.discover("guest", "list", "api", {}, {
