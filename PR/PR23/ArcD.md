@@ -175,3 +175,70 @@ This is metadata; runtime registry, permission and actual UI state remain contro
 
 ## PR23.3 implemented foundation boundary
 `LinkCore → HubUnit.registerProperty('UISP', readOnly) → EDPMU` and `LinkCore → HubUnit.register(UICO) → URU`. UICO's strict OCDA lists `describe`/`list` as the only authorized UserAPI/AgentAPI actions. `UI.Create` and UI mutations are deliberately absent. UISP validates immutable geometry / style descriptions without DOM or callback execution. Later HubUnit-mediated UI Object dispatch must preserve per-hop ACL and OMU EHU/Log; not implemented yet. See `Patch(+2).md`.
+
+## PR23.4 — UISP API operation contract (2026-11-19)
+
+A **2-bit `UIOperationCode`** is a request selector, not a Relation Code and not an ACL mask.
+
+```text
+UIOperationCode:
+  00 = AddExtensionAPI
+  01 = DeleteExtensionAPI
+  10 = QueryAPI
+  11 = UpdateExtensionAPI
+
+RelationCode (separate):
+  00 = None
+  10 = Request
+  01 = Response
+  11 = Bidirectional
+```
+
+### Request and Response contract — planned
+
+```json
+{
+  "protocol": "cluster.ui/1",
+  "requestId": "req-ui-api-01",
+  "targetId": "UICO",
+  "action": "UI.ExtensionAPI",
+  "payload": {
+    "uiId": "editor.toolbar",
+    "operationCode": "00",
+    "apiId": "plugin.example.run",
+    "descriptor": {
+      "action": "run",
+      "version": "1.0.0",
+      "inputSchema": {"type":"object"},
+      "outputSchema": {"type":"object"}
+    },
+    "expectedRevision": 0
+  }
+}
+```
+
+The request **does not accept an authoritative callerId or ownerId** from plugin data. HubUnit derives caller and approved permission scopes from a trusted runtime context. A successful Add returns 201 with `requestId`, OMU `eventId`, `apiId`, owner, provenance and revision. Query returns 200 and a caller-filtered descriptor. Update returns 200 and incremented revision. Delete returns 200 (or 204 if the chosen envelope permits) and a removal revision. Failures return 400/403/404/409/422 with sanitized error and EHU.
+
+Existing `UIProtocolPolicy.js` does **not** yet recognize `UI.ExtensionAPI`; this is a future contract update and **must not** be advertised as implemented. Reuse the existing APIDescriptorPolicy and URU registration model, with a host-verified provenance index; avoid duplicate registry ownership.
+
+### Event Chains / VTE matrix
+
+| Chain | Flow | Expected |
+|---|---|---|
+| EC-UI-API-01 | Plugin → HubUnit → UICO → UI Object: Add extension | 201, owner/provenance captured, Log |
+| EC-UI-API-02 | Plugin → HubUnit → UICO → UI Object: Query | 200 filtered descriptor, Log |
+| EC-UI-API-03 | Owner → HubUnit → UICO → UI Object: Update extension | 200, revision advanced, Log |
+| EC-UI-API-04 | Owner → HubUnit → UICO → UI Object: Delete extension | 200/204, removed and unsubscribed, Log |
+| EC-UI-API-05 | Plugin → native Delete without exceptional grant | 403, no mutation, EHU |
+| EC-UI-API-06 | Non-owner → plugin extension Delete/Update | 403, no mutation, EHU |
+| EC-UI-API-07 | Duplicate Add or stale revision | 409, atomic rollback, EHU |
+| EC-UI-API-08 | Plugin disabled/uninstalled | Owned APIs revoked; native APIs unchanged, Log/EHU |
+
+### EHU form additions
+`{ eventId, requestId, chainId, source, target, uiId, apiId, operationCode, ownerId, provenance, relationCode, requiredCapability, status, result, revisionBefore, revisionAfter, timestamp }`.
+
+### Parallel scheduling
+Queries of independent immutable snapshots may execute concurrently. Add/Update/Delete for the same `uiId/apiId` must serialize (or use versioned atomic compare-and-swap) to avoid races. Commit identity and provenance before emitting success Response. Per-hop Request/Response still passes HubUnit; the UICO internal dispatcher never circumvents URU/OMU.
+
+### Object ownership
+UI Object declares available API operations; UISP defines validation and mutation planning algorithms. HubUnit mediates permissions and routes; URU tracks runtime registrations; OMU records audit events. Every extension descriptor includes provenance and must not masquerade as native.
