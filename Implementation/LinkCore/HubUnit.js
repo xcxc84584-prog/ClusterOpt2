@@ -176,6 +176,8 @@ export class HubUnit {
       return { ok: false, status: 403 };
     }
     this.registry.unregisterProvider(providerId);
+    // Revoked providers must not leave executable-looking UI extensions.
+    this.registry.revokeOwnedUIExtensions(provider.objectId);
     this.pluginPermissions.forget(providerId);
     this.omu.record("Log", source, "Provider.Unregister", 200, providerId);
     return { ok: true, status: 200 };
