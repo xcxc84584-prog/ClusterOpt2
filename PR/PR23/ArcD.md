@@ -287,3 +287,8 @@ main.js → exposeVTE(window, linkCore)
 console VTE.UICO_TEST() → same runner.run(true)
 ```
 The comparator currently verifies action presence and required-capability signature (with UISP version marker), not the complete per-action Request and Response JSON schemas. Do **not** label this a complete protocol equivalence proof. Stored baseline is required; missing baseline leads to UNVERIFIED/EHU. The automatic trigger uses the previous opened LinkCore version and previous UICO test status; a Promise-based single-flight guards duplicate runs. The runner reads immutable descriptors and a detached VTE sandbox, no user files/DOM. Follow-up: full snapshots, more Event Chain fixtures, stronger persisted run lifecycle, browser startup/reload testing.
+
+## PR23.1 traceable inventory artifact (Patch +6)
+`index.html (static markup) → scripts/pr23-ui-inventory.mjs → UI-Inventory.md` plus literal `getElementById` source references. Audit lists a stable HTML ID, tag, source line, referring JS modules and an explicit UISP API **not verified** marker. Dynamic DOM-creating modules are listed separately and require browser-level reconciliation. The scanner does not register with URU, grant capabilities, alter the DOM, or expose APIs.
+
+**Upcoming UI migration mapping:** `htmlId → stable uiId → owning OCDA Object → UISP projection → UICO routed action → HubUnit Request/Response descriptor → OMU Event Chain`. Only verified mappings qualify for PR23.5 completeness. Runtime-generated nodes and disabled or plugin-loaded views need separate entries; no inference from static IDs alone.
