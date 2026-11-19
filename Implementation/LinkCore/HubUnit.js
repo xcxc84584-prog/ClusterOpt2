@@ -1101,6 +1101,8 @@ export class HubUnit {
           inputSchema: descriptor?.inputSchema ?? null,
           outputSchema: descriptor?.outputSchema ?? null,
           permissions: descriptor?.permissions ?? null,
+          errors: descriptor?.errors ?? null,
+          examples: descriptor?.examples ?? null,
           described: Boolean(descriptor)
         }));
       }
@@ -1118,6 +1120,8 @@ export class HubUnit {
         inputSchema: descriptor.inputSchema,
         outputSchema: descriptor.outputSchema,
         permissions: descriptor.permissions ?? null,
+        errors: descriptor.errors ?? null,
+        examples: descriptor.examples ?? null,
         described: true, executable: false
       }));
     }
