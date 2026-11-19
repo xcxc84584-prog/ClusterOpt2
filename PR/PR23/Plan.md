@@ -169,3 +169,11 @@ Multiple simultaneous reasons combine into **one bounded single-flight run**; a 
 - Added a read-only browser E2E smoke test for shell and Plugin Manager DOM presence, runtime duplicate IDs and relative count. Test file committed but **not executed/verified** because Playwright package was absent in the X2 temporary working clone.
 - Static scan and 3 PR23.1 Node tests: PASS with explicit Node exit 0. UI-Inventory.md regenerated from source and committed.
 - Still pending: full browser runtime state sweep, extension-loaded controls, responsive changes, API-to-UISP mapping, and permission coverage. Do not mark PR23.1 complete.
+
+
+## PR23 Patch(+8) — Typed VTE schema signatures (2026-11-19)
+- Per-action declarative Request/Response descriptors now feed UICOVTERunner snapshots. UIProtocolPolicy remains runtime validation authority; this metadata is not an additional registry or ACL.
+- UICOContractCompatibilityPolicy uses deterministic canonical JSON representations, checks capability and Request/Response independently, reports removed actions, and returns UNVERIFIED when upgrading historical capability-only baselines.
+- This is an **exact descriptor-equality detector**, not yet proof of equivalent accepted-request sets, response semantics, error-enum coverage, or a complete synthetically executed fixture matrix. Schema behavior changes require explicit review before release.
+- X2 focused UICO test suite 18/18 PASS (TEST_EXIT=0). Full npm run check: 468 tests, 464 pass, 4 fail before compatibility-test updates; 3 affected suites subsequently pass 16/16. Outstanding sparse backing allocation probe is environment-dependent and not accepted. Full clean check, browser E2E, CI and rollback remain pending.
+- Remaining tasks: stronger current-schema enforcement alignment, schema-specific synthetic Req/Rep fixtures, suite digest and persistent retry hardening, browser reload trigger test, complete UICO UI adapter operations.
