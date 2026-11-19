@@ -202,3 +202,18 @@ Multiple simultaneous reasons combine into **one bounded single-flight run**; a 
   prove full schema equivalence, and browser/native UI coverage is incomplete.
 - Local X2 PowerShell test request failed HTTP 403 Agent pairing verification.
   Obtain explicit CI PASS evidence before altering Draft or merging.
+
+## PR23 Patch(+11) — CI catalog migration and crash-safe VTE (2026-11-20)
+- Corrected six PR02 catalog regression files for newly registered UICO.uiRequest
+  without relaxing privacy, ACL, deterministic sorting or pagination checks.
+- Verified GitHub OCDA Node job on prior SHA 6ac9670:
+  478 tests, 476 PASS / 0 FAIL / 2 SKIP, code conventions PASS (339 sources).
+- VTE startup records pending before deferring work. If the browser closes
+  before the job runs, the next launch chooses previous-incomplete and
+  retries once. Status is written to pass/fail/unverified/error on completion.
+- Malformed/oversized persisted state, invalid openedVersion or unrecognized
+  test status cannot force a same-version PASS skip; verification re-enters
+  via UNVERIFIED and OMU EHU. Storage denial cannot invent old versions.
+- Added Node and browser reload regression fixtures. Newer commits are not
+  verified until matching GitHub Actions succeeds.
+- Keep PR #79 Draft. Full native UI coverage and recovery remain pending.
