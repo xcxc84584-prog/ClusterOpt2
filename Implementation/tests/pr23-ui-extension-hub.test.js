@@ -62,6 +62,14 @@ test("PR23 Hub E2E denies before permission then logs CRUD", async () => {
   const add = await call("00");
   assert.equal(add.status, 200, JSON.stringify(add));
   assert.equal(add.value.status, 201);
+  const visible = core.listActionContracts("plugin.demo");
+  const extension = visible.value.items.find(item =>
+    item.id === "plugin.demo.run" && item.owner === "UICO.editor");
+  assert.equal(extension?.described, true);
+  assert.equal(extension?.executable, false);
+  core.register({ id: "Observer", receive: async () => null });
+  assert.equal(core.listActionContracts("Observer").value.items.some(item =>
+    item.id === "plugin.demo.run" && item.owner === "UICO.editor"), false);
   assert.equal((await call("10")).value.entry.revision, 1);
   assert.equal((await call("11", { expectedRevision: 1 }))
     .value.entry.revision, 2);
