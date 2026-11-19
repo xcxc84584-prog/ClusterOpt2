@@ -189,6 +189,114 @@ export class PluginUIControlAdapter {
     return { uiId, property, value: state[property] };
   }
 
+  /**
+   * PR23.8 bounded batch: preflight all operations before mutation, then
+   * journal inverse operations. HubUnit serializes the UICO Object lane.
+   */
+  batch(source, request, allowsCapability) {
+    const ops = request.payload.operations;
+    const seen = new Set();
+    const plans = [];
+    let additions = 0;
+    for (let index = 0; index < ops.length; index++) {
+      const op = ops[index];
+      const capability = op.action === "UI.Create" ?
+        "ui.create.own" : "ui.update.own";
+      if (!allowsCapability(capability)) {
+        return fail(403, "Batch capability denied");
+      }
+      if (op.action === "UI.Create") {
+        if (!this.doc) return fail(503, "DOM host unavailable");
+        const p = op.payload;
+        const slotId = SLOTS[p.parentId];
+        if (!slotId || !this.doc.getElementById(slotId)) {
+          return fail(403, "Batch insertion slot denied");
+        }
+        if (!["button", "panel", "window", "menu-item"].includes(p.kind)) {
+          return fail(400, "Invalid batch control kind");
+        }
+        const temporary = this.doc.createElement("div");
+        applyProps(temporary, p.props);
+        const id = source + "." + request.requestId + "_" + index;
+        if (id.length > 128 || seen.has(id) ||
+            this.nodes.has(id) || this.core.uru.objects.has("UICO." + id)) {
+          return fail(409, "Duplicate batch UI identity");
+        }
+        additions++;
+        seen.add(id);
+        plans.push({ action: op.action, payload: p,
+          requestId: request.requestId + "_" + index, uiId: id });
+      } else {
+        const p = op.payload;
+        if (seen.has(p.uiId)) {
+          return fail(409, "Conflicting batch target");
+        }
+        const item = this.owned(p.uiId, source);
+        if (p.expectedRevision !== undefined &&
+            p.expectedRevision !== item.revision) {
+          return fail(409, "Stale batch revision");
+        }
+        if (op.action === "UI.Update") {
+          const detached = item.node.cloneNode(false);
+          applyProps(detached, p.props);
+        }
+        seen.add(p.uiId);
+        plans.push({ action: op.action, payload: p, uiId: p.uiId });
+      }
+    }
+    const liveCount = [...this.nodes.values()].filter(
+      item => item.owner === source).length;
+    if (liveCount + additions > 50) {
+      return fail(429, "Batch UI budget exceeded");
+    }
+    const undo = [];
+    const output = [];
+    try {
+      for (const plan of plans) {
+        if (plan.action === "UI.Create") {
+          const created = this.create(source, {
+            requestId: plan.requestId, payload: plan.payload
+          });
+          undo.push(() => this.remove(created.uiId, source));
+          output.push(created);
+        } else if (plan.action === "UI.Update") {
+          const item = this.owned(plan.uiId, source);
+          const style = item.node.style.cssText;
+          const text = item.node.textContent;
+          const revision = item.revision;
+          undo.push(() => {
+            item.node.style.cssText = style;
+            item.node.textContent = text;
+            item.revision = revision;
+          });
+          output.push(this.update(plan.uiId, source, plan.payload));
+        } else {
+          const item = this.owned(plan.uiId, source);
+          const parent = item.node.parentNode;
+          const after = item.node.nextSibling;
+          const object = this.core.uru.objects.get("UICO." + plan.uiId);
+          const removed = this.remove(plan.uiId, source);
+          undo.push(() => {
+            if (object) this.core.register(object);
+            if (parent) parent.insertBefore(item.node,
+              after?.parentNode === parent ? after : null);
+            this.nodes.set(plan.uiId, item);
+          });
+          output.push(removed);
+        }
+      }
+      return { operations: output, atomic: true };
+    } catch (error) {
+      for (const revert of undo.reverse()) {
+        try { revert(); } catch {
+          this.core.omu.record("EHU", source, "UI.Batch.Rollback",
+            500, "UICO");
+        }
+      }
+      throw error;
+    }
+  }
+
   addTab(uiId, source, tabId, title) {
     const item = this.owned(uiId, source);
     if (item.kind !== "window") return fail(400, "Not a tabbed window");
