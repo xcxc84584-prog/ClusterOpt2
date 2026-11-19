@@ -356,3 +356,21 @@ provable schema equivalence alone stays UNVERIFIED.
 
 Remaining: action-specific accepted-set equivalence proofs, native UI
 Object identity reconciliation, browser E2E and recovery gate.
+
+## PR23 Patch(+11) — Persisted VTE crash recovery
+
+Sequence:
+1. Read version/status/snapshot from storage, bounded and validated.
+2. UICOVTETriggerPolicy decides version-change, previous-error,
+   previous-incomplete or manual without a second runtime authority.
+3. startup() persists current opened version and pending status before
+   queuing the single-flight background run.
+4. Detached VTE performs static contract, fixture and relation checks.
+5. UICOVTERunner commits final result and OMU serializes Log/EHU.
+
+EC-UI-VTE-10: pending record on same-version reload triggers one retry,
+even if the prior startup crashed before a Promise ran.
+EC-UI-VTE-11: invalid persisted version/status/JSON is not accepted as
+an earlier PASS; lack of trusted baseline yields UNVERIFIED and EHU.
+Storage access denial does not imply a prior version or a fake PASS.
+Future tests must verify all browser life-cycle and recovery cases.
