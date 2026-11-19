@@ -109,7 +109,8 @@ test("PR23.5 authorized API List includes full UICO and UI Object schemas", () =
       item.owner === "UICO" && item.action === action);
     assert.equal(entry?.described, true, action);
     assert.equal(entry?.inputSchema.type, "object");
-    assert.equal(entry?.outputSchema.type, "object");
+    assert.equal(entry?.outputSchema.type,
+      action === "list" ? "array" : "object");
   }
   const surface = {
     uiId: "editor", kind: "panel", parentId: "root",
