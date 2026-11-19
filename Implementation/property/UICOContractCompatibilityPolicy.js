@@ -75,10 +75,8 @@ export const UICOContractCompatibilityPolicy = Object.freeze({
 		if (!old.valid) {
 			return output("UNVERIFIED", ["INVALID_BASELINE_CONTRACT"]);
 		}
-		if (old.legacy !== now.legacy &&
-			Object.keys(now.actions).length > 0) {
-			return output("UNVERIFIED", ["SCHEMA_BASELINE_MIGRATION"]);
-		}
+		// Breaking removals and capability changes take precedence over
+		// unverifiable legacy-schema migration.
 		const issues = [];
 		for (const [name, item] of Object.entries(old.actions).sort()) {
 			const next = now.actions[name];
@@ -94,6 +92,10 @@ export const UICOContractCompatibilityPolicy = Object.freeze({
 			}
 		}
 		if (issues.length) return output("FAIL", issues);
+		if (old.legacy !== now.legacy &&
+			Object.keys(now.actions).length > 0) {
+			return output("UNVERIFIED", ["SCHEMA_BASELINE_MIGRATION"]);
+		}
 		if (old.legacy) {
 			return output("UNVERIFIED", ["LEGACY_SCHEMA_NOT_VERIFIED"]);
 		}
