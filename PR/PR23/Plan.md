@@ -162,3 +162,10 @@ Multiple simultaneous reasons combine into **one bounded single-flight run**; a 
 - Added `Implementation/tests/pr23-ui-inventory.test.js` to verify uniqueness, HTML ID coverage and honest unverified status; 3/3 Node tests PASS via X2 with exit 0.
 - This is a **static source audit only**, not a complete native UI runtime inventory. Dynamic controls, plugin HTML, runtime states, responsive layout, per-UI UISP API, access scopes and API List coverage are still unverified.
 - The inventory is a reproducible audit artifact, not a second UI Object/Property registry. Before PR23.4/23.6 implementation, reconcile the list against browser DOM and registered OCDA Objects, then update the inventory and the unresolved-issues list.
+
+## PR23.1 Patch(+7) — Dynamic-source audit correction
+- Fixed the inventory generator's stateful regex bug: dynamic DOM source-file count was undercounted. Latest verified scan: **86 static IDs, zero static duplicates, 70 JS source files, 14 files with dynamic DOM construction/insertion**.
+- Added literal dynamic ID assignments with source path and line; **these include non-UI object IDs and prefix fragments** and are candidates, not a claim that every row is a live DOM node.
+- Added a read-only browser E2E smoke test for shell and Plugin Manager DOM presence, runtime duplicate IDs and relative count. Test file committed but **not executed/verified** because Playwright package was absent in the X2 temporary working clone.
+- Static scan and 3 PR23.1 Node tests: PASS with explicit Node exit 0. UI-Inventory.md regenerated from source and committed.
+- Still pending: full browser runtime state sweep, extension-loaded controls, responsive changes, API-to-UISP mapping, and permission coverage. Do not mark PR23.1 complete.
