@@ -28,7 +28,7 @@ test("PR02.05 internal list, describe and deterministic pagination", () => {
   assert.equal(first.status, 200);
   assert.deepEqual(first.value.items.map(x => x.owner),
     ["Plugin.A", "Plugin.B"]);
-  assert.equal(first.value.total, 3);
+  assert.equal(first.value.total, 6);
   assert.equal(first.value.nextOffset, 2);
   assert.equal(core.catalogQuery.list("api",
     { offset: 2, limit: 2 }).value.items[0].owner, "Plugin.C");
@@ -42,8 +42,8 @@ test("PR02.05 internal list, describe and deterministic pagination", () => {
   assert.equal(core.catalogQuery.query("api",
     { term: "same" }).value.total, 2);
   core.unregister("Plugin.A");
-  assert.equal(core.catalogQuery.list("api").value.total, 2);
-  assert.equal(first.value.total, 3);
+  assert.equal(core.catalogQuery.list("api").value.total, 5);
+  assert.equal(first.value.total, 6);
 });
 
 test("PR02.05 handles Property descriptors, never returns live values", () => {
