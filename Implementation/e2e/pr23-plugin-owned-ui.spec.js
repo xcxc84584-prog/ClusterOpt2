@@ -75,6 +75,10 @@ test("PR23 UI button create/activate/update/remove through HubUnit",
         denied: denied.status,
         grants: grants.map(g => g.status),
         created: created.status,
+        createdError: created.error,
+        capabilityGranted: core.checkPluginPermission(
+          "plugin.demo", "ui.create.own"),
+        uicoAction: core.uiControl.ocda.UserAPI,
         createdStatus: created.value?.status,
         textBefore, textAfter, activations,
         updated: updated.status,
@@ -87,6 +91,7 @@ test("PR23 UI button create/activate/update/remove through HubUnit",
           log.kind === "EHU" && log.status === 403)
       };
     });
+    console.log("PR23_DIAGNOSTIC", JSON.stringify(result));
     expect(result.manifest).toBe(201);
     expect(result.denied).toBe(403);
     expect(result.grants).toEqual([200, 200, 200]);
