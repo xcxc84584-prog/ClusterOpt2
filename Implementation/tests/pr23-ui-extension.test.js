@@ -154,3 +154,21 @@ test("PR23.5 API List exposes typed UICO envelopes and capabilities", () => {
   assert.ok(extension.permissions.includes("ui.api.extension.delete"));
   assert.equal(find("list").outputSchema.type, "array");
 });
+
+test("PR23.5 registered UI API metadata includes safe errors and examples", () => {
+  const core = new LinkCore();
+  core.register({ id: "Reader", receive: async () => null });
+  const list = core.listActionContracts("Reader");
+  const rows = list.value.items.filter(item =>
+    item.owner === "UICO");
+  assert.equal(rows.length, 4);
+  for (const row of rows) {
+    assert.ok(row.errors?.some(error => error.status === 403));
+    assert.ok(row.examples?.length > 0);
+    assert.equal(typeof row.examples[0].title, "string");
+    assert.equal(typeof row.examples[0].request, "object");
+    assert.equal(typeof row.examples[0].response, "object");
+  }
+  const denied = core.listActionContracts("unknown");
+  assert.equal(denied.status, 404);
+});
