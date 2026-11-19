@@ -75,7 +75,8 @@ export const UICOContractCompatibilityPolicy = Object.freeze({
 		if (!old.valid) {
 			return output("UNVERIFIED", ["INVALID_BASELINE_CONTRACT"]);
 		}
-		if (old.legacy !== now.legacy) {
+		if (old.legacy !== now.legacy &&
+			Object.keys(now.actions).length > 0) {
 			return output("UNVERIFIED", ["SCHEMA_BASELINE_MIGRATION"]);
 		}
 		const issues = [];
