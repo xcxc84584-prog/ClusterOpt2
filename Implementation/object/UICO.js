@@ -314,7 +314,7 @@ export class UICO {
         payload.tabId);
     } else if (action === "UI.NavigatePluginView") {
       output = this.adapter.navigate(payload.uiId, context.source,
-        payload.viewId);
+        payload.viewId, providerId);
     } else if (action === "UI.Subscribe") {
       output = this.adapter.subscribe(payload.uiId, context.source,
         payload.subscriptionId);
