@@ -31,7 +31,7 @@ test("VTE is isolated from production registry", async () => {
   const result = await sandbox.act("A", "B", "echo", { value: 12 });
   assert.equal(result.status, 200);
   assert.deepEqual(result.value, { value: 12 });
-  assert.equal(production.getSnapshot().objects.length, 0);
+  assert.deepEqual(production.getSnapshot().objects, ["UICO"]);
   assert.equal(sandbox.delete("B").status, 200);
 });
 
