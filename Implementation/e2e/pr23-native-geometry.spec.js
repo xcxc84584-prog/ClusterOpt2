@@ -10,9 +10,9 @@ test("PR23 native UISP geometry follows live DOM without mutation API",
         id: "GeometryProbe", receive: async () => null
       });
       const read = () => linkCore.request("GeometryProbe",
-        "UICO.editor", "getState", {}, { origin: "user" });
+        "UICO.menuBtn", "getState", {}, { origin: "user" });
       const before = await read();
-      const editor = document.getElementById("editor");
+      const editor = document.getElementById("menuBtn");
       const originalWidth = editor.style.width;
       editor.style.width = "333px";
       const after = await read();
@@ -23,7 +23,7 @@ test("PR23 native UISP geometry follows live DOM without mutation API",
         statusBefore: before.status, statusAfter: after.status,
         authorizedRead: after.ok,
         history: linkCore.omu.snapshot().dependencies.some(
-          entry => entry.link === "GeometryProbe->UICO.editor")
+          entry => entry.link === "GeometryProbe->UICO.menuBtn")
       };
     });
     expect(result.statusBefore).toBe(200);
