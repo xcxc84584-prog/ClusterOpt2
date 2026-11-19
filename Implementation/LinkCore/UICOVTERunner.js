@@ -10,6 +10,10 @@ import { UICOProtocolFixturePolicy } from
 	"../property/UICOProtocolFixturePolicy.js";
 
 const STORE_KEY = "cluster.uico.vte.v1";
+const STORED_STATES = new Set([
+	"pass", "fail", "error", "unverified", "pending"
+]);
+const VERSION = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 
 /**
  * The runner owns scheduling and audit, not a second OCDA registry.
@@ -48,9 +52,9 @@ export class UICOVTERunner {
 			if (record && typeof record === "object" &&
 				!Array.isArray(record) &&
 				(record.status === undefined ||
-				 typeof record.status === "string") &&
+				 STORED_STATES.has(record.status)) &&
 				(record.openedVersion === undefined ||
-				 typeof record.openedVersion === "string")) return record;
+				 VERSION.test(record.openedVersion))) return record;
 		} catch {
 			// Corrupted state schedules a bounded unverified VTE retry.
 		}
