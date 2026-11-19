@@ -44,12 +44,28 @@ const extensionResponse = Object.freeze({
   }
 });
 const apiDescriptor = (id, owner, action, effect, description,
-  inputSchema = SCHEMA, outputSchema = SCHEMA, permissions = []) =>
+  inputSchema = SCHEMA, outputSchema = SCHEMA, permissions = [],
+  documentation = {}) =>
   Object.freeze({
     apiVersion: 1, id, owner, action, version: "1.0.0",
     visibility: "Public", sideEffect: effect,
     inputSchema, outputSchema, description,
-    ...(permissions.length ? { permissions } : {})
+    ...(permissions.length ? { permissions } : {}),
+    errors: Object.freeze([
+      { status: 400, code: "UI_REQUEST_INVALID",
+        message: "The supplied request is invalid" },
+      { status: 403, code: "UI_PERMISSION_DENIED",
+        message: "Caller lacks permission or ownership" },
+      { status: 404, code: "UI_TARGET_MISSING",
+        message: "The requested UI target is unavailable" },
+      { status: 409, code: "UI_REVISION_CONFLICT",
+        message: "A duplicate or stale revision was detected" }
+    ]),
+    examples: Object.freeze([documentation.example ?? {
+      title: "HubUnit Request/Response",
+      request: { action, payload: {} },
+      response: { ok: true, status: 200 }
+    }])
   });
 
 const PERMISSION = Object.freeze({
@@ -101,10 +117,40 @@ export class UICO {
           { type: "array", items: OBJECT }),
         apiDescriptor("UICO.extensionAPI", "UICO", "extensionAPI", "write",
           "00 Add, 01 Delete, 10 Query, 11 Update; owner scoped",
-          extensionRequest, extensionResponse, Object.values(PERMISSION)),
+          extensionRequest, extensionResponse, Object.values(PERMISSION), {
+            example: {
+              title: "Permission denied without grant",
+              request: {
+                action: "extensionAPI",
+                payload: {
+                  providerId: "plugin.example", uiId: "editor",
+                  apiId: "plugin.example.action", operationCode: "10"
+                }
+              },
+              response: { ok: false, status: 403,
+                error: "UI extension permission denied" }
+            }
+          }),
         apiDescriptor("UICO.uiRequest", "UICO", "uiRequest", "write",
           "cluster.ui/1 envelope; permissions depend on requested action",
-          protocolRequest, protocolResponse, UI_PERMISSIONS)
+          protocolRequest, protocolResponse, UI_PERMISSIONS, {
+            example: {
+              title: "List UI using a granted plugin capability",
+              request: {
+                action: "uiRequest",
+                payload: {
+                  protocol: "cluster.ui/1", requestId: "example1",
+                  targetId: "UICO", action: "UI.List",
+                  payload: { providerId: "plugin.example" }
+                }
+              },
+              response: {
+                ok: true, status: 200,
+                value: { requestId: "example1", eventId: 1,
+                  status: 200, ok: true, data: [] }
+              }
+            }
+          })
       ]),
       Program: "UICO",
       EHU: "LinkCore.OMU",
