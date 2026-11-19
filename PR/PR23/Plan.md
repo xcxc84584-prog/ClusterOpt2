@@ -155,3 +155,10 @@ Multiple simultaneous reasons combine into **one bounded single-flight run**; a 
 - Startup trigger decision uses LinkCore version and prior UICO VTE result; previous failure and explicit manual request run on unchanged versions. `localStorage` denial does not block console VTE.
 - Missing old contract is UNVERIFIED with EHU; no native UI or document writes.
 - IMPORTANT: This is **partial** static compatibility coverage. Full per-action Request/Response JSON schemas, UI inventory, VTE chained relation coverage, run persistence hardening, real-browser E2E and full CI remain pending. Current auto execution uses the existing VTE facade rather than a new authority.
+
+## PR23.1 source-inventory milestone (Patch +6)
+- Added `scripts/pr23-ui-inventory.mjs` and generated `PR/PR23/UI-Inventory.md` from the Draft repository's `index.html` plus `Implementation/main`, `object`, and `LinkCore` JS files.
+- Current scan: 86 distinct static HTML IDs, zero duplicate IDs, 70 JS source files, 11 source files containing dynamic DOM creation/insertion patterns.
+- Added `Implementation/tests/pr23-ui-inventory.test.js` to verify uniqueness, HTML ID coverage and honest unverified status; 3/3 Node tests PASS via X2 with exit 0.
+- This is a **static source audit only**, not a complete native UI runtime inventory. Dynamic controls, plugin HTML, runtime states, responsive layout, per-UI UISP API, access scopes and API List coverage are still unverified.
+- The inventory is a reproducible audit artifact, not a second UI Object/Property registry. Before PR23.4/23.6 implementation, reconcile the list against browser DOM and registered OCDA Objects, then update the inventory and the unresolved-issues list.
