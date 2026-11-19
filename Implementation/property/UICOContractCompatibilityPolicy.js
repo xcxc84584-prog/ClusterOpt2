@@ -93,6 +93,10 @@ export const UICOContractCompatibilityPolicy = Object.freeze({
 				issues.push("RESPONSE_SCHEMA_CHANGED:" + name);
 			}
 		}
-		return output(issues.length ? "FAIL" : "PASS", issues);
+		if (issues.length) return output("FAIL", issues);
+		if (old.legacy) {
+			return output("UNVERIFIED", ["LEGACY_SCHEMA_NOT_VERIFIED"]);
+		}
+		return output("PASS", []);
 	}
 });
