@@ -1,5 +1,7 @@
 import { describeObjectAPIs, validateObjectContract } from "./ObjectContract.js";
 import { ProviderManifestPolicy } from "../property/ProviderManifestPolicy.js";
+import { UIExtensionAPIPolicy } from
+  "../property/UIExtensionAPIPolicy.js";
 import { ProviderFactoryPolicy } from "../property/ProviderFactoryPolicy.js";
 import { ProviderHealthPolicy } from "../property/ProviderHealthPolicy.js";
 import { ProviderSharedPropertyPolicy } from
@@ -15,6 +17,7 @@ export class UnifiedRegistrationUnit {
   constructor(propertyRegistry = null) {
     this.propertyRegistry = propertyRegistry;
     this.objects = new Map();
+    this.uiExtensionAPIs = new Map();
     this.factories = new Map();
     this.providers = new Map();
     this.providerServices = new Map();
@@ -53,6 +56,32 @@ export class UnifiedRegistrationUnit {
     const object = this.objects.get(id);
     if (!object) return { ok: false, status: 404 };
     return describeObjectAPIs(object);
+  }
+
+  /**
+   * URU is the only runtime authority for extension API metadata.
+   * Called solely by UICO after HubUnit-bound identity and capability checks.
+   */
+  applyUIExtensionAPI(request, actor) {
+    const changed = UIExtensionAPIPolicy.transition(
+      this.uiExtensionAPIs, request, actor);
+    if (changed.ok) this.uiExtensionAPIs = changed.value.state;
+    return changed;
+  }
+
+  listUIExtensionAPIs(uiId) {
+    return Object.freeze([...this.uiExtensionAPIs.values()]
+      .filter(entry => entry.uiId === uiId));
+  }
+
+  revokeOwnedUIExtensions(ownerId) {
+    let removed = 0;
+    for (const [key, entry] of this.uiExtensionAPIs) {
+      if (entry.ownerId !== ownerId) continue;
+      this.uiExtensionAPIs.delete(key);
+      removed++;
+    }
+    return removed;
   }
 
   addFactory(id, factory) {
@@ -321,6 +350,7 @@ export class UnifiedRegistrationUnit {
 
   unregister(id) {
     const removed = this.objects.delete(id);
+    if (removed) this.revokeOwnedUIExtensions(id);
     if (removed) {
       for (const [providerId, manifest] of this.providers) {
         if (manifest.objectId === id) this.unregisterProvider(providerId);
