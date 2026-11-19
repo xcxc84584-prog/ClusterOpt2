@@ -8,7 +8,7 @@ This is **not** a complete runtime DOM inventory or API coverage PASS.
 - Static HTML IDs: 86
 - Duplicate static IDs: 0
 - JS files scanned: 70
-- Files containing dynamic DOM creation/insertion: 11
+- Files containing dynamic DOM creation/insertion: 14
 - Verified UISP API coverage: NOT YET AUDITED
 - Browser-rendered and plugin-generated elements: PENDING
 
@@ -112,13 +112,71 @@ Each module still requires runtime inspection and stable ID mapping.
 - `Implementation/main/legacy-powershell/powershell-ui.js`
 - `Implementation/main/main.js`
 - `Implementation/main/plugin-agent-download.js`
+- `Implementation/main/plugin-contract-view.js`
 - `Implementation/main/plugin-manager-ui.js`
 - `Implementation/main/plugin-resource-view.js`
 - `Implementation/main/plugin-template-download.js`
+- `Implementation/main/save-close-dialog.js`
 - `Implementation/main/syntax-overlay-controller.js`
 - `Implementation/object/PluginLocalAgentObject.js`
 - `Implementation/LinkCore/PluginSandboxBridge.js`
 - `Implementation/LinkCore/PluginUIHostUnit.js`
+- `Implementation/LinkCore/PluginWorkbenchTabUnit.js`
+
+## Dynamic literal ID declarations
+
+These are static assignment occurrences, not verified live DOM nodes.
+Generated and nonliteral IDs require browser inspection.
+
+| Literal ID | Source | Static HTML ID? |
+| --- | --- | --- |
+| pluginBundledAgentLauncher | Implementation/main/default-ai-agent-launcher.js:79 | no |
+| powershellManagerPane | Implementation/main/legacy-powershell/powershell-ui.js:36 | no |
+| pluginManagerPages | Implementation/main/plugin-manager-ui.js:54 | yes |
+| pluginLegacySettings | Implementation/main/plugin-manager-ui.js:59 | yes |
+| pluginPerformanceOptions | Implementation/main/plugin-manager-ui.js:62 | yes |
+| pluginMaxLabel | Implementation/main/plugin-manager-ui.js:67 | yes |
+| pluginMaxMiB | Implementation/main/plugin-manager-ui.js:70 | yes |
+| pluginApply | Implementation/main/plugin-manager-ui.js:76 | yes |
+| pluginLimitNote | Implementation/main/plugin-manager-ui.js:79 | yes |
+| pluginManagerSearch | Implementation/main/plugin-manager-ui.js:99 | no |
+| pluginSidebarToggle | Implementation/main/plugin-manager-ui.js:107 | no |
+| pluginConsentTitle | Implementation/main/plugin-manager-ui.js:119 | no |
+| pluginApiSearch | Implementation/main/plugin-manager-ui.js:478 | no |
+| pluginResourceSearch | Implementation/main/plugin-resource-view.js:273 | no |
+| pluginAgentDownload | Implementation/main/plugin-resource-view.js:356 | no |
+| pluginAgentMount | Implementation/main/plugin-resource-view.js:360 | no |
+| pluginAgentQuickSetupDownload | Implementation/main/plugin-resource-view.js:379 | no |
+| pluginMCPQuickSetupDownload | Implementation/main/plugin-resource-view.js:396 | no |
+| pluginTemplateDownload | Implementation/main/plugin-resource-view.js:403 | no |
+| saveCloseTitle | Implementation/main/save-close-dialog.js:15 | no |
+| pr11SyntaxOverlay | Implementation/main/syntax-overlay-controller.js:20 | no |
+| editor-viewport-observer | Implementation/object/EditorViewportObserver.js:8 | no |
+| explorer | Implementation/object/Explorer.js:10 | no |
+| document- | Implementation/object/FileDocument.js:13 | no |
+| file-types | Implementation/object/FileTypeManager.js:4 | no |
+| workspace | Implementation/object/FileWorkspace.js:12 | yes |
+| InterfacePalette | Implementation/object/InterfacePalette.js:9 | no |
+| LanguageManager | Implementation/object/LanguageManager.js:9 | no |
+| piece-tree-index | Implementation/object/PieceTreeIndex.js:10 | no |
+| PluginExplorer. | Implementation/object/PluginExplorerObject.js:19 | no |
+| PluginLocalAgent. | Implementation/object/PluginLocalAgentObject.js:18 | no |
+| PluginMCPRead. | Implementation/object/PluginMCPReadOnlyObject.js:14 | no |
+| PluginModelTask. | Implementation/object/PluginModelTaskObject.js:14 | no |
+| PluginShell. | Implementation/object/PluginShellApprovalObject.js:17 | no |
+| session-recovery | Implementation/object/SessionRecovery.js:9 | no |
+| slice-batch-writeback-unit | Implementation/object/SliceBatchWritebackUnit.js:8 | no |
+| slice-edit-transaction | Implementation/object/SliceEditTransaction.js:8 | no |
+| slice-loader | Implementation/object/SliceLoader.js:8 | no |
+| slice-recovery-journal | Implementation/object/SliceRecoveryJournal.js:10 | no |
+| slice-registry | Implementation/object/SliceRegistry.js:7 | no |
+| slice-save-task | Implementation/object/SliceSaveTask.js:10 | no |
+| slice-writeback-unit | Implementation/object/SliceWritebackUnit.js:8 | no |
+| tool-tab-manager | Implementation/object/ToolTabManager.js:7 | no |
+| UICO | Implementation/object/UICO.js:13 | no |
+| viewport-slices | Implementation/object/ViewportSliceController.js:7 | no |
+| virtual-line-index | Implementation/object/VirtualLineIndex.js:8 | no |
+| plugin-extension-panel- | Implementation/LinkCore/PluginUIHostUnit.js:119 | no |
 
 ## Pending manual/browser verification
 
