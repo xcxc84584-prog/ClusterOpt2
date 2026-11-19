@@ -172,3 +172,6 @@ sequenceDiagram
 ### Proposed per-Object UISP API descriptor
 `{ uiId, objectPath, parentId, uiKind, owner, properties: {geometry, layout, appearance, interaction, accessibility, lifecycle}, requests: [{action,inputSchema,outputSchema,permissions,errors}], version, revision }`.
 This is metadata; runtime registry, permission and actual UI state remain controlled by URU, HubUnit and the owning UI Object. Exact schema implementation is reserved for PR23.3–23.4.
+
+## PR23.3 implemented foundation boundary
+`LinkCore → HubUnit.registerProperty('UISP', readOnly) → EDPMU` and `LinkCore → HubUnit.register(UICO) → URU`. UICO's strict OCDA lists `describe`/`list` as the only authorized UserAPI/AgentAPI actions. `UI.Create` and UI mutations are deliberately absent. UISP validates immutable geometry / style descriptions without DOM or callback execution. Later HubUnit-mediated UI Object dispatch must preserve per-hop ACL and OMU EHU/Log; not implemented yet. See `Patch(+2).md`.
