@@ -63,7 +63,8 @@ export const UIExtensionAPIPolicy = Object.freeze({
       const entry = Object.freeze({
         uiId: request.uiId, apiId: request.apiId,
         ownerId: context.ownerId, provenance: "plugin",
-        revision: 1, descriptor: request.descriptor
+        revision: 1,
+        descriptor: APIDescriptorPolicy.validate(request.descriptor).value
       });
       const next = copyMap(current);
       next.set(key, entry);
@@ -85,7 +86,8 @@ export const UIExtensionAPIPolicy = Object.freeze({
     if (!descriptorValid(request.descriptor, context.ownerId,
         request.apiId)) return result(400);
     const entry = Object.freeze({
-      ...prior, descriptor: request.descriptor,
+      ...prior,
+      descriptor: APIDescriptorPolicy.validate(request.descriptor).value,
       revision: prior.revision + 1
     });
     next.set(key, entry);
