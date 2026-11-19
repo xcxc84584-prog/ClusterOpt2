@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const root = new URL("../plugins/ai-agent-mcp/local-agent/",
   import.meta.url);
@@ -15,7 +16,7 @@ test("PR14.8 vendored Node gateways are syntax-valid", () => {
     const source = new URL(name, root);
     assert.equal(existsSync(source), true);
     const result = spawnSync(process.execPath,
-      ["--check", source.pathname], { encoding: "utf8" });
+      ["--check", fileURLToPath(source)], { encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
   }
 });
