@@ -289,12 +289,17 @@ export class LinkCore {
   }
 
   register(object) { return this.hub.register(object); }
-  unregister(id) { return this.hub.unregister(id); }
+  unregister(id) {
+    this.uiControl?.adapter.teardownOwner(id);
+    return this.hub.unregister(id);
+  }
   registerProvider(source, manifest) {
     return this.hub.registerProvider(source, manifest);
   }
   unregisterProvider(source, providerId) {
-    return this.hub.unregisterProvider(source, providerId);
+    const result = this.hub.unregisterProvider(source, providerId);
+    if (result.ok) this.uiControl?.adapter.teardownOwner(source);
+    return result;
   }
   grantPluginPermission(source, id, permission, approved = false) {
     return this.hub.grantPluginPermission(source, id,
