@@ -1100,6 +1100,7 @@ export class HubUnit {
           visibility: descriptor?.visibility ?? null,
           inputSchema: descriptor?.inputSchema ?? null,
           outputSchema: descriptor?.outputSchema ?? null,
+          permissions: descriptor?.permissions ?? null,
           described: Boolean(descriptor)
         }));
       }
@@ -1116,6 +1117,7 @@ export class HubUnit {
         visibility: descriptor.visibility,
         inputSchema: descriptor.inputSchema,
         outputSchema: descriptor.outputSchema,
+        permissions: descriptor.permissions ?? null,
         described: true, executable: false
       }));
     }
