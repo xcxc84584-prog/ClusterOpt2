@@ -225,6 +225,10 @@ export class UICO {
         output = this.adapter.getProperty(payload.uiId,
           context.source, payload.property);
       }
+    } else if (action === "UI.Batch") {
+      output = this.adapter.batch(context.source, parsed.value,
+        capability => this.core.checkPluginPermission(
+          providerId, capability));
     } else if (action === "UI.Update") {
       output = this.adapter.update(payload.uiId, context.source, {
         ...payload, expectedRevision: parsed.value.expectedRevision
