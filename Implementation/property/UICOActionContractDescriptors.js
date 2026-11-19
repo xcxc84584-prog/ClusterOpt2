@@ -7,8 +7,8 @@ const id = { type: "string", pattern: "^[A-Za-z][A-Za-z0-9._-]{0,127}$" };
 const object = { type: "object" };
 const boolean = { type: "boolean" };
 const string = { type: "string" };
-const schema = (required = [], properties = {}) =>
-	({ type: "object", required, properties, additionalProperties: true });
+const schema = (required = [], properties = {}, extra = true) =>
+	({ type: "object", required, properties, additionalProperties: extra });
 const uiId = schema(["uiId"], { uiId: id });
 const payload = Object.freeze({
 	"UI.List": schema(),
@@ -66,8 +66,8 @@ const response = schema(["requestId", "eventId", "status", "ok"], {
 	error: schema(["code", "message"], {
 		code: id, message: { type: "string", maxLength: 512 },
 		details: {}
-	})
-});
+	}, false)
+}, false);
 const requestFor = (action, payloadSchema) =>
 	schema(["protocol", "requestId", "targetId", "action", "payload"], {
 		protocol: { const: "cluster.ui/1" },
@@ -77,7 +77,7 @@ const requestFor = (action, payloadSchema) =>
 		payload: payloadSchema,
 		expectedRevision: { type: "integer", minimum: 0 },
 		deadlineMs: { type: "integer", minimum: 1, maximum: 30000 }
-	});
+	}, false);
 
 export const UICOActionContractDescriptors = Object.freeze({
 	build(capabilities, uispVersion) {
