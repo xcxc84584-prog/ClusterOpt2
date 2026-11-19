@@ -5,11 +5,51 @@ import { UIExtensionAPIPolicy } from
   "../property/UIExtensionAPIPolicy.js";
 
 const SCHEMA = Object.freeze({ type: "object" });
-const apiDescriptor = (id, owner, action, effect, description) =>
+const STRING = Object.freeze({ type: "string" });
+const INTEGER = Object.freeze({ type: "integer" });
+const OBJECT = Object.freeze({ type: "object" });
+const protocolRequest = Object.freeze({
+  type: "object",
+  required: ["protocol", "requestId", "targetId", "action", "payload"],
+  properties: {
+    protocol: STRING, requestId: STRING, targetId: STRING,
+    action: STRING, payload: OBJECT,
+    expectedRevision: INTEGER, deadlineMs: INTEGER
+  },
+  additionalProperties: false
+});
+const protocolResponse = Object.freeze({
+  type: "object",
+  required: ["requestId", "eventId", "status", "ok"],
+  properties: {
+    requestId: STRING, eventId: INTEGER, status: INTEGER,
+    ok: { type: "boolean" }
+  }
+});
+const extensionRequest = Object.freeze({
+  type: "object",
+  required: ["providerId", "uiId", "apiId", "operationCode"],
+  properties: {
+    providerId: STRING, uiId: STRING, apiId: STRING,
+    operationCode: STRING, descriptor: OBJECT,
+    expectedRevision: INTEGER
+  }
+});
+const extensionResponse = Object.freeze({
+  type: "object",
+  required: ["operationCode", "uiId", "apiId", "status"],
+  properties: {
+    operationCode: STRING, uiId: STRING, apiId: STRING,
+    status: INTEGER, entry: OBJECT
+  }
+});
+const apiDescriptor = (id, owner, action, effect, description,
+  inputSchema = SCHEMA, outputSchema = SCHEMA, permissions = []) =>
   Object.freeze({
     apiVersion: 1, id, owner, action, version: "1.0.0",
     visibility: "Public", sideEffect: effect,
-    inputSchema: SCHEMA, outputSchema: SCHEMA, description
+    inputSchema, outputSchema, description,
+    ...(permissions.length ? { permissions } : {})
   });
 
 const PERMISSION = Object.freeze({
@@ -18,6 +58,9 @@ const PERMISSION = Object.freeze({
   "10": "ui.api.extension.query",
   "11": "ui.api.extension.update"
 });
+const UI_PERMISSIONS = Object.freeze([
+  ...new Set(Object.values(UIProtocolPolicy.capabilities))
+]);
 
 function failure(status, reason) {
   const error = new Error(reason);
@@ -54,11 +97,14 @@ export class UICO {
         apiDescriptor("UICO.describe", "UICO", "describe", "read",
           "Read host UI protocol identity and supported operations"),
         apiDescriptor("UICO.list", "UICO", "list", "read",
-          "List registered UISP host UI surfaces"),
+          "List registered UISP host UI surfaces", SCHEMA,
+          { type: "array", items: OBJECT }),
         apiDescriptor("UICO.extensionAPI", "UICO", "extensionAPI", "write",
-          "Permission-scoped 2-bit plugin API extension operation"),
+          "00 Add, 01 Delete, 10 Query, 11 Update; owner scoped",
+          extensionRequest, extensionResponse, Object.values(PERMISSION)),
         apiDescriptor("UICO.uiRequest", "UICO", "uiRequest", "write",
-          "Validated and authorized plugin UI protocol dispatcher")
+          "cluster.ui/1 envelope; permissions depend on requested action",
+          protocolRequest, protocolResponse, UI_PERMISSIONS)
       ]),
       Program: "UICO",
       EHU: "LinkCore.OMU",
