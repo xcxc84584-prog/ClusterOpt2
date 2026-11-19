@@ -233,6 +233,20 @@ export class UICO {
         !this.core.checkPluginPermission(providerId, parsed.capability)) {
       return failure(403, "UI capability not granted");
     }
+    const nativeWrites = new Set([
+      "UI.Update", "UI.Remove", "UI.SetVisibility", "UI.SetFocus",
+      "UI.CloseWindow", "UI.AddTab", "UI.RemoveTab",
+      "UI.NavigatePluginView", "UI.Subscribe", "UI.Unsubscribe"
+    ]);
+    if (nativeWrites.has(action) &&
+        this.surfaces.has(payload.uiId)) {
+      return failure(403, "Native UI mutation requires host authority");
+    }
+    if (action === "UI.Batch" &&
+        payload.operations.some(op =>
+          this.surfaces.has(op.payload?.uiId))) {
+      return failure(403, "Native UI mutation denied in batch");
+    }
     let output;
     let status = 200;
     if (action === "UI.Create" || action === "UI.OpenWindow") {
@@ -261,12 +275,17 @@ export class UICO {
       }
     } else if (action === "UI.GetProperty") {
       if (this.surfaces.has(payload.uiId)) {
-        const state = this.surfaces.get(payload.uiId);
-        if (!Object.hasOwn(state, payload.property)) {
+        const state = await this.core.request(
+          "UICO", "UICO." + payload.uiId, "getState", {},
+          { origin: "user" });
+        if (!state.ok) {
+          return failure(state.status, "UI property unavailable");
+        }
+        if (!Object.hasOwn(state.value, payload.property)) {
           return failure(404, "UI property missing");
         }
         output = { uiId: payload.uiId, property: payload.property,
-          value: state[payload.property] };
+          value: state.value[payload.property] };
       } else {
         output = this.adapter.getProperty(payload.uiId,
           context.source, payload.property);
