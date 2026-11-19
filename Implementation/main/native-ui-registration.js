@@ -108,6 +108,14 @@ export function registerNativeUIFromDOM(core, doc) {
     const element = doc.getElementById(uiId);
     if (!element) { results.missing.push(uiId); continue; }
     const rect = element.getBoundingClientRect();
+    const geometry = () => {
+      const current = element.getBoundingClientRect();
+      return {
+        space: "viewport", x: cap(current.x), y: cap(current.y),
+        width: Math.max(0, cap(current.width)),
+        height: Math.max(0, cap(current.height))
+      };
+    };
     const registration = core.uiControl.registerHostSurface({
       uiId, kind: kindFor(element), parentId: "root",
       owner: "LinkCore", revision: 0,
@@ -117,7 +125,7 @@ export function registerNativeUIFromDOM(core, doc) {
         height: Math.max(0, cap(rect.height))
       },
       appearance: {}, interaction: {}, accessibility: {}
-    });
+    }, geometry);
     if (registration.ok) results.registered++;
     else results.rejected.push({ uiId, status: registration.status });
   }
