@@ -20,7 +20,10 @@ test("PR23 Hub E2E denies before permission then logs CRUD", async () => {
   const core = new LinkCore();
   assert.equal(core.uiControl.registerHostSurface(uisp).status, 201);
   assert.equal(core.register({
-    id: "plugin.demo", receive: async () => null
+    id: "plugin.demo", receive: async () => null,
+    ocda: { Request: ["run"], Response: ["run"],
+      UserAPI: ["run"], AgentAPI: ["run"], Property: [],
+      Program: "Plugin", EHU: "LinkCore.OMU", Log: "LinkCore.OMU" }
   }), true);
   const permissions = [
     "ui.api.extension.add", "ui.api.extension.query",
