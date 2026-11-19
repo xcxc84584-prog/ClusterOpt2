@@ -54,7 +54,8 @@ export class UICOVTERunner {
 				(record.status === undefined ||
 				 STORED_STATES.has(record.status)) &&
 				(record.openedVersion === undefined ||
-				 VERSION.test(record.openedVersion))) return record;
+				 (typeof record.openedVersion === "string" &&
+				  VERSION.test(record.openedVersion)))) return record;
 		} catch {
 			// Corrupted state schedules a bounded unverified VTE retry.
 		}
