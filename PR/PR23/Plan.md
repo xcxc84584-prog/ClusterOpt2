@@ -108,3 +108,6 @@ Synthetic VTE cannot replace real-browser E2E for drag/focus/iframe/CSP/performa
 - Execute synthetic old/new fixture pairs inside the existing VTE sandbox; do not invoke live effects. Record `eventId`, `chainId`, source/target, status and EHU for fail cases.
 - Startup condition follows **last opened LinkCore version** (not last successful VTE result): persist last-opened version and last-tested version separately. On version change run one background test and mark failed tests for explicit retry. Do not rerun on every same-version reload. Include suite fingerprint and fallback if storage unavailable.
 - No API key, absolute workstation path or test-only prompts in user UI.
+
+## PR23.3 guarded milestone (partial)
+UICO and UISP have been introduced and registered via LinkCore: strict UICO read-only `describe`/`list`; UISP immutable shared definition and descriptor validation. 12 PR23-specific Node tests reported PASS. No real UI adapters or mutation APIs are enabled. Full CI/VTE/E2E remains pending; see `Patch(+2).md`.
