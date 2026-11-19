@@ -97,3 +97,33 @@ test("PR23.6 host UISP surfaces are URU registered and read-only", async () => {
   assert.ok(core.omu.snapshot().logs.some(entry =>
     entry.kind === "EHU" && entry.status === 403));
 });
+
+test("PR23.5 authorized API List includes full UICO and UI Object schemas", () => {
+  const core = new LinkCore();
+  core.register({ id: "Reader", receive: async () => null });
+  const before = core.listActionContracts("Reader");
+  assert.equal(before.ok, true);
+  for (const action of ["describe", "list", "extensionAPI"]) {
+    const entry = before.value.items.find(item =>
+      item.owner === "UICO" && item.action === action);
+    assert.equal(entry?.described, true, action);
+    assert.equal(entry?.inputSchema.type, "object");
+    assert.equal(entry?.outputSchema.type, "object");
+  }
+  const surface = {
+    uiId: "editor", kind: "panel", parentId: "root",
+    owner: "LinkCore", revision: 0,
+    geometry: { space: "viewport", x: 0, y: 0,
+      width: 500, height: 300 },
+    appearance: {}, interaction: {}, accessibility: {}
+  };
+  assert.equal(core.uiControl.registerHostSurface(surface).status, 201);
+  const after = core.listActionContracts("Reader");
+  const entries = after.value.items.filter(item =>
+    item.owner === "UICO.editor");
+  assert.deepEqual(entries.map(item => item.action),
+    ["describe", "getState"]);
+  assert.ok(entries.every(item => item.described &&
+    item.inputSchema && item.outputSchema));
+  assert.equal(core.listActionContracts("unknown").status, 404);
+});
