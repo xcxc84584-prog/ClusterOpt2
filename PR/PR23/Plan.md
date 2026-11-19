@@ -79,3 +79,8 @@ Synthetic VTE cannot replace real-browser E2E for drag/focus/iframe/CSP/performa
 - Tests: schema Unit, Hub/URU/EDPMU Relation, VTE all event chains, actual browser E2E, keyboard/a11y, error injection, concurrency, reload/unload, CI.
 - Track PR23.1 inventory and unresolved tests in `未完成測試/問題清單`; keep each Object and Property in separate files.
 - Maintain `PR/PR23/Plan.md`, `ArcD.md`, numbered Patch(+x).md and versioned handoff on each implementation patch. A restorable recovery ref + passing checks is mandatory before merging the major PR. No keys, absolute paths or development banners in user-facing UI.
+
+## PR23.2 implementation checkpoint — 2026-11-19
+- Added data-only `Implementation/property/UIProtocolPolicy.js`, immutable contract validator and action/capability metadata; it is NOT an authority and does not mutate UI or grant permission.
+- Added eight Node regression tests (8/8 PASS in X2 PowerShell isolated test). Full repo CI, real HubUnit integration, VTE and browser E2E remain pending.
+- See `Patch(+1).md` and `總工作交接提示詞(PR23.2-draft1).md`. This patch stays on draft branch; release version unchanged.
