@@ -148,3 +148,10 @@ Multiple simultaneous reasons combine into **one bounded single-flight run**; a 
 **Behavior:** nonblocking scheduling after application initialization; isolated fixtures with zero live UI/document mutations; serialized audit records through OMU. Complete with PASS Log if all required compatibility checks succeed, otherwise a failure Log/EHU. Failed runs remain eligible for retry at a later launch; do not repeatedly spin during one session. If storage is unavailable, do not invent an earlier version. Bounded and sanitized output, no user-visible debug UI.
 
 **New implementation checkpoint:** `Implementation/property/UICOVTETriggerPolicy.js` is a pure, side-effect-free trigger-selection helper. `Implementation/tests/uico-vte-trigger-policy.test.js` has 7/7 Node tests PASS via X2 PowerShell (ExitCode 0). This is **not yet** an installed console command, background scheduler, static fixture runner, contract-diff engine or OMU wiring. Future integration must use existing VTE and LinkCore authority rather than a competing runtime.
+
+## PR23.7 Patch(+5) runtime milestone
+- Existing `exposeVTE(window, linkCore)` now exposes `VTE.UICO_TEST()`, returning a Promise of a bounded report.
+- `UICOVTERunner` calls the existing detached `VirtualTestEnvironment`, checks a read-only HubUnit UICO request and verifies an unsupported mutation is denied; compares stored static action/capability signatures.
+- Startup trigger decision uses LinkCore version and prior UICO VTE result; previous failure and explicit manual request run on unchanged versions. `localStorage` denial does not block console VTE.
+- Missing old contract is UNVERIFIED with EHU; no native UI or document writes.
+- IMPORTANT: This is **partial** static compatibility coverage. Full per-action Request/Response JSON schemas, UI inventory, VTE chained relation coverage, run persistence hardening, real-browser E2E and full CI remain pending. Current auto execution uses the existing VTE facade rather than a new authority.
