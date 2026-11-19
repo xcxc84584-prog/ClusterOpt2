@@ -242,3 +242,35 @@ Queries of independent immutable snapshots may execute concurrently. Add/Update/
 
 ### Object ownership
 UI Object declares available API operations; UISP defines validation and mutation planning algorithms. HubUnit mediates permissions and routes; URU tracks runtime registrations; OMU records audit events. Every extension descriptor includes provenance and must not masquerade as native.
+
+## PR23.7 revised startup + console Event Chains
+```mermaid
+flowchart TD
+    A[Startup / Console command] --> B[Read LinkCore version + previous test record]
+    B --> C[UICOVTETriggerPolicy]
+    C --> D{Any trigger?}
+    D -->|No| E[Skip]
+    D -->|Yes, already active| F[Coalesce one pending reason set]
+    D -->|Yes| G[Enqueue isolated static VTE]
+    G --> H[Compare previous/new Request and Response schema]
+    H --> I[Run bounded fixtures and relation checks]
+    I --> J{Compatible?}
+    J -->|PASS| K[OMU Log + persist success]
+    J -->|FAIL or unknown| L[OMU failure Log/EHU + persist pending failure]
+```
+
+Triggers are `version-change`, `previous-error`, and `manual` (`VTE.UICO_TEST`). A previous error is limited to relevant UICO protocol/contract/Event Chain failures; unrelated errors do not trigger. A previous UNVERIFIED outcome triggers another test when an applicable baseline becomes available. Version origin is strictly `LinkCore/ReleaseVersion`, not caller input.
+
+| Event Chain | Trigger | Expected observation |
+|---|---|---|
+| EC-UI-VTE-01 | New release version | 1 background VTE job, compare contract snapshots, OMU result |
+| EC-UI-VTE-02 | Same version, prior UICO failure | 1 background VTE job, not suppressed by version equality |
+| EC-UI-VTE-03 | `VTE.UICO_TEST` console call | 1 explicit VTE job; return run identifier and eventual result |
+| EC-UI-VTE-04 | No trigger | 0 VTE jobs, no spurious EHU |
+| EC-UI-VTE-05 | Multiple reasons while busy | 1 active job, coalesced reasons, no duplicate side effects |
+| EC-UI-VTE-06 | Missing prior schema | UNVERIFIED, never false PASS, relevant EHU |
+| EC-UI-VTE-07 | Runner failure or timeout | FAIL, EHU retained, next-launch retry eligible |
+
+**Object/property split:** UICO owns the versioned UI action catalog and contract declarations; UISP defines property formats; `UICOVTETriggerPolicy` is a pure internal Property algorithm, not an EDPMU global authority. HubUnit routes verified requests, OMU owns audit. The VTE sandbox compares static snapshots and cannot mutate any live UI Object. Every Event Chain requires PASS/FAIL and a stable `runId`/`eventId` correlation.
+
+**Implemented as of this patch:** pure policy to derive requested run/reason set and single-flight coalescing decision (7 tests PASS). **Not implemented:** `window.VTE.UICO_TEST`, host background queue, prior-error persistence, old/new schema comparison, OMU recording and browser E2E.
