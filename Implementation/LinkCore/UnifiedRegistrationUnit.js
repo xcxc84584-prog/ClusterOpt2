@@ -71,7 +71,7 @@ export class UnifiedRegistrationUnit {
 
   listUIExtensionAPIs(uiId) {
     return Object.freeze([...this.uiExtensionAPIs.values()]
-      .filter(entry => entry.uiId === uiId));
+      .filter(entry => uiId === undefined || entry.uiId === uiId));
   }
 
   revokeOwnedUIExtensions(ownerId) {
