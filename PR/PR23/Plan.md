@@ -134,3 +134,17 @@ This section supersedes any conflicting PR23.4 authorization description above. 
 **PR23.4 acceptance:** for every inventoried UI Object, test all four codes with both authorized and rejected callers; verify plugin-owned Add→Query→Update→Delete round-trip, native Delete=403, unowned Delete=403, duplicate Add=409, missing API=404, stale update=409, rollback and reload cleanup. Tests must include HubUnit/URU/OMU Event Chain and VTE; browser E2E is required where UI behavior changes.
 
 **Implementation status:** specification only in this amendment. Current UICO remains read-only and no new dynamic API mutation authority is activated.
+
+## PR23.7 amendment — three independent VTE triggers
+This supersedes earlier statements saying the automatic VTE runs **only** after a version change.
+
+A background, static Request/Response compatibility test is requested when **any** of:
+1. LinkCore-authoritative current version differs from the last opened site version.
+2. The previous run left a relevant UICO API-contract or Event Chain failure, error, or unverified result.
+3. The user explicitly runs `VTE.UICO_TEST` in the browser console.
+
+Multiple simultaneous reasons combine into **one bounded single-flight run**; a manual call can force a recheck at the same version. Do not run after unrelated errors. The previous opened version, previous test outcome, test suite digest, and active run identity are separate records. Version changes still compare the previous published Request/Response contract snapshot against the new one; an absent baseline is UNVERIFIED, not PASS.
+
+**Behavior:** nonblocking scheduling after application initialization; isolated fixtures with zero live UI/document mutations; serialized audit records through OMU. Complete with PASS Log if all required compatibility checks succeed, otherwise a failure Log/EHU. Failed runs remain eligible for retry at a later launch; do not repeatedly spin during one session. If storage is unavailable, do not invent an earlier version. Bounded and sanitized output, no user-visible debug UI.
+
+**New implementation checkpoint:** `Implementation/property/UICOVTETriggerPolicy.js` is a pure, side-effect-free trigger-selection helper. `Implementation/tests/uico-vte-trigger-policy.test.js` has 7/7 Node tests PASS via X2 PowerShell (ExitCode 0). This is **not yet** an installed console command, background scheduler, static fixture runner, contract-diff engine or OMU wiring. Future integration must use existing VTE and LinkCore authority rather than a competing runtime.
