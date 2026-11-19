@@ -3,6 +3,14 @@ import { UIProtocolPolicy } from "../property/UIProtocolPolicy.js";
 import { UIExtensionAPIPolicy } from
   "../property/UIExtensionAPIPolicy.js";
 
+const SCHEMA = Object.freeze({ type: "object" });
+const apiDescriptor = (id, owner, action, effect, description) =>
+  Object.freeze({
+    apiVersion: 1, id, owner, action, version: "1.0.0",
+    visibility: "Public", sideEffect: effect,
+    inputSchema: SCHEMA, outputSchema: SCHEMA, description
+  });
+
 const PERMISSION = Object.freeze({
   "00": "ui.api.extension.add",
   "01": "ui.api.extension.delete",
@@ -40,6 +48,14 @@ export class UICO {
       UserAPI: Object.freeze(["describe", "list", "extensionAPI"]),
       AgentAPI: Object.freeze(["describe", "list", "extensionAPI"]),
       Property: Object.freeze(["UISP"]),
+      APIDescriptors: Object.freeze([
+        apiDescriptor("UICO.describe", "UICO", "describe", "read",
+          "Read host UI protocol identity and supported operations"),
+        apiDescriptor("UICO.list", "UICO", "list", "read",
+          "List registered UISP host UI surfaces"),
+        apiDescriptor("UICO.extensionAPI", "UICO", "extensionAPI", "write",
+          "Permission-scoped 2-bit plugin API extension operation")
+      ]),
       Program: "UICO",
       EHU: "LinkCore.OMU",
       Log: "LinkCore.OMU"
@@ -74,6 +90,12 @@ export class UICO {
         UserAPI: ["describe", "getState"],
         AgentAPI: ["describe", "getState"],
         Property: ["UISP"],
+        APIDescriptors: [
+          apiDescriptor(path + ".describe", path, "describe", "read",
+            "Read the registered native UI descriptor"),
+          apiDescriptor(path + ".getState", path, "getState", "read",
+            "Read the immutable UISP state projection")
+        ],
         Program: "UICO.NativeUI",
         EHU: "LinkCore.OMU",
         Log: "LinkCore.OMU"
