@@ -80,6 +80,17 @@ test("PR23 Hub E2E denies before permission then logs CRUD", async () => {
     "plugin.demo", "plugin.demo", "ui.api.extension.add"
   ).status, 200);
   assert.equal((await call("00")).status, 403);
+  assert.equal(core.grantPluginPermission(
+    "plugin.demo", "plugin.demo", "ui.api.extension.add", true
+  ).status, 200);
+  assert.equal((await call("00")).value.status, 201);
+  assert.equal(core.uru.listUIExtensionAPIs("editor").length, 1);
+  assert.equal(core.unregisterProvider("plugin.demo", "plugin.demo").status,
+    200);
+  assert.equal(core.uru.listUIExtensionAPIs("editor").length, 0);
+  assert.equal(core.listActionContracts("plugin.demo").value.items.some(
+    item => item.id === "plugin.demo.run" && item.owner === "UICO.editor"),
+    false);
   assert.ok(core.omu.snapshot().dependencies.some(row =>
     row.link === "plugin.demo->UICO"));
 });
