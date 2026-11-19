@@ -87,3 +87,43 @@ test("PR23.7 console remains accessible when storage is denied", async () => {
 	assert.equal(typeof win.VTE.UICO_TEST, "function");
 	assert.equal((await win.VTE.UICO_TEST()).status, "UNVERIFIED");
 });
+
+test("PR23.7 interrupted startup persists pending and retries on reload",
+	async () => {
+		const core = new LinkCore();
+		const store = storage();
+		const first = new UICOVTERunner(
+			core, () => new VirtualTestEnvironment(), store);
+		const snapshot = first.snapshot();
+		store.setItem("cluster.uico.vte.v1", JSON.stringify({
+			openedVersion: "0.0.14", currentSnapshot: snapshot, status: "pass"
+		}));
+		assert.equal(first.startup().run, true);
+		assert.equal(JSON.parse(store.getItem("cluster.uico.vte.v1"))
+			.status, "pending");
+		const resumed = new UICOVTERunner(
+			core, () => new VirtualTestEnvironment(), store);
+		const decision = resumed.startup();
+		assert.equal(decision.run, true);
+		assert.deepEqual(decision.reasons, ["previous-incomplete"]);
+		const results = await Promise.all([first.run(), resumed.run()]);
+		assert.ok(results.every(result => result.status === "PASS"));
+	});
+
+test("PR23.7 corrupted persisted records never produce a false PASS",
+	async () => {
+		const core = new LinkCore();
+		const store = storage();
+		store.setItem("cluster.uico.vte.v1", "{malformed");
+		const runner = new UICOVTERunner(
+			core, () => new VirtualTestEnvironment(), store);
+		const decision = runner.startup();
+		assert.deepEqual(decision.reasons, ["previous-error"]);
+		const report = await runner.run(false, decision.reasons);
+		assert.equal(report.status, "UNVERIFIED");
+		assert.equal(report.issues.includes("MISSING_BASELINE"), true);
+		assert.equal(JSON.parse(store.getItem("cluster.uico.vte.v1"))
+			.status, "unverified");
+		assert.ok(core.omu.snapshot().logs.some(entry =>
+			entry.kind === "EHU" && entry.action === "UICO_TEST"));
+	});
