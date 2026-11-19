@@ -316,3 +316,15 @@ UIProtocolPolicy.capabilities + UICOActionContractDescriptors
 Each action descriptor contains `capability`, `requestSchema` and `responseSchema`. The comparator canonicalizes JSON keys and compares exact serializations (collision-free, deterministic), classifying `REMOVED`, `CAPABILITY_CHANGED`, `REQUEST_SCHEMA_CHANGED` and `RESPONSE_SCHEMA_CHANGED`. An older capability-only snapshot cannot validate the new schema layer and produces `SCHEMA_BASELINE_MIGRATION` / `UNVERIFIED`. Malformed current descriptors yield FAIL.
 
 **Authority boundary:** descriptors do not grant privileges; UICO remains read-only in this milestone. Existing HubUnit/URU/EDPMU/OMU are retained. Current metadata describes declared constraints but does not yet execute all synthetic schema fixtures; equality of descriptors is not proof of runtime compatibility. Native UI mutation, API extension CRUD and complete browser E2E are not implemented by this patch.
+
+
+## PR23 Patch(+9) — Browser lifecycle and legacy migration gate
+```text
+Browser startup → LinkCore ReleaseVersion → VTE facade / UICOVTERunner
+  → localStorage previous opened version + current schema snapshot
+  → TriggerPolicy (version-change / prior-error / manual)
+  → detached VTE relations + canonical Request/Response schema comparison
+  → OMU Log/EHU → persist result
+Same-version previous PASS → no automatic run; console command → manual run
+```
+A capability-only legacy snapshot is insufficient to prove schema equivalence and now remains UNVERIFIED even if its capability strings match. Missing/changed actions fail. Browser test runs verify the single startup event and same-version skip through the real page, not solely Node simulation. The browser executable is injected via an optional environment variable for test environments only.
