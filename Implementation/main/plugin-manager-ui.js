@@ -631,8 +631,24 @@ export function mountPluginManagerUI(core,doc,options={}) {
         exportButton.disabled=false;
       }
     },"pm-mini");
+    const copyManifest=btn(doc,
+      t("複製 Manifest 範本","Copy manifest template"),async()=>{
+        try {
+          const url=new URL("../sdk/examples/echo/plugin.json",
+            import.meta.url);
+          const response=await doc.defaultView.fetch(url);
+          if(!response.ok) throw Error("Template unavailable");
+          const template=await response.text();
+          await doc.defaultView.navigator.clipboard.writeText(template);
+          exportStatus.textContent=t("已複製正式插件範本",
+            "Official plugin template copied");
+        } catch (_error) {
+          exportStatus.textContent=t("無法複製插件範本",
+            "Cannot copy plugin template");
+        }
+      },"pm-mini");
     controls.append(kind,input,size,sort,order,
-      exportButton,exportStatus);
+      copyManifest,exportButton,exportStatus);
     body.append(controls);
     const selectedProvider=current();
     if(selectedProvider) {
@@ -870,5 +886,18 @@ export function mountPluginManagerUI(core,doc,options={}) {
     search.focus();search.setSelectionRange(caret,caret);
   });
   activate("permissions");
-  return Object.freeze({refresh:()=>render(false),select:activate});
+  // A background registration or contract edit must update an open API
+  // List even if no one clicks a different tab. Keep the existing DOM,
+  // focus, selection, and scroll position when the revision is stable.
+  const refreshTicker=doc.defaultView?.setInterval?.(()=>{
+    if(active==="api") refreshAPIPage?.();
+  },2000) ?? null;
+  return Object.freeze({
+    refresh:()=>render(false), select:activate,
+    dispose:()=>{
+      if(refreshTicker!==null) {
+        doc.defaultView?.clearInterval?.(refreshTicker);
+      }
+    }
+  });
 }
