@@ -43,6 +43,10 @@ function harness() {
   let invoked = 0;
   let terminated = false;
   let booted = false;
+  const revocationStore = {
+    async list() { return { ok: true, status: 200, value: [] }; },
+    async mark() { return { ok: true, status: 201 }; }
+  };
   const installer = new PluginHostInstallUnit(env.core, null, () => ({
     async start() {
       booted = true;
@@ -53,7 +57,7 @@ function harness() {
       return { ok: true, status: 200, value: { result: payload.text } };
     },
     terminate() { terminated = true; }
-  }));
+  }), revocationStore);
   return {
     env, installer,
     get invoked() { return invoked; },
