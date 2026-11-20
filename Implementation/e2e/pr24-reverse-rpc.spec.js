@@ -21,7 +21,8 @@ test("PR24 isolated Worker uses approved Session RPC through HubUnit",
       };
       const manifest = {
         packageVersion: 1, name: "PR24 reverse test",
-        entry: "worker.js", provider
+        entry: "worker.js", provider,
+        rpcScopes: [{ target: "UICO", action: "describe" }]
       };
       const source = `export async function transform() {
         const data = await Cluster.request("UICO", "describe", {},
@@ -42,7 +43,8 @@ test("PR24 isolated Worker uses approved Session RPC through HubUnit",
         files: { "plugin.json": btoa(raw), "worker.js": btoa(source) }
       };
       const install = await linkCore.pluginHostInstaller.install(
-        snapshot, { consented: true });
+        snapshot, { consented: true,
+          approvedRpcScopes: manifest.rpcScopes });
       if (!install.ok) return { install };
       const bridge = linkCore.pluginHostInstaller.handles.get(
         provider.providerId);
@@ -101,7 +103,8 @@ test("PR24.7 disable/enable creates a new authenticated Worker Session",
       };
       const manifest = {
         packageVersion: 1, name: "PR24 session rotation",
-        entry: "worker.js", provider
+        entry: "worker.js", provider,
+        rpcScopes: [{ target: "UICO", action: "describe" }]
       };
       const raw = JSON.stringify(manifest);
       const source = `export async function transform() {
@@ -115,7 +118,8 @@ test("PR24.7 disable/enable creates a new authenticated Worker Session",
       };
       const installer = linkCore.pluginHostInstaller;
       const installed = await installer.install(
-        snapshot, { consented: true });
+        snapshot, { consented: true,
+          approvedRpcScopes: manifest.rpcScopes });
       if (!installed.ok) return { installed };
       const bridge = installer.handles.get(provider.providerId);
       const original = bridge.hostTransport?.connections.get(
