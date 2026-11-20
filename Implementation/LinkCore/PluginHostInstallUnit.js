@@ -26,6 +26,41 @@ export class PluginHostInstallUnit {
     this.revocationStore = revocationStore ??
       new PluginRPCRevocationStoreUnit(core.omu);
     this.revocationPending = new Set();
+    this.revocationStore.subscribe?.(providerId => {
+      void this.syncDurableRpcDenials(providerId);
+    });
+  }
+
+  /**
+   * Cross-tab notifications contain no grant. Always verify the
+   * committed denial state again before applying a live revocation.
+   */
+  async syncDurableRpcDenials(providerId) {
+    const provider = this.core.uru.getProvider(providerId);
+    const bridge = this.handles.get(providerId);
+    if (!provider || !bridge || this.revocationPending.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    const stored = await this.revocationStore.list(providerId);
+    if (!stored.ok) {
+      this.core.setProviderEnabled(provider.objectId,
+        providerId, false);
+      bridge.suspendHostRequests?.();
+      this.uiHost.setEnabled(providerId, false);
+      this.record(503, "RPCDenialSyncFailed", providerId);
+      return { ok: false, status: 503 };
+    }
+    let revoked = 0;
+    for (const scope of stored.value) {
+      const active = bridge.listHostRPCScopes?.() ?? [];
+      if (!active.some(item => item.target === scope.target &&
+          item.action === scope.action &&
+          item.property === scope.property)) continue;
+      const result = bridge.revokeHostRPCScope(scope);
+      if (result.ok) revoked++;
+    }
+    if (revoked) this.record(200, "RPCDenialSyncApplied", providerId);
+    return { ok: true, status: 200, revoked };
   }
 
   record(status, reason, providerId = "") {
