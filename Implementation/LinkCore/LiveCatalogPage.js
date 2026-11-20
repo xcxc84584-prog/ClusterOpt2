@@ -168,7 +168,11 @@ export class LiveCatalogPage {
             serviceObject.ocda?.AgentAPI
           ]));
           if (owner && owner !== provider.objectId) continue;
-          if (needle && ![descriptor.id, descriptor.action]
+          if (needle && ![descriptor.id, descriptor.action,
+            descriptor.version ?? "",
+            JSON.stringify(descriptor.inputSchema ?? {}),
+            JSON.stringify(descriptor.outputSchema ?? {}),
+            JSON.stringify(descriptor.permissions ?? [])]
             .some(value => value.toLowerCase().includes(needle))) continue;
           entries.push({
             id: descriptor.id, owner: provider.objectId, descriptor
@@ -182,7 +186,10 @@ export class LiveCatalogPage {
         for (const descriptor of policy.descriptions) {
           revisionParts.push(JSON.stringify(descriptor));
           if (owner && owner !== "HubUnit") continue;
-          if (needle && ![descriptor.id, descriptor.description ?? ""]
+          if (needle && ![descriptor.id, descriptor.description ?? "",
+            descriptor.version ?? "",
+            JSON.stringify(descriptor.inputSchema ?? {}),
+            JSON.stringify(descriptor.outputSchema ?? {})]
             .some(value => value.toLowerCase().includes(needle))) continue;
           entries.push({ id: descriptor.id, owner: "HubUnit",
             descriptor: { ...descriptor, visibility: "Public" } });
