@@ -294,6 +294,18 @@ export class PluginHostInstallUnit {
       return { ok: false, status: 400 };
     }
     const bridge = this.bridgeFactory();
+    // Unexpected Worker failure is isolated from all other Providers.
+    // Only the currently installed Bridge can disable its owner.
+    bridge.onFault = (status, reason) => {
+      if (this.handles.get(provider.providerId) !== bridge) return;
+      const live = this.core.uru.getProvider(provider.providerId);
+      if (!live) return;
+      this.core.setProviderEnabled(
+        live.objectId, provider.providerId, false);
+      this.uiHost.setEnabled(provider.providerId, false);
+      this.record(status, "WorkerFault." + reason,
+        provider.providerId);
+    };
     const boot = await bridge.start(provider, source);
     if (!boot.ok) {
       bridge.terminate(boot.status, "BootstrapRejected");
