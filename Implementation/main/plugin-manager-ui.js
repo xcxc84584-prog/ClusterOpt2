@@ -326,6 +326,48 @@ export function mountPluginManagerUI(core,doc,options={}) {
         },"pm-mini"));
       body.append(row);
     }
+    // Denials are fetched from Host-private storage, never from the
+    // plugin manifest or a Worker response.
+    if(core.pluginHostInstaller.handles.has(p.providerId)) {
+      const deniedPane=dom(doc,"div","pm-revoked-rpc");
+      body.append(deniedPane);
+      void core.pluginHostInstaller.listRevokedRpcScopes(
+        p.providerId).then(saved=>{
+        if(!deniedPane.isConnected ||
+           current()?.providerId!==p.providerId) return;
+        if(!saved.ok) {
+          deniedPane.append(dom(doc,"p","pm-muted",
+            t("無法查詢已撤權路由。","Cannot read revoked routes.")));
+          return;
+        }
+        if(saved.value.length)deniedPane.append(dom(doc,"p","pm-muted",
+          t("已撤權路由（重新授權需再次確認）：",
+            "Revoked routes (explicit reapproval required):")));
+        for(const scope of saved.value) {
+          const routeName=scope.target+" / "+scope.action+
+            (scope.property===undefined?"":" ["+scope.property+"]");
+          const row=dom(doc,"div","pm-permission-row");
+          row.append(dom(doc,"span","pm-permission-label",routeName),
+            btn(doc,t("重新授權","Reapprove"),async event=>{
+              if(!event.isTrusted)return;
+              if(!doc.defaultView.confirm(t(
+                "確認重新授權此 RPC 路由？","Reapprove this RPC route?")+
+                "\n"+routeName))return;
+              const result=await core.pluginHostInstaller.reapproveRpcScope(
+                p.providerId,scope,{consented:true});
+              if(!result.ok)doc.defaultView.alert(t(
+                "無法重新授權（狀態 ","Cannot reapprove (status ")+
+                result.status+").");
+              render();
+            },"pm-mini"));
+          deniedPane.append(row);
+        }
+      }).catch(()=>{
+        if(deniedPane.isConnected)deniedPane.append(
+          dom(doc,"p","pm-muted",
+            t("撤權紀錄不可用。","Revocation data unavailable.")));
+      });
+    }
     section.append(body);return section;
   }
   function logCard(p) {
