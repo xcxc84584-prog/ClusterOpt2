@@ -110,6 +110,41 @@ export function auditStaticSources(core, root = process.cwd(),
         409, descriptor.owner, issue);
     }
   }
+  // Host Protocol declarations are static EDPMU metadata, not
+  // executable Worker permissions. Every version shares a pinned
+  // source constant to prevent stale copies after a code change.
+  for (const descriptor of
+    core.edpmu.get("HubProtocolPolicy")?.descriptions ?? []) {
+    checked++;
+    const { file, line } = descriptor.sourceLocation ?? {};
+    let code = null;
+    if (!file || !Number.isSafeInteger(line) || line < 1 ||
+        !VERSION.test(descriptor.version) || isAbsolute(file) ||
+        relative(root, resolve(root, file)).startsWith("..")) {
+      code = "CATALOG_SOURCE_LOCATION_INVALID";
+    } else {
+      try {
+        const row = readText(resolve(root, file))
+          .split(/\r?\n/)[line - 1] ?? "";
+        if (!row.includes(
+          'const STATIC_PROTOCOL_VERSION = "' +
+            descriptor.version + '";')) {
+          code = "CATALOG_STATIC_VERSION_MISMATCH";
+        }
+      } catch {
+        code = "CATALOG_SOURCE_UNREADABLE";
+      }
+    }
+    if (code) {
+      const issue = {
+        code, owner: "HubUnit", id: descriptor.id,
+        expectedVersion: descriptor.version, file, line
+      };
+      failures.push(issue);
+      core.omu.record("EHU", "LinkCore", "Catalog.SourceAudit",
+        409, "HubUnit", issue);
+    }
+  }
   return Object.freeze({
     ok: failures.length === 0,
     status: failures.length ? 409 : 200,
