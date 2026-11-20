@@ -109,7 +109,12 @@ export class LiveCatalogPage {
           if (!CatalogVisibilityPolicy.canSeeAPI(
             source, entry, object, origin)) continue;
           if (owner && objectId !== owner) continue;
-          if (needle && ![descriptor.id, descriptor.description ?? ""]
+          if (needle && ![descriptor.id, descriptor.description ?? "",
+            descriptor.version ?? "",
+            JSON.stringify(descriptor.inputSchema ?? {}),
+            JSON.stringify(descriptor.outputSchema ?? {}),
+            JSON.stringify(descriptor.permissions ?? []),
+            JSON.stringify(descriptor.errors ?? [])]
             .some(value => value.toLowerCase().includes(needle))) continue;
           entries.push({
             id: descriptor.id, owner: objectId, descriptor
@@ -183,7 +188,8 @@ export class LiveCatalogPage {
           continue;
         }
         if (owner && !descriptor.owners.includes(owner)) continue;
-        if (needle && ![record.name, descriptor.description ?? ""]
+        if (needle && ![record.name, descriptor.description ?? "",
+          JSON.stringify(descriptor)]
           .some(value => value.toLowerCase().includes(needle))) continue;
         entries.push({
           id: record.name, owner: descriptor.owners.join(","),
