@@ -42,7 +42,8 @@ function snapshot() {
   };
 }
 
-function store(memory = new Map(), failOnMark = false) {
+function store(memory = new Map(), failOnMark = false,
+  failOnClear = false) {
   return {
     async list(providerId) {
       return { ok: true, status: 200,
@@ -53,6 +54,15 @@ function store(memory = new Map(), failOnMark = false) {
       const scopes = memory.get(providerId) ?? [];
       memory.set(providerId, [...scopes, scope]);
       return { ok: true, status: 201 };
+    },
+    async clear(providerId, scope) {
+      if (failOnClear) return { ok: false, status: 503 };
+      const scopes = memory.get(providerId) ?? [];
+      memory.set(providerId, scopes.filter(item =>
+        item.target !== scope.target ||
+        item.action !== scope.action ||
+        item.property !== scope.property));
+      return { ok: true, status: 200 };
     }
   };
 }
@@ -71,6 +81,27 @@ function environment(denials) {
         return { ok: true, status: 201 };
       },
       listHostRPCScopes() { return this.scopes; },
+      suspendHostRequests() { this.suspended = true; return true; },
+      resumeHostRequests() {
+        this.suspended = false;
+        return { ok: true, status: 201 };
+      },
+      grantReviewedHostRPCScope(scope) {
+        if (!SCOPES.some(item =>
+          item.target === scope.target &&
+          item.action === scope.action &&
+          item.property === scope.property)) {
+          return { ok: false, status: 403 };
+        }
+        if (this.scopes.some(item =>
+          item.target === scope.target &&
+          item.action === scope.action &&
+          item.property === scope.property)) {
+          return { ok: false, status: 409 };
+        }
+        this.scopes = Object.freeze([...this.scopes, scope]);
+        return { ok: true, status: 200 };
+      },
       revokeHostRPCScope(scope) {
         const before = this.scopes.length;
         this.scopes = Object.freeze(this.scopes.filter(item =>
@@ -166,4 +197,73 @@ test("PR24.46 persist store rejects malformed records before IO",
       "plugin.persist", { target: "*", action: "describe" })).status, 400);
     assert.equal((await denied.list("bad provider")).status, 400);
     assert.equal((await denied.list("plugin.persist")).status, 503);
+  });
+
+test("PR24.47 explicit reapproval requires consent and restores only one",
+  async () => {
+    const shared = store();
+    const h = environment(shared);
+    const providerId = "plugin.persist";
+    assert.equal((await h.installer.install(
+      snapshot(), APPROVAL)).status, 201);
+    assert.equal((await h.installer.revokeRpcScopePersisted(
+      providerId, REVOKED)).status, 200);
+    assert.equal((await h.installer.reapproveRpcScope(
+      providerId, REVOKED)).status, 403);
+    assert.deepEqual(h.installer.listRpcScopes(providerId), [RETAINED]);
+    assert.deepEqual((await h.installer.listRevokedRpcScopes(
+      providerId)).value, [REVOKED]);
+
+    const bridge = h.installer.handles.get(providerId);
+    const restored = await h.installer.reapproveRpcScope(
+      providerId, REVOKED, { consented: true });
+    assert.equal(restored.status, 200);
+    assert.equal(bridge.suspended, false);
+    assert.deepEqual(h.installer.listRpcScopes(
+      providerId), [RETAINED, REVOKED]);
+    assert.deepEqual((await h.installer.listRevokedRpcScopes(
+      providerId)).value, []);
+    assert.ok(h.env.log().some(entry =>
+      entry.action === "Plugin.Install.RPCReapproved"));
+    h.installer.uninstall(providerId);
+  });
+
+test("PR24.47 reapproval rolls back memory grant if store clear fails",
+  async () => {
+    const h = environment(store(new Map(), false, true));
+    const providerId = "plugin.persist";
+    assert.equal((await h.installer.install(
+      snapshot(), APPROVAL)).status, 201);
+    assert.equal((await h.installer.revokeRpcScopePersisted(
+      providerId, REVOKED)).status, 200);
+    const declined = await h.installer.reapproveRpcScope(
+      providerId, REVOKED, { consented: true });
+    assert.equal(declined.status, 503);
+    assert.deepEqual(h.installer.listRpcScopes(providerId), [RETAINED]);
+    assert.deepEqual((await h.installer.listRevokedRpcScopes(
+      providerId)).value, [REVOKED]);
+    assert.equal(h.installer.handles.get(providerId).suspended, false);
+    h.installer.uninstall(providerId);
+  });
+
+test("PR24.49 only originally reviewed route can be reapproved",
+  async () => {
+    const shared = store(new Map([
+      ["plugin.persist", [{
+        target: "UICO", action: "other"
+      }]]
+    ]));
+    const h = environment(shared);
+    assert.equal((await h.installer.install(
+      snapshot(), APPROVAL)).status, 201);
+    const denied = await h.installer.reapproveRpcScope(
+      "plugin.persist", { target: "UICO", action: "other" },
+      { consented: true });
+    assert.equal(denied.status, 403);
+    assert.deepEqual(h.installer.listRpcScopes(
+      "plugin.persist"), SCOPES);
+    assert.deepEqual((await shared.list("plugin.persist")).value, [
+      { target: "UICO", action: "other" }
+    ]);
+    h.installer.uninstall("plugin.persist");
   });
