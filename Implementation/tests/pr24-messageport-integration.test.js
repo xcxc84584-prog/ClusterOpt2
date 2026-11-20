@@ -28,7 +28,7 @@ async function within(promise, name, ms = 1500) {
 
 function setup(approvedScopes = [
   { target: "EchoObject", action: "Echo" }
-]) {
+], hostMessage = null) {
   const calls = [];
   const manifest = {
     providerId: "example.provider",
@@ -59,7 +59,7 @@ function setup(approvedScopes = [
   const channel = new MessageChannel();
   const hello = once(channel.port2, "message");
   assert.equal(adapter.attach(channel.port1,
-    manifest.providerId).status, 201);
+    manifest.providerId, hostMessage).status, 201);
   return { channel, adapter, calls, core, hello };
 }
 
@@ -541,6 +541,53 @@ test("PR24.82 repeated Host timeouts trip circuit until Host reset",
       for (const finish of finishers) {
         finish({ ok: true, status: 200, value: {} });
       }
+      h.adapter.detachAll();
+      h.channel.port2.close();
+    }
+  });
+
+test("PR24.22 one MessagePort receiver routes two Host replies exactly once",
+  async () => {
+    const seen = [];
+    let complete;
+    const observed = new Promise(resolve => { complete = resolve; });
+    const h = setup(undefined, packet => {
+      if (packet?.protocol !== "cluster.rpc/1" ||
+          packet.direction !== "host-to-plugin") return false;
+      seen.push(packet.requestId);
+      if (seen.length === 2) complete();
+      return true;
+    });
+    try {
+      const [challenge] = await h.hello;
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready",
+        protocol: challenge.protocol,
+        challenge: challenge.challenge
+      });
+      for (const requestId of ["host-1", "host-2"]) {
+        h.channel.port2.postMessage({
+          protocol: "cluster.rpc/1",
+          direction: "host-to-plugin", type: "response",
+          requestId, eventId: 1, ok: true, status: 200,
+          data: { echoed: requestId }
+        });
+      }
+      await within(observed, "both Host replies");
+      assert.deepEqual(seen, ["host-1", "host-2"]);
+      assert.equal(h.channel.port1.listenerCount("message"), 1);
+      const response = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1",
+        direction: "plugin-to-host", type: "request",
+        requestId: "still-routes", target: "EchoObject",
+        action: "Echo", payload: { text: "reverse" }
+      });
+      const [reply] = await within(response, "reverse still routes");
+      assert.equal(reply.status, 200);
+      assert.deepEqual(reply.data, { echoed: "reverse" });
+      assert.equal(h.calls.length, 1);
+    } finally {
       h.adapter.detachAll();
       h.channel.port2.close();
     }
