@@ -1,4 +1,5 @@
 import { CatalogCollection } from "./CatalogCollection.js";
+import { CatalogStaticGuard } from "./CatalogStaticGuard.js";
 import { ServiceRegistry } from "./ServiceRegistry.js";
 import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
@@ -86,6 +87,7 @@ export class LinkCore {
     this.pluginFolderPackage = new PluginFolderPackageUnit(this.omu);
     this.pluginPackageStore = new PluginPackageStoreUnit(this.omu);
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
+    this.catalogStaticGuard = new CatalogStaticGuard(this.uru, this.omu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog, this.services);
     this.pluginHostInstaller = new PluginHostInstallUnit(this,
@@ -391,6 +393,11 @@ export class LinkCore {
     return this.hub.requestService(source, service, action,
       payload, options);
   }
+  /** Trusted host verification; static mirrors must identify source lines. */
+  verifyStaticCatalog(manifest) {
+    return this.catalogStaticGuard.verify(manifest);
+  }
+
   generateCatalogDocs(source, format, options = {}) {
     const result = CatalogDocumentation.render(
       (caller, command, kind, selector, context) =>
