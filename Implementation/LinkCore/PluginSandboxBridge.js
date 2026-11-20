@@ -1,5 +1,10 @@
 import { PluginRPCContractPolicy as RPC } from
   "../property/PluginRPCContractPolicy.js";
+import { PluginWorkerSource } from "./PluginWorkerSource.js";
+import { PluginHostRequestGateway } from
+  "./PluginHostRequestGateway.js";
+import { PluginHostRequestTransport } from
+  "./PluginHostRequestTransport.js";
 
 /**
  * PR13.3/13.5/13.7: opaque iframe launches a dedicated Worker.
@@ -12,42 +17,6 @@ import { PluginRPCContractPolicy as RPC } from
  * when the plugin runs an unbounded synchronous computation.
  */
 const BOOTSTRAP = String.raw`
-const WORKER_SOURCE = [
-  "\"use strict\";\nlet channel = null;\nlet ",
-  "plugin = null;\nself.addEventListener(\"",
-  "message\", async event => {\n  if (chann",
-  "el || event.data?.kind !== \"start\" ||\n",
-  "      event.ports.length !== 1) return",
-  ";\n  channel = event.ports[0];\n  try {\n",
-  "    const source = event.data.source;\n",
-  "    if (typeof source !== \"string\") th",
-  "row Error(\"Source missing\");\n    const",
-  " url = \"data:text/javascript;charset=u",
-  "tf-8,\" +\n      encodeURIComponent(sour",
-  "ce);\n    plugin = await import(url);\n ",
-  "   channel.onmessage = async ({data}) ",
-  "=> {\n      if (data?.kind !== \"invoke\"",
-  " ||\n          !Number.isSafeInteger(da",
-  "ta.id)) return;\n      try {\n        co",
-  "nst fn = Object.hasOwn(plugin, data.ac",
-  "tion) ?\n          plugin[data.action] ",
-  ": null;\n        if (typeof fn !== \"fun",
-  "ction\") {\n          channel.postMessag",
-  "e({kind:\"response\",id:data.id,\n       ",
-  "     ok:false,status:404});\n          ",
-  "return;\n        }\n        const value ",
-  "= await fn(data.payload);\n        chan",
-  "nel.postMessage({kind:\"response\",id:da",
-  "ta.id,\n          ok:true,value:value ?",
-  "? null});\n      } catch (_error) {\n   ",
-  "     channel.postMessage({kind:\"respon",
-  "se\",id:data.id,\n          ok:false,sta",
-  "tus:500});\n      }\n    };\n    channel.",
-  "start();\n    channel.postMessage({kind",
-  ":\"ready\"});\n  } catch (_error) {\n    c",
-  "hannel.postMessage({kind:\"error\",statu",
-  "s:400});\n  }\n});\n"
-].join("");
 "use strict";
 let launched = false;
 let runner = null;
@@ -58,16 +27,13 @@ window.addEventListener("message", event => {
   launched = true;
   const channel = event.ports[0];
   try {
-    const workerScript = WORKER_SOURCE;
-    const url = URL.createObjectURL(new Blob([workerScript],
+    const url = URL.createObjectURL(new Blob([WORKER_SCRIPT],
       {type:"text/javascript"}));
     try {
       runner = new Worker(url, {type:"classic"});
     } finally {
       URL.revokeObjectURL(url);
     }
-    // Keep the authenticated host port in the isolated frame so a
-    // worker startup failure can still reach HubUnit immediately.
     const inner = new MessageChannel();
     channel.onmessage = ({data}) => inner.port1.postMessage(data);
     inner.port1.onmessage = ({data}) => channel.postMessage(data);
@@ -77,9 +43,9 @@ window.addEventListener("message", event => {
       channel.postMessage({kind:"error",status:502});
       runner.terminate();
     };
-    runner.postMessage({kind:"start",
-      source:event.data.source}, [inner.port2]);
-  } catch (_error) {
+    runner.postMessage({kind:"start",source:event.data.source},
+      [inner.port2]);
+  } catch {
     channel.postMessage({kind:"error",status:502});
   }
 });
@@ -90,7 +56,7 @@ window.addEventListener("message", event => {
     runner = null;
   }
 });
-`;
+`.replace("WORKER_SCRIPT", JSON.stringify(PluginWorkerSource));
 
 const CSP = "default-src 'none'; script-src 'unsafe-inline' data: blob:; " +
   "connect-src 'none'; img-src data:; style-src 'unsafe-inline'; " +
@@ -113,6 +79,24 @@ export class PluginSandboxBridge {
     this.pending = new Map();
     this.sequence = 0;
     this.closed = false;
+    this.hostTransport = null;
+  }
+
+  /**
+   * Only install after the host has registered and granted the Provider.
+   * Legacy invocation stays on its existing port handler.
+   */
+  enableHostRequests(core) {
+    if (this.closed || !this.port || this.hostTransport ||
+        core?.uru?.getProvider(this.manifest?.providerId)?.objectId !==
+          this.manifest?.objectId) {
+      return { ok: false, status: 403 };
+    }
+    const gateway = new PluginHostRequestGateway(core);
+    const transport = new PluginHostRequestTransport(gateway);
+    const result = transport.attach(this.port, this.manifest.providerId);
+    if (result.ok) this.hostTransport = transport;
+    return result;
   }
 
   audit(status, reason) {
@@ -129,6 +113,8 @@ export class PluginSandboxBridge {
       pending.resolve(reject(status, reason));
     }
     this.pending.clear();
+    this.hostTransport?.detachAll();
+    this.hostTransport = null;
     this.port?.close();
     this.port = null;
     // The isolated frame controls the worker, not plugin code.
@@ -185,7 +171,7 @@ export class PluginSandboxBridge {
         } else if (msg?.kind === "error") {
           this.terminate(502, "BootstrapFailed");
           finish(reject(502, "Plugin source rejected by sandbox"));
-        } else {
+        } else if (msg?.kind === "response") {
           this.receive(msg);
         }
       };
