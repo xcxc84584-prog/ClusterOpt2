@@ -48,6 +48,7 @@ test("live Provider manifest publishes inspectable API contract",
     await expect(page.locator(".pm-permission-controls input"))
       .toBeChecked();
     await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await page.locator(".pm-api-kind").selectOption("service");
     await expect(page.locator(".pm-api-row-link")
       .filter({hasText:"example.render"})).toBeVisible();
     await page.locator(".pm-api-row-link")
@@ -215,6 +216,7 @@ test("API explorer presents schema fields and raw contract",
       });
     });
     await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await page.locator(".pm-api-kind").selectOption("service");
     await page.locator("#pluginApiSearch").fill("schema.service");
     await page.locator(".pm-api-row-link").click();
     await expect(page.locator(".pm-contract-heading"))
