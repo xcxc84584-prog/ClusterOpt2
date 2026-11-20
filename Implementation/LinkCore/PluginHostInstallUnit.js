@@ -353,7 +353,7 @@ export class PluginHostInstallUnit {
       // permission approval and UI mount have succeeded.
       if (typeof bridge.enableHostRequests === "function") {
         const linked = bridge.enableHostRequests(
-          this.core, effectiveRpcScopes);
+          this.core, effectiveRpcScopes, scopeReview.value);
         if (!linked.ok) throw Error("Plugin RPC session failed");
       }
       this.handles.set(provider.providerId, bridge);
