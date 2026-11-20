@@ -927,9 +927,11 @@ export class PluginUIHostUnit {
       workspace.append(panel);
       // Every external UI plugin owns an isolated workbench tab.
       // The native editor and PowerShell remain Host-owned.
-      view.workbenchTab = new PluginWorkbenchTabUnit(
-        this.doc, view, sync);
-      view.workbenchTab.attach();
+      if (this.doc.getElementById("tabs")) {
+        view.workbenchTab = new PluginWorkbenchTabUnit(
+          this.doc, view, sync);
+        view.workbenchTab.attach();
+      }
       if (provider.providerId === "cluster.ai-agent-mcp") {
         const onQuickSetup = event => {
           if (event.source !== frame.contentWindow ||
