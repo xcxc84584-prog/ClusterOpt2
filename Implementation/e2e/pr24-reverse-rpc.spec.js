@@ -166,3 +166,70 @@ test("PR24.7 disable/enable creates a new authenticated Worker Session",
     expect(outcome.removed).toBe(200);
     expect(outcome.closed).toBe(true);
   });
+
+
+test("PR24.45 scoped Property.Read delegates to HubUnit/EDPMU",
+  async ({ page }) => {
+    await page.goto("/");
+    const outcome = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const rpcScopes = [{
+        target: "HubUnit", action: "Property.Read",
+        property: "SystemVersion"
+      }];
+      const provider = {
+        manifestVersion: 1,
+        providerId: "pr24.browser.property",
+        objectId: "PR24.BrowserProperty",
+        provides: [{
+          service: "example.pr24.property", action: "probe",
+          version: "1.0.0", inputSchema: { type: "object" },
+          outputSchema: { type: "object" }
+        }],
+        requires: [], permissions: [],
+        execution: { isolation: "worker", concurrency: "serial" }
+      };
+      const manifest = {
+        packageVersion: 1, name: "PR24 property scope",
+        entry: "worker.js", provider, rpcScopes
+      };
+      const source = [
+        "export async function probe() {",
+        "  const version = await Cluster.request('HubUnit',",
+        "    'Property.Read', { name: 'SystemVersion' });",
+        "  let rejected = false;",
+        "  try {",
+        "    await Cluster.request('HubUnit',",
+        "      'Property.Read', { name: 'Language' });",
+        "  } catch { rejected = true; }",
+        "  return { versionType: typeof version, rejected };",
+        "}"
+      ].join("\n");
+      const raw = JSON.stringify(manifest);
+      const snapshot = {
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText: raw,
+        files: {
+          "plugin.json": btoa(raw), "worker.js": btoa(source)
+        }
+      };
+      const installer = linkCore.pluginHostInstaller;
+      const installed = await installer.install(snapshot, {
+        consented: true, approvedRpcScopes: rpcScopes
+      });
+      if (!installed.ok) return { installed };
+      try {
+        const result = await linkCore.request("ui",
+          provider.objectId, "probe", {}, { origin: "user" });
+        return { installed: installed.status, result };
+      } finally {
+        installer.uninstall(provider.providerId);
+      }
+    });
+    expect(outcome.installed, JSON.stringify(outcome)).toBe(201);
+    expect(outcome.result.status, JSON.stringify(outcome)).toBe(200);
+    expect(outcome.result.value).toEqual({
+      versionType: "string", rejected: true
+    });
+  });
