@@ -14,16 +14,23 @@ export class PluginHostRequestGateway {
   #reviewedRpcScopes;
 
   constructor(core, sessions = new PluginSessionUnit(),
-    approvedRpcScopes = []) {
-    const checked = Scopes.inspect(approvedRpcScopes);
-    if (!checked.ok) {
-      throw new TypeError("Invalid Host-approved RPC scopes");
+    activeRpcScopes = [], reviewedRpcScopes = activeRpcScopes) {
+    const active = Scopes.inspect(activeRpcScopes);
+    const reviewed = Scopes.inspect(reviewedRpcScopes);
+    const contains = (scopes, value) => scopes.some(item =>
+      item.target === value.target &&
+      item.action === value.action &&
+      item.property === value.property);
+    if (!active.ok || !reviewed.ok ||
+        active.value.some(item => !contains(reviewed.value, item))) {
+      throw new TypeError("Invalid Host-reviewed RPC scopes");
     }
     this.core = core;
     this.sessions = sessions;
-    // Never derive permission from a Worker request or a Manifest alone.
-    this.#activeRpcScopes = checked.value;
-    this.#reviewedRpcScopes = checked.value;
+    // Reviewed routes are NOT active grants. A durable deny keeps
+    // them inactive until a separate Host-confirmed reapproval.
+    this.#activeRpcScopes = active.value;
+    this.#reviewedRpcScopes = reviewed.value;
   }
 
   listRpcScopes() {
