@@ -115,8 +115,15 @@ export class LiveCatalogPage {
       }
     } else if (kind === "service") {
       for (const provider of this.uru.providers.values()) {
-        if (!this.uru.objects.has(provider.objectId)) continue;
+        const serviceObject = this.uru.objects.get(provider.objectId);
+        if (!serviceObject) continue;
         for (const action of provider.provides) {
+          const serviceEntry = {
+            owner: provider.objectId,
+            descriptor: { action: action.action }
+          };
+          if (!CatalogVisibilityPolicy.canSeeAPI(source,
+            serviceEntry, serviceObject, origin)) continue;
           const unavailable = this.uru.disabledProviders.has(
             provider.providerId) ||
             !this.uru.isServiceEnabled(provider.providerId,
@@ -237,9 +244,14 @@ export class LiveCatalogPage {
     if (kind === "service") {
       const found = [];
       for (const provider of this.uru.providers.values()) {
-        if (!this.uru.objects.has(provider.objectId) ||
+        const serviceObject = this.uru.objects.get(provider.objectId);
+        if (!serviceObject ||
             (owner && provider.objectId !== owner)) continue;
         for (const action of provider.provides) {
+          if (!CatalogVisibilityPolicy.canSeeAPI(source, {
+            owner: provider.objectId,
+            descriptor: { action: action.action }
+          }, serviceObject, origin)) continue;
           if (action.service === id) found.push({
             owner: provider.objectId, providerId: provider.providerId,
             descriptor: action, permissions: provider.permissions
