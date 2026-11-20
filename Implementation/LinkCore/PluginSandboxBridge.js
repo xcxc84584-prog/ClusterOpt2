@@ -327,7 +327,9 @@ export class PluginSandboxBridge {
       .sessionForPort(this.port);
     const parsed = Envelope.inspect(packet);
     if (!session || session.state !== "ready" ||
-        !parsed.ok || !this.hostController) {
+        !parsed.ok || !this.hostController ||
+        !this.hostController.hasOutstanding(
+          this.port, session, packet.requestId)) {
       this.audit(403, "HostResponseRejected");
       return;
     }
@@ -347,6 +349,14 @@ export class PluginSandboxBridge {
   async invoke(service, action, payload, timeoutMs = 4000) {
     if (this.closed || !this.port || !this.frame) {
       return reject(503, "Plugin sandbox unavailable");
+    }
+    // The modern symmetric protocol is the steady-state path. Older
+    // bootstrap calls retain the legacy message format until ACK.
+    const session = this.hostTransport?.gateway.sessions
+      .sessionForPort(this.port);
+    if (session?.state === "ready" && this.hostController) {
+      return this.invokeBidirectional(
+        service, action, payload, timeoutMs);
     }
     if (this.pending.size >= 8) return reject(429, "Busy");
     const id = ++this.sequence;
