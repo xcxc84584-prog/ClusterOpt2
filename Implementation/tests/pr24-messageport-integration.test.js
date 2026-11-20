@@ -138,10 +138,13 @@ test("PR24.7 cancellation aborts in-flight Hub request", async () => {
       protocol: hello.protocol, challenge: hello.challenge
     });
     let markAbort;
+    let markStart;
+    const started = new Promise(resolve => { markStart = resolve; });
     const aborted = new Promise(resolve => { markAbort = resolve; });
     h.core.hub.request = async (_src, _target, _action,
       _payload, options) => {
       return new Promise(resolve => {
+        markStart();
         options.signal.addEventListener("abort", () => {
           markAbort();
           resolve({ ok: false, status: 499 });
@@ -153,7 +156,7 @@ test("PR24.7 cancellation aborts in-flight Hub request", async () => {
       type: "request", requestId: "cancel-me",
       target: "EchoObject", action: "Echo", payload: {}
     });
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await started;
     h.channel.port2.postMessage({
       protocol: "cluster.rpc/1", direction: "plugin-to-host",
       type: "cancel", requestId: "cancel-me", reason: "ABORTED"
