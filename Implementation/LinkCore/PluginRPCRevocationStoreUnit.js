@@ -33,6 +33,34 @@ export class PluginRPCRevocationStoreUnit {
   constructor(omu, indexedDB = globalThis.indexedDB) {
     this.omu = omu;
     this.indexedDB = indexedDB;
+    this.listeners = new Set();
+    this.channel = null;
+  }
+
+  /**
+   * Broadcast only deny notifications, never grants. Every receiver
+   * must re-read IndexedDB rather than trusting the event payload.
+   */
+  subscribe(listener) {
+    if (typeof listener !== "function") {
+      throw TypeError("Invalid RPC denial listener");
+    }
+    this.listeners.add(listener);
+    if (!this.channel && this.indexedDB &&
+        typeof window !== "undefined" &&
+        typeof BroadcastChannel === "function") {
+      this.channel = new BroadcastChannel(
+        "clusteropt2-rpc-denials");
+      this.channel.onmessage = event => {
+        if (event.data?.kind !== "deny" ||
+            typeof event.data?.providerId !== "string") return;
+        for (const notify of [...this.listeners]) {
+          try { void notify(event.data.providerId); }
+          catch { /* A listener cannot alter durable denial state. */ }
+        }
+      };
+    }
+    return () => this.listeners.delete(listener);
   }
 
   audit(status, action, providerId) {
@@ -82,6 +110,11 @@ export class PluginRPCRevocationStoreUnit {
     try {
       await this.transaction("readwrite", store => store.put(record));
       this.audit(201, "Persist", providerId);
+      try {
+        this.channel?.postMessage({ kind: "deny", providerId });
+      } catch {
+        // Broadcast is advisory; IndexedDB is the durable authority.
+      }
       return { ok: true, status: 201 };
     } catch {
       this.audit(503, "PersistFailed", providerId);
