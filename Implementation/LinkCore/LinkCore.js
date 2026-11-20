@@ -396,6 +396,39 @@ export class LinkCore {
     return this.hub.requestService(source, service, action,
       payload, options);
   }
+  /**
+   * Read-only developer contract check through Hub authorization.
+   * No real handlers run here; VTE EventChains remain separate tests.
+   */
+  inspectLiveContract(source, kind, id, owner = null,
+    origin = "user") {
+    const discovered = this.hub.discoverCatalog(source, "describeLive",
+      kind, { id, owner }, { origin });
+    if (!discovered.ok) return discovered;
+    const descriptor = discovered.value.descriptor;
+    let verified = false;
+    if (kind === "api" || kind === "event") {
+      verified = APIDescriptorPolicy.validate(descriptor).ok;
+    } else if (kind === "property") {
+      verified = PropertyDescriptorPolicy.validate(descriptor).ok;
+    } else {
+      verified = Boolean(descriptor?.inputSchema &&
+        descriptor?.outputSchema);
+    }
+    const response = {
+      ok: verified, status: verified ? 200 : 422,
+      code: verified ? "CATALOG_CONTRACT_VALID" :
+        "CATALOG_CONTRACT_INVALID",
+      id, kind, owner: discovered.value.owner ?? owner
+    };
+    const sourceLocation = descriptor?.sourceLocation ?? null;
+    this.omu.record(verified ? "Log" : "EHU", source,
+      "Catalog.ContractInspect", response.status, id, {
+        code: response.code, sourceLocation
+      });
+    return response;
+  }
+
   /** Export full authorized live contracts; never bypass ACL. */
   exportLiveCatalog(source, origin = "user") {
     return this.liveCatalogExport.export(source, origin);
