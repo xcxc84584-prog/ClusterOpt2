@@ -103,12 +103,39 @@ export class PluginSandboxBridge {
     const gateway = new PluginHostRequestGateway(
       core, undefined, activeRpcScopes, reviewedRpcScopes);
     const transport = new PluginHostRequestTransport(gateway);
-    const result = transport.attach(this.port, this.manifest.providerId);
+    const result = transport.attach(this.port, this.manifest.providerId,
+      packet => this.routeHostMessage(packet));
     if (result.ok) {
       this.hostTransport = transport;
       this.hostController = new PluginBidirectionalRPCController();
+      // Bootstrap has completed; a single Transport listener now owns
+      // every packet. No competing port.onmessage delivery path.
+      this.port.onmessage = null;
     }
     return result;
+  }
+
+  /**
+   * Transport-owned dispatch after the Worker bootstrap. Legacy
+   * responses, modern Host replies and Worker faults are disjoint.
+   * Reverse RPC / handshake still pass through Transport and Gateway.
+   */
+  routeHostMessage(packet) {
+    if (packet?.kind === "error") {
+      this.terminate(502, "WorkerFault");
+      return true;
+    }
+    if (packet?.kind === "response") {
+      this.receive(packet);
+      return true;
+    }
+    if (packet?.protocol === Envelope.protocol &&
+        packet.direction === "host-to-plugin" &&
+        packet.type === "response") {
+      this.receiveBidirectional(packet);
+      return true;
+    }
+    return false;
   }
 
   /**
