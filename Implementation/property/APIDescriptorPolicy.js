@@ -7,6 +7,7 @@ const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const VISIBILITY = new Set(["Public", "Protected", "Private"]);
 const EFFECT = new Set(["none", "read", "write", "external"]);
 const CATEGORY = new Set(["Object", "Event"]);
+const AUDIENCE = new Set(["HostInternal", "PluginPublic"]);
 const SCHEMA_TYPE = new Set([
   "object", "array", "string", "number", "integer", "boolean", "null"
 ]);
@@ -14,7 +15,7 @@ const FIELDS = new Set([
   "apiVersion", "id", "owner", "action", "version", "visibility",
   "sideEffect", "inputSchema", "outputSchema", "description",
   "since", "deprecated", "permissions", "rpcScopes",
-  "category", "sourceLocation", "errors", "examples"
+  "category", "audience", "sourceLocation", "errors", "examples"
 ]);
 const SCHEMA_FIELDS = new Set([
   "type", "properties", "required", "items", "additionalProperties",
@@ -152,6 +153,8 @@ export const APIDescriptorPolicy = Object.freeze({
     if (!EFFECT.has(candidate.sideEffect)) failures.push("sideEffect");
     if (candidate.category !== undefined &&
         !CATEGORY.has(candidate.category)) failures.push("category");
+    if (candidate.audience !== undefined &&
+        !AUDIENCE.has(candidate.audience)) failures.push("audience");
     if (candidate.sourceLocation !== undefined) {
       const location = candidate.sourceLocation;
       if (!record(location) ||
