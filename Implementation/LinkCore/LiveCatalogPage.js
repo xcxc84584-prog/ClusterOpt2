@@ -48,8 +48,11 @@ function decode(value, revision, query) {
 function summary(kind, id, owner, descriptor) {
   return Object.freeze({
     kind, id, owner,
-    version: descriptor.version ?? null,
-    audience: descriptor.audience ?? "HostInternal",
+    version: descriptor.version ?? descriptor.apiVersion ?? null,
+    audience: descriptor.audience ??
+      (kind === "property" && descriptor.readable &&
+       descriptor.visibility === "Public" ?
+        "PluginPublic" : "HostInternal"),
     visibility: descriptor.visibility,
     status: descriptor.deprecated ? "Deprecated" :
       (descriptor.unavailable ? "Unavailable" : "Available"),
@@ -315,7 +318,11 @@ export class LiveCatalogPage {
             owner: provider.objectId, providerId: provider.providerId,
             descriptor: {
               ...action, id: action.service, visibility: "Public",
-              audience: "PluginPublic", permissions: provider.permissions
+              audience: "PluginPublic", permissions: provider.permissions,
+              unavailable: this.uru.disabledProviders.has(
+                provider.providerId) ||
+                !this.uru.isServiceEnabled(provider.providerId,
+                  action.service)
             }
           });
         }
