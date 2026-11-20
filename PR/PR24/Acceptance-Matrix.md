@@ -157,3 +157,25 @@ starting evidence, not a completeness certification.
 - These are evidence **candidates**, not automatic formal PASS.
   Final exact-HEAD CI, wider compatibility/security review and
   individual acceptance signoff are still mandatory.
+
+
+## Patch(+14) P0 multi-Session evidence candidates
+
+- PR24.16: `Implementation/tests/pr24-multi-session-vte.test.js`
+  creates two Node MessageChannel Workers sharing a Provider and
+  proves unique Sessions, independent requests and replay windows.
+- PR24.19: old Provider detach + new Gateway/Provider rejects an
+  obsolete route; Host gateway cannot be reused by another Provider.
+- PR24.20: an otherwise URU-valid foreign Provider receives 403
+  on a previously owner-pinned Gateway; OMU records the attempted
+  cross-Provider attachment.
+- PR24.48: one scope revocation cancels pending requests on two
+  real ports with separate typed 403 responses, suppresses late
+  payloads, and keeps independent unaffected routes running.
+- PR24.39: OMU confirms independent EHU records for cross-Port
+  revoke; concurrency/load exhaustion still needs a bigger budget
+  benchmark and is **not** fully accepted by this small VTE.
+
+These entries are **candidate evidence** until exact HEAD CI/VTE,
+negative security review and per-subPR release signoff. They
+must not be marked 100% PASS merely because these tests exist.
