@@ -1,5 +1,7 @@
 import { PluginBidirectionalEnvelopePolicy as Envelope } from
   "../property/PluginBidirectionalEnvelopePolicy.js";
+import { PluginRPCCircuitPolicy as Circuit } from
+  "../property/PluginRPCCircuitPolicy.js";
 
 /**
  * Host-side MessagePort adapter. Session identity never comes from Worker.
@@ -14,6 +16,39 @@ export class PluginHostRequestTransport {
     this.gateway = gateway;
     this.maxInflight = maxInflight;
     this.connections = new Map();
+    this.timeoutEvents = Object.freeze([]);
+    this.circuitOpen = false;
+  }
+
+  /**
+   * The circuit state belongs to the Bridge, not an individual
+   * Session. A disable/re-enable rekey cannot reset it.
+   */
+  getCircuitState() {
+    return Object.freeze({
+      open: this.circuitOpen,
+      timeoutCount: this.timeoutEvents.length
+    });
+  }
+
+  resetCircuit(confirmed = false) {
+    if (confirmed !== true) return { ok: false, status: 403 };
+    this.timeoutEvents = Object.freeze([]);
+    this.circuitOpen = false;
+    this.gateway.core.omu.record("Log", "PluginTransport",
+      "RPC.CircuitReset", 200);
+    return { ok: true, status: 200 };
+  }
+
+  #recordTimeout() {
+    const event = Circuit.recordTimeout(this.timeoutEvents, Date.now());
+    if (!event.ok) return;
+    this.timeoutEvents = event.timestamps;
+    if (event.open && !this.circuitOpen) {
+      this.circuitOpen = true;
+      this.gateway.core.omu.record("EHU", "PluginTransport",
+        "RPC.CircuitOpened", 503);
+    }
   }
 
   /**
@@ -101,6 +136,28 @@ export class PluginHostRequestTransport {
       }
       return;
     }
+    if (this.circuitOpen) {
+      const audit = this.gateway.core.omu.record("EHU",
+        "PluginTransport", "RPC.CircuitRejected", 503);
+      if (validated.ok && validated.value.type === "request" &&
+          validated.value.direction === "plugin-to-host") {
+        const response = Envelope.inspect({
+          protocol: Envelope.protocol,
+          direction: "plugin-to-host", type: "response",
+          requestId: validated.value.requestId,
+          eventId: audit.eventId, status: 503, ok: false,
+          error: {
+            code: "RPC_CIRCUIT_OPEN",
+            message: "Host RPC circuit open"
+          }
+        });
+        if (response.ok) {
+          try { port.postMessage(response.value); }
+          catch { /* The circuit remains open without a listener. */ }
+        }
+      }
+      return;
+    }
     if (entry.inflight >= this.maxInflight) {
       const audit = this.gateway.core.omu.record("EHU",
         "PluginTransport", "RPC.Overloaded", 429);
@@ -149,6 +206,7 @@ export class PluginHostRequestTransport {
       if (controller.signal.aborted) return;
       controller.abort();
       if (!entry.active || !requestId) return;
+      this.#recordTimeout();
       const audit = this.gateway.core.omu.record("EHU",
         "PluginTransport", "RPC.DeadlineExceeded", 504, "", {
           requestId
