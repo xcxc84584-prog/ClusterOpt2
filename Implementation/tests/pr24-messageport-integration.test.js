@@ -468,3 +468,80 @@ test("PR24.49 revoked routes stay revoked after suspend/rekey",
       h.channel.port2.close();
     }
   });
+
+test("PR24.82 repeated Host timeouts trip circuit until Host reset",
+  async () => {
+    const h = setup();
+    const finishers = [];
+    try {
+      const [hello] = await h.hello;
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready",
+        protocol: hello.protocol, challenge: hello.challenge
+      });
+      h.core.hub.request = () => new Promise(resolve => {
+        finishers.push(resolve);
+      });
+      for (let number = 0; number < 3; number++) {
+        const result = once(h.channel.port2, "message");
+        h.channel.port2.postMessage({
+          protocol: "cluster.rpc/1", direction: "plugin-to-host",
+          type: "request", requestId: "slow-" + number,
+          target: "EchoObject", action: "Echo", payload: {},
+          deadlineMs: 30
+        });
+        const [reply] = await within(result, "tripping RPC timeout");
+        assert.equal(reply.status, 504);
+        assert.equal(reply.error.code, "RPC_TIMEOUT");
+      }
+      assert.deepEqual(h.adapter.getCircuitState(), {
+        open: true, timeoutCount: 3
+      });
+      assert.equal(h.adapter.connections.get(h.channel.port1).inflight, 3);
+      const denied = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "circuit-denied",
+        target: "EchoObject", action: "Echo", payload: {}
+      });
+      const [blocked] = await within(denied, "circuit denial");
+      assert.equal(blocked.status, 503);
+      assert.equal(blocked.error.code, "RPC_CIRCUIT_OPEN");
+      assert.equal(h.adapter.resetCircuit().status, 403);
+
+      const suspension = once(h.channel.port2, "message");
+      assert.equal(h.adapter.suspend(h.channel.port1), true);
+      assert.equal((await within(suspension, "suspend"))[0].kind,
+        "cluster-session-suspended");
+      const challenge = once(h.channel.port2, "message");
+      assert.equal(h.adapter.resume(
+        h.channel.port1, "example.provider").status, 201);
+      const [next] = await within(challenge, "rekey");
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready",
+        protocol: next.protocol, challenge: next.challenge
+      });
+      assert.equal(h.adapter.getCircuitState().open, true);
+      assert.equal(h.adapter.resetCircuit(true).status, 200);
+      h.core.hub.request = async () => ({
+        ok: true, status: 200, value: { echoed: "recovered" }
+      });
+      const restored = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "restored",
+        target: "EchoObject", action: "Echo", payload: {}
+      });
+      const [response] = await within(restored, "after circuit reset");
+      assert.equal(response.status, 200);
+      assert.deepEqual(response.data, { echoed: "recovered" });
+      assert.ok(h.core.omu.snapshot().logs.some(item =>
+        item.action === "RPC.CircuitOpened" && item.kind === "EHU"));
+    } finally {
+      for (const finish of finishers) {
+        finish({ ok: true, status: 200, value: {} });
+      }
+      h.adapter.detachAll();
+      h.channel.port2.close();
+    }
+  });
