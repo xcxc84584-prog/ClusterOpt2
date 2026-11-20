@@ -32,6 +32,8 @@ flowchart LR
 | EC24-05 | Revoke → session abort → pending settle | fail closed |
 | EC24-06 | Plugin crash → EHU → cleanup → restart | no leak |
 | EC24-07 | Host deadline → abort → EHU 504 → Worker | stale reply suppressed |
+| EC24-08 | Package RPC scope declaration → user consent → Host gate → Hub | exact Object/Action ACL |
+| EC24-09 | Host-scope Property.Read → Hub.readProperty → EDPMU | exact Property and visibility ACL |
 
 ## EHU audit schema
 requestId, eventId, parentEventId, sessionId, providerId, source
@@ -54,3 +56,17 @@ AbortSignal; transport retains its concurrency slot until it settles,
 then suppresses the stale response. Revocation/suspension removes the
 MessagePort listener and aborts all outstanding signals. No cross-session
 response is eligible for delivery after a rekey.
+
+## PR24 Patch(+9) Scope and trust boundary
+The package-level `rpcScopes` metadata is validated by
+`PluginRPCScopePolicy` but cannot self-authorize a Session. The UI
+shows requested Object/Action/Property scope entries before explicit
+user consent. PluginHostInstallUnit compares requested scopes with the
+host-approved set at install and upgrade (before old state teardown).
+PluginSandboxBridge passes the approved frozen data to a host-private
+Gateway; the Worker cannot edit this data. Gateway denies any unscoped
+request before Hub dispatch with a correlated EHU, then checks the
+original URU, PluginPermission and HubUnit gates. For scoped Property
+reads, Gateway delegates only to HubUnit.readProperty. No arbitrary
+HubUnit action, privileged Property write or direct EDPMU access is
+exposed. Post-dispatch session and live grant checks are retained.
