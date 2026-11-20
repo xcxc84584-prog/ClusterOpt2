@@ -223,7 +223,9 @@ test("PR24.22 production Host invokes Worker through Session Controller",
         "Cluster.handle('echo', payload => {",
         "  calls.push(String(payload.message ?? ''));",
         "  return { echoed: String(payload.message ?? ''),",
-        "    sdkVersion: Cluster.version };",
+        "    sdkVersion: Cluster.version,",
+        "    ...(payload.message === 'through-hub' ?",
+        "      { history: [...calls] } : {}) };",
         "});",
         "Cluster.handle('history', () => ({ calls }));"
       ].join("\n");
@@ -237,6 +239,15 @@ test("PR24.22 production Host invokes Worker through Session Controller",
       }, { consented: true });
       if (!install.ok) return { install };
       const bridge = host.handles.get("example.sdk.echo");
+      const emitted = [];
+      const send = bridge.port.postMessage.bind(bridge.port);
+      bridge.port.postMessage = (...args) => {
+        if (args[0]?.direction === "host-to-plugin") {
+          emitted.push({ type: args[0].type,
+            requestId: args[0].requestId });
+        }
+        return send(...args);
+      };
       try {
         let ready = false;
         for (let i = 0; i < 60; i++) {
@@ -263,7 +274,8 @@ test("PR24.22 production Host invokes Worker through Session Controller",
           event.action === "RPC.HostToPlugin.Response");
         return {
           ready, direct, secondDirect, routed,
-          history: history.value?.calls,
+          history: routed.value?.history,
+          emitted, historyStatus: history.status,
           responseEvents: events.length,
           lastEvent: events.at(-1)?.eventId,
           controllerPending: bridge.hostController.pendingCount,
