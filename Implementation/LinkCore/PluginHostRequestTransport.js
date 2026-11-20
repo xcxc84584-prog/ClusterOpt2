@@ -1,3 +1,6 @@
+import { PluginBidirectionalEnvelopePolicy as Envelope } from
+  "../property/PluginBidirectionalEnvelopePolicy.js";
+
 /**
  * Host-side MessagePort adapter. Session identity never comes from Worker.
  * Suspension keeps the Worker port but destroys all previous authority.
@@ -23,7 +26,8 @@ export class PluginHostRequestTransport {
     if (!started.ok) return started;
     const entry = {
       sessionId: started.session.sessionId, inflight: 0,
-      active: true, listener: null, controllers: new Set()
+      active: true, listener: null, controllers: new Set(),
+      requests: new Map()
     };
     entry.listener = event => {
       void this.#handle(port, entry, event.data);
@@ -43,12 +47,35 @@ export class PluginHostRequestTransport {
     }
     // Never take over the legacy invoke/response message channel.
     if (packet?.protocol !== "cluster.rpc/1") return;
+    const validated = Envelope.inspect(packet);
+    if (validated.ok && validated.value.type === "cancel" &&
+        validated.value.direction === "plugin-to-host") {
+      const task = entry.requests.get(validated.value.requestId);
+      if (task) {
+        task.abort();
+        this.gateway.core.omu.record("EHU", "PluginTransport",
+          "RPC.Cancelled", 499, "", {
+            requestId: validated.value.requestId
+          });
+      }
+      return;
+    }
     if (entry.inflight >= this.maxInflight) {
       this.gateway.core.omu.record("EHU", "PluginTransport",
         "RPC.Overloaded", 429);
       return;
     }
     const controller = new AbortController();
+    const requestId = validated.ok &&
+      validated.value.type === "request" &&
+      validated.value.direction === "plugin-to-host" ?
+      validated.value.requestId : null;
+    if (requestId && entry.requests.has(requestId)) {
+      this.gateway.core.omu.record("EHU", "PluginTransport",
+        "RPC.DuplicateInflight", 409);
+      return;
+    }
+    if (requestId) entry.requests.set(requestId, controller);
     entry.controllers.add(controller);
     entry.inflight++;
     try {
@@ -63,6 +90,7 @@ export class PluginHostRequestTransport {
         "RPC.Failed", 502);
     } finally {
       entry.controllers.delete(controller);
+      if (requestId) entry.requests.delete(requestId);
       entry.inflight--;
     }
   }
