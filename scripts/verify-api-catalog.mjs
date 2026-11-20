@@ -62,6 +62,54 @@ export function auditStaticSources(core, root = process.cwd(),
       }
     }
   }
+  // Event documentation is also a static EDPMU declaration.
+  // It must refer to an actual Worker event source, not an invented API.
+  const lifecycle = core.edpmu.get("PluginLifecycleEventPolicy");
+  for (const descriptor of lifecycle?.events ?? []) {
+    checked++;
+    const { file, line } = descriptor.sourceLocation ?? {};
+    const { file: triggerFile, symbol } =
+      descriptor.triggerSourceLocation ?? {};
+    const source = typeof file === "string" ? resolve(root, file) : "";
+    const trigger = typeof triggerFile === "string" ?
+      resolve(root, triggerFile) : "";
+    let code = null;
+    if (!file || !triggerFile || !Number.isSafeInteger(line) ||
+        line < 1 || !VERSION.test(descriptor.version) ||
+        isAbsolute(file) || isAbsolute(triggerFile) ||
+        relative(root, source).startsWith("..") ||
+        relative(root, trigger).startsWith("..")) {
+      code = "CATALOG_SOURCE_LOCATION_INVALID";
+    } else {
+      try {
+        const row = readText(source).split(/\r?\n/)[line - 1] ?? "";
+        const escaped = descriptor.version.replace(/\./g, "\\.");
+        if (!new RegExp(
+          "\\bversion\\s*:\\s*['\\\"]" + escaped + "['\\\"]"
+        ).test(row)) {
+          code = "CATALOG_STATIC_VERSION_MISMATCH";
+        } else {
+          const worker = readText(trigger);
+          if (symbol !== "notifySession" ||
+              !worker.includes("function notifySession(state)") ||
+              !worker.includes('notifySession("ready")') ||
+              !worker.includes('notifySession("suspended")')) {
+            code = "CATALOG_EVENT_TRIGGER_MISMATCH";
+          }
+        }
+      } catch {
+        code = "CATALOG_SOURCE_UNREADABLE";
+      }
+    }
+    if (code) {
+      const issue = { code, owner: descriptor.owner,
+        id: descriptor.id, expectedVersion: descriptor.version,
+        file, line, triggerFile };
+      failures.push(issue);
+      core.omu.record("EHU", "LinkCore", "Catalog.SourceAudit",
+        409, descriptor.owner, issue);
+    }
+  }
   return Object.freeze({
     ok: failures.length === 0,
     status: failures.length ? 409 : 200,
