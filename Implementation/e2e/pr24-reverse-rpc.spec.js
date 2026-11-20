@@ -48,6 +48,13 @@ test("PR24 isolated Worker uses approved Session RPC through HubUnit",
         provider.providerId);
       const result = await linkCore.request("ui", provider.objectId,
         "transform", {}, { origin: "user" });
+      const diagnostic = linkCore.getSnapshot().logs.filter(event =>
+        event.action.startsWith("RPC.") ||
+        event.action.startsWith("Plugin.RPC.") ||
+        event.source === provider.objectId).slice(0, 25).map(event => ({
+          action: event.action, kind: event.kind, status: event.status,
+          source: event.source
+        }));
       const events = linkCore.getSnapshot().logs.filter(event =>
         event.action.startsWith("RPC.Request.") ||
         event.action.startsWith("RPC.Response."));
@@ -57,12 +64,12 @@ test("PR24 isolated Worker uses approved Session RPC through HubUnit",
       return {
         install: install.status, result, events: events.length,
         active, removed: removed.status,
-        closed: bridge.closed,
+        diagnostic, closed: bridge.closed,
         sessionsAfter: bridge.hostTransport
       };
     });
     expect(outcome.install).toBe(201);
-    expect(outcome.result.status).toBe(200);
+    expect(outcome.result.status, JSON.stringify(outcome)).toBe(200);
     expect(outcome.result.value).toEqual({
       objectId: "UICO", denied: true
     });
@@ -110,17 +117,18 @@ test("PR24.7 disable/enable creates a new authenticated Worker Session",
         snapshot, { consented: true });
       if (!installed.ok) return { installed };
       const bridge = installer.handles.get(provider.providerId);
-      const original = bridge.hostTransport.connections.get(
-        bridge.port).sessionId;
+      const original = bridge.hostTransport?.connections.get(
+        bridge.port)?.sessionId;
       const first = await linkCore.request("ui", provider.objectId,
         "transform", {}, { origin: "user" });
       const disabled = installer.disable(provider.providerId);
-      const suspended = bridge.hostTransport.gateway.sessions.activeCount;
+      const suspended = bridge.hostTransport?.gateway.sessions.activeCount
+        ?? -1;
       const rejected = await linkCore.request(
         "ui", provider.objectId, "transform", {},
         { origin: "user" });
       const enabled = installer.enable(provider.providerId);
-      const rotated = bridge.hostTransport.connections.get(
+      const rotated = bridge.hostTransport?.connections.get(
         bridge.port)?.sessionId;
       const second = await linkCore.request("ui", provider.objectId,
         "transform", {}, { origin: "user" });
@@ -129,15 +137,27 @@ test("PR24.7 disable/enable creates a new authenticated Worker Session",
         installed: installed.status, first: first.value,
         disabled: disabled.status, suspended,
         rejected: rejected.status, enabled: enabled.status,
-        rotated: rotated !== original, second: second.value,
+        rotated: Boolean(rotated && rotated !== original),
+        second: second.value,
+        diagnostic: linkCore.getSnapshot().logs.filter(event =>
+          event.action.startsWith("RPC.") ||
+          event.action.startsWith("Plugin.RPC.") ||
+          event.source === provider.objectId).slice(0, 25).map(event => ({
+            action: event.action, status: event.status,
+            kind: event.kind
+          })),
         removed: removed.status, closed: bridge.closed
       };
     });
-    expect(outcome).toEqual({
-      installed: 201, first: { objectId: "UICO" },
-      disabled: 200, suspended: 0, rejected: 403,
-      enabled: 200, rotated: true,
-      second: { objectId: "UICO" },
-      removed: 200, closed: true
-    });
+    expect(outcome.installed, JSON.stringify(outcome)).toBe(201);
+    expect(outcome.first, JSON.stringify(outcome))
+      .toEqual({ objectId: "UICO" });
+    expect(outcome.disabled).toBe(200);
+    expect(outcome.suspended).toBe(0);
+    expect(outcome.rejected).toBe(403);
+    expect(outcome.enabled).toBe(200);
+    expect(outcome.rotated).toBe(true);
+    expect(outcome.second).toEqual({ objectId: "UICO" });
+    expect(outcome.removed).toBe(200);
+    expect(outcome.closed).toBe(true);
   });
