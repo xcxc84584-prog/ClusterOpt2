@@ -138,7 +138,9 @@ export class LiveCatalogPage {
             unavailable
           };
           revisionParts.push(JSON.stringify([
-            provider.providerId, provider.objectId, descriptor
+            provider.providerId, provider.objectId, descriptor,
+            serviceObject.authorization, serviceObject.ocda?.UserAPI,
+            serviceObject.ocda?.AgentAPI
           ]));
           if (owner && owner !== provider.objectId) continue;
           if (needle && ![descriptor.id, descriptor.action]
