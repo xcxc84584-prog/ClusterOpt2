@@ -120,7 +120,18 @@ function frozen(value) {
   return value;
 }
 
+const STATIC_PROTOCOL_VERSION = "1.0.0";
+
 export const HubProtocolPolicy = Object.freeze({
   version: 1,
-  descriptions: frozen(DEFINITIONS)
+  descriptions: frozen(DEFINITIONS.map(descriptor => ({
+    ...descriptor,
+    version: STATIC_PROTOCOL_VERSION,
+    audience: "HostInternal",
+    visibility: "Public",
+    sourceLocation: {
+      file: "Implementation/property/HubProtocolPolicy.js",
+      line: 123
+    }
+  })))
 });
