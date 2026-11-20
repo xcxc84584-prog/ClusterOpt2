@@ -29,7 +29,8 @@ test("PR02.10 facade is readonly, Hub-scoped and non-impersonating", () => {
   const api = createClusterAPIFacade(core);
   assert.equal(Object.isFrozen(api), true);
   assert.deepEqual(Object.keys(api).sort(),
-    ["describe", "describeLive", "docs", "list", "page", "query"]);
+    ["describe", "describeLive", "docs", "export",
+      "list", "page", "query"]);
   assert.equal(api.list("api").status, 404,
     "Unknown UI caller must not be auto-registered");
   core.register({ id: "ui", receive: async () => null });
