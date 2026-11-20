@@ -114,3 +114,14 @@ Reference review is an engineering task, not an assertion of parity.
 - Future work: durable consent revocation across page reload, distributed
   multiple simultaneous plugin ports, fault injection VTE, resource
   budgets, and complete SDK capability conformance.
+
+## PR24.01–100 reorganized acceptance checklist
+The authoritative **planning** checklist for all 100 proposed subPR
+work items is `PR/PR24/Remaining-Requirements.md`. It reorganizes
+the existing ten group gates (01–10, ..., 91–100) without claiming
+that the earlier group-level implementation proves each task PASS.
+Use its three evidence states: baseline implemented, partial, and
+not-yet-evidenced. Each subPR still requires independent source/test
+mapping, OCDA documentation, VTE, exact-HEAD CI and rollback evidence.
+Prioritize P0: persisted revoke safety, pending upgrade rollback,
+full public SDK and Plugin→Plugin calls, external UI, quotas, E2E.
