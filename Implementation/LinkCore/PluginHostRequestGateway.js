@@ -10,6 +10,8 @@ import { PluginBidirectionalEnvelopePolicy as Envelope } from
  * URU owns provider identity, HubUnit owns request permissions.
  */
 export class PluginHostRequestGateway {
+  #activeRpcScopes;
+
   constructor(core, sessions = new PluginSessionUnit(),
     approvedRpcScopes = []) {
     const checked = Scopes.inspect(approvedRpcScopes);
@@ -19,7 +21,29 @@ export class PluginHostRequestGateway {
     this.core = core;
     this.sessions = sessions;
     // Never derive permission from a Worker request or a Manifest alone.
-    this.approvedRpcScopes = checked.value;
+    this.#activeRpcScopes = checked.value;
+  }
+
+  listRpcScopes() {
+    // The result is a frozen snapshot. Only the Host can revoke a scope.
+    return this.#activeRpcScopes;
+  }
+
+  revokeRpcScope(scope) {
+    const checked = Scopes.inspect([scope]);
+    if (!checked.ok) return { ok: false, status: 400 };
+    const target = checked.value[0];
+    const index = this.#activeRpcScopes.findIndex(item =>
+      item.target === target.target && item.action === target.action &&
+      item.property === target.property);
+    if (index < 0) return { ok: false, status: 404 };
+    this.#activeRpcScopes = Object.freeze(
+      this.#activeRpcScopes.filter((_item, i) => i !== index));
+    this.core.omu.record("Log", "PluginGateway",
+      "RPC.ScopeRevoked", 200, target.target, {
+        action: target.action, property: target.property ?? null
+      });
+    return { ok: true, status: 200 };
   }
 
   #denied(session, value, action = "RPC.ScopeRejected") {
@@ -67,7 +91,7 @@ export class PluginHostRequestGateway {
     if (!active || !grants) {
       return this.#denied(session, value, "RPC.PermissionRejected");
     }
-    if (!Scopes.allows(this.approvedRpcScopes,
+    if (!Scopes.allows(this.#activeRpcScopes,
       value.target, value.action, value.payload)) {
       return this.#denied(session, value);
     }
@@ -93,7 +117,7 @@ export class PluginHostRequestGateway {
         this.core.checkPluginPermission(session.providerId, permission));
     if (options.signal?.aborted || !session.owns(port) ||
         session.state !== "ready" || !stillAllowed ||
-        !Scopes.allows(this.approvedRpcScopes,
+        !Scopes.allows(this.#activeRpcScopes,
           value.target, value.action, value.payload)) {
       this.core.omu.record("EHU", session.objectId,
         "RPC.DiscardedAfterRevoke", 499, value.target,
