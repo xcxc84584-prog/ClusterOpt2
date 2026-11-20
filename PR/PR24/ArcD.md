@@ -31,6 +31,7 @@ flowchart LR
 | EC24-04 | Plugin → UICO → UISP → native adapter | UI ACL |
 | EC24-05 | Revoke → session abort → pending settle | fail closed |
 | EC24-06 | Plugin crash → EHU → cleanup → restart | no leak |
+| EC24-07 | Host deadline → abort → EHU 504 → Worker | stale reply suppressed |
 
 ## EHU audit schema
 requestId, eventId, parentEventId, sessionId, providerId, source
@@ -44,3 +45,12 @@ Only MessagePort-owned session metadata can bind source/provider/Object.
 The envelope policy validates shape; session/ACL/HubUnit must authorize.
 No response may be accepted without matching an outstanding request,
 direction, session and deadline.
+
+## Patch(+8) deadline and rotation
+A trusted Host transport sends a bounded, contract-validated 504
+`RPC_TIMEOUT` message using a fresh OMU eventId at deadline expiry.
+The asynchronous Hub request may still be running if its Object ignores
+AbortSignal; transport retains its concurrency slot until it settles,
+then suppresses the stale response. Revocation/suspension removes the
+MessagePort listener and aborts all outstanding signals. No cross-session
+response is eligible for delivery after a rekey.
