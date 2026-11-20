@@ -151,3 +151,6 @@ Trust boundary:
   native workbench tab is owned/removed by Host only.
 - An ignored AbortSignal may leave Host side effects behind.
   Breaker prevents new dispatch; it does not undo previous effects.
+
+
+| EC24-26 | Third-party Worker → Cluster.request(UICO.uiRequest) → HubUnit → UICO → owner-scoped native Button/Window/Tab | Exact rpcScope + per-action capability + URU identity + automatic teardown |
