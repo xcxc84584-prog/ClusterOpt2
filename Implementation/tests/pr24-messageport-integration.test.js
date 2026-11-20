@@ -26,7 +26,9 @@ async function within(promise, name, ms = 1500) {
   }
 }
 
-function setup() {
+function setup(approvedScopes = [
+  { target: "EchoObject", action: "Echo" }
+]) {
   const calls = [];
   const manifest = {
     providerId: "example.provider",
@@ -52,7 +54,7 @@ function setup() {
   let seed = 0;
   const gateway = new PluginHostRequestGateway(core,
     new PluginSessionUnit(() => "id-" + ++seed),
-    [{ target: "EchoObject", action: "Echo" }]);
+    approvedScopes);
   const adapter = new PluginHostRequestTransport(gateway);
   const channel = new MessageChannel();
   const hello = once(channel.port2, "message");
@@ -340,6 +342,129 @@ test("PR24.8 rotating an in-flight Session rejects old reply and leaks no listen
     } finally {
       h.adapter.detachAll();
       assert.equal(h.channel.port1.listenerCount("message"), 0);
+      h.channel.port2.close();
+    }
+  });
+
+test("PR24.48 revoked in-flight route gets one 403; other route survives",
+  async () => {
+    const scope = { target: "EchoObject", action: "Slow" };
+    const h = setup([
+      scope, { target: "EchoObject", action: "Fast" }
+    ]);
+    try {
+      const [hello] = await h.hello;
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready", protocol: hello.protocol,
+        challenge: hello.challenge
+      });
+      let finish;
+      let markStarted;
+      const started = new Promise(resolve => { markStarted = resolve; });
+      h.core.hub.request = (_src, _target, action) => {
+        if (action === "Fast") {
+          return Promise.resolve({
+            ok: true, status: 200, value: { echoed: "allowed" }
+          });
+        }
+        return new Promise(resolve => {
+          finish = resolve;
+          markStarted();
+        });
+      };
+      const messages = [];
+      h.channel.port2.on("message", packet => {
+        if (packet.type === "response") messages.push(packet);
+      });
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "slow-revoke",
+        target: "EchoObject", action: "Slow", payload: {},
+        deadlineMs: 1500
+      });
+      await within(started, "Host Slow dispatched");
+      const rejected = once(h.channel.port2, "message");
+      const revoked = h.adapter.revokeRpcScope(scope);
+      assert.equal(revoked.status, 200);
+      assert.equal(revoked.cancelled, 1);
+      const [response] = await within(rejected, "scope revoked response");
+      assert.equal(response.requestId, "slow-revoke");
+      assert.equal(response.status, 403);
+      assert.equal(response.error.code, "RPC_SCOPE_REVOKED");
+      assert.ok(Number.isSafeInteger(response.eventId));
+      assert.equal(h.adapter.connections.get(h.channel.port1).inflight, 1);
+      const fast = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "fast-survives",
+        target: "EchoObject", action: "Fast", payload: {}
+      });
+      const [successful] = await within(fast, "unaffected Host route");
+      assert.equal(successful.status, 200);
+      assert.equal(successful.data.echoed, "allowed");
+      finish({ ok: true, status: 200,
+        value: { secret: "revoked-data" } });
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setImmediate(resolve));
+      assert.deepEqual(messages.map(packet => packet.requestId),
+        ["slow-revoke", "fast-survives"]);
+      assert.equal(h.adapter.connections.get(h.channel.port1).inflight, 0);
+      assert.ok(h.core.omu.snapshot().logs.some(entry =>
+        entry.action === "RPC.ScopeRevokedInflight" &&
+        entry.details.requestId === "slow-revoke"));
+      const denied = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "slow-retry",
+        target: "EchoObject", action: "Slow", payload: {}
+      });
+      const [second] = await within(denied, "replay after revocation");
+      assert.equal(second.requestId, "slow-retry");
+      assert.equal(second.status, 403);
+    } finally {
+      h.adapter.detachAll();
+      h.channel.port2.close();
+    }
+  });
+
+test("PR24.49 revoked routes stay revoked after suspend/rekey",
+  async () => {
+    const scope = { target: "EchoObject", action: "Echo" };
+    const h = setup([scope]);
+    try {
+      const [hello] = await h.hello;
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready", protocol: hello.protocol,
+        challenge: hello.challenge
+      });
+      assert.equal(h.adapter.revokeRpcScope(scope).status, 200);
+      const suspended = once(h.channel.port2, "message");
+      assert.equal(h.adapter.suspend(h.channel.port1), true);
+      assert.equal((await within(suspended, "suspend notice"))[0].kind,
+        "cluster-session-suspended");
+      const helloAgain = once(h.channel.port2, "message");
+      assert.equal(h.adapter.resume(h.channel.port1,
+        "example.provider").status, 201);
+      const [newSession] = await within(helloAgain, "new session");
+      assert.notEqual(newSession.sessionId, hello.sessionId);
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready", protocol: newSession.protocol,
+        challenge: newSession.challenge
+      });
+      const denied = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "post-rekey-revoked",
+        target: "EchoObject", action: "Echo", payload: {}
+      });
+      const [response] = await within(denied, "post-rekey denial");
+      assert.equal(response.requestId, "post-rekey-revoked");
+      assert.equal(response.status, 403);
+      assert.equal(h.calls.length, 0);
+      assert.equal(h.channel.port1.listenerCount("message"), 1);
+      assert.deepEqual(h.adapter.gateway.listRpcScopes(), []);
+    } finally {
+      h.adapter.detachAll();
       h.channel.port2.close();
     }
   });
