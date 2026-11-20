@@ -76,8 +76,9 @@ function environment(denials) {
       scopes: Object.freeze([]),
       pendingCount: 0,
       async start() { return { ok: true, status: 200 }; },
-      enableHostRequests(_core, approved) {
-        this.scopes = approved;
+      enableHostRequests(_core, active, reviewed = active) {
+        this.scopes = active;
+        this.reviewed = reviewed;
         return { ok: true, status: 201 };
       },
       listHostRPCScopes() { return this.scopes; },
@@ -87,7 +88,7 @@ function environment(denials) {
         return { ok: true, status: 201 };
       },
       grantReviewedHostRPCScope(scope) {
-        if (!SCOPES.some(item =>
+        if (!this.reviewed.some(item =>
           item.target === scope.target &&
           item.action === scope.action &&
           item.property === scope.property)) {
@@ -265,5 +266,27 @@ test("PR24.49 only originally reviewed route can be reapproved",
     assert.deepEqual((await shared.list("plugin.persist")).value, [
       { target: "UICO", action: "other" }
     ]);
+    h.installer.uninstall("plugin.persist");
+  });
+
+test("PR24.47 post-reload reviewed route is not active until new consent",
+  async () => {
+    const shared = store(new Map([
+      ["plugin.persist", [REVOKED]]
+    ]));
+    const h = environment(shared);
+    assert.equal((await h.installer.install(
+      snapshot(), APPROVAL)).status, 201);
+    assert.deepEqual(h.installer.listRpcScopes(
+      "plugin.persist"), [RETAINED]);
+    const bridge = h.installer.handles.get("plugin.persist");
+    assert.deepEqual(bridge.reviewed, SCOPES);
+    assert.equal((await h.installer.reapproveRpcScope(
+      "plugin.persist", REVOKED)).status, 403);
+    assert.equal((await h.installer.reapproveRpcScope(
+      "plugin.persist", REVOKED, { consented: true })).status, 200);
+    assert.deepEqual(h.installer.listRpcScopes(
+      "plugin.persist"), [RETAINED, REVOKED]);
+    assert.deepEqual((await shared.list("plugin.persist")).value, []);
     h.installer.uninstall("plugin.persist");
   });
