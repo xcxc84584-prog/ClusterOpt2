@@ -140,6 +140,22 @@ export class PluginSandboxBridge {
   }
 
   /**
+   * Host-only resource diagnostics and explicit circuit reset.
+   * Neither method is included in the Worker-facing SDK.
+   */
+  getHostRPCCircuitState() {
+    return this.hostTransport?.getCircuitState() ??
+      Object.freeze({ open: false, timeoutCount: 0 });
+  }
+
+  resetHostRPCCircuit(confirmed = false) {
+    if (this.closed || !this.hostTransport) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.resetCircuit(confirmed);
+  }
+
+  /**
    * Disable the reverse API while retaining the isolated Worker.
    * A later resume always creates a new Session and handshake nonce.
    */
