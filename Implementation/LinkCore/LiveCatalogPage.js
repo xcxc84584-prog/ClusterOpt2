@@ -169,7 +169,9 @@ export class LiveCatalogPage {
         const described = this.edpmu.describeProperty(record.name);
         const descriptor = described.ok ? described.value : null;
         if (descriptor === null || !descriptor) continue;
-        revisionParts.push(JSON.stringify([record.name, descriptor]));
+        revisionParts.push(JSON.stringify([
+          record.name, descriptor, definition
+        ]));
         const entry = { name: record.name, descriptor };
         if (!CatalogVisibilityPolicy.canSeeProperty(
           source, entry, definition)) {
@@ -256,7 +258,10 @@ export class LiveCatalogPage {
           }, serviceObject, origin)) continue;
           if (action.service === id) found.push({
             owner: provider.objectId, providerId: provider.providerId,
-            descriptor: action, permissions: provider.permissions
+            descriptor: {
+              ...action, id: action.service, visibility: "Public",
+              audience: "PluginPublic", permissions: provider.permissions
+            }
           });
         }
       }
