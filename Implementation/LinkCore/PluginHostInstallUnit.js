@@ -80,6 +80,26 @@ export class PluginHostInstallUnit {
       Object.freeze([]);
   }
 
+  getRPCCircuitState(providerId) {
+    return this.handles.get(providerId)?.getHostRPCCircuitState?.() ??
+      Object.freeze({ open: false, timeoutCount: 0 });
+  }
+
+  resetRPCCircuit(providerId, options = {}) {
+    if (options.consented !== true) {
+      return { ok: false, status: 403 };
+    }
+    const bridge = this.handles.get(providerId);
+    if (!bridge || !this.core.uru.getProvider(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    const result = bridge.resetHostRPCCircuit?.(true) ??
+      { ok: false, status: 503 };
+    this.record(result.status, result.ok ?
+      "RPCCircuitReset" : "RPCCircuitResetRejected", providerId);
+    return result;
+  }
+
   async listRevokedRpcScopes(providerId) {
     if (!this.core.uru.getProvider(providerId) ||
         !this.handles.has(providerId)) {
