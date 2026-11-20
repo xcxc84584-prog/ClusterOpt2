@@ -51,7 +51,7 @@ test("PR02.10 Cluster.api works in real page without changing legacy API",
           x.kind === "EHU" && x.status === 400).length
       };
     });
-    expect(state.keys).toEqual(["describe", "docs", "list", "query"]);
+    expect(state.keys).toEqual(["describe", "describeLive", "docs", "export", "list", "page", "query"]);
     expect(state.frozen).toBe(true);
     expect(state.methods).toBe(true);
     expect(state.version).toBe(ReleaseVersion.product);

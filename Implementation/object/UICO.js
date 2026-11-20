@@ -48,18 +48,24 @@ const apiDescriptor = (id, owner, action, effect, description,
   documentation = {}) =>
   Object.freeze({
     apiVersion: 1, id, owner, action, version: "1.0.0",
+    audience: "PluginPublic",
+    sourceLocation: { file: "Implementation/object/UICO.js", line: 50 },
     visibility: "Public", sideEffect: effect,
     inputSchema, outputSchema, description,
     ...(permissions.length ? { permissions } : {}),
     errors: Object.freeze([
       { status: 400, code: "UI_REQUEST_INVALID",
-        message: "The supplied request is invalid" },
+        message: "The supplied request is invalid",
+        recovery: "Validate the declared Request schema and retry" },
       { status: 403, code: "UI_PERMISSION_DENIED",
-        message: "Caller lacks permission or ownership" },
+        message: "Caller lacks permission or ownership",
+        recovery: "Obtain the exact capability and owner consent" },
       { status: 404, code: "UI_TARGET_MISSING",
-        message: "The requested UI target is unavailable" },
+        message: "The requested UI target is unavailable",
+        recovery: "Refresh live UI identities; do not assume old IDs" },
       { status: 409, code: "UI_REVISION_CONFLICT",
-        message: "A duplicate or stale revision was detected" }
+        message: "A duplicate or stale revision was detected",
+        recovery: "Read current Revision before resubmitting" }
     ]),
     examples: Object.freeze([documentation.example ?? {
       title: "HubUnit Request/Response",

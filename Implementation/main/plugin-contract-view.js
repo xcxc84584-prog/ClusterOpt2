@@ -56,10 +56,17 @@ function schemaRow(doc, label, schema, t, depth = 0) {
       t("其他欄位", "Additional properties") + ": " +
       String(schema.additionalProperties)));
   }
+  const constraints = ["default", "enum", "minLength", "maxLength",
+    "minimum", "maximum"].filter(key => schema[key] !== undefined);
+  for (const key of constraints) {
+    details.append(node(doc, "p", "pm-muted",
+      key + ": " + JSON.stringify(schema[key])));
+  }
   wrapper.append(details);
   return wrapper;
 }
-export function renderContractDetail(doc, host, entry, t, onBack) {
+export function renderContractDetail(doc, host, entry, t, onBack,
+  onValidate = null) {
   const descriptor = entry.descriptor;
   const header = node(doc, "div", "pm-contract-actions");
   const back = node(doc, "button", "pm-mini",
@@ -67,6 +74,39 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
   back.type = "button";
   back.addEventListener("click", onBack);
   header.append(back);
+  if (typeof onValidate === "function") {
+    const check=node(doc,"button","pm-mini",
+      t("契約檢查","Validate contract"));
+    check.type="button";
+    const result=node(doc,"span","pm-muted");
+    check.addEventListener("click",()=>{
+      const status=onValidate();
+      result.textContent=status.ok ? "PASS (200)" :
+        "FAIL ("+status.status+") "+(status.code??status.error??"");
+    });
+    header.append(check,result);
+  }
+  const copyButton = (label, value) => {
+    const button=node(doc,"button","pm-mini",label);
+    button.type="button";
+    button.addEventListener("click",async()=>{
+      try {
+        await doc.defaultView.navigator.clipboard.writeText(value);
+        button.textContent=t("已複製","Copied");
+      } catch (_error) {
+        button.textContent=t("複製失敗","Copy failed");
+      }
+    });
+    header.append(button);
+  };
+  copyButton(t("複製契約","Copy contract"),
+    JSON.stringify(descriptor,null,2));
+  if (descriptor.inputSchema) copyButton(
+    t("複製 Request","Copy request"),
+    JSON.stringify(descriptor.inputSchema,null,2));
+  if (descriptor.outputSchema) copyButton(
+    t("複製 Response","Copy response"),
+    JSON.stringify(descriptor.outputSchema,null,2));
   host.append(header);
   host.append(node(doc, "h2", "pm-contract-heading", entry.id));
   const overview = section(doc, t("契約概覽", "Contract overview"));
@@ -83,8 +123,19 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
     [t("副作用", "Side effect"), descriptor.sideEffect],
     [t("所需權限", "Permissions"),
       descriptor.permissions?.join(", ")],
+    ["RPC Scopes", descriptor.rpcScopes ?
+      JSON.stringify(descriptor.rpcScopes) : undefined],
+    ["API Audience", descriptor.audience],
+    ["Source", descriptor.sourceLocation ?
+      descriptor.sourceLocation.file + ":" +
+      descriptor.sourceLocation.line : undefined],
     [t("已棄用", "Deprecated"), descriptor.deprecated === undefined ?
       undefined : String(descriptor.deprecated)],
+    ["Compatibility", descriptor.compatibility],
+    ["Migration", descriptor.migration ?
+      JSON.stringify(descriptor.migration) : undefined],
+    ["Availability", descriptor.unavailable ? "Unavailable" :
+      descriptor.deprecated ? "Deprecated" : "Available"],
     [t("型別", "Type"), descriptor.type],
     [t("可讀取", "Readable"), descriptor.readable === undefined ?
       undefined : String(descriptor.readable)],
@@ -96,6 +147,31 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
   overview.append(node(doc,"p","pm-contract-description",
     descriptor.description || t("未提供描述","No description registered")));
   host.append(overview);
+  if (descriptor.inputSchema && descriptor.outputSchema &&
+      ["Request","Provider"].includes(entry.kind)) {
+    const usage=section(doc,t("Worker SDK 調用","Worker SDK usage"));
+    const method=entry.kind==="Provider"?"service":"request";
+    const target=entry.kind==="Provider" ? entry.id : entry.owner;
+    const statement="await Cluster."+method+"("+
+      JSON.stringify(target)+", "+
+      JSON.stringify(descriptor.action??"unknown")+", {});";
+    usage.append(node(doc,"pre","pm-contract-example",statement));
+    usage.append(node(doc,"p","pm-muted",t(
+      "需先宣告並取得對應 rpcScopes 與 permissions 授權。",
+      "Declare and obtain approval for exact rpcScopes and permissions.")));
+    const copy=node(doc,"button","pm-mini",t("複製調用","Copy call"));
+    copy.type="button";
+    copy.addEventListener("click",async()=>{
+      try {
+        await doc.defaultView.navigator.clipboard.writeText(statement);
+        copy.textContent=t("已複製","Copied");
+      } catch (_error) {
+        copy.textContent=t("複製失敗","Copy failed");
+      }
+    });
+    usage.append(copy);
+    host.append(usage);
+  }
   if (entry.kind === "Request" || entry.kind === "Provider" ||
       entry.kind === "Protocol" || entry.kind === "Action") {
     const envelopes=section(doc,t("Request / Response 對稱協議",
@@ -131,6 +207,41 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
     if (descriptor.outputSchema) schemas.append(schemaRow(doc,
       t("輸出", "Output"),descriptor.outputSchema,t));
     host.append(schemas);
+  }
+  if (entry.kind === "event") {
+    const lifecycle=section(doc,
+      t("事件 Payload 與生命週期", "Event payload and lifecycle"));
+    const details=node(doc,"dl","pm-contract-fields");
+    for (const [label,value] of [
+      ["Trigger", descriptor.trigger?.join("; ")],
+      ["Subscribe", descriptor.subscribe],
+      ["Unsubscribe", descriptor.unsubscribe],
+      ["Ordering", descriptor.ordering],
+      ["Lifecycle", descriptor.lifecycle],
+      ["Source", descriptor.triggerSourceLocation?.file]
+    ]) details.append(field(doc,label,value));
+    lifecycle.append(details);
+    if (descriptor.payloadSchema) lifecycle.append(schemaRow(
+      doc,"Event Payload",descriptor.payloadSchema,t));
+    host.append(lifecycle);
+  }
+  if (descriptor.errors?.length) {
+    const errors=section(doc,t("錯誤與恢復","Errors and recovery"));
+    for (const item of descriptor.errors) {
+      errors.append(node(doc,"p","pm-muted",
+        String(item.status)+" "+item.code+": "+item.message+
+        (item.recovery ? " — "+item.recovery : "")));
+    }
+    host.append(errors);
+  }
+  if (descriptor.examples?.length) {
+    const examples=section(doc,t("調用範例","Request / Response examples"));
+    for (const item of descriptor.examples) {
+      examples.append(node(doc,"h4","",item.title));
+      examples.append(node(doc,"pre","pm-contract-example",
+        JSON.stringify({request:item.request,response:item.response},null,2)));
+    }
+    host.append(examples);
   }
   if (descriptor.invariants?.length) {
     const rules=section(doc,t("屬性約束","Property invariants"));

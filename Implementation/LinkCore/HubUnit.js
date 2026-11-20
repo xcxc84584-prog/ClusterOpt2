@@ -22,6 +22,7 @@ import { RouteControlPolicy } from
 import { RouteQueryPolicy } from
   "../property/RouteQueryPolicy.js";
 import { CatalogQuery } from "./CatalogQuery.js";
+import { LiveCatalogPage } from "./LiveCatalogPage.js";
 import { AuthorizedCatalogCollection } from
   "./AuthorizedCatalogCollection.js";
 
@@ -39,6 +40,7 @@ export class HubUnit {
     this.scheduler = scheduler;
     this.waitEdges = new Map();
     this.catalog = catalog;
+    this.liveCatalog = new LiveCatalogPage(registry, properties, omu);
     this.serviceResolver = new ServiceRequestResolver(
       services ?? new ServiceRegistry(registry), registry);
     // Internal-only declarative snapshot; URU remains Provider authority.
@@ -1202,7 +1204,15 @@ export class HubUnit {
       source, options.origin ?? "user");
     const query = new CatalogQuery(collection);
     let result;
-    if (command === "list") {
+    if (command === "page") {
+      result = this.liveCatalog.page(source, kind, {
+        ...selector, origin: options.origin ?? "user"
+      });
+    } else if (command === "describeLive") {
+      result = this.liveCatalog.describe(source, kind,
+        selector?.id, selector?.owner ?? null,
+        options.origin ?? "user");
+    } else if (command === "list") {
       result = query.list(kind, selector);
     } else if (command === "query") {
       result = query.query(kind, selector, options);

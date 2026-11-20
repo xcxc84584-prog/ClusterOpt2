@@ -88,3 +88,55 @@ test("PR23.5 errors/examples are immutable bounded nonexecutable data", () => {
     assert.equal(denied.status, 400);
   }
 });
+
+test("PR25 constrained schemas and structured RPC scopes are validated", () => {
+  const valid = example();
+  valid.inputSchema.properties.text = {
+    type: "string", minLength: 1, maxLength: 4096,
+    pattern: "^[a-zA-Z]+$", default: "hello"
+  };
+  valid.inputSchema.properties.tags = {
+    type: "array", minItems: 0, maxItems: 5,
+    items: { type: "string", enum: ["a", "b"] }
+  };
+  valid.rpcScopes = [
+    { target: "HubUnit", action: "Property.Read", property: "UI_COLOR" }
+  ];
+  assert.equal(APIDescriptorPolicy.validate(valid).status, 200);
+  for (const patch of [
+    { minLength: 10, maxLength: 2 },
+    { pattern: "x".repeat(200) },
+    { minItems: 1 }
+  ]) {
+    const invalid = example();
+    invalid.inputSchema.properties.text = {
+      type: "string", ...patch
+    };
+    assert.equal(APIDescriptorPolicy.validate(invalid).status, 400);
+  }
+  const badScope = example();
+  badScope.rpcScopes = [{ target: "HubUnit", action: "UI.Delete" }];
+  assert.equal(APIDescriptorPolicy.validate(badScope).status, 400);
+});
+
+test("PR25 supports legacy deprecation and typed migration guidance", () => {
+  const base=example();
+  assert.equal(APIDescriptorPolicy.validate({
+    ...base, deprecated:true
+  }).status,200);
+  const accepted=APIDescriptorPolicy.validate({
+    ...base, deprecated:true,
+    compatibility:"Backward compatible until v2",
+    migration:{
+      replacementId:"editor.highlightV2",
+      since:"1.1.0",
+      guide:"Replace highlight with highlightV2"
+    }
+  });
+  assert.equal(accepted.status,200);
+  assert.equal(accepted.value.migration.replacementId,
+    "editor.highlightV2");
+  assert.equal(APIDescriptorPolicy.validate({
+    ...base, unavailable:true
+  }).status,200);
+});

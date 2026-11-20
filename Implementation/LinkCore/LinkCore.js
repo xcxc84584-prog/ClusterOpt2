@@ -1,4 +1,6 @@
 import { CatalogCollection } from "./CatalogCollection.js";
+import { CatalogStaticGuard } from "./CatalogStaticGuard.js";
+import { LiveCatalogExport } from "./LiveCatalogExport.js";
 import { ServiceRegistry } from "./ServiceRegistry.js";
 import { ReleaseVersion } from "../property/ReleaseVersion.js";
 import { CapabilityIdPolicy } from "../property/CapabilityIdPolicy.js";
@@ -9,6 +11,8 @@ import { PluginPackageManifestPolicy } from
 import { PluginRPCContractPolicy } from
   "../property/PluginRPCContractPolicy.js";
 import { HubProtocolPolicy } from "../property/HubProtocolPolicy.js";
+import { PluginLifecycleEventPolicy } from
+  "../property/PluginLifecycleEventPolicy.js";
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
@@ -86,6 +90,9 @@ export class LinkCore {
     this.pluginFolderPackage = new PluginFolderPackageUnit(this.omu);
     this.pluginPackageStore = new PluginPackageStoreUnit(this.omu);
     this.catalog = new CatalogCollection(this.uru, this.edpmu);
+    this.catalogStaticGuard = new CatalogStaticGuard(this.uru, this.omu);
+    this.liveCatalogExport = new LiveCatalogExport(
+      this.uru, this.edpmu, this.omu);
     this.hub = new HubUnit(this.uru, this.edpmu, this.omu,
       undefined, this.catalog, this.services);
     this.pluginHostInstaller = new PluginHostInstallUnit(this,
@@ -115,6 +122,10 @@ export class LinkCore {
     }
     this.hub.registerProperty("HubProtocolPolicy",
       HubProtocolPolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    this.hub.registerProperty("PluginLifecycleEventPolicy",
+      PluginLifecycleEventPolicy, {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     this.hub.registerProperty("PluginFolderPackagePolicy",
@@ -391,6 +402,49 @@ export class LinkCore {
     return this.hub.requestService(source, service, action,
       payload, options);
   }
+  /**
+   * Read-only developer contract check through Hub authorization.
+   * No real handlers run here; VTE EventChains remain separate tests.
+   */
+  inspectLiveContract(source, kind, id, owner = null,
+    origin = "user") {
+    const discovered = this.hub.discoverCatalog(source, "describeLive",
+      kind, { id, owner }, { origin });
+    if (!discovered.ok) return discovered;
+    const descriptor = discovered.value.descriptor;
+    let verified = false;
+    if (kind === "api" || kind === "event") {
+      verified = APIDescriptorPolicy.validate(descriptor).ok;
+    } else if (kind === "property") {
+      verified = PropertyDescriptorPolicy.validate(descriptor).ok;
+    } else {
+      verified = Boolean(descriptor?.inputSchema &&
+        descriptor?.outputSchema);
+    }
+    const response = {
+      ok: verified, status: verified ? 200 : 422,
+      code: verified ? "CATALOG_CONTRACT_VALID" :
+        "CATALOG_CONTRACT_INVALID",
+      id, kind, owner: discovered.value.owner ?? owner
+    };
+    const sourceLocation = descriptor?.sourceLocation ?? null;
+    this.omu.record(verified ? "Log" : "EHU", source,
+      "Catalog.ContractInspect", response.status, id, {
+        code: response.code, sourceLocation
+      });
+    return response;
+  }
+
+  /** Export full authorized live contracts; never bypass ACL. */
+  exportLiveCatalog(source, origin = "user") {
+    return this.liveCatalogExport.export(source, origin);
+  }
+
+  /** Trusted host verification; static mirrors must identify source lines. */
+  verifyStaticCatalog(manifest) {
+    return this.catalogStaticGuard.verify(manifest);
+  }
+
   generateCatalogDocs(source, format, options = {}) {
     const result = CatalogDocumentation.render(
       (caller, command, kind, selector, context) =>

@@ -97,6 +97,10 @@ export function mountPluginManagerUI(core,doc,options={}) {
   const toolbar=dom(doc,"div","pm-search-row");
   let selected="",active="permissions",query="",pending=null;
   let selectedAPI=null,apiQuery="",sidebarOpen=true;
+  let apiKind="api",apiPageSize=25,apiPageIndex=0;
+  let apiSort="owner",apiSortOrder="asc";
+  let apiCursors=[null],apiRevision="",refreshAPIPage=null;
+  let lastApiCheckTime=0;
   let lastView="",lastLocale="",lastSelected="",lastProviders="";
   search.type="search"; search.id="pluginManagerSearch";
   search.placeholder="Search plugin...";
@@ -554,101 +558,261 @@ export function mountPluginManagerUI(core,doc,options={}) {
   }
 
   function renderAPIs() {
-    const entries=apiEntries();
     const section=dom(doc,"section","pm-api-section");
     section.append(dom(doc,"h2","pm-resource-heading",
       t("HubUnit API 列表","HubUnit API List")));
     const body=dom(doc,"div","pm-api-browser");
-    section.append(body);
-    if(selectedAPI) {
-      const selectedEntry=entries.find(x=>x.key===selectedAPI);
-      if(selectedEntry) {
-        renderContractDetail(doc,body,selectedEntry,t,()=>{
-          selectedAPI=null;render();
-        });
-        page.append(section);
-        return;
-      }
-      selectedAPI=null;
-    }
+    const controls=dom(doc,"div","pm-api-toolbar");
     const input=dom(doc,"input","pm-api-search");
     input.type="search";
     input.id="pluginApiSearch";
     input.value=apiQuery;
-    input.placeholder=t("搜尋 API／Owner／Request／Response...",
-      "Search API / owner / request / response...");
+    input.placeholder=t("搜尋 API 契約","Search API contracts");
     input.setAttribute("aria-label",t("搜尋 API 契約",
       "Search API contracts"));
+    const kind=dom(doc,"select","pm-api-kind");
+    const kinds=[
+      ["api","Object"],["service","Service"],
+      ["property","Property"],["event","Event"],
+      ["protocol","Protocol"]
+    ];
+    for(const [value,label] of kinds) {
+      const option=dom(doc,"option","",label);
+      option.value=value;
+      kind.append(option);
+    }
+    kind.value=apiKind;
+    kind.setAttribute("aria-label",t("API 分類","API category"));
+    const size=dom(doc,"select","pm-api-size");
+    for(const value of [10,25,50,100]) {
+      const option=dom(doc,"option","",String(value));
+      option.value=String(value);size.append(option);
+    }
+    size.value=String(apiPageSize);
+    size.setAttribute("aria-label",t("每頁筆數","Page size"));
+    const sort=dom(doc,"select","pm-api-sort");
+    for(const field of ["owner","id","version","status"]) {
+      const option=dom(doc,"option","",field);
+      option.value=field;sort.append(option);
+    }
+    sort.value=apiSort;
+    sort.setAttribute("aria-label",t("排序欄位","Sort by"));
+    const order=dom(doc,"select","pm-api-sort-order");
+    for(const value of ["asc","desc"]) {
+      const option=dom(doc,"option","",value);
+      option.value=value;order.append(option);
+    }
+    order.value=apiSortOrder;
+    order.setAttribute("aria-label",t("排序方向","Sort order"));
+    const exportStatus=dom(doc,"span","pm-muted");
+    const exportButton=btn(doc,t("匯出完整 API 契約",
+      "Export all API contracts"),async()=>{
+      exportButton.disabled=true;
+      try {
+        const result=await core.exportLiveCatalog("ui","user");
+        if(!result.ok) {
+          exportStatus.textContent=t("匯出失敗：","Export failed: ")+
+            (result.error??String(result.status));
+          return;
+        }
+        const blob=new Blob([result.value.json],{
+          type:"application/json;charset=utf-8"
+        });
+        const url=URL.createObjectURL(blob);
+        const link=doc.createElement("a");
+        link.href=url;
+        link.download="ClusterOpt2-API-Contracts.json";
+        link.click();
+        URL.revokeObjectURL(url);
+        exportStatus.textContent="SHA-256: "+result.value.sha256;
+      } catch (_error) {
+        exportStatus.textContent=t("匯出失敗","Export failed");
+      } finally {
+        exportButton.disabled=false;
+      }
+    },"pm-mini");
+    const copyManifest=btn(doc,
+      t("複製 Manifest 範本","Copy manifest template"),async()=>{
+        try {
+          const url=new URL("../sdk/examples/echo/plugin.json",
+            import.meta.url);
+          const response=await doc.defaultView.fetch(url);
+          if(!response.ok) throw Error("Template unavailable");
+          const template=await response.text();
+          await doc.defaultView.navigator.clipboard.writeText(template);
+          exportStatus.textContent=t("已複製正式插件範本",
+            "Official plugin template copied");
+        } catch (_error) {
+          exportStatus.textContent=t("無法複製插件範本",
+            "Cannot copy plugin template");
+        }
+      },"pm-mini");
+    controls.append(kind,input,size,sort,order,
+      copyManifest,exportButton,exportStatus);
+    body.append(controls);
+    const selectedProvider=current();
+    if(selectedProvider) {
+      const capabilitySummary=dom(doc,"div","pm-api-capabilities");
+      capabilitySummary.append(dom(doc,"strong","",
+        t("目前插件可用 Capability","Selected plugin capabilities")+
+          ": "+selectedProvider.providerId));
+      for(const permission of selectedProvider.permissions) {
+        const approved=core.checkPluginPermission(
+          selectedProvider.providerId,permission);
+        capabilitySummary.append(dom(doc,"p","pm-muted",
+          permission+" — "+(approved ? "Allowed" : "Denied")));
+      }
+      const handle=core.pluginHostInstaller.handles.get(
+        selectedProvider.providerId);
+      for(const scope of handle?.listHostRPCScopes?.() ?? []) {
+        capabilitySummary.append(dom(doc,"p","pm-muted",
+          "RPC Scope — "+scope.target+"."+scope.action+
+          (scope.property ? "("+scope.property+")" : "")));
+      }
+      if(!selectedProvider.permissions.length &&
+          !(handle?.listHostRPCScopes?.()?.length)) {
+        capabilitySummary.append(dom(doc,"p","pm-muted",
+          t("此插件尚無已宣告的權限與 RPC Scope",
+            "No declared permissions or active RPC scopes")));
+      }
+      body.append(capabilitySummary);
+    }
     const container=dom(doc,"div","pm-api-table-wrap");
     const table=dom(doc,"table","pm-api-table");
     const head=dom(doc,"thead");
     const headings=dom(doc,"tr");
     for(const title of [
       t("種類","Kind"),"API / Action",t("所屬物件","Owner"),
-      t("Request 輸入","Request input"),
-      t("Response 輸出","Response output"),
+      t("版本","Version"),t("狀態","Status"),
       t("權限","Permission")
-    ]) {
-      headings.append(dom(doc,"th","",title));
-    }
+    ]) headings.append(dom(doc,"th","",title));
     head.append(headings);
     const rows=dom(doc,"tbody");
     table.append(head,rows);
     container.append(table);
-    body.append(input,container);
+    const footer=dom(doc,"div","pm-api-pagination");
+    const previous=btn(doc,t("上一頁","Previous"),()=>{
+      if(apiPageIndex===0)return;
+      apiPageIndex--;
+      update();
+    },"pm-mini");
+    const next=btn(doc,t("下一頁","Next"),()=>{
+      if(!lastNextCursor)return;
+      apiPageIndex++;
+      apiCursors[apiPageIndex]=lastNextCursor;
+      update();
+    },"pm-mini");
+    const pageLabel=dom(doc,"span","pm-muted");
+    const warning=dom(doc,"p","pm-muted");
+    footer.append(previous,pageLabel,next);
+    body.append(container,footer,warning);
+    section.append(body);
 
+    let lastNextCursor=null;
+    function resetPage() {
+      apiPageIndex=0;apiCursors=[null];lastNextCursor=null;
+    }
     function update() {
-      apiQuery=input.value;
-      const terms=apiQuery.toLowerCase().trim().split(/\\s+/)
-        .filter(Boolean);
+      const requestedPage=apiPageIndex;
+      const result=core.discover("ui","page",apiKind,{
+        term:apiQuery.trim(),limit:apiPageSize,
+        sortBy:apiSort,sortOrder:apiSortOrder,
+        cursor:apiCursors[requestedPage]??null
+      },{origin:"user"});
       rows.replaceChildren();
-      const matching=entries.filter(entry=>{
-        const descriptor=entry.descriptor;
-        const searchText=[
-          entry.kind,entry.id,entry.owner,entry.providerId,
-          descriptor.action,descriptor.version,
-          descriptor.visibility,descriptor.description,
-          schemaSummary(descriptor.inputSchema),
-          schemaSummary(descriptor.outputSchema),
-          ...(descriptor.permissions??[])
-        ].filter(Boolean).join(" ").toLowerCase();
-        return terms.every(term=>searchText.includes(term));
-      });
-      for(const entry of matching) {
-        const descriptor=entry.descriptor;
+      if(!result.ok) {
+        if(result.status===409) {
+          resetPage();
+          warning.textContent=t("API 契約已更新，請重新查詢",
+            "API contracts changed. Search again.");
+        } else {
+          warning.textContent=t("API 讀取失敗：",
+            "API query failed: ")+(result.error??result.status);
+        }
+        previous.disabled=true;next.disabled=true;
+        return;
+      }
+      warning.textContent="";
+      const data=result.value;
+      apiRevision=data.snapshotRevision;
+      lastNextCursor=data.nextCursor;
+      for(const item of data.items) {
         const row=dom(doc,"tr","pm-api-table-row");
         const values=[
-          entry.kind,entry.id+(descriptor.action?
-            " / "+descriptor.action:""),entry.owner,
-          schemaSummary(descriptor.inputSchema),
-          schemaSummary(descriptor.outputSchema),
-          (descriptor.permissions??[]).join(", ")||
-            descriptor.visibility||t("未宣告","Not declared")
+          apiKind+" / "+item.audience,item.id,item.owner,
+          item.version??"—",
+          item.status,(item.capability??[]).join(", ")||
+            item.visibility
         ];
         values.forEach((value,index)=>{
-          const cell=dom(doc,"td",index===3||index===4?
-            "pm-api-schema-cell":"",value);
+          const cell=dom(doc,"td","",value);
           if(index===1) {
-            const link=btn(doc,value,()=>{
-              selectedAPI=entry.key;render();
+            const open=btn(doc,value,()=>{
+              const response=core.discover("ui","describeLive",
+                apiKind,{ id:item.id,
+                  owner:["api","service","event"].includes(apiKind)?
+                    item.owner:null },{origin:"user"});
+              if(!response.ok) {
+                warning.textContent=t("契約已變更：",
+                  "Contract changed: ")+response.status;
+                return;
+              }
+              const descriptor=response.value.descriptor;
+              const entry={kind:apiKind==="api"?"Request":
+                  apiKind==="service"?"Provider":
+                  apiKind==="protocol"?"Protocol":apiKind,
+                id:item.id,owner:item.owner,descriptor};
+              body.replaceChildren();
+              renderContractDetail(doc,body,entry,t,()=>render(),
+                ()=>core.inspectLiveContract("ui",apiKind,item.id,
+                  ["api","service","event"].includes(apiKind) ?
+                    item.owner : null,"user"));
             },"pm-api-row-link");
-            cell.replaceChildren(link);
+            cell.replaceChildren(open);
           }
           row.append(cell);
         });
         rows.append(row);
       }
-      if(!matching.length) {
+      if(!data.items.length) {
         const empty=dom(doc,"tr");
         const cell=dom(doc,"td","pm-muted",
           t("沒有符合的 API 契約","No matching API contracts"));
-        cell.colSpan=6;
-        empty.append(cell);
-        rows.append(empty);
+        cell.colSpan=6;empty.append(cell);rows.append(empty);
       }
+      pageLabel.textContent=t("第 ","Page ")+
+        (apiPageIndex+1)+t(" 頁，共 "," of ")+data.total+
+        t(" 筆"," records");
+      previous.disabled=apiPageIndex===0;
+      next.disabled=!lastNextCursor;
     }
-    input.addEventListener("input",update);
+    kind.addEventListener("change",()=>{
+      apiKind=kind.value;resetPage();update();
+    });
+    size.addEventListener("change",()=>{
+      apiPageSize=Number(size.value);resetPage();update();
+    });
+    input.addEventListener("input",()=>{
+      apiQuery=input.value;resetPage();update();
+    });
+    sort.addEventListener("change",()=>{
+      apiSort=sort.value;resetPage();update();
+    });
+    order.addEventListener("change",()=>{
+      apiSortOrder=order.value;resetPage();update();
+    });
     update();
+    refreshAPIPage=()=>{
+      if(!page.contains(section))return;
+      const current=core.discover("ui","page",apiKind,{
+        term:apiQuery.trim(),limit:1,
+        sortBy:apiSort,sortOrder:apiSortOrder
+      },{origin:"user"});
+      if(current.ok && current.value.snapshotRevision!==apiRevision) {
+        resetPage();
+        update();
+      }
+    };
     page.append(section);
   }
 
@@ -665,6 +829,11 @@ export function mountPluginManagerUI(core,doc,options={}) {
     // belong to the existing DOM instance.
     if(!force&&lastView===active&&lastLocale===language&&
         lastSelected===selected&&lastProviders===providerState) {
+      if(active==="api"&&refreshAPIPage&&
+          Date.now()-lastApiCheckTime>=1000) {
+        lastApiCheckTime=Date.now();
+        refreshAPIPage();
+      }
       return;
     }
     lastView=active;
@@ -717,5 +886,18 @@ export function mountPluginManagerUI(core,doc,options={}) {
     search.focus();search.setSelectionRange(caret,caret);
   });
   activate("permissions");
-  return Object.freeze({refresh:()=>render(false),select:activate});
+  // A background registration or contract edit must update an open API
+  // List even if no one clicks a different tab. Keep the existing DOM,
+  // focus, selection, and scroll position when the revision is stable.
+  const refreshTicker=doc.defaultView?.setInterval?.(()=>{
+    if(active==="api") refreshAPIPage?.();
+  },2000) ?? null;
+  return Object.freeze({
+    refresh:()=>render(false), select:activate,
+    dispose:()=>{
+      if(refreshTicker!==null) {
+        doc.defaultView?.clearInterval?.(refreshTicker);
+      }
+    }
+  });
 }
