@@ -3,6 +3,8 @@ import { PluginPermissionPolicy } from
   "../property/PluginPermissionPolicy.js";
 import { renderContractDetail } from "./plugin-contract-view.js";
 import { renderResources } from "./plugin-resource-view.js";
+import { describePluginRPCScopes } from
+  "./plugin-rpc-scope-review.js";
 
 const VIEWS=Object.freeze(["permissions","api","ehu","resources"]);
 function dom(doc,tag,cls="",value) {
@@ -242,14 +244,18 @@ export function mountPluginManagerUI(core,doc,options={}) {
           }
           const next=staged.value.manifest.provider;
           const permissions=next.permissions??[];
+          const rpcScopes=staged.value.manifest.rpcScopes??[];
           const approved=doc.defaultView.confirm(t(
             "確認更新插件：","Update plugin: ")+p.providerId+
             "\n"+t("要求權限：","Requested permissions: ")+
-            (permissions.join(", ")||t("無","None")));
+            (permissions.join(", ")||t("無","None"))+"\n"+
+            t("要求 RPC 路由：","Requested RPC scopes: ")+"\n"+
+            describePluginRPCScopes(rpcScopes,t));
           if(!approved) return;
           const result=await core.pluginHostInstaller.upgrade(
             p.providerId,staged.value.snapshot,{
-              consented:true,approvedPermissions:[...permissions]
+              consented:true,approvedPermissions:[...permissions],
+              approvedRpcScopes:rpcScopes
             });
           let stored={ok:false};
           if(result.ok) {
