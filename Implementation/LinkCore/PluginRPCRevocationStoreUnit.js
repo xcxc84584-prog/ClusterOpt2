@@ -89,6 +89,24 @@ export class PluginRPCRevocationStoreUnit {
     }
   }
 
+  /**
+   * Only the trusted Host reapproval transaction may remove a
+   * tombstone. Clearing a denial does not grant runtime permission.
+   */
+  async clear(providerId, scope) {
+    const record = inspect(providerId, scope);
+    if (!record) return failure(400, "INVALID_RPC_DENIAL");
+    try {
+      await this.transaction("readwrite", store =>
+        store.delete(record.id));
+      this.audit(200, "ClearAfterApproval", providerId);
+      return { ok: true, status: 200 };
+    } catch {
+      this.audit(503, "ClearFailed", providerId);
+      return failure(503, "RPC_DENIAL_STORAGE_UNAVAILABLE");
+    }
+  }
+
   async list(providerId) {
     if (typeof providerId !== "string" ||
         !PROVIDER.test(providerId)) {
