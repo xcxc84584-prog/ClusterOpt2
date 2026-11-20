@@ -15,6 +15,6 @@ test("PR25 contract inspector audits authorized descriptors", () => {
     "UICO.describe","UICO");
   assert.equal(hidden.status,404);
   assert.ok(core.omu.snapshot().logs.some(x =>
-    x.kind==="EHU" && x.action==="Catalog.describeLive" &&
+    x.kind==="EHU" && x.action==="Catalog.Discover" &&
     x.status===404));
 });
