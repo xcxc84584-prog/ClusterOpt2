@@ -116,3 +116,38 @@ pending calls and active Plugin→Host transport reservations.
 When a Host method ignores AbortSignal, its in-flight reservation
 remains active until completion; upgrades cannot force safe rollback
 of side effects that have already occurred.
+
+## PR24 Patch(+12) — generic SDK and runtime controls
+
+| Chain | Dispatch / audit | Invariant |
+| --- | --- | --- |
+| EC24-19 | Third-party Worker → Cluster.request → Session → Gateway → HubUnit → second Provider Worker | Exact scope plus URU and HubUnit ACL |
+| EC24-20 | Host → BidirectionalRPCController → same Port → Worker handler → audited Host reply | Worker eventId never authoritative |
+| EC24-21 | Plugin Manager confirms reapproval → suspend Session → reviewed grant → durable denial clear → new Session | No uncommitted rights exposed to Worker |
+| EC24-22 | IndexedDB denial commit → BroadcastChannel → receiver re-reads store → live Gateway revoke | Only deny may cross tab, never a grant |
+| EC24-23 | Third timeout in rolling 60s → Transport circuit open → EHU 503 → Host reset | Bounded in-flight and explicit reset |
+| EC24-24 | Worker crash → Bridge terminate/close Port → live Provider disabled → UI unavailable | No unrelated plugin affected |
+| EC24-25 | Third-party html/uiEntry → sandbox iframe → generic Provider workbench tab | No plugin main-page DOM access |
+
+New components:
+- `PluginRPCCircuitPolicy` — pure timeout-window helper, **not**
+  EDPMU Property or Provider capability.
+- Ambient `Cluster` Worker SDK — plugin-facing, narrow contract;
+  handler names must already be declared by URU Provider Manifest.
+- `PluginWorkbenchTabUnit` — Host-owned generic tab controller,
+  one Provider ID per tab; no plugin DOM object may mutate Host tabs.
+- `PluginBidirectionalRPCController` — trusted Host session,
+  request correlation and cancellation for Host→Plugin traffic.
+
+Trust boundary:
+- Untrusted Worker responses contain an eventId placeholder.
+  PluginSandboxBridge validates the outstanding request/session,
+  records a fresh OMU eventId and only then settles Host Controller.
+- Scope reapproval is Host/UI-only and revocation-persistence
+  dependent. Broadcasts can only cause further denial; no implicit
+  permission or automatic cross-tab regrant.
+- Plugin UI remains an opaque-origin iframe. Internal tab styling
+  is controlled by the plugin's own sandboxed HTML, while the
+  native workbench tab is owned/removed by Host only.
+- An ignored AbortSignal may leave Host side effects behind.
+  Breaker prevents new dispatch; it does not undo previous effects.
