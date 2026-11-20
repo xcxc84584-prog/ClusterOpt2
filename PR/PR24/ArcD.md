@@ -168,3 +168,21 @@ placeholder never establishes Host authority. The OMU cooldown
 still applies to uncorrelated success entries; correlated success
 entries bypass it without adding request IDs to the PASS cooldown map,
 avoiding unbounded key accumulation.
+
+
+## PR24 Patch(+14): multi-Port Event Chains
+
+| Chain | Trace | Expected security result |
+| --- | --- | --- |
+| EC24-31 | URU owner → Gateway.create → Port A/B Session IDs → independent request/replay | Same Provider may own multiple Ports; unique Session IDs |
+| EC24-32 | Foreign Provider → already pinned Gateway.create | 403 and OMU EHU RPC.ForeignProviderRejected |
+| EC24-33 | Old Host Port detached → new Host Gateway owner/session → old route request | Explicit 403; no inherited old scopes or identity |
+| EC24-34 | Port A+B Slow RPC → Gateway live revoke → Transport cancel per Port | Two correlated 403 responses and no stale Host payload |
+| EC24-35 | Two active Ports → unaffected Fast requests → Host settles aborted Slow calls | Fast succeeds; inflight reservations reach zero; Sessions retained |
+
+Changes: `PluginHostRequestGateway` adds Host-private
+`#ownerProviderId` and `#ownerObjectId`; first successful
+`create(port, providerId)` permanently pins its owner. No
+new URU Provider, EDPMU Property or plugin-facing API.
+Source evidence: `Implementation/tests/pr24-multi-session-vte.test.js`
+uses real Node MessagePorts and an isolated core/OMU harness.
