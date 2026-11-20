@@ -86,6 +86,7 @@ export class PluginSandboxBridge {
     this.closed = false;
     this.hostTransport = null;
     this.hostController = null;
+    this.onFault = null;
   }
 
   /**
@@ -210,6 +211,10 @@ export class PluginSandboxBridge {
     this.frame?.remove();
     this.frame = null;
     this.audit(status, reason);
+    if (status >= 400 && typeof this.onFault === "function") {
+      try { this.onFault(status, reason); }
+      catch { /* Host cleanup is authoritative even on callback failure. */ }
+    }
   }
 
   async start(manifest, source, options = {}) {
