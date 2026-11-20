@@ -170,7 +170,12 @@ The authoritative EDPMU `PluginLifecycleEventPolicy` records the
 when the Host suspends the Session. Listener callbacks run in Set
 registration order within a message; unrelated RPC chains have no
 global ordering guarantee. The Event tab displays this Payload,
-trigger source, and unsubscribe contract.
+trigger source, and unsubscribe contract. The same formally registered
+Event policy describes `UICO.OwnedClick`: after a plugin-owned node
+subscribes using `UICO.uiRequest` / `UI.Subscribe`, a DOM click
+routes `{ uiId: string }` to the declared `subscriptionId` action on
+the owning Object. `UI.Unsubscribe` removes that listener. This is
+scoped to the owned UI node; it never grants native DOM mutation.
 
 Use `AbortSignal` and `deadlineMs` for long-running Host requests.
 Do not assume messages from separate request chains are totally
