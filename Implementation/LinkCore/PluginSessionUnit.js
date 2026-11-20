@@ -46,9 +46,19 @@ export class PluginSessionUnit {
 
   inspect(port, packet) {
     const session = this.#ports.get(port);
-    return session ?
-      session.inspect(port, packet) :
-      { ok: false, status: 403, errorCode: "UNTRUSTED_PORT" };
+    if (!session) {
+      return { ok: false, status: 403,
+        errorCode: "UNTRUSTED_PORT" };
+    }
+    const result = session.inspect(port, packet);
+    if (session.state === "revoked") {
+      // The Session can self-revoke after replay budget exhaustion.
+      // Clean the host indexes even without an explicit revoke() call.
+      this.#sessions.delete(session.sessionId);
+      this.#livePorts.delete(session.sessionId);
+      this.#ports.delete(port);
+    }
+    return result;
   }
 
   revoke(sessionId, options = {}) {
