@@ -103,11 +103,11 @@ export class PluginSession {
     return parsed;
   }
 
-  revoke() {
+  revoke(options = {}) {
     if (this.#state === "revoked") return;
     this.#state = "revoked";
     this.#seen.clear();
     this.#challenge = null;
-    this.#port.close();
+    if (options.closePort !== false) this.#port.close();
   }
 }
