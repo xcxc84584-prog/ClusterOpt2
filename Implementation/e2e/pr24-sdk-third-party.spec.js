@@ -332,3 +332,83 @@ test("PR24.25 Host-to-Plugin cancellation suppresses stale Worker reply",
     expect(result.pending).toBe(0);
     expect(result.sessions).toBe(1);
   });
+
+test("PR24.62/63 independent Worker creates native Button and Window",
+  async ({ page }) => {
+    await page.goto("/");
+    const started = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const root = "/Implementation/sdk/examples/native-ui/";
+      const [manifestText, worker] = await Promise.all([
+        fetch(root + "plugin.json").then(r => r.text()),
+        fetch(root + "worker.js").then(r => r.text())
+      ]);
+      const manifest = JSON.parse(manifestText);
+      const installed = await linkCore.pluginHostInstaller.install({
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText, files: {
+          "plugin.json": btoa(manifestText),
+          "worker.js": btoa(worker)
+        }
+      }, {
+        consented: true,
+        approvedPermissions: manifest.provider.permissions,
+        approvedRpcScopes: manifest.rpcScopes
+      });
+      if (!installed.ok) return { installed };
+      const create = await linkCore.request("ui",
+        manifest.provider.objectId, "createControls", {},
+        { origin: "user" });
+      const probe = await linkCore.request("ui",
+        manifest.provider.objectId, "probeNativeACL", {},
+        { origin: "user" });
+      return {
+        installed: installed.status, create, probe,
+        registered: linkCore.uru.objects.has(
+          "UICO." + create.value?.buttonId)
+      };
+    });
+    expect(started.installed, JSON.stringify(started)).toBe(201);
+    expect(started.create.status, JSON.stringify(started)).toBe(200);
+    expect(started.probe.value.denied).toBe(true);
+    expect(started.registered).toBe(true);
+    const buttonId = started.create.value.buttonId;
+    const windowId = started.create.value.windowId;
+    const button = page.locator('[data-cluster-plugin-ui="' +
+      buttonId + '"]');
+    const settings = page.locator('[data-cluster-plugin-ui="' +
+      windowId + '"]');
+    await expect(button).toBeVisible();
+    await expect(button).toHaveText("External SDK Button");
+    await expect(settings).toBeVisible();
+    await expect(settings.getByRole("tab", {
+      name: "General"
+    })).toBeVisible();
+    await settings.getByRole("tab", { name: "Advanced" }).click();
+    await expect(settings.getByRole("tab", {
+      name: "Advanced"
+    })).toHaveAttribute("aria-selected", "true");
+    await button.click();
+    const stats = await page.evaluate(async () => {
+      await new Promise(resolve => setTimeout(resolve, 140));
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const result = await linkCore.request(
+        "ui", "SDK.NativeUI", "status", {},
+        { origin: "user" });
+      const removed = linkCore.pluginHostInstaller.uninstall(
+        "example.sdk.native-ui");
+      return {
+        result, removed: removed.status,
+        uiNodes: linkCore.uiControl.adapter.nodes.size,
+        ownerGone: !linkCore.uru.objects.has("SDK.NativeUI")
+      };
+    });
+    expect(stats.result.status, JSON.stringify(stats)).toBe(200);
+    expect(stats.result.value.presses).toBe(1);
+    expect(stats.removed).toBe(200);
+    expect(stats.ownerGone).toBe(true);
+    await expect(button).toHaveCount(0);
+    await expect(settings).toHaveCount(0);
+  });
