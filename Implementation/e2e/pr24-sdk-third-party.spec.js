@@ -171,11 +171,11 @@ test("PR24.62-70 external SDK UI creates isolated multi-tab view",
     const frame = page.frameLocator(
       'iframe.plugin-extension-frame[title="SDK Echo (External)"]');
     await expect(frame.getByText("Independent, sandboxed UI")).toBeVisible();
-    await frame.getByRole("button", { name: "Advanced" }).click();
+    await frame.getByRole("tab", { name: "Advanced" }).click();
     await expect(frame.getByRole("heading", {
       name: "Advanced"
     })).toBeVisible();
-    await frame.getByRole("button", { name: "General" }).click();
+    await frame.getByRole("tab", { name: "General" }).click();
     await frame.getByRole("button", { name: "Local action" }).click();
     await expect(frame.getByRole("status")).toHaveText("Ready");
     const isolation = await page.evaluate(() => {
