@@ -13,8 +13,8 @@ test("PR25 API List uses live source-side paginated contracts", async ({
   const table = window.locator(".pm-api-table");
   await expect(table).toBeVisible();
   await expect(table.locator("thead th")).toHaveCount(6);
-  await expect(table.locator("thead")).toContainText("Version");
-  await expect(table.locator("thead")).toContainText("Status");
+  await expect(table.locator("thead")).toContainText(/Version|版本/);
+  await expect(table.locator("thead")).toContainText(/Status|狀態/);
   await expect(window.locator(".pm-api-kind")).toBeVisible();
   await expect(window.locator(".pm-api-size")).toBeVisible();
   await expect(window.locator(".pm-api-pagination")).toBeVisible();
