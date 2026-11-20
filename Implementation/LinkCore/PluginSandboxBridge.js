@@ -43,8 +43,9 @@ window.addEventListener("message", event => {
       channel.postMessage({kind:"error",status:502});
       runner.terminate();
     };
-    runner.postMessage({kind:"start",source:event.data.source},
-      [inner.port2]);
+    runner.postMessage({
+      kind:"start",source:event.data.source,actions:event.data.actions
+    },[inner.port2]);
   } catch {
     channel.postMessage({kind:"error",status:502});
   }
@@ -222,7 +223,8 @@ export class PluginSandboxBridge {
       frame.addEventListener("load", () => {
         if (this.closed) return;
         frame.contentWindow?.postMessage({
-          kind: "cluster-plugin-bootstrap", source
+          kind: "cluster-plugin-bootstrap", source,
+          actions: manifest.provides.map(item => item.action)
         }, "*", [channel.port2]);
       }, { once: true });
     });
