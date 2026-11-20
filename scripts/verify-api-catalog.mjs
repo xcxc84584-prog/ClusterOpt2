@@ -1,0 +1,82 @@
+/**
+ * PR25 source provenance CI gate.
+ * Live URU descriptors remain authoritative. A descriptor with explicit
+ * sourceLocation is also a static declaration and MUST agree with source.
+ * No inferred schema, no second registry, no user-visible test prompts.
+ */
+import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+import { resolve, relative, isAbsolute } from "node:path";
+import { LinkCore } from "../Implementation/LinkCore/LinkCore.js";
+
+const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+
+export function auditStaticSources(core, root = process.cwd(),
+  readText = path => readFileSync(path, "utf8")) {
+  const failures = [];
+  let checked = 0;
+  for (const [owner, object] of core.uru.objects) {
+    for (const descriptor of object.ocda?.APIDescriptors ?? []) {
+      const location = descriptor.sourceLocation;
+      if (!location) continue;
+      checked++;
+      const { file, line } = location;
+      let code = null;
+      let note = "";
+      if (typeof file !== "string" || !file ||
+          typeof line !== "number" || !Number.isSafeInteger(line) ||
+          line < 1 || !VERSION.test(descriptor.version)) {
+        code = "CATALOG_SOURCE_LOCATION_INVALID";
+      } else {
+        const fullPath = resolve(root, file);
+        const rel = relative(root, fullPath);
+        if (isAbsolute(file) || rel.startsWith("..") ||
+            isAbsolute(rel)) {
+          code = "CATALOG_SOURCE_LOCATION_INVALID";
+        } else {
+          try {
+            const text = readText(fullPath);
+            const sourceLine = text.split(/\r?\n/)[line - 1] ?? "";
+            // Checks the literal version on the explicitly pinned line.
+            // Do not infer versions from file names or adjacent APIs.
+            const escaped = descriptor.version.replace(/\./g, "\\.");
+            if (!new RegExp(
+              "\\bversion\\s*:\\s*['\\\"]" + escaped + "['\\\"]"
+            ).test(sourceLine)) {
+              code = "CATALOG_STATIC_VERSION_MISMATCH";
+              note = "Version literal missing from pinned source line";
+            }
+          } catch (_error) {
+            code = "CATALOG_SOURCE_UNREADABLE";
+          }
+        }
+      }
+      if (code) {
+        const issue = {
+          code, owner, id: descriptor.id,
+          expectedVersion: descriptor.version, file, line, note
+        };
+        failures.push(issue);
+        core.omu.record("EHU", "LinkCore", "Catalog.SourceAudit",
+          409, owner, issue);
+      }
+    }
+  }
+  return Object.freeze({
+    ok: failures.length === 0,
+    status: failures.length ? 409 : 200,
+    checked, failures
+  });
+}
+
+if (process.argv[1] &&
+    import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const result = auditStaticSources(new LinkCore());
+  if (!result.ok) {
+    process.stderr.write(JSON.stringify(result, null, 2) + "\n");
+    process.exitCode = 1;
+  } else {
+    process.stdout.write("Catalog static provenance PASS: " +
+      result.checked + " descriptor(s)\n");
+  }
+}
