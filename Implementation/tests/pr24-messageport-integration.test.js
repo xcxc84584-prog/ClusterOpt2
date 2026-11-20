@@ -11,6 +11,21 @@ import { PluginHostRequestGateway } from
 import { PluginHostRequestTransport } from
   "../LinkCore/PluginHostRequestTransport.js";
 
+async function within(promise, name, ms = 1500) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() =>
+          reject(new Error("MessagePort timed out: " + name)), ms);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function setup() {
   const calls = [];
   const manifest = {
@@ -99,14 +114,14 @@ test("PR24.7 suspend keeps port; reenable rotates Session ID", async () => {
     });
     const notice = once(h.channel.port2, "message");
     assert.equal(h.adapter.suspend(h.channel.port1), true);
-    const [suspended] = await notice;
+    const [suspended] = await within(notice, "suspend notice");
     assert.equal(suspended.kind, "cluster-session-suspended");
     assert.equal(h.adapter.gateway.sessions.activeCount, 0);
     const nextHello = once(h.channel.port2, "message");
     const resumed = h.adapter.resume(h.channel.port1, "example.provider");
     assert.equal(resumed.status, 201);
     assert.notEqual(resumed.sessionId, hello.sessionId);
-    const [rekey] = await nextHello;
+    const [rekey] = await within(nextHello, "new challenge");
     assert.equal(rekey.sessionId, resumed.sessionId);
     assert.notEqual(rekey.challenge, hello.challenge);
     h.channel.port2.postMessage({
@@ -120,7 +135,7 @@ test("PR24.7 suspend keeps port; reenable rotates Session ID", async () => {
       target: "EchoObject", action: "Echo",
       payload: { text: "new-session" }
     });
-    const [packet] = await answer;
+    const [packet] = await within(answer, "post-rekey response");
     assert.equal(packet.data.echoed, "new-session");
     assert.equal(h.calls.length, 1);
   } finally {
@@ -156,12 +171,12 @@ test("PR24.7 cancellation aborts in-flight Hub request", async () => {
       type: "request", requestId: "cancel-me",
       target: "EchoObject", action: "Echo", payload: {}
     });
-    await started;
+    await within(started, "host request started");
     h.channel.port2.postMessage({
       protocol: "cluster.rpc/1", direction: "plugin-to-host",
       type: "cancel", requestId: "cancel-me", reason: "ABORTED"
     });
-    await aborted;
+    await within(aborted, "cancel abort propagated");
     assert.equal(h.adapter.gateway.sessions.activeCount, 1);
     assert.ok(h.core.omu.snapshot().logs.some(event =>
       event.action === "RPC.Cancelled" && event.status === 499));
@@ -199,7 +214,7 @@ test("PR24.7 overloaded transport returns typed 429 immediately", async () => {
       type: "request", requestId: "too-many",
       target: "EchoObject", action: "Echo", payload: {}
     });
-    const [denied] = await reply;
+    const [denied] = await within(reply, "overload response");
     assert.equal(denied.requestId, "too-many");
     assert.equal(denied.status, 429);
     assert.equal(denied.error.code, "RPC_BACKPRESSURE");
