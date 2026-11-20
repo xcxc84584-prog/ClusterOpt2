@@ -170,3 +170,42 @@ test("PR24.7 cancellation aborts in-flight Hub request", async () => {
     h.channel.port2.close();
   }
 });
+
+test("PR24.7 overloaded transport returns typed 429 immediately", async () => {
+  const h = setup();
+  try {
+    const [hello] = await h.hello;
+    h.channel.port2.postMessage({
+      kind: "cluster-session-ready",
+      protocol: hello.protocol, challenge: hello.challenge
+    });
+    h.adapter.maxInflight = 1;
+    let finish;
+    let markStarted;
+    const started = new Promise(resolve => { markStarted = resolve; });
+    h.core.hub.request = async () => {
+      markStarted();
+      return new Promise(resolve => { finish = resolve; });
+    };
+    h.channel.port2.postMessage({
+      protocol: "cluster.rpc/1", direction: "plugin-to-host",
+      type: "request", requestId: "slow-request",
+      target: "EchoObject", action: "Echo", payload: {}
+    });
+    await started;
+    const reply = once(h.channel.port2, "message");
+    h.channel.port2.postMessage({
+      protocol: "cluster.rpc/1", direction: "plugin-to-host",
+      type: "request", requestId: "too-many",
+      target: "EchoObject", action: "Echo", payload: {}
+    });
+    const [denied] = await reply;
+    assert.equal(denied.requestId, "too-many");
+    assert.equal(denied.status, 429);
+    assert.equal(denied.error.code, "RPC_BACKPRESSURE");
+    finish({ ok: true, status: 200, value: {} });
+  } finally {
+    h.adapter.detachAll();
+    h.channel.port2.close();
+  }
+});
