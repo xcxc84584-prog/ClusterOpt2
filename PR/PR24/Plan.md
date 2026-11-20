@@ -187,3 +187,11 @@ full public SDK and Plugin→Plugin calls, external UI, quotas, E2E.
 - Do not declare PR24.01–100 complete from one CI green result:
   acceptance remains per-subPR, including performance, quotas,
   cross-browser, accessibility, complete threat-model review.
+
+
+## Third-party UICO conformance follow-up
+The `examples/native-ui` plugin provides an independent test
+for externally created native toolbar buttons, settings windows
+and tabs via `UICO.uiRequest`, exact route scopes, owner ACL,
+`ui.create.own`, `ui.window`, and cleanup. This does not
+authorize direct DOM access or erase native UI protections.
