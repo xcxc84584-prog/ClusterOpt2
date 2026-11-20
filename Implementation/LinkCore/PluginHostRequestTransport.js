@@ -99,7 +99,30 @@ export class PluginHostRequestTransport {
     // Deadline covers the whole host-side request, not just scheduling.
     const deadlineMs = requestId ?
       (validated.value.deadlineMs ?? 5000) : 5000;
-    const timeout = setTimeout(() => controller.abort(), deadlineMs);
+    const timeout = setTimeout(() => {
+      // A non-cooperative Host Object may ignore AbortSignal. Send the
+      // caller a bounded, correlated failure without waiting for it.
+      // Retain the in-flight reservation until the Host work settles.
+      if (controller.signal.aborted) return;
+      controller.abort();
+      if (!entry.active || !requestId) return;
+      const audit = this.gateway.core.omu.record("EHU",
+        "PluginTransport", "RPC.DeadlineExceeded", 504, "", {
+          requestId
+        });
+      const response = Envelope.inspect({
+        protocol: Envelope.protocol, direction: "plugin-to-host",
+        type: "response", requestId, eventId: audit.eventId,
+        status: 504, ok: false,
+        error: { code: "RPC_TIMEOUT", message: "Deadline exceeded" }
+      });
+      if (!response.ok) return;
+      try {
+        port.postMessage(response.value);
+      } catch {
+        // Failure to deliver never reauthorizes a stale Host result.
+      }
+    }, deadlineMs);
     entry.controllers.add(controller);
     entry.inflight++;
     try {
