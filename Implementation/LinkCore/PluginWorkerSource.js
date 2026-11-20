@@ -12,6 +12,7 @@ let sessionReady = false;
 let resolveReady;
 const ready = new Promise(resolve => { resolveReady = resolve; });
 const pending = new Map();
+const hostCalls = new Map();
 const handlers = new Map();
 const sessionListeners = new Set();
 const allowedActions = new Set();
@@ -38,6 +39,62 @@ function rejectPending(reason) {
     task.reject(reason);
   }
   pending.clear();
+  for (const controller of hostCalls.values()) {
+    controller.abort();
+  }
+  hostCalls.clear();
+}
+
+/**
+ * Worker responses contain only a placeholder eventId. The trusted
+ * Host replaces it with an OMU-generated value before correlation.
+ */
+function respondToHost(requestId, status, data) {
+  if (!channel) return;
+  const success = status < 400;
+  channel.postMessage({
+    protocol, direction: "host-to-plugin", type: "response",
+    requestId, eventId: 1, status, ok: success,
+    ...(success ? { data: data ?? null } : {
+      error: { code: "PLUGIN_HANDLER_FAILED",
+        message: "Plugin handler failed" }
+    })
+  });
+}
+
+async function handleHostRequest(packet) {
+  const id = packet.requestId;
+  if (!sessionReady || !allowedActions.has(packet.action)) {
+    respondToHost(id, 403);
+    return;
+  }
+  if (hostCalls.size >= 16) {
+    respondToHost(id, 429);
+    return;
+  }
+  const fn = handlers.get(packet.action) ??
+    (Object.hasOwn(plugin, packet.action) ?
+      plugin[packet.action] : null);
+  if (typeof fn !== "function") {
+    respondToHost(id, 404);
+    return;
+  }
+  const controller = new AbortController();
+  hostCalls.set(id, controller);
+  try {
+    const value = await fn(packet.payload, {
+      signal: controller.signal
+    });
+    if (!controller.signal.aborted && hostCalls.get(id) === controller) {
+      respondToHost(id, 200, value);
+    }
+  } catch {
+    if (!controller.signal.aborted && hostCalls.get(id) === controller) {
+      respondToHost(id, 500);
+    }
+  } finally {
+    hostCalls.delete(id);
+  }
 }
 
 self.Cluster = Object.freeze({
@@ -147,6 +204,19 @@ self.addEventListener("message", async event => {
       resolveReady();
       notifySession("ready");
       return;
+    }
+    if (data?.protocol === protocol &&
+        data.direction === "host-to-plugin") {
+      if (data.type === "cancel") {
+        const controller = hostCalls.get(data.requestId);
+        controller?.abort();
+        hostCalls.delete(data.requestId);
+        return;
+      }
+      if (data.type === "request") {
+        void handleHostRequest(data);
+        return;
+      }
     }
     if (data?.protocol === protocol &&
         data.type === "response" &&
