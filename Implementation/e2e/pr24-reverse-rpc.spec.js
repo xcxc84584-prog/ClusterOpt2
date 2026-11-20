@@ -46,22 +46,6 @@ test("PR24 isolated Worker uses approved Session RPC through HubUnit",
       if (!install.ok) return { install };
       const bridge = linkCore.pluginHostInstaller.handles.get(
         provider.providerId);
-      const debug = [];
-      const gateway = bridge.hostTransport?.gateway;
-      if (gateway) {
-        const receive = gateway.receive.bind(gateway);
-        gateway.receive = async (...args) => {
-          try {
-            return await receive(...args);
-          } catch (error) {
-            debug.push({
-              name: error?.name, message: error?.message,
-              stack: String(error?.stack ?? "").split("\\n").slice(0, 4)
-            });
-            throw error;
-          }
-        };
-      }
       const result = await linkCore.request("ui", provider.objectId,
         "transform", {}, { origin: "user" });
       const diagnostic = linkCore.getSnapshot().logs.filter(event =>
@@ -81,7 +65,7 @@ test("PR24 isolated Worker uses approved Session RPC through HubUnit",
       return {
         install: install.status, result, events: events.length,
         active, removed: removed.status,
-        diagnostic, debug, closed: bridge.closed,
+        diagnostic, closed: bridge.closed,
         sessionsAfter: bridge.hostTransport
       };
     });
