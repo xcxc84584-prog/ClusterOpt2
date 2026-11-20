@@ -5,6 +5,8 @@ import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 import { PluginRPCScopePolicy } from
   "../property/PluginRPCScopePolicy.js";
+import { PluginRPCRevocationStoreUnit } from
+  "./PluginRPCRevocationStoreUnit.js";
 
 /**
  * Host-owned activation transaction, NOT a second Provider registry.
@@ -12,7 +14,8 @@ import { PluginRPCScopePolicy } from
  * No plugin code can invoke install/approve/rollback from the RPC port.
  */
 export class PluginHostInstallUnit {
-  constructor(core, doc, bridgeFactory = null) {
+  constructor(core, doc, bridgeFactory = null,
+    revocationStore = null) {
     this.core = core;
     this.doc = doc;
     this.reader = new PluginFolderPackageUnit(core.omu);
@@ -20,6 +23,9 @@ export class PluginHostInstallUnit {
     this.bridgeFactory = bridgeFactory ??
       (() => new PluginSandboxBridge(doc, core.omu));
     this.handles = new Map();
+    this.revocationStore = revocationStore ??
+      new PluginRPCRevocationStoreUnit(core.omu);
+    this.revocationPending = new Set();
   }
 
   record(status, reason, providerId = "") {
@@ -52,6 +58,36 @@ export class PluginHostInstallUnit {
     return result;
   }
 
+  /**
+   * Immediately revoke in memory, then durably record a deny tombstone.
+   * Storage failure cannot report success; Provider is suspended to
+   * avoid further requests during an uncertain persistence state.
+   */
+  async revokeRpcScopePersisted(providerId, scope) {
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
+    this.revocationPending.add(providerId);
+    try {
+      const revoked = this.revokeRpcScope(providerId, scope);
+      if (!revoked.ok) return revoked;
+      const saved = await this.revocationStore.mark(providerId, scope);
+      if (saved.ok) return { ok: true, status: 200 };
+      const provider = this.core.uru.getProvider(providerId);
+      if (provider) {
+        this.core.setProviderEnabled(
+          provider.objectId, providerId, false);
+        this.handles.get(providerId)?.suspendHostRequests?.();
+        this.uiHost.setEnabled(providerId, false);
+      }
+      this.record(503, "RPCRevokePersistenceFailed", providerId);
+      return { ok: false, status: 503,
+        error: "Revoked for this Session; persistence unavailable" };
+    } finally {
+      this.revocationPending.delete(providerId);
+    }
+  }
+
   async install(snapshot, options = {}) {
     const checked = this.reader.inspectImport(snapshot);
     if (!checked.ok) return checked;
@@ -70,6 +106,27 @@ export class PluginHostInstallUnit {
       this.record(scopeReview.status, "RPCScopeRejected",
         provider.providerId);
       return scopeReview;
+    }
+    // A remembered deny is never an approval. On a fresh install,
+    // even an approved manifest cannot silently recover revoked routes.
+    let effectiveRpcScopes = scopeReview.value;
+    if (scopeReview.value.length) {
+      const stored = await this.revocationStore.list(provider.providerId);
+      if (!stored.ok) {
+        this.record(503, "RPCDenialLoadFailed", provider.providerId);
+        return { ok: false, status: 503 };
+      }
+      const denied = new Set(stored.value.map(item =>
+        JSON.stringify([item.target, item.action,
+          item.property ?? null])));
+      effectiveRpcScopes = Object.freeze(scopeReview.value.filter(item =>
+        !denied.has(JSON.stringify([
+          item.target, item.action, item.property ?? null
+        ]))));
+      if (effectiveRpcScopes.length !== scopeReview.value.length) {
+        this.record(403, "RPCPersistedDenyApplied",
+          provider.providerId);
+      }
     }
     if (options.consented !== true) {
       this.record(403, "ConsentRequired", provider.providerId);
@@ -147,7 +204,7 @@ export class PluginHostInstallUnit {
       // permission approval and UI mount have succeeded.
       if (typeof bridge.enableHostRequests === "function") {
         const linked = bridge.enableHostRequests(
-          this.core, scopeReview.value);
+          this.core, effectiveRpcScopes);
         if (!linked.ok) throw Error("Plugin RPC session failed");
       }
       this.handles.set(provider.providerId, bridge);
@@ -295,7 +352,9 @@ export class PluginHostInstallUnit {
     if (this.dependents(providerId).length) {
       return this.blocked(providerId);
     }
-    if (this.core.hub.providerInflight.get(providerId) > 0) {
+    if (this.revocationPending.has(providerId) ||
+        this.core.hub.providerInflight.get(providerId) > 0 ||
+        (previousBridge.pendingHostRequestCount?.() ?? 0) > 0) {
       this.record(409, "UpgradeBusy", providerId);
       return { ok: false, status: 409 };
     }
