@@ -65,7 +65,8 @@ function schemaRow(doc, label, schema, t, depth = 0) {
   wrapper.append(details);
   return wrapper;
 }
-export function renderContractDetail(doc, host, entry, t, onBack) {
+export function renderContractDetail(doc, host, entry, t, onBack,
+  onValidate = null) {
   const descriptor = entry.descriptor;
   const header = node(doc, "div", "pm-contract-actions");
   const back = node(doc, "button", "pm-mini",
@@ -73,6 +74,18 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
   back.type = "button";
   back.addEventListener("click", onBack);
   header.append(back);
+  if (typeof onValidate === "function") {
+    const check=node(doc,"button","pm-mini",
+      t("契約檢查","Validate contract"));
+    check.type="button";
+    const result=node(doc,"span","pm-muted");
+    check.addEventListener("click",()=>{
+      const status=onValidate();
+      result.textContent=status.ok ? "PASS (200)" :
+        "FAIL ("+status.status+") "+(status.code??status.error??"");
+    });
+    header.append(check,result);
+  }
   const copyButton = (label, value) => {
     const button=node(doc,"button","pm-mini",label);
     button.type="button";
