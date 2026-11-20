@@ -98,7 +98,8 @@ export function mountPluginManagerUI(core,doc,options={}) {
   let selected="",active="permissions",query="",pending=null;
   let selectedAPI=null,apiQuery="",sidebarOpen=true;
   let apiKind="api",apiPageSize=25,apiPageIndex=0;
-  let apiCursors=[null];
+  let apiCursors=[null],apiRevision="",refreshAPIPage=null;
+  let lastApiCheckTime=0;
   let lastView="",lastLocale="",lastSelected="",lastProviders="";
   search.type="search"; search.id="pluginManagerSearch";
   search.placeholder="Search plugin...";
@@ -673,6 +674,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
       }
       warning.textContent="";
       const data=result.value;
+      apiRevision=data.snapshotRevision;
       lastNextCursor=data.nextCursor;
       for(const item of data.items) {
         const row=dom(doc,"tr","pm-api-table-row");
@@ -731,6 +733,16 @@ export function mountPluginManagerUI(core,doc,options={}) {
       apiQuery=input.value;resetPage();update();
     });
     update();
+    refreshAPIPage=()=>{
+      if(!page.contains(section))return;
+      const current=core.discover("ui","page",apiKind,{
+        term:apiQuery.trim(),limit:1
+      },{origin:"user"});
+      if(current.ok && current.value.snapshotRevision!==apiRevision) {
+        resetPage();
+        update();
+      }
+    };
     page.append(section);
   }
 
@@ -747,6 +759,11 @@ export function mountPluginManagerUI(core,doc,options={}) {
     // belong to the existing DOM instance.
     if(!force&&lastView===active&&lastLocale===language&&
         lastSelected===selected&&lastProviders===providerState) {
+      if(active==="api"&&refreshAPIPage&&
+          Date.now()-lastApiCheckTime>=1000) {
+        lastApiCheckTime=Date.now();
+        refreshAPIPage();
+      }
       return;
     }
     lastView=active;
