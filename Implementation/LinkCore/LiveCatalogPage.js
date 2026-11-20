@@ -8,6 +8,7 @@ import { CatalogVisibilityPolicy } from
  */
 const MAX_LIMIT = 100;
 const MAX_TERM = 128;
+const SORT_KEYS = new Set(["owner", "id", "version", "status"]);
 const NAME = /^[A-Za-z][A-Za-z0-9]*(?:[._-][A-Za-z0-9]+)*$/;
 
 function fingerprint(parts) {
@@ -74,19 +75,21 @@ export class LiveCatalogPage {
       return bad(404, "Unknown caller");
     }
     const { term = "", owner = "", limit = 50,
-      cursor = null, origin = "user" } = options;
+      cursor = null, origin = "user", sortBy = "owner",
+      sortOrder = "asc" } = options;
     if (!["api", "service", "property", "event", "protocol"]
           .includes(kind) ||
         !["user", "agent"].includes(origin) ||
         typeof term !== "string" || term.length > MAX_TERM ||
         typeof owner !== "string" ||
         (owner !== "" && (!NAME.test(owner) || owner.length > 128)) ||
-        !Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
+        !Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT ||
+        !SORT_KEYS.has(sortBy) || !["asc", "desc"].includes(sortOrder)) {
       return bad(400, "Invalid catalog page request");
     }
     const needle = term.toLowerCase();
     const query = fingerprint([kind, source, origin, owner, needle,
-      String(limit)]);
+      String(limit), sortBy, sortOrder]);
     const entries = [];
     const revisionParts = [];
 
@@ -188,8 +191,18 @@ export class LiveCatalogPage {
         });
       }
     }
-    entries.sort((a, b) => a.owner.localeCompare(b.owner) ||
-      a.id.localeCompare(b.id));
+    entries.sort((a, b) => {
+      const compare = (left, right) => String(left ?? "")
+        .localeCompare(String(right ?? ""));
+      const field = item => sortBy === "status" ?
+        (item.descriptor.unavailable ? "Unavailable" :
+          item.descriptor.deprecated ? "Deprecated" : "Available") :
+        sortBy === "version" ? item.descriptor.version ?? "" :
+          item[sortBy];
+      const primary = compare(field(a), field(b));
+      return (sortOrder === "desc" ? -primary : primary) ||
+        compare(a.owner, b.owner) || compare(a.id, b.id);
+    });
     const revision = fingerprint(revisionParts.sort());
     const index = decode(cursor, revision, query);
     if (index < 0) {
