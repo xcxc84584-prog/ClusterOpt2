@@ -3,6 +3,8 @@ import { PluginPermissionPolicy } from
   "../property/PluginPermissionPolicy.js";
 import { renderContractDetail } from "./plugin-contract-view.js";
 import { renderResources } from "./plugin-resource-view.js";
+import { describePluginRPCScopes } from
+  "./plugin-rpc-scope-review.js";
 
 const VIEWS=Object.freeze(["permissions","api","ehu","resources"]);
 function dom(doc,tag,cls="",value) {
@@ -242,14 +244,18 @@ export function mountPluginManagerUI(core,doc,options={}) {
           }
           const next=staged.value.manifest.provider;
           const permissions=next.permissions??[];
+          const rpcScopes=staged.value.manifest.rpcScopes??[];
           const approved=doc.defaultView.confirm(t(
             "確認更新插件：","Update plugin: ")+p.providerId+
             "\n"+t("要求權限：","Requested permissions: ")+
-            (permissions.join(", ")||t("無","None")));
+            (permissions.join(", ")||t("無","None"))+"\n"+
+            t("要求 RPC 路由：","Requested RPC scopes: ")+"\n"+
+            describePluginRPCScopes(rpcScopes,t));
           if(!approved) return;
           const result=await core.pluginHostInstaller.upgrade(
             p.providerId,staged.value.snapshot,{
-              consented:true,approvedPermissions:[...permissions]
+              consented:true,approvedPermissions:[...permissions],
+              approvedRpcScopes:rpcScopes
             });
           let stored={ok:false};
           if(result.ok) {
@@ -268,6 +274,26 @@ export function mountPluginManagerUI(core,doc,options={}) {
       controls.append(upgrade);
     }
     body.append(controls);
+    const circuit=core.pluginHostInstaller.getRPCCircuitState(
+      p.providerId);
+    if(circuit.open) {
+      const row=dom(doc,"div","pm-permission-row");
+      row.append(dom(doc,"span","pm-permission-label",
+        t("RPC 熔斷：請先確認插件狀態。",
+          "RPC circuit open: inspect plugin state first.")),
+        btn(doc,t("重設熔斷","Reset circuit"),event=>{
+          if(!event.isTrusted || !doc.defaultView.confirm(
+            t("確認重設此插件的 RPC 熔斷？",
+              "Reset this plugin's RPC circuit?")))return;
+          const result=core.pluginHostInstaller.resetRPCCircuit(
+            p.providerId,{consented:true});
+          if(!result.ok)doc.defaultView.alert(
+            t("重設失敗（狀態 ","Reset failed (status ")+
+            result.status+").");
+          render();
+        },"pm-mini"));
+      body.append(row);
+    }
     const grants=(p.permissions??[]).filter(name=>
       core.checkPluginPermission(p.providerId,name)).length;
     body.append(dom(doc,"p","pm-muted",
@@ -289,6 +315,78 @@ export function mountPluginManagerUI(core,doc,options={}) {
           if(result.ok)render();
         },"pm-mini",PluginPermissionPolicy.level(permission)==="core"));
       body.append(row);
+    }
+    const rpcScopes=core.pluginHostInstaller?.listRpcScopes?.(
+      p.providerId)??[];
+    if(rpcScopes.length) {
+      body.append(dom(doc,"p","pm-muted",
+        t("已核准 RPC 路由：","Approved RPC routes: ")+
+        rpcScopes.length));
+    }
+    for(const scope of rpcScopes) {
+      const routeName=scope.target+" / "+scope.action+
+        (scope.property===undefined?"":" ["+scope.property+"]");
+      const row=dom(doc,"div","pm-permission-row");
+      row.append(dom(doc,"span","pm-permission-label",routeName),
+        btn(doc,t("撤銷路由","Revoke route"),async()=>{
+          if(!doc.defaultView.confirm(
+            t("撤銷 RPC 路由？","Revoke RPC route?")+
+            "\\n"+routeName)) return;
+          const result=await core.pluginHostInstaller
+            .revokeRpcScopePersisted(p.providerId,scope);
+          if(!result.ok)doc.defaultView.alert(
+            result.status===503 ?
+              t("撤權已在本次執行中生效，但無法永久保存。" +
+                " 為安全起見，插件已停用。",
+                "Revoked in memory, but persistence failed." +
+                " Plugin disabled for safety.") :
+              t("撤銷失敗（狀態 ","Revoke failed (status ")+
+                result.status+").");
+          render();
+        },"pm-mini"));
+      body.append(row);
+    }
+    // Denials are fetched from Host-private storage, never from the
+    // plugin manifest or a Worker response.
+    if(core.pluginHostInstaller.handles.has(p.providerId)) {
+      const deniedPane=dom(doc,"div","pm-revoked-rpc");
+      body.append(deniedPane);
+      void core.pluginHostInstaller.listRevokedRpcScopes(
+        p.providerId).then(saved=>{
+        if(!deniedPane.isConnected ||
+           current()?.providerId!==p.providerId) return;
+        if(!saved.ok) {
+          deniedPane.append(dom(doc,"p","pm-muted",
+            t("無法查詢已撤權路由。","Cannot read revoked routes.")));
+          return;
+        }
+        if(saved.value.length)deniedPane.append(dom(doc,"p","pm-muted",
+          t("已撤權路由（重新授權需再次確認）：",
+            "Revoked routes (explicit reapproval required):")));
+        for(const scope of saved.value) {
+          const routeName=scope.target+" / "+scope.action+
+            (scope.property===undefined?"":" ["+scope.property+"]");
+          const row=dom(doc,"div","pm-permission-row");
+          row.append(dom(doc,"span","pm-permission-label",routeName),
+            btn(doc,t("重新授權","Reapprove"),async event=>{
+              if(!event.isTrusted)return;
+              if(!doc.defaultView.confirm(t(
+                "確認重新授權此 RPC 路由？","Reapprove this RPC route?")+
+                "\n"+routeName))return;
+              const result=await core.pluginHostInstaller.reapproveRpcScope(
+                p.providerId,scope,{consented:true});
+              if(!result.ok)doc.defaultView.alert(t(
+                "無法重新授權（狀態 ","Cannot reapprove (status ")+
+                result.status+").");
+              render();
+            },"pm-mini"));
+          deniedPane.append(row);
+        }
+      }).catch(()=>{
+        if(deniedPane.isConnected)deniedPane.append(
+          dom(doc,"p","pm-muted",
+            t("撤權紀錄不可用。","Revocation data unavailable.")));
+      });
     }
     section.append(body);return section;
   }

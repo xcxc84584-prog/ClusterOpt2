@@ -1,5 +1,14 @@
 import { PluginRPCContractPolicy as RPC } from
   "../property/PluginRPCContractPolicy.js";
+import { PluginWorkerSource } from "./PluginWorkerSource.js";
+import { PluginHostRequestGateway } from
+  "./PluginHostRequestGateway.js";
+import { PluginHostRequestTransport } from
+  "./PluginHostRequestTransport.js";
+import { PluginBidirectionalRPCController } from
+  "./PluginBidirectionalRPCController.js";
+import { PluginBidirectionalEnvelopePolicy as Envelope } from
+  "../property/PluginBidirectionalEnvelopePolicy.js";
 
 /**
  * PR13.3/13.5/13.7: opaque iframe launches a dedicated Worker.
@@ -12,42 +21,6 @@ import { PluginRPCContractPolicy as RPC } from
  * when the plugin runs an unbounded synchronous computation.
  */
 const BOOTSTRAP = String.raw`
-const WORKER_SOURCE = [
-  "\"use strict\";\nlet channel = null;\nlet ",
-  "plugin = null;\nself.addEventListener(\"",
-  "message\", async event => {\n  if (chann",
-  "el || event.data?.kind !== \"start\" ||\n",
-  "      event.ports.length !== 1) return",
-  ";\n  channel = event.ports[0];\n  try {\n",
-  "    const source = event.data.source;\n",
-  "    if (typeof source !== \"string\") th",
-  "row Error(\"Source missing\");\n    const",
-  " url = \"data:text/javascript;charset=u",
-  "tf-8,\" +\n      encodeURIComponent(sour",
-  "ce);\n    plugin = await import(url);\n ",
-  "   channel.onmessage = async ({data}) ",
-  "=> {\n      if (data?.kind !== \"invoke\"",
-  " ||\n          !Number.isSafeInteger(da",
-  "ta.id)) return;\n      try {\n        co",
-  "nst fn = Object.hasOwn(plugin, data.ac",
-  "tion) ?\n          plugin[data.action] ",
-  ": null;\n        if (typeof fn !== \"fun",
-  "ction\") {\n          channel.postMessag",
-  "e({kind:\"response\",id:data.id,\n       ",
-  "     ok:false,status:404});\n          ",
-  "return;\n        }\n        const value ",
-  "= await fn(data.payload);\n        chan",
-  "nel.postMessage({kind:\"response\",id:da",
-  "ta.id,\n          ok:true,value:value ?",
-  "? null});\n      } catch (_error) {\n   ",
-  "     channel.postMessage({kind:\"respon",
-  "se\",id:data.id,\n          ok:false,sta",
-  "tus:500});\n      }\n    };\n    channel.",
-  "start();\n    channel.postMessage({kind",
-  ":\"ready\"});\n  } catch (_error) {\n    c",
-  "hannel.postMessage({kind:\"error\",statu",
-  "s:400});\n  }\n});\n"
-].join("");
 "use strict";
 let launched = false;
 let runner = null;
@@ -58,16 +31,13 @@ window.addEventListener("message", event => {
   launched = true;
   const channel = event.ports[0];
   try {
-    const workerScript = WORKER_SOURCE;
-    const url = URL.createObjectURL(new Blob([workerScript],
+    const url = URL.createObjectURL(new Blob([WORKER_SCRIPT],
       {type:"text/javascript"}));
     try {
       runner = new Worker(url, {type:"classic"});
     } finally {
       URL.revokeObjectURL(url);
     }
-    // Keep the authenticated host port in the isolated frame so a
-    // worker startup failure can still reach HubUnit immediately.
     const inner = new MessageChannel();
     channel.onmessage = ({data}) => inner.port1.postMessage(data);
     inner.port1.onmessage = ({data}) => channel.postMessage(data);
@@ -77,9 +47,10 @@ window.addEventListener("message", event => {
       channel.postMessage({kind:"error",status:502});
       runner.terminate();
     };
-    runner.postMessage({kind:"start",
-      source:event.data.source}, [inner.port2]);
-  } catch (_error) {
+    runner.postMessage({
+      kind:"start",source:event.data.source,actions:event.data.actions
+    },[inner.port2]);
+  } catch {
     channel.postMessage({kind:"error",status:502});
   }
 });
@@ -90,7 +61,7 @@ window.addEventListener("message", event => {
     runner = null;
   }
 });
-`;
+`.replace("WORKER_SCRIPT", JSON.stringify(PluginWorkerSource));
 
 const CSP = "default-src 'none'; script-src 'unsafe-inline' data: blob:; " +
   "connect-src 'none'; img-src data:; style-src 'unsafe-inline'; " +
@@ -113,6 +84,105 @@ export class PluginSandboxBridge {
     this.pending = new Map();
     this.sequence = 0;
     this.closed = false;
+    this.hostTransport = null;
+    this.hostController = null;
+    this.onFault = null;
+  }
+
+  /**
+   * Only install after the host has registered and granted the Provider.
+   * Legacy invocation stays on its existing port handler.
+   */
+  enableHostRequests(core, activeRpcScopes = [],
+    reviewedRpcScopes = activeRpcScopes) {
+    if (this.closed || !this.port || this.hostTransport ||
+        core?.uru?.getProvider(this.manifest?.providerId)?.objectId !==
+          this.manifest?.objectId) {
+      return { ok: false, status: 403 };
+    }
+    const gateway = new PluginHostRequestGateway(
+      core, undefined, activeRpcScopes, reviewedRpcScopes);
+    const transport = new PluginHostRequestTransport(gateway);
+    const result = transport.attach(this.port, this.manifest.providerId);
+    if (result.ok) {
+      this.hostTransport = transport;
+      this.hostController = new PluginBidirectionalRPCController();
+    }
+    return result;
+  }
+
+  /**
+   * Host-controlled scope revocation; never sent as a Worker command.
+   * A re-enabled Session retains the remaining reviewed scopes.
+   */
+  listHostRPCScopes() {
+    return this.hostTransport?.gateway.listRpcScopes() ?? Object.freeze([]);
+  }
+
+  revokeHostRPCScope(scope) {
+    if (!this.hostTransport || this.closed) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.revokeRpcScope(scope);
+  }
+
+  /**
+   * Trusted Host only. Caller first suspends the Session so an
+   * uncommitted reapproval can never reach the Worker.
+   */
+  grantReviewedHostRPCScope(scope) {
+    if (!this.hostTransport || this.closed) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.gateway.grantReviewedRpcScope(scope);
+  }
+
+  /**
+   * Include both directions in the upgrade drain gate. Reverse Host
+   * work may ignore AbortSignal, so count it until its promise settles.
+   */
+  pendingHostRequestCount() {
+    let count = this.pending.size +
+      (this.hostController?.pendingCount ?? 0);
+    for (const entry of this.hostTransport?.connections.values() ?? []) {
+      count += entry.inflight;
+    }
+    return count;
+  }
+
+  /**
+   * Host-only resource diagnostics and explicit circuit reset.
+   * Neither method is included in the Worker-facing SDK.
+   */
+  getHostRPCCircuitState() {
+    return this.hostTransport?.getCircuitState() ??
+      Object.freeze({ open: false, timeoutCount: 0 });
+  }
+
+  resetHostRPCCircuit(confirmed = false) {
+    if (this.closed || !this.hostTransport) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.resetCircuit(confirmed);
+  }
+
+  /**
+   * Disable the reverse API while retaining the isolated Worker.
+   * A later resume always creates a new Session and handshake nonce.
+   */
+  suspendHostRequests() {
+    if (!this.hostTransport || !this.port) return false;
+    const session = this.hostTransport.gateway.sessions
+      .sessionForPort(this.port);
+    if (session) this.hostController?.revokeSession(session);
+    return this.hostTransport.suspend(this.port);
+  }
+
+  resumeHostRequests() {
+    if (!this.hostTransport || !this.port || this.closed) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.resume(this.port, this.manifest.providerId);
   }
 
   audit(status, reason) {
@@ -129,6 +199,10 @@ export class PluginSandboxBridge {
       pending.resolve(reject(status, reason));
     }
     this.pending.clear();
+    this.hostController?.close();
+    this.hostController = null;
+    this.hostTransport?.detachAll();
+    this.hostTransport = null;
     this.port?.close();
     this.port = null;
     // The isolated frame controls the worker, not plugin code.
@@ -138,6 +212,10 @@ export class PluginSandboxBridge {
     this.frame?.remove();
     this.frame = null;
     this.audit(status, reason);
+    if (status >= 400 && typeof this.onFault === "function") {
+      try { this.onFault(status, reason); }
+      catch { /* Host cleanup is authoritative even on callback failure. */ }
+    }
   }
 
   async start(manifest, source, options = {}) {
@@ -185,14 +263,19 @@ export class PluginSandboxBridge {
         } else if (msg?.kind === "error") {
           this.terminate(502, "BootstrapFailed");
           finish(reject(502, "Plugin source rejected by sandbox"));
-        } else {
+        } else if (msg?.kind === "response") {
           this.receive(msg);
+        } else if (msg?.protocol === Envelope.protocol &&
+            msg.direction === "host-to-plugin" &&
+            msg.type === "response") {
+          this.receiveBidirectional(msg);
         }
       };
       frame.addEventListener("load", () => {
         if (this.closed) return;
         frame.contentWindow?.postMessage({
-          kind: "cluster-plugin-bootstrap", source
+          kind: "cluster-plugin-bootstrap", source,
+          actions: manifest.provides.map(item => item.action)
         }, "*", [channel.port2]);
       }, { once: true });
     });
@@ -213,9 +296,80 @@ export class PluginSandboxBridge {
     item.resolve(checked);
   }
 
+  /**
+   * Host→Plugin requests use the same Session and cluster.rpc/1
+   * protocol as the reverse direction. Legacy invoke() is preserved
+   * until cross-version migration tests prove full parity.
+   */
+  async invokeBidirectional(service, action, payload, timeoutMs = 4000) {
+    if (this.closed || !this.port || !this.hostController ||
+        !this.hostTransport) {
+      return reject(503, "Plugin RPC Session unavailable");
+    }
+    const verified = RPC.request({
+      kind: "invoke", id: ++this.sequence, service, action, payload
+    }, this.manifest);
+    if (!verified.ok) return verified;
+    const session = this.hostTransport.gateway.sessions
+      .sessionForPort(this.port);
+    if (!session || session.state !== "ready") {
+      return reject(425, "Plugin RPC handshake incomplete");
+    }
+    const result = await this.hostController.request(
+      this.port, session, this.manifest.objectId, action,
+      payload, { deadlineMs: Math.min(30000,
+        Math.max(1, Math.floor(timeoutMs))) });
+    return result.ok ? { ok: true, status: result.status,
+      value: result.data } : { ok: false, status: result.status,
+      error: result.errorCode };
+  }
+
+  /**
+   * Never adopt Worker-supplied eventId as authoritative. The Host
+   * assigns a fresh OMU event before settling the Session controller.
+   */
+  receiveBidirectional(packet) {
+    const session = this.hostTransport?.gateway.sessions
+      .sessionForPort(this.port);
+    const parsed = Envelope.inspect(packet);
+    if (!session || session.state !== "ready" ||
+        !parsed.ok || !this.hostController ||
+        !this.hostController.hasOutstanding(
+          this.port, session, packet.requestId)) {
+      this.audit(403, "HostResponseRejected");
+      return;
+    }
+    const audit = this.omu.record(
+      packet.ok ? "Log" : "EHU",
+      this.manifest.objectId, "RPC.HostToPlugin.Response",
+      packet.status, "PluginSandboxBridge", {
+        requestId: packet.requestId
+      });
+    if (!audit || !Number.isSafeInteger(audit.eventId)) {
+      // A missing audit ID must fail closed rather than leave a
+      // trusted caller hanging until the RPC deadline expires.
+      this.audit(503, "HostResponseAuditMissing");
+      this.hostController.cancel(packet.requestId, "AUDIT_UNAVAILABLE");
+      return;
+    }
+    const checked = this.hostController.receive(
+      this.port, session, {
+        ...parsed.value, eventId: audit.eventId
+      });
+    if (!checked.ok) this.audit(checked.status, "HostResponseRejected");
+  }
+
   async invoke(service, action, payload, timeoutMs = 4000) {
     if (this.closed || !this.port || !this.frame) {
       return reject(503, "Plugin sandbox unavailable");
+    }
+    // The modern symmetric protocol is the steady-state path. Older
+    // bootstrap calls retain the legacy message format until ACK.
+    const session = this.hostTransport?.gateway.sessions
+      .sessionForPort(this.port);
+    if (session?.state === "ready" && this.hostController) {
+      return this.invokeBidirectional(
+        service, action, payload, timeoutMs);
     }
     if (this.pending.size >= 8) return reject(429, "Busy");
     const id = ++this.sequence;

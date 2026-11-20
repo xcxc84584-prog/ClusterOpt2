@@ -1,0 +1,74 @@
+{
+  "packageVersion": 1,
+  "name": "SDK Native UI (External)",
+  "entry": "worker.js",
+  "description": "Manifest-authorized native toolbar button and window tabs",
+  "rpcScopes": [
+    {
+      "target": "UICO",
+      "action": "uiRequest"
+    }
+  ],
+  "provider": {
+    "manifestVersion": 1,
+    "providerId": "example.sdk.native-ui",
+    "objectId": "SDK.NativeUI",
+    "provides": [
+      {
+        "service": "example.sdk.native-ui.create-controls",
+        "action": "createControls",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        }
+      },
+      {
+        "service": "example.sdk.native-ui.pressed",
+        "action": "pressed",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        }
+      },
+      {
+        "service": "example.sdk.native-ui.status",
+        "action": "status",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        }
+      },
+      {
+        "service": "example.sdk.native-ui.probe-native-acl",
+        "action": "probeNativeACL",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        }
+      }
+    ],
+    "requires": [],
+    "permissions": [
+      "ui.read",
+      "ui.create.own",
+      "ui.update.own",
+      "ui.window"
+    ],
+    "execution": {
+      "isolation": "worker",
+      "concurrency": "serial"
+    }
+  }
+}

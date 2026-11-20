@@ -43,6 +43,10 @@ function harness() {
   let invoked = 0;
   let terminated = false;
   let booted = false;
+  const revocationStore = {
+    async list() { return { ok: true, status: 200, value: [] }; },
+    async mark() { return { ok: true, status: 201 }; }
+  };
   const installer = new PluginHostInstallUnit(env.core, null, () => ({
     async start() {
       booted = true;
@@ -53,7 +57,7 @@ function harness() {
       return { ok: true, status: 200, value: { result: payload.text } };
     },
     terminate() { terminated = true; }
-  }));
+  }), revocationStore);
   return {
     env, installer,
     get invoked() { return invoked; },
@@ -287,4 +291,32 @@ test("PR13.6 refuses upgrade while active dependents rely on provider",
     assert.equal(h.env.core.uru.getProvider("author.sandbox")
       .provides[0].version, "1.0.0");
     assert.equal(h.env.core.uru.listProviders().length, 2);
+  });
+
+test("PR24.42 package RPC scopes require explicit host approval",
+  async () => {
+    const h = harness();
+    const snapshot = specimen();
+    const manifest = JSON.parse(snapshot.manifestText);
+    manifest.rpcScopes = [{ target: "UICO", action: "describe" }];
+    const raw = JSON.stringify(manifest);
+    snapshot.manifestText = raw;
+    snapshot.files["plugin.json"] = btoa(raw);
+
+    const denied = await h.installer.install(snapshot, {
+      consented: true
+    });
+    assert.equal(denied.status, 403);
+    assert.equal(h.booted, false);
+    assert.equal(h.env.core.uru.listProviders().length, 0);
+    assert.ok(h.env.log().some(event =>
+      event.action === "Plugin.Install.RPCScopeRejected" &&
+      event.kind === "EHU"));
+
+    const approved = await h.installer.install(snapshot, {
+      consented: true,
+      approvedRpcScopes: manifest.rpcScopes
+    });
+    assert.equal(approved.status, 201);
+    assert.equal(h.installer.uninstall("author.sandbox").status, 200);
   });

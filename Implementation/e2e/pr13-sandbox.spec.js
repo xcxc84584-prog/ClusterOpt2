@@ -28,7 +28,7 @@ test("PR13 isolated module denies parent DOM, routes through HubUnit",
         try { void parent.document.body; }
         catch (_error) { parentDenied = true; }
         return {result:payload.text.toUpperCase(),
-          parentDenied, noCluster:typeof globalThis.Cluster === "undefined"};
+          parentDenied, hasBoundClient:typeof globalThis.Cluster?.request === "function"};
       }`;
       const raw = JSON.stringify(manifest);
       const snapshot = {
@@ -64,7 +64,7 @@ test("PR13 isolated module denies parent DOM, routes through HubUnit",
     expect(state.inaccessible).toBe(true);
     expect(state.response.ok).toBe(true);
     expect(state.response.value).toEqual({
-      result: "ABC", parentDenied: true, noCluster: true
+      result: "ABC", parentDenied: true, hasBoundClient: true
     });
     expect(state.log).toBe(true);
   });

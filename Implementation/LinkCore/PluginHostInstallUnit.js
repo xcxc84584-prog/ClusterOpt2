@@ -3,6 +3,12 @@ import { PluginSandboxBridge } from "./PluginSandboxBridge.js";
 import { PluginUIHostUnit } from "./PluginUIHostUnit.js";
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
+import { PluginRPCScopePolicy } from
+  "../property/PluginRPCScopePolicy.js";
+import { PluginRPCRevocationStoreUnit } from
+  "./PluginRPCRevocationStoreUnit.js";
+import { PluginRestartCircuitPolicy } from
+  "../property/PluginRestartCircuitPolicy.js";
 
 /**
  * Host-owned activation transaction, NOT a second Provider registry.
@@ -10,7 +16,8 @@ import { PluginCapabilityReviewPolicy } from
  * No plugin code can invoke install/approve/rollback from the RPC port.
  */
 export class PluginHostInstallUnit {
-  constructor(core, doc, bridgeFactory = null) {
+  constructor(core, doc, bridgeFactory = null,
+    revocationStore = null, clock = () => Date.now()) {
     this.core = core;
     this.doc = doc;
     this.reader = new PluginFolderPackageUnit(core.omu);
@@ -18,6 +25,46 @@ export class PluginHostInstallUnit {
     this.bridgeFactory = bridgeFactory ??
       (() => new PluginSandboxBridge(doc, core.omu));
     this.handles = new Map();
+    this.revocationStore = revocationStore ??
+      new PluginRPCRevocationStoreUnit(core.omu);
+    this.revocationPending = new Set();
+    this.restartFaults = new Map();
+    this.clock = clock;
+    this.revocationStore.subscribe?.(providerId => {
+      void this.syncDurableRpcDenials(providerId);
+    });
+  }
+
+  /**
+   * Cross-tab notifications contain no grant. Always verify the
+   * committed denial state again before applying a live revocation.
+   */
+  async syncDurableRpcDenials(providerId) {
+    const provider = this.core.uru.getProvider(providerId);
+    const bridge = this.handles.get(providerId);
+    if (!provider || !bridge || this.revocationPending.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    const stored = await this.revocationStore.list(providerId);
+    if (!stored.ok) {
+      this.core.setProviderEnabled(provider.objectId,
+        providerId, false);
+      bridge.suspendHostRequests?.();
+      this.uiHost.setEnabled(providerId, false);
+      this.record(503, "RPCDenialSyncFailed", providerId);
+      return { ok: false, status: 503 };
+    }
+    let revoked = 0;
+    for (const scope of stored.value) {
+      const active = bridge.listHostRPCScopes?.() ?? [];
+      if (!active.some(item => item.target === scope.target &&
+          item.action === scope.action &&
+          item.property === scope.property)) continue;
+      const result = bridge.revokeHostRPCScope(scope);
+      if (result.ok) revoked++;
+    }
+    if (revoked) this.record(200, "RPCDenialSyncApplied", providerId);
+    return { ok: true, status: 200, revoked };
   }
 
   record(status, reason, providerId = "") {
@@ -26,10 +73,204 @@ export class PluginHostInstallUnit {
       status, providerId);
   }
 
+  /**
+   * UI-facing Host operation; no plugin-visible RPC exposes these calls.
+   * The live Bridge is the only scope state owner after consent.
+   */
+  listRpcScopes(providerId) {
+    if (!this.core.uru.getProvider(providerId) ||
+        !this.handles.has(providerId)) return Object.freeze([]);
+    return this.handles.get(providerId).listHostRPCScopes?.() ??
+      Object.freeze([]);
+  }
+
+  /**
+   * Host-only crash quarantine. Uninstall cannot erase fault history,
+   * so uninstall/reinstall is not an automatic backoff bypass.
+   */
+  getRestartState(providerId) {
+    return PluginRestartCircuitPolicy.status(
+      this.restartFaults.get(providerId) ?? null,
+      this.clock());
+  }
+
+  recordWorkerFault(providerId) {
+    const previous = this.restartFaults.get(providerId);
+    const result = PluginRestartCircuitPolicy.fault(
+      previous?.history ?? [], this.clock());
+    if (!result.ok) {
+      this.record(503, "RestartPolicyFailed", providerId);
+      return result;
+    }
+    this.restartFaults.set(providerId, result);
+    this.record(result.open ? 429 : 502,
+      result.open ? "RestartCircuitOpened" :
+        "RestartBackoffApplied", providerId);
+    return result;
+  }
+
+  resetRestartCircuit(providerId, options = {}) {
+    if (options.consented !== true) {
+      return { ok: false, status: 403 };
+    }
+    if (!this.restartFaults.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    this.restartFaults.delete(providerId);
+    this.record(200, "RestartCircuitReset", providerId);
+    return { ok: true, status: 200 };
+  }
+
+  getRPCCircuitState(providerId) {
+    return this.handles.get(providerId)?.getHostRPCCircuitState?.() ??
+      Object.freeze({ open: false, timeoutCount: 0 });
+  }
+
+  resetRPCCircuit(providerId, options = {}) {
+    if (options.consented !== true) {
+      return { ok: false, status: 403 };
+    }
+    const bridge = this.handles.get(providerId);
+    if (!bridge || !this.core.uru.getProvider(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    const result = bridge.resetHostRPCCircuit?.(true) ??
+      { ok: false, status: 503 };
+    this.record(result.status, result.ok ?
+      "RPCCircuitReset" : "RPCCircuitResetRejected", providerId);
+    return result;
+  }
+
+  async listRevokedRpcScopes(providerId) {
+    if (!this.core.uru.getProvider(providerId) ||
+        !this.handles.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    return this.revocationStore.list(providerId);
+  }
+
+  revokeRpcScope(providerId, scope) {
+    const provider = this.core.uru.getProvider(providerId);
+    const bridge = this.handles.get(providerId);
+    if (!provider || !bridge) return { ok: false, status: 404 };
+    if (typeof bridge.revokeHostRPCScope !== "function") {
+      return { ok: false, status: 503 };
+    }
+    const result = bridge.revokeHostRPCScope(scope);
+    this.record(result.status, result.ok ?
+      "RPCScopeRevoked" : "RPCScopeRevokeRejected", providerId);
+    return result;
+  }
+
+  /**
+   * Immediately revoke in memory, then durably record a deny tombstone.
+   * Storage failure cannot report success; Provider is suspended to
+   * avoid further requests during an uncertain persistence state.
+   */
+  async revokeRpcScopePersisted(providerId, scope) {
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
+    this.revocationPending.add(providerId);
+    try {
+      const revoked = this.revokeRpcScope(providerId, scope);
+      if (!revoked.ok) return revoked;
+      const saved = await this.revocationStore.mark(providerId, scope);
+      if (saved.ok) return { ok: true, status: 200 };
+      const provider = this.core.uru.getProvider(providerId);
+      if (provider) {
+        this.core.setProviderEnabled(
+          provider.objectId, providerId, false);
+        this.handles.get(providerId)?.suspendHostRequests?.();
+        this.uiHost.setEnabled(providerId, false);
+      }
+      this.record(503, "RPCRevokePersistenceFailed", providerId);
+      return { ok: false, status: 503,
+        error: "Revoked for this Session; persistence unavailable" };
+    } finally {
+      this.revocationPending.delete(providerId);
+    }
+  }
+
+  /**
+   * Explicit Host-only reapproval of an originally reviewed scope.
+   * The Session is suspended while memory grants and IndexedDB
+   * tombstones change, so no uncommitted scope can serve Worker RPC.
+   */
+  async reapproveRpcScope(providerId, scope, options = {}) {
+    if (options.consented !== true) {
+      return { ok: false, status: 403 };
+    }
+    const provider = this.core.uru.getProvider(providerId);
+    const bridge = this.handles.get(providerId);
+    if (!provider || !bridge) return { ok: false, status: 404 };
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
+    this.revocationPending.add(providerId);
+    const disabled = this.core.uru.disabledProviders.has(providerId);
+    let suspended = false;
+    const restoreSession = () => {
+      if (!suspended) return { ok: true, status: 200 };
+      const result = bridge.resumeHostRequests?.();
+      if (result?.ok) return result;
+      this.core.setProviderEnabled(provider.objectId, providerId, false);
+      this.uiHost.setEnabled(providerId, false);
+      this.record(503, "RPCReapprovalSessionFailed", providerId);
+      return { ok: false, status: 503 };
+    };
+    try {
+      const checked = PluginRPCScopePolicy.inspect([scope]);
+      if (!checked.ok) return { ok: false, status: 400 };
+      const wanted = checked.value[0];
+      const stored = await this.revocationStore.list(providerId);
+      if (!stored.ok) return { ok: false, status: 503 };
+      const matches = item => item.target === wanted.target &&
+        item.action === wanted.action &&
+        item.property === wanted.property;
+      if (!stored.value.some(matches)) {
+        return { ok: false, status: 404 };
+      }
+      if (!disabled) {
+        if (!bridge.suspendHostRequests?.()) {
+          return { ok: false, status: 503 };
+        }
+        suspended = true;
+      }
+      const granted = bridge.grantReviewedHostRPCScope?.(wanted) ??
+        { ok: false, status: 503 };
+      if (!granted.ok) {
+        const recovered = restoreSession();
+        return recovered.ok ? granted : recovered;
+      }
+      // The Worker cannot use the new grant until a fresh handshake.
+      const cleared = await this.revocationStore.clear(
+        providerId, wanted);
+      if (!cleared.ok) {
+        bridge.revokeHostRPCScope(wanted);
+        const recovered = restoreSession();
+        this.record(503, "RPCReapprovalPersistenceFailed",
+          providerId);
+        return recovered.ok ? { ok: false, status: 503 } : recovered;
+      }
+      const resumed = restoreSession();
+      if (!resumed.ok) {
+        bridge.revokeHostRPCScope(wanted);
+        await this.revocationStore.mark(providerId, wanted);
+        return resumed;
+      }
+      this.record(200, "RPCReapproved", providerId);
+      return { ok: true, status: 200 };
+    } finally {
+      this.revocationPending.delete(providerId);
+    }
+  }
+
   async install(snapshot, options = {}) {
     const checked = this.reader.inspectImport(snapshot);
     if (!checked.ok) return checked;
-    const provider = JSON.parse(snapshot.manifestText).provider;
+    const manifest = JSON.parse(snapshot.manifestText);
+    const provider = manifest.provider;
     const review = PluginCapabilityReviewPolicy.inspect(provider,
       options.approvedPermissions ?? []);
     if (!review.ok) {
@@ -37,9 +278,45 @@ export class PluginHostInstallUnit {
         provider.providerId);
       return review;
     }
+    const scopeReview = PluginRPCScopePolicy.review(
+      manifest.rpcScopes ?? [], options.approvedRpcScopes ?? []);
+    if (!scopeReview.ok) {
+      this.record(scopeReview.status, "RPCScopeRejected",
+        provider.providerId);
+      return scopeReview;
+    }
+    // A remembered deny is never an approval. On a fresh install,
+    // even an approved manifest cannot silently recover revoked routes.
+    let effectiveRpcScopes = scopeReview.value;
+    if (scopeReview.value.length) {
+      const stored = await this.revocationStore.list(provider.providerId);
+      if (!stored.ok) {
+        this.record(503, "RPCDenialLoadFailed", provider.providerId);
+        return { ok: false, status: 503 };
+      }
+      const denied = new Set(stored.value.map(item =>
+        JSON.stringify([item.target, item.action,
+          item.property ?? null])));
+      effectiveRpcScopes = Object.freeze(scopeReview.value.filter(item =>
+        !denied.has(JSON.stringify([
+          item.target, item.action, item.property ?? null
+        ]))));
+      if (effectiveRpcScopes.length !== scopeReview.value.length) {
+        this.record(403, "RPCPersistedDenyApplied",
+          provider.providerId);
+      }
+    }
     if (options.consented !== true) {
       this.record(403, "ConsentRequired", provider.providerId);
       return { ok: false, status: 403, error: "Consent required" };
+    }
+    const restartState = this.getRestartState(provider.providerId);
+    if (!restartState.ok || !restartState.allowed) {
+      const status = restartState.ok ? 429 : 503;
+      this.record(status, "RestartCircuitRejected",
+        provider.providerId);
+      return { ok: false, status,
+        retryAfterMs: restartState.retryAfterMs ?? 0 };
     }
     if (this.handles.has(provider.providerId) ||
         this.core.uru.getProvider(provider.providerId) ||
@@ -54,7 +331,7 @@ export class PluginHostInstallUnit {
           error: "Missing service dependency" };
       }
     }
-    const entry = JSON.parse(snapshot.manifestText).entry;
+    const entry = manifest.entry;
     let source;
     try {
       const binary = atob(snapshot.files[entry]);
@@ -66,6 +343,19 @@ export class PluginHostInstallUnit {
       return { ok: false, status: 400 };
     }
     const bridge = this.bridgeFactory();
+    // Unexpected Worker failure is isolated from all other Providers.
+    // Only the currently installed Bridge can disable its owner.
+    bridge.onFault = (status, reason) => {
+      if (this.handles.get(provider.providerId) !== bridge) return;
+      const live = this.core.uru.getProvider(provider.providerId);
+      if (!live) return;
+      this.core.setProviderEnabled(
+        live.objectId, provider.providerId, false);
+      this.uiHost.setEnabled(provider.providerId, false);
+      this.recordWorkerFault(provider.providerId);
+      this.record(status, "WorkerFault." + reason,
+        provider.providerId);
+    };
     const boot = await bridge.start(provider, source);
     if (!boot.ok) {
       bridge.terminate(boot.status, "BootstrapRejected");
@@ -109,6 +399,13 @@ export class PluginHostInstallUnit {
       }
       const mounted = this.uiHost.mount(snapshot, provider);
       if (!mounted.ok) throw Error("Plugin UI mount failed");
+      // Session activation happens only after URU registration,
+      // permission approval and UI mount have succeeded.
+      if (typeof bridge.enableHostRequests === "function") {
+        const linked = bridge.enableHostRequests(
+          this.core, effectiveRpcScopes, scopeReview.value);
+        if (!linked.ok) throw Error("Plugin RPC session failed");
+      }
       this.handles.set(provider.providerId, bridge);
       this.record(201, "Activated", provider.providerId);
       return { ok: true, status: 201, providerId: provider.providerId };
@@ -160,6 +457,9 @@ export class PluginHostInstallUnit {
     const bridge = this.handles.get(providerId);
     const provider = this.core.uru.getProvider(providerId);
     if (!bridge || !provider) return { ok: false, status: 404 };
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
     if (this.core.uru.disabledProviders.has(providerId)) {
       return { ok: true, status: 200 };
     }
@@ -167,7 +467,10 @@ export class PluginHostInstallUnit {
     if (blocked) return blocked;
     const result = this.core.setProviderEnabled(
       provider.objectId, providerId, false);
-    if (result.ok) this.uiHost.setEnabled(providerId, false);
+    if (result.ok) {
+      bridge.suspendHostRequests?.();
+      this.uiHost.setEnabled(providerId, false);
+    }
     return result;
   }
 
@@ -176,6 +479,9 @@ export class PluginHostInstallUnit {
     const provider = this.core.uru.getProvider(providerId);
     if (!bridge || !provider || bridge.closed) {
       return { ok: false, status: 404 };
+    }
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
     }
     for (const service of provider.requires) {
       if (!this.core.services.resolve(service).ok) {
@@ -186,7 +492,15 @@ export class PluginHostInstallUnit {
     }
     const result = this.core.setProviderEnabled(
       provider.objectId, providerId, true);
-    if (result.ok) this.uiHost.setEnabled(providerId, true);
+    if (result.ok) {
+      const resumed = bridge.resumeHostRequests?.();
+      if (resumed && !resumed.ok) {
+        this.core.setProviderEnabled(provider.objectId, providerId, false);
+        this.record(503, "SessionResumeFailed", providerId);
+        return { ok: false, status: 503 };
+      }
+      this.uiHost.setEnabled(providerId, true);
+    }
     return result;
   }
 
@@ -194,6 +508,9 @@ export class PluginHostInstallUnit {
     const bridge = this.handles.get(providerId);
     const provider = this.core.uru.getProvider(providerId);
     if (!bridge || !provider) return { ok: false, status: 404 };
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
     const blocked = this.blocked(providerId);
     if (blocked) return blocked;
     const result = this.core.unregisterProvider(
@@ -234,12 +551,18 @@ export class PluginHostInstallUnit {
     const review = PluginCapabilityReviewPolicy.inspect(next,
       options.approvedPermissions ?? []);
     if (!review.ok) return review;
+    const scopeReview = PluginRPCScopePolicy.review(
+      JSON.parse(snapshot.manifestText).rpcScopes ?? [],
+      options.approvedRpcScopes ?? []);
+    if (!scopeReview.ok) return scopeReview;
     // Re-registering the Provider creates a brief service gap.
     // Block the upgrade if active dependents lack alternatives.
     if (this.dependents(providerId).length) {
       return this.blocked(providerId);
     }
-    if (this.core.hub.providerInflight.get(providerId) > 0) {
+    if (this.revocationPending.has(providerId) ||
+        this.core.hub.providerInflight.get(providerId) > 0 ||
+        (previousBridge.pendingHostRequestCount?.() ?? 0) > 0) {
       this.record(409, "UpgradeBusy", providerId);
       return { ok: false, status: 409 };
     }
@@ -262,11 +585,14 @@ export class PluginHostInstallUnit {
     const disabled = this.core.setProviderEnabled(
       previous.objectId, providerId, false);
     if (!disabled.ok) return disabled;
+    previousBridge.suspendHostRequests?.();
     const removed = this.core.unregisterProvider(
       previous.objectId, providerId);
     if (!removed.ok) {
-      if (!wasDisabled) this.core.setProviderEnabled(
-        previous.objectId, providerId, true);
+      if (!wasDisabled) {
+        this.core.setProviderEnabled(previous.objectId, providerId, true);
+        previousBridge.resumeHostRequests?.();
+      }
       return removed;
     }
     this.core.unregister(previous.objectId);
@@ -276,6 +602,7 @@ export class PluginHostInstallUnit {
     if (installed.ok) {
       if (wasDisabled) {
         this.core.setProviderEnabled(previous.objectId, providerId, false);
+        this.handles.get(providerId)?.suspendHostRequests?.();
         this.uiHost.setEnabled(providerId, false);
       }
       previousBridge.terminate(200, "Upgraded");
@@ -296,6 +623,15 @@ export class PluginHostInstallUnit {
       if (wasDisabled) this.core.setProviderEnabled(
         previous.objectId, providerId, false);
       this.handles.set(providerId, previousBridge);
+      if (!wasDisabled) {
+        const resumed = previousBridge.resumeHostRequests?.();
+        if (resumed && !resumed.ok) {
+          this.core.setProviderEnabled(previous.objectId, providerId, false);
+          this.record(503, "RestoreSessionFailed", providerId);
+          return { ok: false, status: 503,
+            error: "Provider restored but RPC Session unavailable" };
+        }
+      }
       if (previousUI) {
         this.uiHost.mount(previousUI.snapshot, previousUI.provider);
         this.uiHost.setEnabled(providerId, !wasDisabled);

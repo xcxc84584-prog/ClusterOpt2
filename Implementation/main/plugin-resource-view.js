@@ -1,5 +1,7 @@
 import { downloadPluginTemplate } from
   "./plugin-template-download.js";
+import { describePluginRPCScopes } from
+  "./plugin-rpc-scope-review.js";
 import {
   downloadAgentPackage,
   downloadAgentQuickSetup,
@@ -447,6 +449,7 @@ export function renderResources(doc, host, options) {
       return;
     }
     const provider = result.value.manifest.provider;
+    const rpcScopes = result.value.manifest.rpcScopes ?? [];
     const summary = t(
       "確認執行自製插件？\\nProvider: ",
       "Run this user-authored plugin?\\nProvider: ") +
@@ -454,8 +457,10 @@ export function renderResources(doc, host, options) {
       t("要求權限：", "Requested permissions: ") +
       (provider.permissions.join(", ") ||
         t("無", "None")) + "\\n" +
-      t("插件將在隔離環境執行，無主頁權限。",
-        "The plugin runs in an isolated sandbox without host access.");
+      t("要求 RPC 路由：", "Requested RPC scopes: ") + "\\n" +
+      describePluginRPCScopes(rpcScopes, t) + "\\n" +
+      t("插件無法直接存取主頁或 DOM，只能使用核准的 RPC 路由。",
+        "No direct page/DOM access; only approved RPC routes are available.");
     const consented = doc.defaultView.confirm(summary);
     if (!consented) {
       status.textContent = t("套件已保存為待審核，未執行。",
@@ -466,7 +471,8 @@ export function renderResources(doc, host, options) {
       "Starting isolated plugin...");
     const installed = await core.pluginHostInstaller.install(snapshot,{
       consented: true,
-      approvedPermissions: [...provider.permissions]
+      approvedPermissions: [...provider.permissions],
+      approvedRpcScopes: rpcScopes
     });
     status.textContent = installed.ok ?
       t("插件已透過 HubUnit／URU 註冊並在隔離環境啟動。",
