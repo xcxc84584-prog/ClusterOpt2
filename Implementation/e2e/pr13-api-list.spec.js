@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test("PR13 API List uses compact HubUnit req/rep table", async ({
+test("PR25 API List uses live source-side paginated contracts", async ({
   page
 }) => {
   await page.goto("/");
@@ -13,8 +13,11 @@ test("PR13 API List uses compact HubUnit req/rep table", async ({
   const table = window.locator(".pm-api-table");
   await expect(table).toBeVisible();
   await expect(table.locator("thead th")).toHaveCount(6);
-  await expect(table.locator("thead")).toContainText("Request");
-  await expect(table.locator("thead")).toContainText("Response");
+  await expect(table.locator("thead")).toContainText("Version");
+  await expect(table.locator("thead")).toContainText("Status");
+  await expect(window.locator(".pm-api-kind")).toBeVisible();
+  await expect(window.locator(".pm-api-size")).toBeVisible();
+  await expect(window.locator(".pm-api-pagination")).toBeVisible();
   await expect(window.locator(".pm-api-search")).toBeVisible();
   await expect(window.locator(".pm-api-entry")).toHaveCount(0);
 });
