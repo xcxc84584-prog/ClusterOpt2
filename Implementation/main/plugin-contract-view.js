@@ -203,6 +203,23 @@ export function renderContractDetail(doc, host, entry, t, onBack,
       t("輸出", "Output"),descriptor.outputSchema,t));
     host.append(schemas);
   }
+  if (entry.kind === "event") {
+    const lifecycle=section(doc,
+      t("事件 Payload 與生命週期", "Event payload and lifecycle"));
+    const details=node(doc,"dl","pm-contract-fields");
+    for (const [label,value] of [
+      ["Trigger", descriptor.trigger?.join("; ")],
+      ["Subscribe", descriptor.subscribe],
+      ["Unsubscribe", descriptor.unsubscribe],
+      ["Ordering", descriptor.ordering],
+      ["Lifecycle", descriptor.lifecycle],
+      ["Source", descriptor.triggerSourceLocation?.file]
+    ]) details.append(field(doc,label,value));
+    lifecycle.append(details);
+    if (descriptor.payloadSchema) lifecycle.append(schemaRow(
+      doc,"Event Payload",descriptor.payloadSchema,t));
+    host.append(lifecycle);
+  }
   if (descriptor.errors?.length) {
     const errors=section(doc,t("錯誤與恢復","Errors and recovery"));
     for (const item of descriptor.errors) {
