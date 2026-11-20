@@ -48,6 +48,7 @@ const apiDescriptor = (id, owner, action, effect, description,
   documentation = {}) =>
   Object.freeze({
     apiVersion: 1, id, owner, action, version: "1.0.0",
+    sourceLocation: { file: "Implementation/object/UICO.js", line: 50 },
     visibility: "Public", sideEffect: effect,
     inputSchema, outputSchema, description,
     ...(permissions.length ? { permissions } : {}),
