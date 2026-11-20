@@ -634,6 +634,33 @@ export function mountPluginManagerUI(core,doc,options={}) {
     controls.append(kind,input,size,sort,order,
       exportButton,exportStatus);
     body.append(controls);
+    const selectedProvider=current();
+    if(selectedProvider) {
+      const capabilitySummary=dom(doc,"div","pm-api-capabilities");
+      capabilitySummary.append(dom(doc,"strong","",
+        t("目前插件可用 Capability","Selected plugin capabilities")+
+          ": "+selectedProvider.providerId));
+      for(const permission of selectedProvider.permissions) {
+        const approved=core.checkPluginPermission(
+          selectedProvider.providerId,permission);
+        capabilitySummary.append(dom(doc,"p","pm-muted",
+          permission+" — "+(approved ? "Allowed" : "Denied")));
+      }
+      const handle=core.pluginHostInstaller.handles.get(
+        selectedProvider.providerId);
+      for(const scope of handle?.listHostRPCScopes?.() ?? []) {
+        capabilitySummary.append(dom(doc,"p","pm-muted",
+          "RPC Scope — "+scope.target+"."+scope.action+
+          (scope.property ? "("+scope.property+")" : "")));
+      }
+      if(!selectedProvider.permissions.length &&
+          !(handle?.listHostRPCScopes?.()?.length)) {
+        capabilitySummary.append(dom(doc,"p","pm-muted",
+          t("此插件尚無已宣告的權限與 RPC Scope",
+            "No declared permissions or active RPC scopes")));
+      }
+      body.append(capabilitySummary);
+    }
     const container=dom(doc,"div","pm-api-table-wrap");
     const table=dom(doc,"table","pm-api-table");
     const head=dom(doc,"thead");
