@@ -28,3 +28,11 @@ Status: Draft, partial integration; main unchanged.
 ## Verification
 Node relation test is submitted to the standard npm test glob.
 Review GitHub CI against the exact final SHA before claiming PASS.
+
+## Patch(+4) correlation follow-up
+- Request and Response now receive distinct OMU event IDs.
+- Response parentEventId refers to the corresponding Request event.
+- Audit keys include host-owned Session ID and Request ID, so the
+  one-second successful-log cooldown cannot erase this event chain.
+- The strict Response validator checks the serialized correlation.
+- Full VTE and real Worker integration remain unverified.
