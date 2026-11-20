@@ -29,7 +29,7 @@ test("PR02.04 collects live URU and EDPMU without duplicating state", () => {
   const core = new LinkCore();
   const before = core.catalog.collect();
   assert.equal(before.status, 200);
-  assert.equal(before.value.apis.length, 0);
+  assert.equal(before.value.apis.length, 4);
   assert.equal(before.value.properties.length, 0);
 
   assert.equal(core.register(object("Example.Highlight")), true);
@@ -43,7 +43,7 @@ test("PR02.04 collects live URU and EDPMU without duplicating state", () => {
     descriptor: property
   }).status, 201);
   const collected = core.catalog.collect();
-  assert.equal(collected.value.apis.length, 1);
+  assert.equal(collected.value.apis.length, 5);
   assert.equal(collected.value.properties.length, 1);
   assert.equal(collected.value.apis[0].descriptor.id, "editor.highlight");
   assert.equal(collected.value.properties[0].descriptor.name,
@@ -53,9 +53,9 @@ test("PR02.04 collects live URU and EDPMU without duplicating state", () => {
 
   assert.equal(core.unregister("Example.Highlight"), true);
   assert.equal(core.edpmu.unregister("ExamplePalette"), true);
-  assert.deepEqual(core.catalog.collect().value.apis, []);
+  assert.deepEqual(core.catalog.collect().value.apis, before.value.apis);
   assert.deepEqual(core.catalog.collect().value.properties, []);
-  assert.equal(collected.value.apis.length, 1,
+  assert.equal(collected.value.apis.length, 5,
     "Old snapshot stays detached from later registration changes");
 });
 
@@ -80,7 +80,7 @@ test("legacy Objects remain registered without publishing synthetic APIs", () =>
   }), true);
   const snapshot = core.catalog.collect();
   assert.equal(snapshot.status, 200);
-  assert.equal(snapshot.value.apis.length, 0);
+  assert.equal(snapshot.value.apis.length, 4);
   assert.equal(core.discover("Legacy.Editor", "list", "api").status, 200);
   assert.equal(core.uru.objects.has("Legacy.Editor"), true);
 });

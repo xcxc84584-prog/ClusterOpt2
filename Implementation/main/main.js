@@ -9,6 +9,8 @@ import { askSaveBeforeClose } from "./save-close-dialog.js";
 import { SyntaxOverlayController } from
   "./syntax-overlay-controller.js";
 import { exposeVTE } from "../LinkCore/VirtualTestEnvironment.js";
+import { registerNativeUIFromDOM, observeNativeUIFromDOM } from
+  "./native-ui-registration.js";
 import { linkCore } from "../LinkCore/LinkCore.js";
 import { FileWorkspace } from "../object/FileWorkspace.js";
 import { mountPowerShellUI } from
@@ -352,7 +354,7 @@ function toggleExplorer(visible = explorerPanel.hidden) {
 explorerToggle.addEventListener("click", () => toggleExplorer());
 document.getElementById("explorerClose").addEventListener(
   "click", () => toggleExplorer(false));
-exposeVTE(window);
+exposeVTE(window, linkCore);
 document.getElementById("versionLabel").textContent = linkCore.getSnapshot().version;
 const menu = document.getElementById("menu");
 const menuButton = document.getElementById("menuBtn");
@@ -1484,6 +1486,7 @@ window.setInterval(async () => {
   }
 }, 2500);
 window.addEventListener("pagehide", () => {
+  disposeDynamicNativeUI();
   window.clearTimeout(recoveryTimer);
   if (recoveryReady) {
     recoveryWrites = recoveryWrites.then(() =>
@@ -1497,6 +1500,14 @@ window.addEventListener("beforeunload", event => {
   event.returnValue = "";
 });
 render();
+// Host-controlled static UI registration through UICO -> URU.
+// Plugin-created DOM is excluded from this approved source inventory.
+const nativeUIRegistration = registerNativeUIFromDOM(linkCore, document);
+const disposeDynamicNativeUI = observeNativeUIFromDOM(linkCore, document);
+if (nativeUIRegistration.rejected.length) {
+  linkCore.omu.record("EHU", "ui", "UICO.NativeInventory",
+    422, "UICO", { rejected: nativeUIRegistration.rejected.length });
+}
 // Only built-in, pre-reviewed providers may auto-restore on reload.
 void restoreReviewedPlugins(linkCore).then(async result => {
   if (result?.ok && result.value.enabledRestored > 0) {

@@ -69,5 +69,6 @@ test("Registries are isolated and ephemeral across instances", () => {
   const first = new LinkCore();
   first.register({ id: "A", receive: async () => null });
   const second = new LinkCore();
-  assert.deepEqual(second.getSnapshot().objects, []);
+  assert.deepEqual(second.getSnapshot().objects, ["UICO"]);
+  assert.equal(second.getSnapshot().objects.includes("A"), false);
 });

@@ -44,6 +44,6 @@ test("PR02.06 HubUnit discovery filters private metadata in Chromium",
       };
     });
     expect(result).toEqual({
-      guest: 1, owner: 2, hidden: 404, missing: 404, legacy: true
+      guest: 5, owner: 6, hidden: 404, missing: 404, legacy: true
     });
   });

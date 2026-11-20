@@ -22,7 +22,9 @@ test("PR02.04 live internal catalog works in actual browser", async ({ page }) =
         }]
       }
     };
-    const empty = core.catalog.collect().value.apis.length === 0;
+    const baseline = core.catalog.collect().value.apis.length;
+    const empty = core.catalog.collect().value.apis.every(item =>
+      item.owner !== object.id);
     const registered = core.register(object);
     const snapshot = core.catalog.collect();
     const called = await core.request("Example.Highlight",
@@ -32,13 +34,15 @@ test("PR02.04 live internal catalog works in actual browser", async ({ page }) =
       empty, registered,
       count: snapshot.value.apis.length,
       frozen: Object.isFrozen(snapshot.value.apis[0]),
-      removed: core.catalog.collect().value.apis.length === 0,
+      removed: core.catalog.collect().value.apis.length === baseline &&
+        core.catalog.collect().value.apis.every(item =>
+          item.owner !== object.id),
       requestStatus: called.status,
       legacy: typeof window.Cluster?.log === "function"
     };
   });
   expect(result).toEqual({
-    empty: true, registered: true, count: 1, frozen: true,
+    empty: true, registered: true, count: 5, frozen: true,
     removed: true, requestStatus: 200, legacy: true
   });
 });

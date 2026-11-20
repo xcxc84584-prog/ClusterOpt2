@@ -43,7 +43,7 @@ test("PR02.08 authorized JSON/Markdown documentation in real Chromium",
     });
     expect(outcome).toEqual({
       jsonStatus: 200, markdownStatus: 200,
-      count: 1, hidden: true, unknown: 404,
+      count: 5, hidden: true, unknown: 404,
       oldFacade: true, publicDocsFacade: "undefined"
     });
   });

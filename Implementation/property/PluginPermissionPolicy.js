@@ -14,7 +14,16 @@ const LEVELS = Object.freeze({
   "model.configure": "privileged",
   "model.task": "privileged",
   "shell.execute": "privileged",
-  "mcp.read": "privileged"
+  "mcp.read": "privileged",
+  "ui.api.extension.add": "privileged",
+  "ui.api.extension.delete": "privileged",
+  "ui.api.extension.query": "standard",
+  "ui.api.extension.update": "privileged",
+  "ui.read": "standard",
+  "ui.create.own": "privileged",
+  "ui.update.own": "privileged",
+  "ui.window": "privileged",
+  "ui.navigation": "privileged"
 });
 const ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;
 

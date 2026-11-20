@@ -52,3 +52,39 @@ test("prototype, callable and recursive descriptor structures are denied", () =>
   circular.self = circular;
   assert.equal(APIDescriptorPolicy.validate(circular).status, 400);
 });
+
+test("PR23.5 errors/examples are immutable bounded nonexecutable data", () => {
+  const valid = {
+    ...example(),
+    errors: [{
+      status: 403, code: "UI_PERMISSION_DENIED",
+      message: "No permission"
+    }],
+    examples: [{
+      title: "Read",
+      request: { action: "highlight", payload: { text: "hello" } },
+      response: { status: 200, ok: true }
+    }]
+  };
+  const result = APIDescriptorPolicy.validate(valid);
+  assert.equal(result.status, 200);
+  assert.equal(Object.isFrozen(result.value.errors[0]), true);
+  assert.equal(Object.isFrozen(result.value.examples[0].request), true);
+  valid.examples[0].request.payload.text = "tamper";
+  assert.equal(result.value.examples[0].request.payload.text, "hello");
+  for (const changed of [
+    { errors: [{ status: 200, code: "OK", message: "Bad" }] },
+    { errors: [{ status: 403, code: "unsafe key", message: "Bad" }] },
+    { errors: [{ status: 403, code: "DENY", message: "x".repeat(257) }] },
+    { examples: [{ title: "JS", request: { callback: () => 1 },
+      response: {} }] },
+    { examples: [{ title: "Unsafe", request: Object.fromEntries(
+      [["__proto__", 1]]), response: {} }] }
+  ]) {
+    const denied = APIDescriptorPolicy.validate({
+      ...example(), ...changed
+    });
+    if (denied.ok) throw Error("Untrusted API documentation accepted");
+    assert.equal(denied.status, 400);
+  }
+});

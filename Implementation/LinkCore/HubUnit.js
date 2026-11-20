@@ -176,6 +176,8 @@ export class HubUnit {
       return { ok: false, status: 403 };
     }
     this.registry.unregisterProvider(providerId);
+    // Revoked providers must not leave executable-looking UI extensions.
+    this.registry.revokeOwnedUIExtensions(provider.objectId);
     this.pluginPermissions.forget(providerId);
     this.omu.record("Log", source, "Provider.Unregister", 200, providerId);
     return { ok: true, status: 200 };
@@ -1098,9 +1100,30 @@ export class HubUnit {
           visibility: descriptor?.visibility ?? null,
           inputSchema: descriptor?.inputSchema ?? null,
           outputSchema: descriptor?.outputSchema ?? null,
+          permissions: descriptor?.permissions ?? null,
+          errors: descriptor?.errors ?? null,
+          examples: descriptor?.examples ?? null,
           described: Boolean(descriptor)
         }));
       }
+    }
+    // Extension descriptors are URU-owned metadata, not executable native
+    // actions. Only the owning plugin can discover these pending bindings.
+    for (const entry of this.registry.listUIExtensionAPIs()) {
+      if (entry.ownerId !== source) continue;
+      const descriptor = entry.descriptor;
+      entries.push(Object.freeze({
+        owner: "UICO." + entry.uiId,
+        action: descriptor.action,
+        id: entry.apiId, version: descriptor.version,
+        visibility: descriptor.visibility,
+        inputSchema: descriptor.inputSchema,
+        outputSchema: descriptor.outputSchema,
+        permissions: descriptor.permissions ?? null,
+        errors: descriptor.errors ?? null,
+        examples: descriptor.examples ?? null,
+        described: true, executable: false
+      }));
     }
     entries.sort((a,b)=>a.owner.localeCompare(b.owner) ||
       a.action.localeCompare(b.action));

@@ -80,7 +80,7 @@ test("PR02.07 rejects contradictory since and unsafe versions", () => {
   core.register({ id: "guest", receive: async () => null });
   assert.equal(register(core, "2.0.0",
     { since: "2.1.0" }), false);
-  assert.equal(core.discover("guest", "list", "api").value.total, 0);
+  assert.equal(core.discover("guest", "list", "api").value.total, 4);
   assert.ok(core.getSnapshot().logs.some(event =>
     event.kind === "EHU" && event.status === 400));
 });

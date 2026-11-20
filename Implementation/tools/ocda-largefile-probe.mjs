@@ -8,6 +8,7 @@ import { openAsBlob } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { UTF8SlicePolicy } from "../property/UTF8SlicePolicy.js";
 
 const MiB = 1024 ** 2;
@@ -20,6 +21,13 @@ function ensure(condition, message) {
 async function createSparseFile(path, size) {
   const file = await open(path, "wx");
   try {
+    // Windows NTFS does not automatically mark offset-written files sparse.
+    // Explicitly enable the filesystem flag; do not waive allocation checks.
+    if (process.platform === "win32") {
+      const sparse = spawnSync("fsutil", ["sparse", "setflag", path],
+        { encoding: "utf8", windowsHide: true });
+      ensure(sparse.status === 0, "unable to enable NTFS sparse flag");
+    }
     const first = Buffer.from("OPEN");
     const last = Buffer.from("END");
     await file.write(first, 0, first.length, 0);

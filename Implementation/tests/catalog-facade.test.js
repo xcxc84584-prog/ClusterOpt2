@@ -37,13 +37,13 @@ test("PR02.10 facade is readonly, Hub-scoped and non-impersonating", () => {
   core.register(descriptor("PrivateProvider", "Private"));
   core.register(descriptor("AgentOnly", "Public", true));
   assert.equal(api.list("api").status, 200);
-  assert.equal(api.list("api").value.total, 1);
+  assert.equal(api.list("api").value.total, 5);
   assert.equal(api.describe("api", "PrivateProvider.run",
     "PrivateProvider").status, 404);
   assert.equal(api.describe("api", "PublicProvider.run",
     "PublicProvider").status, 200);
   assert.equal(api.query("api", { term: "Public" }).value.total, 1);
-  assert.equal(api.query("api", {}, { origin: "agent" }).value.total, 1,
+  assert.equal(api.query("api", {}, { origin: "agent" }).value.total, 5,
     "Public API cannot select agent-origin private projection");
   assert.equal(api.describe("api", "AgentOnly.run",
     "AgentOnly").status, 404);
