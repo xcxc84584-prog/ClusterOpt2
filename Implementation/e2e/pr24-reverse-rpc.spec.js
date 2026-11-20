@@ -233,3 +233,98 @@ test("PR24.45 scoped Property.Read delegates to HubUnit/EDPMU",
       versionType: "string", rejected: true
     });
   });
+
+
+test("PR24.49 real Worker revocation survives Session rekey",
+  async ({ page }) => {
+    await page.goto("/");
+    const outcome = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const revokedScope = { target: "UICO", action: "describe" };
+      const languageScope = {
+        target: "HubUnit", action: "Property.Read", property: "Language"
+      };
+      const rpcScopes = [revokedScope, languageScope];
+      const provider = {
+        manifestVersion: 1, providerId: "pr24.browser.revoke",
+        objectId: "PR24.BrowserRevoke",
+        provides: [{
+          service: "example.pr24.revoke", action: "probe",
+          version: "1.0.0", inputSchema: { type: "object" },
+          outputSchema: { type: "object" }
+        }],
+        requires: [], permissions: [],
+        execution: { isolation: "worker", concurrency: "serial" }
+      };
+      const manifest = {
+        packageVersion: 1, name: "PR24 runtime revoke",
+        entry: "worker.js", provider, rpcScopes
+      };
+      const source = [
+        "export async function probe() {",
+        "  let blocked = false;",
+        "  try { await Cluster.request('UICO', 'describe', {}); }",
+        "  catch { blocked = true; }",
+        "  const language = await Cluster.request('HubUnit',",
+        "    'Property.Read', { name: 'Language' });",
+        "  return { blocked, language };",
+        "}"
+      ].join("\n");
+      const raw = JSON.stringify(manifest);
+      const snapshot = {
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText: raw,
+        files: { "plugin.json": btoa(raw), "worker.js": btoa(source) }
+      };
+      const installer = linkCore.pluginHostInstaller;
+      const installed = await installer.install(snapshot, {
+        consented: true, approvedRpcScopes: rpcScopes
+      });
+      if (!installed.ok) return { installed };
+      try {
+        const invoke = () => linkCore.request("ui",
+          provider.objectId, "probe", {}, { origin: "user" });
+        const before = await invoke();
+        const revoked = installer.revokeRpcScope(
+          provider.providerId, revokedScope);
+        const after = await invoke();
+        const disabled = installer.disable(provider.providerId);
+        const enabled = installer.enable(provider.providerId);
+        const afterRekey = await invoke();
+        const audit = linkCore.getSnapshot().logs.some(event =>
+          event.action === "RPC.ScopeRevoked" &&
+          event.status === 200);
+        const rejected = linkCore.getSnapshot().logs.some(event =>
+          event.action === "RPC.ScopeRejected" &&
+          event.status === 403);
+        return {
+          installed: installed.status, before, revoked, after,
+          disabled: disabled.status, enabled: enabled.status,
+          afterRekey, audit, rejected,
+          remaining: installer.listRpcScopes(provider.providerId)
+        };
+      } finally {
+        installer.uninstall(provider.providerId);
+      }
+    });
+    expect(outcome.installed, JSON.stringify(outcome)).toBe(201);
+    expect(outcome.before.status, JSON.stringify(outcome)).toBe(200);
+    expect(outcome.before.value.blocked).toBe(false);
+    expect(outcome.before.value.language).toBe("zh-Hant");
+    expect(outcome.revoked.status).toBe(200);
+    expect(outcome.after.status, JSON.stringify(outcome)).toBe(200);
+    expect(outcome.after.value).toEqual({
+      blocked: true, language: "zh-Hant"
+    });
+    expect(outcome.disabled).toBe(200);
+    expect(outcome.enabled).toBe(200);
+    expect(outcome.afterRekey.value).toEqual({
+      blocked: true, language: "zh-Hant"
+    });
+    expect(outcome.audit).toBe(true);
+    expect(outcome.rejected).toBe(true);
+    expect(outcome.remaining).toEqual([{
+      target: "HubUnit", action: "Property.Read", property: "Language"
+    }]);
+  });
