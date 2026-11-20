@@ -42,7 +42,8 @@ function harness() {
     close() { this.closed = true; }
   };
   const sessions = new PluginSessionUnit(() => "random-" + ++sequence);
-  const gateway = new PluginHostRequestGateway(core, sessions);
+  const gateway = new PluginHostRequestGateway(core, sessions,
+    [{ target: "FileReader", action: "Read" }]);
   const session = gateway.create(port, provider.providerId);
   assert.equal(session.status, 201);
   const hello = port.sent[0];
