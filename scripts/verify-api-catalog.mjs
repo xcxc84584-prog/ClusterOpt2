@@ -90,10 +90,16 @@ export function auditStaticSources(core, root = process.cwd(),
           code = "CATALOG_STATIC_VERSION_MISMATCH";
         } else {
           const worker = readText(trigger);
-          if (symbol !== "notifySession" ||
-              !worker.includes("function notifySession(state)") ||
-              !worker.includes('notifySession("ready")') ||
-              !worker.includes('notifySession("suspended")')) {
+          const actual = symbol === "notifySession" ?
+            worker.includes("function notifySession(state)") &&
+            worker.includes('notifySession("ready")') &&
+            worker.includes('notifySession("suspended")') :
+            symbol === "subscribe" ?
+              worker.includes("subscribe(uiId, source, subscriptionId)") &&
+              worker.includes('addEventListener("click", listener)') &&
+              worker.includes("this.core.request(\"UICO\", source, subscriptionId,") :
+              false;
+          if (!actual) {
             code = "CATALOG_EVENT_TRIGGER_MISMATCH";
           }
         }
