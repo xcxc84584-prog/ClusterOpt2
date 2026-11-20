@@ -12,6 +12,8 @@ import { PluginBidirectionalEnvelopePolicy as Envelope } from
 export class PluginHostRequestGateway {
   #activeRpcScopes;
   #reviewedRpcScopes;
+  #ownerProviderId = null;
+  #ownerObjectId = null;
 
   constructor(core, sessions = new PluginSessionUnit(),
     activeRpcScopes = [], reviewedRpcScopes = activeRpcScopes) {
@@ -105,7 +107,23 @@ export class PluginHostRequestGateway {
         this.core.uru.disabledProviders.has(providerId)) {
       return { ok: false, status: 403 };
     }
-    return this.sessions.create(port, providerId, provider.objectId);
+    // One Host Gateway belongs to exactly one Provider/Object lifetime.
+    // A second Worker Port for the same Provider is allowed, but a
+    // different Provider cannot borrow the first owner's scopes.
+    if (this.#ownerProviderId !== null &&
+        (providerId !== this.#ownerProviderId ||
+          provider.objectId !== this.#ownerObjectId)) {
+      this.core.omu.record("EHU", "PluginGateway",
+        "RPC.ForeignProviderRejected", 403, providerId);
+      return { ok: false, status: 403 };
+    }
+    const created = this.sessions.create(
+      port, providerId, provider.objectId);
+    if (created.ok && this.#ownerProviderId === null) {
+      this.#ownerProviderId = providerId;
+      this.#ownerObjectId = provider.objectId;
+    }
+    return created;
   }
 
   ready(port, packet) {
