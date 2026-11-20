@@ -86,13 +86,14 @@ export class PluginSandboxBridge {
    * Only install after the host has registered and granted the Provider.
    * Legacy invocation stays on its existing port handler.
    */
-  enableHostRequests(core) {
+  enableHostRequests(core, approvedRpcScopes = []) {
     if (this.closed || !this.port || this.hostTransport ||
         core?.uru?.getProvider(this.manifest?.providerId)?.objectId !==
           this.manifest?.objectId) {
       return { ok: false, status: 403 };
     }
-    const gateway = new PluginHostRequestGateway(core);
+    const gateway = new PluginHostRequestGateway(
+      core, undefined, approvedRpcScopes);
     const transport = new PluginHostRequestTransport(gateway);
     const result = transport.attach(this.port, this.manifest.providerId);
     if (result.ok) this.hostTransport = transport;
