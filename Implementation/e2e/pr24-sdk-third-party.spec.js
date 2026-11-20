@@ -210,62 +210,16 @@ test("PR24.22 production Host invokes Worker through Session Controller",
         fetch(root + "worker.js").then(r => r.text()),
         fetch(root + "index.html").then(r => r.text())
       ]);
-      // A test-only handler records which Host requests reach the
-      // isolated Worker, without changing any application UI.
-      const scopedManifest = JSON.parse(manifestText);
-      scopedManifest.provider.provides.push({
-        service: "example.sdk.echo.history", action: "history",
-        version: "1.0.0", inputSchema: { type: "object" },
-        outputSchema: { type: "object" }
-      });
-      const scopedWorker = [
-        "const calls = [];",
-        "const sends = [];",
-        "const originalSend = MessagePort.prototype.postMessage;",
-        "MessagePort.prototype.postMessage = function(packet, ...args) {",
-        "  if (packet?.direction === 'host-to-plugin' &&",
-        "      packet?.type === 'response') sends.push(packet.requestId);",
-        "  return originalSend.call(this, packet, ...args);",
-        "};",
-        "Cluster.handle('echo', payload => {",
-        "  calls.push(String(payload.message ?? ''));",
-        "  return { echoed: String(payload.message ?? ''),",
-        "    sdkVersion: Cluster.version,",
-        "    ...(payload.message === 'through-hub' ?",
-        "      { history: [...calls], sends: [...sends] } : {}) };",
-        "});",
-        "Cluster.handle('history', () => ({ calls }));"
-      ].join("\n");
       const host = linkCore.pluginHostInstaller;
-      const install = await host.install({
+      const installed = await host.install({
         format: "cluster-plugin-folder", formatVersion: 1,
-        manifestText: JSON.stringify(scopedManifest), files: {
-          "plugin.json": btoa(JSON.stringify(scopedManifest)),
-          "worker.js": btoa(scopedWorker), "index.html": btoa(html)
+        manifestText, files: {
+          "plugin.json": btoa(manifestText),
+          "worker.js": btoa(worker), "index.html": btoa(html)
         }
       }, { consented: true });
-      if (!install.ok) return { install };
+      if (!installed.ok) return { installed };
       const bridge = host.handles.get("example.sdk.echo");
-      const emitted = [];
-      const inbound = [];
-      bridge.port.addEventListener("message", event => {
-        if (event.data?.direction === "host-to-plugin") {
-          inbound.push({
-            requestId: event.data.requestId,
-            type: event.data.type,
-            status: event.data.status,
-            protocol: event.data.protocol
-          });
-        }
-      });
-      const send = bridge.port.postMessage.bind(bridge.port);
-      bridge.port.postMessage = (...args) => {
-        if (args[0]?.direction === "host-to-plugin") {
-          emitted.push({ type: args[0].type,
-            requestId: args[0].requestId });
-        }
-        return send(...args);
-      };
       try {
         let ready = false;
         for (let i = 0; i < 60; i++) {
@@ -278,49 +232,39 @@ test("PR24.22 production Host invokes Worker through Session Controller",
           await new Promise(resolve => setTimeout(resolve, 10));
         }
         if (!ready) return { ready };
-        const direct = await bridge.invokeBidirectional(
-          "example.sdk.echo", "echo", { message: "new-protocol" });
-        const secondDirect = await bridge.invokeBidirectional(
-          "example.sdk.echo", "echo", { message: "second-protocol" });
+        const first = await bridge.invokeBidirectional(
+          "example.sdk.echo", "echo", { message: "first" });
+        const second = await bridge.invokeBidirectional(
+          "example.sdk.echo", "echo", { message: "second" });
         const routed = await linkCore.request(
           "ui", "SDK.ExampleEcho", "echo",
-          { message: "through-hub" }, { origin: "user" });
-        const history = await linkCore.request(
-          "ui", "SDK.ExampleEcho", "history", {},
-          { origin: "user" });
+          { message: "third" }, { origin: "user" });
+        const fourth = await bridge.invokeBidirectional(
+          "example.sdk.echo", "echo", { message: "fourth" });
         const events = linkCore.getSnapshot().logs.filter(event =>
           event.action === "RPC.HostToPlugin.Response");
         return {
-          ready, direct, secondDirect, routed,
-          history: routed.value?.history,
-          workerSends: routed.value?.sends,
-          emitted, inbound, historyStatus: history.status,
+          ready, first, second, routed, fourth,
           responseEvents: events.length,
-          lastEvent: events.at(-1)?.eventId,
-          controllerPending: bridge.hostController.pendingCount,
-          diagnostics: linkCore.getSnapshot().logs.filter(event =>
-            event.action.startsWith("Plugin.RPC.") ||
-            event.action.startsWith("RPC.HostToPlugin.") ||
-            event.action.startsWith("Plugin.Invoke.")).slice(-15)
-            .map(event => ({
-              action: event.action, status: event.status
-            }))
+          eventIds: events.map(event => event.eventId)
         };
       } finally {
         host.uninstall("example.sdk.echo");
       }
     });
     expect(reply.ready, JSON.stringify(reply)).toBe(true);
-    expect(reply.direct.status, JSON.stringify(reply)).toBe(200);
-    expect(reply.direct.value).toEqual({
-      echoed: "new-protocol", sdkVersion: "1.0.0"
-    });
-    expect(reply.secondDirect.status,
-      JSON.stringify(reply)).toBe(200);
-    expect(reply.routed.status, JSON.stringify(reply)).toBe(200);
-    expect(reply.routed.value.echoed).toBe("through-hub");
-    expect(reply.responseEvents).toBeGreaterThanOrEqual(2);
-    expect(reply.lastEvent).toBeGreaterThan(0);
+    for (const [name, message] of [
+      ["first", "first"], ["second", "second"],
+      ["routed", "third"], ["fourth", "fourth"]
+    ]) {
+      expect(reply[name].status, JSON.stringify(reply)).toBe(200);
+      expect(reply[name].value).toEqual({
+        echoed: message, sdkVersion: "1.0.0"
+      });
+    }
+    expect(reply.responseEvents).toBeGreaterThanOrEqual(4);
+    expect(new Set(reply.eventIds).size).toBe(reply.eventIds.length);
+    expect(reply.eventIds.every(id => Number.isSafeInteger(id))).toBe(true);
   });
 
 test("PR24.25 Host-to-Plugin cancellation suppresses stale Worker reply",
