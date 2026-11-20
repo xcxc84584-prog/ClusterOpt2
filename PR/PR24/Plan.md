@@ -89,3 +89,28 @@ Reference review is an engineering task, not an assertion of parity.
 - Route grants are host-only and tied to the active Bridge/Session.
   Fine-grained mid-session scope revocation, runtime VTE and a formally
   versioned public SDK remain later milestones.
+
+## PR24 Patch(+10) — in-session RPC grant revocation
+- A trusted Host (Plugin Manager / PluginHostInstallUnit) may revoke
+  an individual preapproved exact reverse RPC scope. This is **revoke
+  only**; adding grants requires a fresh explicit consent transaction.
+- Gateway owns an immutable active scope snapshot. Scope removal is
+  idempotent via 404 on already revoked entries and is never restored by
+  disable/enable Session rotation.
+- Transport keeps a bounded map of active request controllers and the
+  resolved target/action/property identity (no raw Host payload logs).
+  Revoking a scope aborts only matching requests. One 403
+  `RPC_SCOPE_REVOKED` response is emitted per affected in-flight
+  request, carrying requestId + OMU eventId. Unrelated requests continue.
+- Noncooperative Host Objects may still finish their side effects:
+  the stale response must be discarded, and their concurrency slots
+  remain reserved until completion. Abort is best-effort, not rollback.
+- After revocation, new requests to the removed route are denied by
+  Gateway before Hub dispatch. Plugin cannot mint new Host grants.
+- UI presents only **approved active** scopes with a separate revoke
+  button; revoked routes cannot be re-granted without a new consent.
+- Tests: real MessageChannel revoke-in-flight and rekey isolation;
+  targeted Gateway unit tests and actual Worker browser E2E.
+- Future work: durable consent revocation across page reload, distributed
+  multiple simultaneous plugin ports, fault injection VTE, resource
+  budgets, and complete SDK capability conformance.
