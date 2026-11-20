@@ -124,6 +124,10 @@ export class PluginHostRequestTransport {
     // Never take over the legacy invoke/response message channel.
     if (packet?.protocol !== "cluster.rpc/1") return;
     const validated = Envelope.inspect(packet);
+    // Host-to-Plugin replies belong to the bidirectional controller
+    // attached by PluginSandboxBridge, not this reverse RPC listener.
+    if (validated.ok &&
+        validated.value.direction === "host-to-plugin") return;
     if (validated.ok && validated.value.type === "cancel" &&
         validated.value.direction === "plugin-to-host") {
       const task = entry.requests.get(validated.value.requestId);
