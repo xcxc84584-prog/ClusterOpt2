@@ -49,7 +49,8 @@ function summary(kind, id, owner, descriptor) {
     kind, id, owner,
     version: descriptor.version ?? null,
     visibility: descriptor.visibility,
-    status: descriptor.deprecated ? "Deprecated" : "Available",
+    status: descriptor.deprecated ? "Deprecated" :
+      (descriptor.unavailable ? "Unavailable" : "Available"),
     capability: descriptor.permissions ?? [],
     description: descriptor.description ?? ""
   });
@@ -73,7 +74,8 @@ export class LiveCatalogPage {
     }
     const { term = "", owner = "", limit = 50,
       cursor = null, origin = "user" } = options;
-    if (!["api", "property"].includes(kind) ||
+    if (!["api", "service", "property", "event", "protocol"]
+          .includes(kind) ||
         !["user", "agent"].includes(origin) ||
         typeof term !== "string" || term.length > MAX_TERM ||
         typeof owner !== "string" ||
@@ -87,7 +89,7 @@ export class LiveCatalogPage {
     const entries = [];
     const revisionParts = [];
 
-    if (kind === "api") {
+    if (kind === "api" || kind === "event") {
       for (const [objectId, object] of this.uru.objects) {
         // The URU metadata is live. Never infer missing schemas.
         const descriptors = object.ocda?.APIDescriptors;
@@ -97,6 +99,8 @@ export class LiveCatalogPage {
             objectId, descriptor, object.authorization,
             object.ocda?.UserAPI, object.ocda?.AgentAPI
           ]));
+          if ((descriptor.category === "Event") !==
+              (kind === "event")) continue;
           const entry = { owner: objectId, descriptor };
           if (!CatalogVisibilityPolicy.canSeeAPI(
             source, entry, object, origin)) continue;
@@ -106,6 +110,46 @@ export class LiveCatalogPage {
           entries.push({
             id: descriptor.id, owner: objectId, descriptor
           });
+        }
+      }
+    } else if (kind === "service") {
+      for (const provider of this.uru.providers.values()) {
+        if (!this.uru.objects.has(provider.objectId)) continue;
+        for (const action of provider.provides) {
+          const unavailable = this.uru.disabledProviders.has(
+            provider.providerId) ||
+            !this.uru.isServiceEnabled(provider.providerId,
+              action.service);
+          const descriptor = {
+            id: action.service, version: action.version,
+            action: action.action, visibility: "Public",
+            permissions: provider.permissions,
+            inputSchema: action.inputSchema,
+            outputSchema: action.outputSchema,
+            unavailable
+          };
+          revisionParts.push(JSON.stringify([
+            provider.providerId, provider.objectId, descriptor
+          ]));
+          if (owner && owner !== provider.objectId) continue;
+          if (needle && ![descriptor.id, descriptor.action]
+            .some(value => value.toLowerCase().includes(needle))) continue;
+          entries.push({
+            id: descriptor.id, owner: provider.objectId, descriptor
+          });
+        }
+      }
+    } else if (kind === "protocol") {
+      const policy = this.edpmu.get("HubProtocolPolicy");
+      const definition = this.edpmu.describe("HubProtocolPolicy");
+      if (definition?.visibility === "Public" && policy?.descriptions) {
+        for (const descriptor of policy.descriptions) {
+          revisionParts.push(JSON.stringify(descriptor));
+          if (owner && owner !== "HubUnit") continue;
+          if (needle && ![descriptor.id, descriptor.description ?? ""]
+            .some(value => value.toLowerCase().includes(needle))) continue;
+          entries.push({ id: descriptor.id, owner: "HubUnit",
+            descriptor: { ...descriptor, visibility: "Public" } });
         }
       }
     } else {
@@ -160,13 +204,15 @@ export class LiveCatalogPage {
         (owner !== null && (typeof owner !== "string" ||
           !NAME.test(owner)))) return bad(400, "Invalid API selector");
     if (!this.uru.objects.has(source)) return bad(404, "Unknown caller");
-    if (kind === "api") {
+    if (kind === "api" || kind === "event") {
       const found = [];
       for (const [objectId, object] of this.uru.objects) {
         if (owner && owner !== objectId) continue;
         const descriptor = object.ocda?.APIDescriptors
           ?.find(item => item.id === id);
-        if (!descriptor) continue;
+        if (!descriptor ||
+            (descriptor.category === "Event") !==
+              (kind === "event")) continue;
         const entry = { owner: objectId, descriptor };
         if (CatalogVisibilityPolicy.canSeeAPI(
           source, entry, object, origin)) found.push(entry);
@@ -174,6 +220,44 @@ export class LiveCatalogPage {
       if (found.length > 1) return bad(409, "Ambiguous API ID");
       if (!found.length) return bad(404, "Descriptor not found");
       return { ok: true, status: 200, value: found[0] };
+    }
+    if (kind === "property") {
+      const defined = this.edpmu.describe(id);
+      const described = this.edpmu.describeProperty(id);
+      if (!described.ok || !described.value ||
+          !CatalogVisibilityPolicy.canSeeProperty(source,
+            { name: id, descriptor: described.value }, defined)) {
+        return bad(404, "Descriptor not found");
+      }
+      return { ok: true, status: 200,
+        value: { name: id, descriptor: described.value } };
+    }
+    if (kind === "service") {
+      const found = [];
+      for (const provider of this.uru.providers.values()) {
+        if (!this.uru.objects.has(provider.objectId) ||
+            (owner && provider.objectId !== owner)) continue;
+        for (const action of provider.provides) {
+          if (action.service === id) found.push({
+            owner: provider.objectId, providerId: provider.providerId,
+            descriptor: action, permissions: provider.permissions
+          });
+        }
+      }
+      if (found.length > 1) return bad(409, "Ambiguous Service ID");
+      return found.length ? { ok: true, status: 200, value: found[0] } :
+        bad(404, "Descriptor not found");
+    }
+    if (kind === "protocol") {
+      const definition = this.edpmu.describe("HubProtocolPolicy");
+      const descriptors = this.edpmu.get("HubProtocolPolicy")?.descriptions;
+      if (definition?.visibility !== "Public") {
+        return bad(404, "Descriptor not found");
+      }
+      const descriptor = descriptors?.find(x => x.id === id);
+      return descriptor ? { ok: true, status: 200,
+        value: { owner: "HubUnit", descriptor } } :
+        bad(404, "Descriptor not found");
     }
     return bad(400, "Unsupported descriptor kind");
   }
