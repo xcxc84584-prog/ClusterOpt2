@@ -58,7 +58,14 @@ export class PluginSessionUnit {
       this.#livePorts.delete(session.sessionId);
       this.#ports.delete(port);
     }
-    return result;
+    if (!result.ok) return result;
+    // Envelope.bind carries only frozen identity *data*.
+    // The Host gateway also requires the actual port-owning Session
+    // for asynchronous post-dispatch revocation checks.
+    return Object.freeze({
+      ok: true, status: 200, value: result.value,
+      session
+    });
   }
 
   revoke(sessionId, options = {}) {
