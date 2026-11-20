@@ -42,8 +42,11 @@ without editing ClusterOpt2 first-party source files.
 - Object path and action are strictly bounded.
 - Shared legacy PluginMessagePolicy cap: 65,536 UTF-8 JSON bytes,
   maximum depth 8, 128 properties per object/array.
-- Request deadline: 1–30,000 ms; production queue capacity,
-  fairness policy and actual effective timeout remain unimplemented.
+- Request deadline: 1–30,000 ms; reverse Host MessagePort emits a
+  correlated 504 on deadline expiry and aborts the forwarded signal.
+  The in-flight reservation stays occupied until the Host request settles,
+  so a non-cooperative Object cannot silently create unlimited work.
+  Host-side fairness and whole-plugin resource quotas remain unimplemented.
 - Current protocol validation is separate from session authentication.
 - Response and EHU correlation must use requestId, eventId and
   optional parentEventId, verified during integration.
