@@ -221,8 +221,6 @@ export const APIDescriptorPolicy = Object.freeze({
         failures.push("migration");
       }
     }
-    if (candidate.deprecated === true &&
-        candidate.migration === undefined) failures.push("migration");
     if (candidate.permissions !== undefined &&
         (!Array.isArray(candidate.permissions) ||
          candidate.permissions.length > 64 ||
