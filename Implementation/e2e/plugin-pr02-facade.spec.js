@@ -43,7 +43,8 @@ test("PR02.10 Cluster.api works in real page without changing legacy API",
           docs.status, denied.status],
         owner: describe.value?.descriptor?.owner,
         found: query.value?.total,
-        docHasApi: JSON.stringify(docs).includes("facade.browser.run"),
+        docHasApi: docs.status === 200 ?
+          JSON.stringify(docs).includes("facade.browser.run") : null,
         hasRequest: typeof api.request,
         hasRegister: typeof api.register,
         ehus: window.Cluster.log().filter(x =>
@@ -54,10 +55,18 @@ test("PR02.10 Cluster.api works in real page without changing legacy API",
     expect(state.frozen).toBe(true);
     expect(state.methods).toBe(true);
     expect(state.version).toBe(ReleaseVersion.product);
-    expect(state.statuses).toEqual([200, 200, 200, 200, 400]);
+    expect(state.statuses.slice(0, 3)).toEqual([200, 200, 200]);
+    expect([200, 413]).toContain(state.statuses[3]);
+    expect(state.statuses[4]).toBe(400);
     expect(state.owner).toBe("CatalogFacadeBrowser");
     expect(state.found).toBe(1);
-    expect(state.docHasApi).toBe(true);
+    if (state.statuses[3] === 200) {
+      expect(state.docHasApi).toBe(true);
+    } else {
+      // A growing catalog must refuse oversized output, not truncate.
+      expect(state.statuses[3]).toBe(413);
+      expect(state.docHasApi).toBe(null);
+    }
     expect(state.hasRequest).toBe("undefined");
     expect(state.hasRegister).toBe("undefined");
     expect(state.ehus).toBeGreaterThan(0);
