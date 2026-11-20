@@ -559,6 +559,36 @@ export function mountPluginManagerUI(core,doc,options={}) {
     section.append(dom(doc,"h2","pm-resource-heading",
       t("HubUnit API 列表","HubUnit API List")));
     const body=dom(doc,"div","pm-api-browser");
+    const exportStatus=dom(doc,"span","pm-muted");
+    const exportButton=btn(doc,t("匯出完整 API 契約",
+      "Export all API contracts"),async()=>{
+      exportButton.disabled=true;
+      try {
+        const result=await core.exportLiveCatalog("ui","user");
+        if(!result.ok) {
+          exportStatus.textContent=t("匯出失敗：","Export failed: ")+
+            (result.error??String(result.status));
+          return;
+        }
+        const data=result.value;
+        const blob=new Blob([data.json],{
+          type:"application/json;charset=utf-8"
+        });
+        const url=URL.createObjectURL(blob);
+        const link=doc.createElement("a");
+        link.href=url;
+        link.download="ClusterOpt2-API-Contracts.json";
+        link.click();
+        URL.revokeObjectURL(url);
+        exportStatus.textContent=t("匯出完成，SHA-256：",
+          "Export complete, SHA-256: ")+data.sha256;
+      } catch (_error) {
+        exportStatus.textContent=t("匯出失敗","Export failed");
+      } finally {
+        exportButton.disabled=false;
+      }
+    },"pm-mini");
+    body.append(exportButton,exportStatus);
     section.append(body);
     if(selectedAPI) {
       const selectedEntry=entries.find(x=>x.key===selectedAPI);
