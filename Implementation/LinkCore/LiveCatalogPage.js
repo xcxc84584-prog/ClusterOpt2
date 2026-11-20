@@ -108,13 +108,13 @@ export class LiveCatalogPage {
     } else {
       for (const record of this.edpmu.list()) {
         const definition = this.edpmu.describe(record.name);
-        const descriptor = definition.ok ? definition.value : null;
+        const described = this.edpmu.describeProperty(record.name);
+        const descriptor = described.ok ? described.value : null;
         if (descriptor === null || !descriptor) continue;
         revisionParts.push(JSON.stringify([record.name, descriptor]));
         const entry = { name: record.name, descriptor };
         if (!CatalogVisibilityPolicy.canSeeProperty(
-          source, entry, this.edpmu.describe(record.name).definition ??
-          this.edpmu.describe?.(record.name))) {
+          source, entry, definition)) {
           // The property authorization is evaluated with the same
           // EDPMU definition object as the legacy catalog projection.
           continue;
