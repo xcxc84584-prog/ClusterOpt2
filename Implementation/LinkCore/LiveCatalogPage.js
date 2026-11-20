@@ -121,6 +121,23 @@ export class LiveCatalogPage {
           });
         }
       }
+      if (kind === "event" &&
+          this.edpmu.describe("PluginLifecycleEventPolicy")
+            ?.visibility === "Public") {
+        const policy = this.edpmu.get("PluginLifecycleEventPolicy");
+        for (const descriptor of policy?.events ?? []) {
+          revisionParts.push(JSON.stringify(descriptor));
+          if (owner && owner !== descriptor.owner) continue;
+          if (needle && ![descriptor.id, descriptor.description,
+            JSON.stringify(descriptor.payloadSchema)]
+            .some(value => value.toLowerCase().includes(needle))) continue;
+          entries.push({
+            id: descriptor.id,
+            owner: descriptor.owner,
+            descriptor
+          });
+        }
+      }
     } else if (kind === "service") {
       for (const provider of this.uru.providers.values()) {
         const serviceObject = this.uru.objects.get(provider.objectId);
@@ -236,6 +253,18 @@ export class LiveCatalogPage {
         (owner !== null && (typeof owner !== "string" ||
           !NAME.test(owner)))) return bad(400, "Invalid API selector");
     if (!this.uru.objects.has(source)) return bad(404, "Unknown caller");
+    if (kind === "event" &&
+        this.edpmu.describe("PluginLifecycleEventPolicy")
+          ?.visibility === "Public") {
+      const value = this.edpmu.get("PluginLifecycleEventPolicy");
+      const event = value?.events?.find(item =>
+        item.id === id && (!owner || item.owner === owner));
+      if (event) {
+        return { ok: true, status: 200, value: {
+          owner: event.owner, descriptor: event
+        } };
+      }
+    }
     if (kind === "api" || kind === "event") {
       const found = [];
       for (const [objectId, object] of this.uru.objects) {
