@@ -10,7 +10,7 @@
 - `Cluster.api.describeLive(kind,id,owner)` fetches a complete descriptor
   after authorization; no inferred schema is permitted.
 - Kinds: `api` (Object Request), `service`, `property`,
-  `event` (explicitly declared Event descriptors only), `protocol`.
+  `event` (explicitly registered URU/EDPMU Event contracts), `protocol`.
 - The page returns `items`, `total`, `nextCursor` and
   `snapshotRevision`. A cursor belongs to exactly one query and
   revision. HTTP 409 requires restarting at page one.
@@ -164,6 +164,14 @@ Valid states in the Worker SDK are `ready` and `suspended`.
 On unload, stop new requests and release handlers. On reload,
 assume a fresh Session and recheck registration and permissions.
 
+The authoritative EDPMU `PluginLifecycleEventPolicy` records the
+`WorkerSDK.SessionChange` event. Its Payload is a string:
+`"ready"` when `cluster-session-hello` succeeds, or `"suspended"`
+when the Host suspends the Session. Listener callbacks run in Set
+registration order within a message; unrelated RPC chains have no
+global ordering guarantee. The Event tab displays this Payload,
+trigger source, and unsubscribe contract.
+
 Use `AbortSignal` and `deadlineMs` for long-running Host requests.
 Do not assume messages from separate request chains are totally
 ordered. Observe `snapshotRevision` when traversing catalog pages;
@@ -180,15 +188,23 @@ A stale version emits a `Catalog.StaticConsistency` EHU with
 `CATALOG_VERSION_MISMATCH`, actual/expected versions and relative
 source file/line. No source location is inferred by guessing.
 
+`npm run check` runs `scripts/verify-api-catalog.mjs` and blocks
+source version mismatch for annotated UICO, HubUnit Protocol and
+Worker lifecycle Event contracts. The EHU includes file, line, owner,
+API ID and the mismatch code. Runtime third-party packages supply
+their own manifest; Host must not infer their Worker source lines.
+
 Export from the Plugin Manager always requests every authorized
 category regardless of the selected page/search/filter. The exporter
-checks snapshot revisions before and after SHA-256 computation;
+checks all five category revisions and counts before and after
+SHA-256 computation;
 409 blocks downloads of inconsistent results.
 
 ## 7. Known incomplete acceptance areas
 
-This documentation is a draft and not evidence of independent
-third-party blind-test completion. Comprehensive Event payloads,
-all Host/Plugin capability exposure markings, automatic static
-build-manifest generation, schema coverage and full cross-platform
-E2E are still governed by PR25 acceptance checks.
+A docs-only plugin E2E fixture verifies installation, Session ready,
+Worker SDK request routing and uninstall without importing Host source.
+This is an automated proxy, not an independent human blind test.
+Unannotated runtime plugins and native Events that lack an authoritative
+descriptor cannot have guessed schemas or line numbers. See
+Acceptance-Matrix.md for the exact outstanding acceptance requirements.
