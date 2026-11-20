@@ -17,14 +17,19 @@ test("PR24.24/35/51-60 independent plugin calls another via HubUnit",
         const manifestText = await manifestResponse.text();
         const source = await codeResponse.text();
         const manifest = JSON.parse(manifestText);
+        const files = {
+          "plugin.json": btoa(manifestText),
+          "worker.js": btoa(source)
+        };
+        if (manifest.uiEntry) {
+          const response = await fetch(root + manifest.uiEntry);
+          if (!response.ok) throw Error("Missing plugin UI asset");
+          files[manifest.uiEntry] = btoa(await response.text());
+        }
         return {
           manifest, snapshot: {
             format: "cluster-plugin-folder", formatVersion: 1,
-            manifestText,
-            files: {
-              "plugin.json": btoa(manifestText),
-              "worker.js": btoa(source)
-            }
+            manifestText, files
           }
         };
       };
@@ -128,4 +133,67 @@ test("PR24.53 Worker handlers cannot register undeclared actions",
     expect(result.installed, JSON.stringify(result)).toBe(201);
     expect(result.reply.status, JSON.stringify(result)).toBe(200);
     expect(result.reply.value.blocked).toBe(true);
+  });
+
+test("PR24.62-70 external SDK UI creates isolated multi-tab view",
+  async ({ page }) => {
+    await page.goto("/");
+    const installed = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const root = "/Implementation/sdk/examples/echo/";
+      const [manifestText, worker, html] = await Promise.all([
+        fetch(root + "plugin.json").then(r => r.text()),
+        fetch(root + "worker.js").then(r => r.text()),
+        fetch(root + "index.html").then(r => r.text())
+      ]);
+      const snapshot = {
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText,
+        files: {
+          "plugin.json": btoa(manifestText),
+          "worker.js": btoa(worker),
+          "index.html": btoa(html)
+        }
+      };
+      return linkCore.pluginHostInstaller.install(snapshot, {
+        consented: true
+      });
+    });
+    expect(installed.status, JSON.stringify(installed)).toBe(201);
+    const launch = page.locator(
+      '.plugin-extension-button[title="SDK Echo (External)"]');
+    await expect(launch).toBeVisible();
+    await launch.click();
+    const pluginTab = page.locator(
+      '#tabs .plugin-agent-tab[data-tab-id="plugin:example.sdk.echo"]');
+    await expect(pluginTab).toBeVisible();
+    const frame = page.frameLocator(
+      'iframe.plugin-extension-frame[title="SDK Echo (External)"]');
+    await expect(frame.getByText("Independent, sandboxed UI")).toBeVisible();
+    await frame.getByRole("button", { name: "Advanced" }).click();
+    await expect(frame.getByRole("heading", {
+      name: "Advanced"
+    })).toBeVisible();
+    await frame.getByRole("button", { name: "General" }).click();
+    await frame.getByRole("button", { name: "Local action" }).click();
+    await expect(frame.getByRole("status")).toHaveText("Ready");
+    const isolation = await page.evaluate(() => {
+      const iframe = document.querySelector(
+        'iframe.plugin-extension-frame[title="SDK Echo (External)"]');
+      try {
+        return Boolean(iframe.contentWindow.document.body);
+      } catch {
+        return false;
+      }
+    });
+    expect(isolation).toBe(false);
+    const cleanup = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      return linkCore.pluginHostInstaller.uninstall("example.sdk.echo");
+    });
+    expect(cleanup.status).toBe(200);
+    await expect(pluginTab).toHaveCount(0);
+    await expect(launch).toHaveCount(0);
   });
