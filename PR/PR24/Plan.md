@@ -214,3 +214,42 @@ authorize direct DOM access or erase native UI protections.
 - Roll back exploratory port routing changes; preserve the previously
   validated Worker sandbox, Session authentication, iframe relay and
   crash teardown.
+
+
+## PR24 Patch(+14): multi-Port isolation / multi-Session VTE
+
+Goal: close PR24.16 / .19 / .48 as evidence-backed P0 work,
+without expanding plugin-visible authority. The real Node
+`MessageChannel` tests must prove:
+
+- Two simultaneous Worker ports for one trusted Provider produce
+  distinct Session IDs and independent replay windows; the same
+  requestId is valid in each independent Session.
+- A second Provider cannot attach to an already owner-pinned
+  reverse RPC Gateway, even if URU recognizes that Provider.
+- After an old Provider Session is detached, a new Provider's
+  separately reviewed Gateway cannot use the previous scope.
+  Host identity must always come from trusted Port/URU mapping.
+- A scope revoked during noncooperative Host work is revoked across
+  all active ports of the owning Gateway. Each outstanding request
+  receives one correlated 403; late Host data cannot leak. Other
+  exact routes remain usable. Host reservations are released only
+  after underlying work actually settles.
+- Tests use existing fixed concurrency limits and verify OMU EHU
+  evidence; no new Worker-facing Host method or capability is added.
+
+Security: The gateway is pinned to the first successfully created
+Provider ID + Object ID. Pin ownership is immutable for the
+Gateway lifetime, including when all its Sessions are detached.
+A replacement Provider must be given a fresh Host-owned Gateway.
+`PluginSessionUnit` continues to bind every Session to its
+actual MessagePort; URU and HubUnit still decide request permission.
+
+Load bound: Each connected Port keeps the existing 16 in-flight
+(default) budget and 2-second test deadlines; the test exercises
+a small fixed number of concurrent ports without increasing
+Host limits. A future global multi-Provider fairness quota remains
+a separate P0 acceptance condition.
+
+Validation gate: `pr24-multi-session-vte.test.js` plus the full
+Node, PR1 Browser and OCDA Browser CI suite on exact HEAD.
