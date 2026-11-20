@@ -720,7 +720,10 @@ export function mountPluginManagerUI(core,doc,options={}) {
                   apiKind==="protocol"?"Protocol":apiKind,
                 id:item.id,owner:item.owner,descriptor};
               body.replaceChildren();
-              renderContractDetail(doc,body,entry,t,()=>render());
+              renderContractDetail(doc,body,entry,t,()=>render(),
+                ()=>core.inspectLiveContract("ui",apiKind,item.id,
+                  ["api","service","event"].includes(apiKind) ?
+                    item.owner : null,"user"));
             },"pm-api-row-link");
             cell.replaceChildren(open);
           }
