@@ -61,7 +61,7 @@ export class PluginBidirectionalRPCController {
     const checked = Envelope.inspect(packet);
     if (!checked.ok) return Promise.resolve(checked);
     const requestId = packet.requestId;
-    if (this.#pending.size + this.#queue.length >=
+    if (this.#pending.size >=
         this.maxActive + this.maxQueue) {
       return Promise.resolve(failure(429, "RPC_BACKPRESSURE"));
     }
@@ -70,6 +70,9 @@ export class PluginBidirectionalRPCController {
         port, session, packet: checked.value, resolve,
         started: false, timer: null
       };
+      task.timer = setTimeout(() => {
+        this.#settle(requestId, failure(504, "RPC_TIMEOUT"));
+      }, task.packet.deadlineMs);
       this.#pending.set(requestId, task);
       this.#queue.push(requestId);
       this.#drain();
@@ -91,9 +94,6 @@ export class PluginBidirectionalRPCController {
       }
       task.started = true;
       running++;
-      task.timer = setTimeout(() => {
-        this.#settle(id, failure(504, "RPC_TIMEOUT"));
-      }, task.packet.deadlineMs);
       try {
         task.port.postMessage(task.packet);
       } catch {
