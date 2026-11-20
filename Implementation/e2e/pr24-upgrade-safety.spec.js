@@ -191,3 +191,76 @@ test("PR24.77 failed Worker upgrade restores original Session and UI",
     expect(outcome.after.status, JSON.stringify(outcome)).toBe(200);
     expect(outcome.after.value).toEqual({ objectId: "UICO" });
   });
+
+test("PR24.18/83 unexpected Worker crash disables Provider and cleans Ports",
+  async ({ page }) => {
+    await page.goto("/");
+    const result = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const source = [
+        "export function probe() { return { active: true }; }",
+        "setTimeout(() => { throw Error('worker crash fixture'); }, 120);"
+      ].join("\n");
+      const snapshot = (() => {
+        const manifest = {
+          packageVersion: 1, name: "Crash fixture",
+          entry: "worker.js",
+          provider: {
+            manifestVersion: 1,
+            providerId: "example.sdk.crash",
+            objectId: "SDK.Crash",
+            provides: [{
+              service: "example.sdk.crash", action: "probe",
+              version: "1.0.0",
+              inputSchema: { type: "object" },
+              outputSchema: { type: "object" }
+            }],
+            requires: [], permissions: [],
+            execution: { isolation: "worker", concurrency: "serial" }
+          }
+        };
+        const raw = JSON.stringify(manifest);
+        return {
+          format: "cluster-plugin-folder", formatVersion: 1,
+          manifestText: raw,
+          files: {
+            "plugin.json": btoa(raw),
+            "worker.js": btoa(source)
+          }
+        };
+      })();
+      const host = linkCore.pluginHostInstaller;
+      const install = await host.install(snapshot, { consented: true });
+      if (!install.ok) return { install };
+      const bridge = host.handles.get("example.sdk.crash");
+      const transport = bridge.hostTransport;
+      try {
+        for (let i = 0; i < 50 && !bridge.closed; i++) {
+          await new Promise(resolve => setTimeout(resolve, 15));
+        }
+        return {
+          install: install.status, closed: bridge.closed,
+          disabled: linkCore.uru.disabledProviders.has(
+            "example.sdk.crash"),
+          sessions: transport.gateway.sessions.activeCount,
+          ports: transport.connections.size,
+          present: Boolean(linkCore.uru.getProvider(
+            "example.sdk.crash")),
+          faultAudit: linkCore.getSnapshot().logs.some(event =>
+            event.action.startsWith(
+              "Plugin.Install.WorkerFault.") &&
+            event.kind === "EHU")
+        };
+      } finally {
+        host.uninstall("example.sdk.crash");
+      }
+    });
+    expect(result.install, JSON.stringify(result)).toBe(201);
+    expect(result.closed).toBe(true);
+    expect(result.disabled).toBe(true);
+    expect(result.sessions).toBe(0);
+    expect(result.ports).toBe(0);
+    expect(result.present).toBe(true);
+    expect(result.faultAudit).toBe(true);
+  });
