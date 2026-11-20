@@ -15,7 +15,7 @@
     "objectId": "SDK.NativeUI",
     "provides": [
       {
-        "service": "example.sdk.native-ui.createControls",
+        "service": "example.sdk.native-ui.create-controls",
         "action": "createControls",
         "version": "1.0.0",
         "inputSchema": {
@@ -48,7 +48,7 @@
         }
       },
       {
-        "service": "example.sdk.native-ui.probeNativeACL",
+        "service": "example.sdk.native-ui.probe-native-acl",
         "action": "probeNativeACL",
         "version": "1.0.0",
         "inputSchema": {
