@@ -220,12 +220,19 @@ test("PR24.22 production Host invokes Worker through Session Controller",
       });
       const scopedWorker = [
         "const calls = [];",
+        "const sends = [];",
+        "const originalSend = MessagePort.prototype.postMessage;",
+        "MessagePort.prototype.postMessage = function(packet, ...args) {",
+        "  if (packet?.direction === 'host-to-plugin' &&",
+        "      packet?.type === 'response') sends.push(packet.requestId);",
+        "  return originalSend.call(this, packet, ...args);",
+        "};",
         "Cluster.handle('echo', payload => {",
         "  calls.push(String(payload.message ?? ''));",
         "  return { echoed: String(payload.message ?? ''),",
         "    sdkVersion: Cluster.version,",
         "    ...(payload.message === 'through-hub' ?",
-        "      { history: [...calls] } : {}) };",
+        "      { history: [...calls], sends: [...sends] } : {}) };",
         "});",
         "Cluster.handle('history', () => ({ calls }));"
       ].join("\n");
@@ -275,6 +282,7 @@ test("PR24.22 production Host invokes Worker through Session Controller",
         return {
           ready, direct, secondDirect, routed,
           history: routed.value?.history,
+          workerSends: routed.value?.sends,
           emitted, historyStatus: history.status,
           responseEvents: events.length,
           lastEvent: events.at(-1)?.eventId,
