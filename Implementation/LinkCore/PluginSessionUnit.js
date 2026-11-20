@@ -57,19 +57,10 @@ export class PluginSessionUnit {
     session.revoke(options);
     this.#sessions.delete(sessionId);
     // The stale port must not retain authority across a new handshake.
-    for (const port of this.#sessionsPorts(session)) {
-      this.#ports.delete(port);
-    }
+    const port = this.#livePorts.get(sessionId);
+    if (port) this.#ports.delete(port);
+    this.#livePorts.delete(sessionId);
     return { ok: true, status: 200 };
-  }
-
-  *#sessionsPorts(session) {
-    // Reverse lookup only for host-owned active Session handles.
-    const port = this.#livePorts.get(session.sessionId);
-    if (port) {
-      this.#livePorts.delete(session.sessionId);
-      yield port;
-    }
   }
 
   revokeProvider(providerId) {
