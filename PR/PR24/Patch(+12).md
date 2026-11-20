@@ -110,3 +110,17 @@ State: Draft, no merge to main.
 Run current exact-HEAD `npm run check`, Playwright and four GitHub
 CI workflows. Fix real failures with no weakened security assertions.
 Update per-item acceptance matrix only after tests pass.
+
+
+## Follow-up: externally created native UI
+
+The third standalone package `Implementation/sdk/examples/native-ui`
+uses the same Host-reviewed Worker SDK to invoke the existing PR23
+`UICO.uiRequest` action, then creates an actual Host toolbar Button
+and native Window with two Tab controls. It declares the exact
+`UICO/uiRequest` RPC route plus the four required granular UI
+capabilities. The Host retains ownership of all DOM mutations, URU
+registrations, native UI ACLs and cleanup. Browser E2E confirms
+creation, event callback, tab switch, rejected native tampering and
+full owner teardown. This tests practical external UI capability,
+but not yet every UISP attribute or mobile/cross-browser matrix.
