@@ -236,3 +236,62 @@ test("PR24.48 same-origin tab receives durable deny, never a grant",
       }));
     }
   });
+
+test("PR24.47 reload keeps reviewed route dormant until reapproval",
+  async ({ page }) => {
+    const data = fixture();
+    await page.goto("/");
+    const saved = await page.evaluate(async ({ snapshot, rpcScopes,
+      provider }) => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const host = linkCore.pluginHostInstaller;
+      const install = await host.install(snapshot, {
+        consented: true, approvedRpcScopes: rpcScopes
+      });
+      if (!install.ok) return install;
+      try {
+        return await host.revokeRpcScopePersisted(
+          provider.providerId, rpcScopes[0]);
+      } finally {
+        host.uninstall(provider.providerId);
+      }
+    }, data);
+    expect(saved.status).toBe(200);
+    await page.reload();
+    const result = await page.evaluate(async ({ snapshot, rpcScopes,
+      provider }) => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const host = linkCore.pluginHostInstaller;
+      const installed = await host.install(snapshot, {
+        consented: true, approvedRpcScopes: rpcScopes
+      });
+      if (!installed.ok) return { installed };
+      const bridge = host.handles.get(provider.providerId);
+      try {
+        const before = await linkCore.request(
+          "ui", provider.objectId, "probe", {}, { origin: "user" });
+        const denied = await host.reapproveRpcScope(
+          provider.providerId, rpcScopes[0]);
+        const consented = await host.reapproveRpcScope(
+          provider.providerId, rpcScopes[0], { consented: true });
+        const after = await linkCore.request(
+          "ui", provider.objectId, "probe", {}, { origin: "user" });
+        return {
+          installed: installed.status, denied: denied.status,
+          consented: consented.status,
+          before: before.value, after: after.value,
+          active: bridge.listHostRPCScopes()
+        };
+      } finally {
+        host.uninstall(provider.providerId);
+      }
+    }, data);
+    expect(result.installed, JSON.stringify(result)).toBe(201);
+    expect(result.denied).toBe(403);
+    expect(result.before.denied).toBe(true);
+    expect(result.consented, JSON.stringify(result)).toBe(200);
+    expect(result.after.denied).toBe(false);
+    expect(result.active).toHaveLength(2);
+  });
