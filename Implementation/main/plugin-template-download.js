@@ -38,9 +38,11 @@ export function createTemplateZip(files) {
     return { name: encoder.encode(name),
       data: encoder.encode(text) };
   });
-  if (!entries.length || entries.length > 32 ||
+  if (!entries.length || entries.length > 48 ||
       entries.some(item => item.name.length > 65535 ||
-        item.data.length > 1048576)) {
+        item.data.length > 64 * 1024 * 1024) ||
+      entries.reduce((total, item) => total + item.data.length,
+        0) > 68 * 1024 * 1024) {
     throw new RangeError("Template exceeds ZIP budget");
   }
   const locals = [];
@@ -97,7 +99,8 @@ export function createTemplateZip(files) {
   return output;
 }
 
-export function pluginTemplateFiles(locale = "zh-Hant") {
+export function pluginTemplateFiles(locale = "zh-Hant",
+  catalogJSON = null, sdkTypes = null) {
   const english = locale === "en";
   const manifest = {
     packageVersion: 1,
@@ -130,12 +133,13 @@ export function pluginTemplateFiles(locale = "zh-Hant") {
       requires: [],
       permissions: [],
       execution: { isolation: "worker", concurrency: "serial" }
-    }
+    },
+    rpcScopes: []
   };
   const readme = english ? [
     "# HubUnit Plugin Development Template",
     "",
-    "1. Open ClusterOpt2 > Plugin Manager > API List FIRST.",
+    "1. Read the included API-CATALOG.json and docs/API-REFERENCE.md.",
     "2. Read each Request input and Response output contract.",
     "3. Declare services and actions in plugin.json (Provider Contract).",
     "4. Keep all file paths relative to this folder.",
@@ -143,16 +147,16 @@ export function pluginTemplateFiles(locale = "zh-Hant") {
     "6. Customize index.html, src/ui.js and styles/main.css.",
     "7. Use the Resources tab to validate the extracted folder.",
     "",
-    "IMPORTANT: The current PR13 build stores untrusted folders as data.",
-    "Standalone ES Module functions can now run after explicit approval.",
-    "Use named exports matching the declared Action (e.g. transform).",
-    "Relative JS imports and embedded HTML UI activation are pending.",
+    "This ZIP uses the current validated Worker SDK and Manifest.",
+    "Approved Workers register actions via Cluster.handle(action, fn).",
+    "Do not use direct Host imports or parent DOM access.",
+    "UI HTML and Worker RPC execute in isolated contexts.",
     "No direct access to the host DOM, filesystem or internal Cluster APIs.",
     "Do not assume a Manifest declaration grants a permission."
   ] : [
     "# HubUnit 插件製作範本",
     "",
-    "1. 請先開啟 ClusterOpt2 > 插件管理 > API 列表。",
+    "1. 先閱讀 ZIP 內的 API-CATALOG.json 與 docs/API-REFERENCE.md。",
     "2. 詳讀每個 Request 輸入與 Response 輸出的契約。",
     "3. 在 plugin.json 宣告 Service／Action 與 Provider Contract。",
     "4. 所有資源路徑都必須是插件資料夾內的相對路徑。",
@@ -160,28 +164,30 @@ export function pluginTemplateFiles(locale = "zh-Hant") {
     "6. 可自由編輯 index.html、src/ui.js、styles/main.css。",
     "7. 解壓後到資源頁選擇資料夾執行驗證。",
     "",
-    "重要：目前 PR13 僅將自製插件儲存為資料。",
-    "自包含 ES Module 的 Action 可經明確同意後在隔離環境執行。",
-    "請使用與 Action 同名的 export（例如 transform）。",
-    "跨檔 JavaScript import 與 HTML UI 啟動仍待完成。",
+    "此 ZIP 使用目前正式驗證的 Worker SDK 與 Manifest 格式。",
+    "核准後透過 Cluster.handle(action, fn) 註冊 Action。",
+    "Worker 不可直接匯入 Host 內部程式或父頁 DOM。",
+    "HTML UI 和 Worker RPC 均於隔離環境執行。",
     "插件不得直接存取主頁 DOM、檔案系統或 Cluster 內部實例。",
     "Manifest 宣告權限不代表已獲准使用。"
   ];
-  const worker = english ? `// Worker service logic, loaded only in an approved sandbox.
-// See Plugin Manager > API List for the input/output contract.
-export function transform(payload) {
-  const text = typeof payload?.text === "string" ? payload.text : "";
-  return { result: text.toUpperCase() };
-}
-// The isolated PR13 RPC bridge calls exported functions by action name.
-` : `// 插件服務邏輯，只能在通過審核的隔離環境啟動。
-// 呼叫前請查看「插件管理 > API 列表」的輸入／輸出契約。
-export function transform(payload) {
-  const text = typeof payload?.text === "string" ? payload.text : "";
-  return { result: text.toUpperCase() };
-}
-// PR13 隔離 RPC Bridge 依 Action 名稱呼叫對應的 export 函數。
-`;
+  // Worker handlers are registered via the public Cluster SDK.
+  // Host injects Cluster after explicit package approval.
+  const worker = [
+    "// No direct access to LinkCore or the parent page.",
+    "Cluster.onSessionChange(state => {",
+    "  if (state === \"suspended\") {",
+    "    // Stop scheduling Host requests during suspension.",
+    "  }",
+    "});",
+    "",
+    "Cluster.handle(\"transform\", payload => {",
+    "  const text = typeof payload?.text === \"string\" ?",
+    "    payload.text : \"\";",
+    "  return { result: text.toUpperCase() };",
+    "});",
+    ""
+  ].join("\n");
   const html = `<!doctype html>
 <html lang="${english ? "en" : "zh-Hant"}">
 <head>
@@ -207,9 +213,70 @@ document.getElementById("preview").addEventListener("click", () => {
   output.textContent = input.value.toUpperCase();
 });
 `;
+  const apiGuide = [
+    "# ClusterOpt2 API Reference",
+    "",
+    "The API-CATALOG.json in this ZIP is a full authorized snapshot.",
+    "Categories: api / service / property / event / protocol.",
+    "Only registered URU/EDPMU descriptors are included.",
+    "Do not infer missing schemas or treat metadata as permission.",
+    "HostInternal routes are not external Worker capabilities.",
+    "PluginPublic still requires live Hub ACL, consent and Session.",
+    "Read inputSchema and outputSchema before every call.",
+    "Worker SDK: Cluster.ready, request, service, handle,",
+    "onSessionChange and RPCError; see types/cluster-plugin-sdk.d.ts.",
+    "API data is source-filtered: never forward the catalog as a grant.",
+    "Redownload when the live snapshotRevision changes.",
+    ""
+  ].join("\n");
+  const manifestGuide = [
+    "# plugin.json Manifest v1 (Host-validated schema)",
+    "",
+    "Required: packageVersion=1, name, entry, provider.",
+    "Optional: description, uiEntry, rpcScopes.",
+    "Provider requires manifestVersion=1, providerId, objectId,",
+    "provides, requires, permissions, execution.",
+    "Each provides entry has service, action, version (semver),",
+    "inputSchema and outputSchema. Match the Worker handler name.",
+    "execution.isolation must be worker.",
+    "execution.concurrency: serial | per-slice | parallel.",
+    "rpcScopes: exact {target, action} entries. A property key is",
+    "allowed only with target=HubUnit, action=Property.Read.",
+    "All resource paths must be relative to this plugin folder.",
+    "Never embed credentials or keys. No Manifest grants permission.",
+    ""
+  ].join("\n");
+  const runtimeGuide = [
+    "# Installation, Authorization and Events",
+    "",
+    "Unzip; select the folder under Plugin Manager > Resources.",
+    "The Host snapshots files, validates the Manifest, and requests",
+    "explicit permission and rpcScopes approval before Worker start.",
+    "Use Cluster.handle(action, handler) for declared Provider Actions.",
+    "Use Cluster.request(target, action, payload) for reverse RPC.",
+    "Subscribe using Cluster.onSessionChange(listener).",
+    "Session states: ready and suspended. Call its unsubscribe handle.",
+    "Do not access the parent DOM, filesystem, or Host internals.",
+    "400: schema invalid; 403: forbidden; 404: missing action;",
+    "409: stale revision; 503: Session not available.",
+    "Do not retry a non-idempotent write automatically.",
+    "The HTML UI runs separately from the Worker RPC context.",
+    ""
+  ].join("\n");
+  const catalog = catalogJSON ?? JSON.stringify({
+    schemaVersion: 1, status: "NOT_EMBEDDED",
+    note: "Download this ZIP from ClusterOpt2 Resources for live data"
+  }, null, 2) + "\n";
+  const sdk = sdkTypes ??
+    "// Download from ClusterOpt2 Resources to embed live SDK types\n";
   return Object.freeze({
     "plugin.json": JSON.stringify(manifest, null, 2) + "\n",
     "README.md": readme.join("\n") + "\n",
+    "API-CATALOG.json": catalog,
+    "docs/API-REFERENCE.md": apiGuide,
+    "docs/MANIFEST.md": manifestGuide,
+    "docs/SECURITY-EVENTS.md": runtimeGuide,
+    "types/cluster-plugin-sdk.d.ts": sdk,
     "index.html": html,
     "src/worker.js": worker,
     "src/ui.js": ui,
@@ -220,8 +287,26 @@ button { cursor: pointer; padding: 8px; }
   });
 }
 
-export function downloadPluginTemplate(doc, locale = "zh-Hant") {
-  const zip = createTemplateZip(pluginTemplateFiles(locale));
+export async function downloadPluginTemplate(
+  doc, locale = "zh-Hant", core) {
+  if (!core || typeof core.exportLiveCatalog !== "function") {
+    throw Error("Authorized API catalog is required");
+  }
+  const [catalog, sdkResponse] = await Promise.all([
+    core.exportLiveCatalog("ui", "user"),
+    doc.defaultView.fetch(
+      new URL("../sdk/cluster-plugin-sdk.d.ts", import.meta.url),
+      { cache: "no-store" })
+  ]);
+  if (!catalog.ok || !sdkResponse.ok) {
+    throw Error("Live API or SDK reference unavailable");
+  }
+  const sdk = await sdkResponse.text();
+  if (!sdk.includes("declare namespace ClusterSDK")) {
+    throw Error("Incomplete SDK definition");
+  }
+  const zip = createTemplateZip(pluginTemplateFiles(
+    locale, catalog.value.json, sdk));
   const blob = new doc.defaultView.Blob([zip],
     { type: "application/zip" });
   const url = doc.defaultView.URL.createObjectURL(blob);

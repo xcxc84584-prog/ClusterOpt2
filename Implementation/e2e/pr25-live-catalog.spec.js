@@ -8,30 +8,25 @@ async function openCatalog(page) {
   await page.locator(".pm-tabs [role=tab]").nth(1).click();
 }
 
-test("PR25 live UI retains input and filters across pages", async ({page}) => {
-  await openCatalog(page);
-  const kind = page.locator(".pm-api-kind");
-  const input = page.locator("#pluginApiSearch");
-  const size = page.locator(".pm-api-size");
-  await kind.selectOption("api");
-  await size.selectOption("10");
-  await expect(page.locator(".pm-api-table-row")).toHaveCount(10);
-  await page.locator(".pm-api-pagination button").last().click();
-  await expect(page.locator(".pm-api-pagination")).toContainText("2");
-  await expect(kind).toHaveValue("api");
-  await expect(size).toHaveValue("10");
-  await page.locator(".pm-api-sort").selectOption("id");
-  await page.locator(".pm-api-sort-order").selectOption("desc");
-  await expect(page.locator(".pm-api-sort")).toHaveValue("id");
-  await expect(page.locator(".pm-api-sort-order")).toHaveValue("desc");
-  await input.fill("UICO");
-  await expect(input).toHaveValue("UICO");
-  await expect(page.locator(".pm-api-pagination")).toContainText("1");
-  await kind.selectOption("protocol");
-  await expect(input).toHaveValue("UICO");
-  await input.fill("");
-  await expect(page.locator(".pm-api-table-row").first()).toBeVisible();
-});
+test("PR26 API List has one-line search, selector and result table",
+  async ({page}) => {
+    await openCatalog(page);
+    const toolbar=page.locator(".pm-api-toolbar");
+    const kind=toolbar.locator(".pm-api-kind");
+    const input=toolbar.locator("#pluginApiSearch");
+    await expect(toolbar.locator("select")).toHaveCount(1);
+    await expect(toolbar.locator("input")).toHaveCount(1);
+    await expect(toolbar.locator("button")).toHaveCount(0);
+    await expect(page.locator(".pm-api-table")).toBeVisible();
+    await expect(page.locator(".pm-api-table-row").first())
+      .toBeVisible();
+    await kind.selectOption("event");
+    await input.fill("WorkerSDK.SessionChange");
+    await expect(input).toHaveValue("WorkerSDK.SessionChange");
+    await expect(page.locator(".pm-api-row-link"))
+      .toContainText("WorkerSDK.SessionChange");
+    await expect(page.locator(".pm-api-pagination")).toBeVisible();
+  });
 
 test("PR25 selected descriptor is retrieved lazily from live source",
   async ({page}) => {
@@ -47,17 +42,20 @@ test("PR25 selected descriptor is retrieved lazily from live source",
   }
 );
 
-test("PR25 full export ignores the current API filter", async ({page}) => {
-  await openCatalog(page);
-  await page.locator("#pluginApiSearch").fill("absent9876");
-  await expect(page.locator(".pm-api-table-row")).toHaveCount(0);
-  const download = page.waitForEvent("download");
-  await page.getByRole("button", {name: /匯出完整 API 契約|Export all API contracts/})
-    .click();
-  const artifact = await download;
-  expect(artifact.suggestedFilename())
-    .toBe("ClusterOpt2-API-Contracts.json");
-});
+test("PR26 complete API export lives in Resources only",
+  async ({page}) => {
+    await openCatalog(page);
+    await expect(page.getByRole("button",{
+      name:/匯出完整 API 契約|Export all API contracts/
+    })).toHaveCount(0);
+    await page.locator(".pm-tabs [role=tab]").nth(3).click();
+    const download=page.waitForEvent("download");
+    await page.getByRole("button",{
+      name:/匯出完整 API 契約|Export all API contracts/
+    }).click();
+    expect((await download).suggestedFilename())
+      .toBe("ClusterOpt2-API-Contracts.json");
+  });
 
 test("PR25 open catalog observes new URU API without UI reset",
   async ({page}) => {

@@ -60,12 +60,12 @@ const PLUGINS = Object.freeze([{
   kind: "template",
   nameZh: "插件製作範本",
   nameEn: "Plugin Development Template",
-  descriptionZh: "HTML／CSS／JS 範本。製作前請查看 API 列表中的" +
-    " Request 輸入與 Response 輸出契約。",
-  descriptionEn: "HTML/CSS/JS project scaffold. Check API List" +
-    " Request inputs and Response outputs before development.",
+  descriptionZh: "含完整動態 API 契約、Manifest 規格、Worker SDK、" +
+    "Request／Response 格式、權限與事件文件的可裝載 ZIP 範本。",
+  descriptionEn: "Installable ZIP scaffold with live API contracts, " +
+    "Manifest schema, Worker SDK, RPC examples and security guides.",
   service: "plugin.author.template",
-  version: "1.0.0"
+  version: "2.0.0"
 }, {
   id: "cluster.ai-agent-mcp",
   kind: "folder-package",
@@ -144,13 +144,38 @@ export function renderResources(doc, host, options) {
   const exports = el(doc, "section", "pm-resource-exports");
   exports.append(el(doc, "h3", "", t("資料匯出", "Data exports")));
   const actions = el(doc, "div", "pm-resource-actions");
-  actions.append(button(doc, t("下載 API 清單 JSON",
-    "Download API list JSON"), () => downloadJSON(doc,
-    "clusteropt2-api-list.json", {
-      exportedAt: new Date().toISOString(),
-      entries: apiEntries().map(({kind, id, owner, providerId, descriptor}) =>
-        ({kind, id, owner, providerId, descriptor}))
-    })));
+  const apiExportStatus=el(doc,"p","pm-muted");
+  apiExportStatus.setAttribute("role","status");
+  actions.append(button(doc,t("匯出完整 API 契約",
+    "Export all API contracts"),async()=>{
+    apiExportStatus.textContent=t("正在取得授權 API 契約...",
+      "Collecting authorized API contracts...");
+    try {
+      const result=await core.exportLiveCatalog("ui","user");
+      if(!result.ok) {
+        apiExportStatus.textContent=t("匯出失敗：","Export failed: ")+
+          (result.error??String(result.status));
+        return;
+      }
+      const win=doc.defaultView;
+      const blob=new win.Blob([result.value.json],{
+        type:"application/json;charset=utf-8"
+      });
+      const url=win.URL.createObjectURL(blob);
+      const link=el(doc,"a");
+      link.href=url;link.download="ClusterOpt2-API-Contracts.json";
+      doc.body.append(link);
+      try { link.click(); }
+      finally {
+        link.remove();
+        win.setTimeout(()=>win.URL.revokeObjectURL(url),1000);
+      }
+      apiExportStatus.textContent="SHA-256: "+result.value.sha256;
+    } catch (_error) {
+      apiExportStatus.textContent=t("API 匯出失敗",
+        "API export failed");
+    }
+  }));
   actions.append(button(doc, t("下載 EHU 日誌 JSON",
     "Download EHU log JSON"), () => downloadJSON(doc,
     "clusteropt2-ehu-log.json", {
@@ -255,7 +280,7 @@ export function renderResources(doc, host, options) {
   });
   actions.append(button(doc, t("導入插件包", "Import plugin bundle"),
     () => bundlePicker.click()));
-  exports.append(bundlePicker, importStatus);
+  exports.append(bundlePicker, importStatus, apiExportStatus);
   exports.append(actions);
   exports.append(el(doc, "p", "pm-muted", t(
     "匯出內容不包含敏感 Payload。",
@@ -398,10 +423,26 @@ export function renderResources(doc, host, options) {
         mcpCmd.id = "pluginMCPQuickSetupDownload";
         buttons.append(download, agentCmd, mcpCmd, mount);
       } else if(plugin.kind==="template") {
-        const download=button(doc,t("下載 ZIP","Download ZIP"),()=>{
-          const language=core.edpmu.get("Language");
-          downloadPluginTemplate(doc,language==="en"?"en":"zh-Hant");
-        });
+        const download=button(doc,t("下載 ZIP","Download ZIP"),
+          async()=>{
+            const language=core.edpmu.get("Language");
+            download.disabled=true;
+            status.textContent=t("正在生成完整插件範本...",
+              "Building complete plugin template...");
+            try {
+              await downloadPluginTemplate(doc,
+                language==="en"?"en":"zh-Hant",core);
+              status.textContent=t(
+                "ZIP 包含最新授權 API、Manifest 與 Worker SDK。",
+                "ZIP includes live authorized APIs, Manifest and SDK.");
+            } catch (_error) {
+              status.textContent=t(
+                "無法取得完整 API 或 SDK，已取消範本下載。",
+                "API or SDK unavailable; template download cancelled.");
+            } finally {
+              download.disabled=false;
+            }
+          });
         download.id="pluginTemplateDownload";
         download.classList.add("pm-market-download");
         buttons.append(download);

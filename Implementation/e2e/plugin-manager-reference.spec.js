@@ -185,9 +185,9 @@ test("Resources exports JSON and both panes scroll independently",
       nodes=>nodes.map(node=>getComputedStyle(node).overflowY));
     expect(scroll).toEqual(["auto","auto"]);
     const download=page.waitForEvent("download");
-    await page.getByRole("button",{name:"下載 API 清單 JSON"}).click();
+    await page.getByRole("button",{name:"匯出完整 API 契約"}).click();
     expect((await download).suggestedFilename())
-      .toBe("clusteropt2-api-list.json");
+      .toBe("ClusterOpt2-API-Contracts.json");
     const logDownload=page.waitForEvent("download");
     await page.getByRole("button",{name:"下載 EHU 日誌 JSON"}).click();
     expect((await logDownload).suggestedFilename())

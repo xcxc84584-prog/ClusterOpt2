@@ -37,6 +37,13 @@ test("PR13 template is a real bilingual multi-file ZIP", () => {
     const extracted = readStoredZip(createTemplateZip(files));
     assert.deepEqual([...extracted.keys()], Object.keys(files));
     assert.ok(extracted.has("src/worker.js"));
+    assert.ok(extracted.has("API-CATALOG.json"));
+    assert.ok(extracted.has("docs/API-REFERENCE.md"));
+    assert.ok(extracted.has("docs/MANIFEST.md"));
+    assert.ok(extracted.has("docs/SECURITY-EVENTS.md"));
+    assert.ok(extracted.has("types/cluster-plugin-sdk.d.ts"));
+    assert.match(extracted.get("src/worker.js"), /Cluster.handle/);
+    assert.match(extracted.get("docs/MANIFEST.md"), /rpcScopes/);
     assert.ok(extracted.has("src/ui.js"));
     assert.ok(extracted.has("styles/main.css"));
     assert.ok(extracted.has("index.html"));
@@ -51,9 +58,9 @@ test("PR13 template is a real bilingual multi-file ZIP", () => {
     }
   }
   assert.match(pluginTemplateFiles("en")["README.md"],
-    /Request input and Response output/);
+    /API-CATALOG.json/);
   assert.match(pluginTemplateFiles("zh-Hant")["README.md"],
-    /API 列表/);
+    /API-CATALOG.json/);
 });
 
 test("PR13 rejects unsafe template ZIP paths", () => {
@@ -86,3 +93,23 @@ test("PR13 HubUnit has immutable symmetric Request/Response contracts",
     assert.ok(env.log().some(entry =>
       entry.action === "Property.Read" && entry.status === 200));
   });
+
+test("PR26 downloaded scaffold embeds real authorized APIs and SDK", () => {
+  const source = JSON.stringify({
+    schemaVersion: 1, contracts: {
+      api: [{ id: "UICO.describe", descriptor: {
+        inputSchema: { type: "object" },
+        outputSchema: { type: "object" }
+      }}]
+    }
+  });
+  const sdk = "declare namespace ClusterSDK {}";
+  const files = pluginTemplateFiles("en", source, sdk);
+  const extracted = readStoredZip(createTemplateZip(files));
+  assert.deepEqual(JSON.parse(extracted.get("API-CATALOG.json")),
+    JSON.parse(source));
+  assert.equal(extracted.get("types/cluster-plugin-sdk.d.ts"), sdk);
+  assert.match(extracted.get("docs/API-REFERENCE.md"),
+    /HostInternal/);
+  assert.match(extracted.get("README.md"), /Cluster.handle/);
+});
