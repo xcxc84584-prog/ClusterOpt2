@@ -66,8 +66,14 @@ export class PluginHostRequestGateway {
       session.objectId, value.target, value.action, value.payload,
       { origin: "user", signal: options.signal });
     // A disabled or replaced Session cannot publish a stale Response.
+    const latest = this.core.uru.getProvider(session.providerId);
+    const stillAllowed = latest &&
+      latest.objectId === session.objectId &&
+      !this.core.uru.disabledProviders.has(session.providerId) &&
+      latest.permissions.every(permission =>
+        this.core.checkPluginPermission(session.providerId, permission));
     if (options.signal?.aborted || !session.owns(port) ||
-        session.state !== "ready") {
+        session.state !== "ready" || !stillAllowed) {
       this.core.omu.record("EHU", session.objectId,
         "RPC.DiscardedAfterRevoke", 499, value.target,
         { requestId: value.requestId });
