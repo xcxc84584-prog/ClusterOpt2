@@ -88,6 +88,12 @@ function harness(approved) {
 test("PR24.41 scope declaration forbids prefix/wildcard and prototype tricks",
   () => {
     assert.equal(Scopes.inspect([READ, PROPERTY]).ok, true);
+    assert.equal(Scopes.inspect([, READ]).status, 400);
+    const sparse = new Array(1);
+    assert.equal(Scopes.inspect(sparse).status, 400);
+    const extra = [READ];
+    extra.custom = "unreviewed";
+    assert.equal(Scopes.inspect(extra).status, 400);
     assert.equal(Scopes.inspect([READ, READ]).status, 400);
     assert.equal(Scopes.inspect([{
       target: "UICO.*", action: "describe"
