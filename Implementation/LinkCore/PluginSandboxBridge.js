@@ -99,6 +99,22 @@ export class PluginSandboxBridge {
     return result;
   }
 
+  /**
+   * Disable the reverse API while retaining the isolated Worker.
+   * A later resume always creates a new Session and handshake nonce.
+   */
+  suspendHostRequests() {
+    if (!this.hostTransport || !this.port) return false;
+    return this.hostTransport.suspend(this.port);
+  }
+
+  resumeHostRequests() {
+    if (!this.hostTransport || !this.port || this.closed) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.resume(this.port, this.manifest.providerId);
+  }
+
   audit(status, reason) {
     this.omu?.record(status < 400 ? "Log" : "EHU",
       "PluginSandboxBridge", "Plugin.RPC." + reason, status,
