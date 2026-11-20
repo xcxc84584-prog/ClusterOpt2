@@ -154,3 +154,17 @@ Trust boundary:
 
 
 | EC24-26 | Third-party Worker → Cluster.request(UICO.uiRequest) → HubUnit → UICO → owner-scoped native Button/Window/Tab | Exact rpcScope + per-action capability + URU identity + automatic teardown |
+
+## PR24 Patch(+13) — audit and UI Event Chains
+| Chain | Route | Guarantee |
+| --- | --- | --- |
+| EC24-27 | Worker response → Bridge Session preflight → OMU correlated Log → Controller.receive | Unique requestId always yields unique Host Event ID; no 1s cooldown |
+| EC24-28 | OMU audit unavailable → Bridge EHU 503 + cancel → pending Host caller settles 499 | No uncaught null.eventId / silent 504 |
+| EC24-29 | Third-party UICO.uiRequest → fixed slot resolution → visible native header Button | Host owns selector, DOM, ACL and teardown |
+| EC24-30 | Four consecutive Host RPC calls → Hub/Controller → Worker → distinct OMU events | Catch rapid sequential reply loss |
+
+The Event ID is generated only by OMU. A Worker eventId
+placeholder never establishes Host authority. The OMU cooldown
+still applies to uncorrelated success entries; correlated success
+entries bypass it without adding request IDs to the PASS cooldown map,
+avoiding unbounded key accumulation.
