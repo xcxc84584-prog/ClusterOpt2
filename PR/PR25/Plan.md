@@ -20,12 +20,12 @@ acceptance result. Merge is blocked until all checks pass VTE, CI and E2E.
 - 100/1000/10000 traversal and rejection tests are added.
 
 ## Current limits
-The legacy Plugin Manager API List still eagerly aggregates complete
-contracts and remains subject to a 4096-entry limit. The new API page
-path does not yet replace this UI or cover all Service/Event/Protocol
-classes. Source locations must be explicitly supplied by the static
+The API List screen uses live server-side cursor pagination for Object,
+Service, Property, Event and Protocol kinds. Other legacy resource views
+still call the eager catalog helper and remain outside the PR25 migration.
+Only explicitly registered Event descriptors are projected. Source locations must be explicitly supplied by the static
 build manifest; runtime JavaScript cannot reliably infer source lines.
-No CI/E2E result can be assumed without the exact commit SHA.
+CI/E2E status must be evaluated on the exact final commit SHA.
 
 ## Performance and security
 Target memory: O(registered summaries + one page of descriptor output).
@@ -37,7 +37,7 @@ Authorization runs before result counts and pagination. No
 permission elevation, system state mutation or secret exposure.
 
 ## Required follow-up
-Wire UI navigation to source-side filters, extend descriptors to all
-categories, add complete export with SHA-256, lifecycle and scoped
-permissions examples, source-linked static build checks, VTE endpoint,
-developer blind test, rollback and E2E under the current branch.
+Complete automatic source-linked static build checks, fully enumerated
+contracts, strict event lifecycle coverage, VTE developer tests and blind
+third-party acceptance. Ensure all five required CI workflows and
+cross-browser E2E pass on the final SHA before merge.
