@@ -2,6 +2,8 @@
  * OCDA API Descriptor v1: immutable metadata, not an authorization grant.
  * HubUnit still enforces all Request/Response permissions at runtime.
  */
+import { PluginRPCScopePolicy } from "./PluginRPCScopePolicy.js";
+
 const NAME = /^[A-Za-z][A-Za-z0-9]*(?:[._-][A-Za-z0-9]+)*$/;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const VISIBILITY = new Set(["Public", "Protected", "Private"]);
@@ -19,7 +21,9 @@ const FIELDS = new Set([
 ]);
 const SCHEMA_FIELDS = new Set([
   "type", "properties", "required", "items", "additionalProperties",
-  "default", "enum", "minLength", "maxLength", "minimum", "maximum"
+  "default", "const", "enum", "pattern",
+  "minLength", "maxLength", "minimum", "maximum",
+  "minItems", "maxItems"
 ]);
 const FORBIDDEN = new Set(["__proto__", "prototype", "constructor"]);
 const MAX_BYTES = 16384;
@@ -41,6 +45,11 @@ function schemaValid(schema, depth = 0) {
       keys.some(key => !SCHEMA_FIELDS.has(key))) return false;
   if (!SCHEMA_TYPE.has(schema.type)) return false;
   if (schema.default !== undefined && !plainTree(schema.default)) return false;
+  if (schema.const !== undefined && !plainTree(schema.const)) return false;
+  if (schema.pattern !== undefined &&
+      (schema.type !== "string" ||
+       typeof schema.pattern !== "string" ||
+       schema.pattern.length > 128)) return false;
   if (schema.enum !== undefined &&
       (!Array.isArray(schema.enum) || !schema.enum.length ||
        schema.enum.length > 32 || !plainTree(schema.enum))) return false;
@@ -53,6 +62,15 @@ function schemaValid(schema, depth = 0) {
   if (schema.minLength !== undefined &&
       schema.maxLength !== undefined &&
       schema.minLength > schema.maxLength) return false;
+  for (const key of ["minItems", "maxItems"]) {
+    if (schema[key] !== undefined &&
+        (schema.type !== "array" ||
+         !Number.isSafeInteger(schema[key]) || schema[key] < 0 ||
+         schema[key] > 1000000)) return false;
+  }
+  if (schema.minItems !== undefined &&
+      schema.maxItems !== undefined &&
+      schema.minItems > schema.maxItems) return false;
   for (const key of ["minimum", "maximum"]) {
     if (schema[key] !== undefined &&
         (!["number", "integer"].includes(schema.type) ||
@@ -186,11 +204,7 @@ export const APIDescriptorPolicy = Object.freeze({
       failures.push("permissions");
     }
     if (candidate.rpcScopes !== undefined &&
-        (!Array.isArray(candidate.rpcScopes) ||
-         candidate.rpcScopes.length > 64 ||
-         new Set(candidate.rpcScopes).size !== candidate.rpcScopes.length ||
-         candidate.rpcScopes.some(value =>
-           typeof value !== "string" || !NAME.test(value)))) {
+        !PluginRPCScopePolicy.inspect(candidate.rpcScopes).ok) {
       failures.push("rpcScopes");
     }
     // Typed, bounded documentation metadata. Descriptions never grant
