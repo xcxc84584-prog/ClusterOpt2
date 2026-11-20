@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SDK Echo Settings</title>
+  <style>
+    :root { color-scheme: dark; font: 14px system-ui; }
+    body { margin: 0; background: #111d2a; color: #e5edf6; }
+    main { max-width: 760px; margin: 3rem auto; padding: 1.5rem; }
+    nav { display: flex; gap: 10px; border-bottom: 1px solid #40566c; }
+    nav button { color: inherit; border: 0; background: transparent;
+      padding: 14px; cursor: pointer; }
+    nav button[aria-selected=true] { border-bottom: 2px solid #86c4fa; }
+    section { padding: 24px 0; }
+    section[hidden] { display: none; }
+    .card { border: 1px solid #40566c; border-radius: 10px;
+      padding: 20px; background: #182a3c; }
+    @media (max-width: 600px) { main { margin: 0; padding: 12px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>External SDK Echo</h1>
+    <nav role="tablist" aria-label="Plugin settings">
+      <button id="generalTab" type="button" role="tab"
+        aria-selected="true">General</button>
+      <button id="advancedTab" type="button" role="tab"
+        aria-selected="false">Advanced</button>
+    </nav>
+    <section id="generalPanel" role="tabpanel">
+      <div class="card">
+        <h2>General</h2>
+        <p>Independent, sandboxed UI plugin example.</p>
+        <button id="localAction" type="button">Local action</button>
+        <span id="localStatus" role="status"></span>
+      </div>
+    </section>
+    <section id="advancedPanel" role="tabpanel" hidden>
+      <div class="card"><h2>Advanced</h2>
+        <p>Host files and DOM are inaccessible from this frame.</p>
+      </div>
+    </section>
+  </main>
+  <script>
+    "use strict";
+    const tabs = ["general", "advanced"];
+    for (const item of tabs) {
+      document.getElementById(item + "Tab")
+        .addEventListener("click", () => {
+          for (const name of tabs) {
+            const active = name === item;
+            document.getElementById(name + "Panel").hidden = !active;
+            document.getElementById(name + "Tab")
+              .setAttribute("aria-selected", String(active));
+          }
+        });
+    }
+    document.getElementById("localAction")
+      .addEventListener("click", () => {
+        document.getElementById("localStatus").textContent = " Ready";
+      });
+  </script>
+</body>
+</html>
