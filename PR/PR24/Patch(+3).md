@@ -20,11 +20,16 @@ Date: 2026-11-20. Draft branch; not merged.
   integration, HubUnit ACL checks, OMU event chains and VTE.
 - Cancellation locally settles the Promise, but cannot forcibly
   abort already executing arbitrary plugin code without Worker death.
-- Queue deadline currently starts when dispatched; the queued
-  waiting time is not yet included in deadline accounting.
+- Deadline is scheduled upon enqueue, so queue waiting time counts.
+  Regression tests cover expiration without dispatch.
 - Request queue policy is FIFO; Serial/Per-Slice and cross-plugin
   fairness are future stages. Memory and CPU limits are not guaranteed.
 
 ## Gate
 Node and browser CI must be checked for this exact HEAD before
 claiming any test PASS. Do not merge PR24 to main.
+
+## Patch(+3) follow-up
+- Corrected capacity accounting: count each pending task exactly once.
+- Added tests for queue-time expiry and full-capacity saturation.
+- These changes remain transport-neutral until runtime integration.
