@@ -56,8 +56,13 @@ test("PR24.76 upgrade cannot tear down pending reverse Host work",
       let markStarted;
       const started = new Promise(resolve => { markStarted = resolve; });
       const target = {
-        id: "PR24.PendingHost",
+        id: "PR24.PendingHost", strictOCDA: true,
         authorization: { default: "Public" },
+        ocda: {
+          EHU: [], Log: [], Request: ["linger"], Response: [],
+          UserAPI: ["linger"], AgentAPI: [], Property: [],
+          Program: "PR24UpgradeTestHost"
+        },
         receive: () => new Promise(resolve => {
           finishHost = resolve;
           markStarted();
