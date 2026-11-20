@@ -5,6 +5,10 @@ import { PluginHostRequestGateway } from
   "./PluginHostRequestGateway.js";
 import { PluginHostRequestTransport } from
   "./PluginHostRequestTransport.js";
+import { PluginBidirectionalRPCController } from
+  "./PluginBidirectionalRPCController.js";
+import { PluginBidirectionalEnvelopePolicy as Envelope } from
+  "../property/PluginBidirectionalEnvelopePolicy.js";
 
 /**
  * PR13.3/13.5/13.7: opaque iframe launches a dedicated Worker.
@@ -81,6 +85,7 @@ export class PluginSandboxBridge {
     this.sequence = 0;
     this.closed = false;
     this.hostTransport = null;
+    this.hostController = null;
   }
 
   /**
@@ -97,7 +102,10 @@ export class PluginSandboxBridge {
       core, undefined, approvedRpcScopes);
     const transport = new PluginHostRequestTransport(gateway);
     const result = transport.attach(this.port, this.manifest.providerId);
-    if (result.ok) this.hostTransport = transport;
+    if (result.ok) {
+      this.hostTransport = transport;
+      this.hostController = new PluginBidirectionalRPCController();
+    }
     return result;
   }
 
@@ -132,7 +140,8 @@ export class PluginSandboxBridge {
    * work may ignore AbortSignal, so count it until its promise settles.
    */
   pendingHostRequestCount() {
-    let count = this.pending.size;
+    let count = this.pending.size +
+      (this.hostController?.pendingCount ?? 0);
     for (const entry of this.hostTransport?.connections.values() ?? []) {
       count += entry.inflight;
     }
@@ -161,6 +170,9 @@ export class PluginSandboxBridge {
    */
   suspendHostRequests() {
     if (!this.hostTransport || !this.port) return false;
+    const session = this.hostTransport.gateway.sessions
+      .sessionForPort(this.port);
+    if (session) this.hostController?.revokeSession(session);
     return this.hostTransport.suspend(this.port);
   }
 
@@ -185,6 +197,8 @@ export class PluginSandboxBridge {
       pending.resolve(reject(status, reason));
     }
     this.pending.clear();
+    this.hostController?.close();
+    this.hostController = null;
     this.hostTransport?.detachAll();
     this.hostTransport = null;
     this.port?.close();
@@ -245,6 +259,10 @@ export class PluginSandboxBridge {
           finish(reject(502, "Plugin source rejected by sandbox"));
         } else if (msg?.kind === "response") {
           this.receive(msg);
+        } else if (msg?.protocol === Envelope.protocol &&
+            msg.direction === "host-to-plugin" &&
+            msg.type === "response") {
+          this.receiveBidirectional(msg);
         }
       };
       frame.addEventListener("load", () => {
@@ -270,6 +288,60 @@ export class PluginSandboxBridge {
     this.pending.delete(item.id);
     if (!checked.ok) this.audit(checked.status, "ResponseRejected");
     item.resolve(checked);
+  }
+
+  /**
+   * Host→Plugin requests use the same Session and cluster.rpc/1
+   * protocol as the reverse direction. Legacy invoke() is preserved
+   * until cross-version migration tests prove full parity.
+   */
+  async invokeBidirectional(service, action, payload, timeoutMs = 4000) {
+    if (this.closed || !this.port || !this.hostController ||
+        !this.hostTransport) {
+      return reject(503, "Plugin RPC Session unavailable");
+    }
+    const verified = RPC.request({
+      kind: "invoke", id: ++this.sequence, service, action, payload
+    }, this.manifest);
+    if (!verified.ok) return verified;
+    const session = this.hostTransport.gateway.sessions
+      .sessionForPort(this.port);
+    if (!session || session.state !== "ready") {
+      return reject(425, "Plugin RPC handshake incomplete");
+    }
+    const result = await this.hostController.request(
+      this.port, session, this.manifest.objectId, action,
+      payload, { deadlineMs: Math.min(30000,
+        Math.max(1, Math.floor(timeoutMs))) });
+    return result.ok ? { ok: true, status: result.status,
+      value: result.data } : { ok: false, status: result.status,
+      error: result.errorCode };
+  }
+
+  /**
+   * Never adopt Worker-supplied eventId as authoritative. The Host
+   * assigns a fresh OMU event before settling the Session controller.
+   */
+  receiveBidirectional(packet) {
+    const session = this.hostTransport?.gateway.sessions
+      .sessionForPort(this.port);
+    const parsed = Envelope.inspect(packet);
+    if (!session || session.state !== "ready" ||
+        !parsed.ok || !this.hostController) {
+      this.audit(403, "HostResponseRejected");
+      return;
+    }
+    const audit = this.omu.record(
+      packet.ok ? "Log" : "EHU",
+      this.manifest.objectId, "RPC.HostToPlugin.Response",
+      packet.status, "PluginSandboxBridge", {
+        requestId: packet.requestId
+      });
+    const checked = this.hostController.receive(
+      this.port, session, {
+        ...parsed.value, eventId: audit.eventId
+      });
+    if (!checked.ok) this.audit(checked.status, "HostResponseRejected");
   }
 
   async invoke(service, action, payload, timeoutMs = 4000) {
