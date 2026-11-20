@@ -30,6 +30,7 @@ without editing ClusterOpt2 first-party source files.
 | 21–30 | Bidirectional RPC, concurrency, deadlines, cancellation |
 | 31–40 | HubUnit/URU/OMU/EDPMU route and event correlation |
 | 41–50 | Runtime capability and object/action/property ACL |
+| Patch(+9) | Strict per-route `rpcScopes`, explicit install/upgrade approval and exact Property.Read dispatch; runtime per-scope revoke remains pending |
 | 51–60 | Standalone SDK, typed exports, pure external integration |
 | 61–70 | Isolated plugin UI, UISP, window and tab E2E |
 | 71–80 | Multi-file package install/upgrade/unload rollback |
@@ -70,3 +71,21 @@ VS Code extension host and contribution points, message passing and
 webviews; GitHub Actions permission scoping and cancellation; browser
 MessageChannel and sandbox isolation; Node test runner and Playwright.
 Reference review is an engineering task, not an assertion of parity.
+
+## PR24 Patch(+9) — reverse RPC scope contract
+- Optional `rpcScopes` is a data-only plugin package manifest field,
+  independent from the URU Provider declaration and its permissions.
+- A scope contains exact `target` and `action`, and, only for
+  `HubUnit / Property.Read`, a mandatory exact `property` name.
+- No wildcards, prefix matching, implied descendants or implicit grants.
+  A package without approved scopes has **zero** reverse RPC access.
+- The host must show requested scopes to the user and pass the exact
+  approved set to install/upgrade; unapproved declarations fail closed
+  before code bootstraps. Existing direct Host->Worker invoke stays.
+- At dispatch, the Session must be ready, URU Provider enabled, all
+  existing PluginPermission grants live, and exact RPC scope approved.
+  HubUnit still checks UserAPI visibility, Object ACL and Property ACL;
+  no authority is moved into PluginRPCScopePolicy.
+- Route grants are host-only and tied to the active Bridge/Session.
+  Fine-grained mid-session scope revocation, runtime VTE and a formally
+  versioned public SDK remain later milestones.
