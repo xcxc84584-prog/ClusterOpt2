@@ -109,6 +109,12 @@ export class PluginHostInstallUnit {
       }
       const mounted = this.uiHost.mount(snapshot, provider);
       if (!mounted.ok) throw Error("Plugin UI mount failed");
+      // Session activation happens only after URU registration,
+      // permission approval and UI mount have succeeded.
+      if (typeof bridge.enableHostRequests === "function") {
+        const linked = bridge.enableHostRequests(this.core);
+        if (!linked.ok) throw Error("Plugin RPC session failed");
+      }
       this.handles.set(provider.providerId, bridge);
       this.record(201, "Activated", provider.providerId);
       return { ok: true, status: 201, providerId: provider.providerId };
