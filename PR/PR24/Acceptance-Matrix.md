@@ -179,3 +179,19 @@ starting evidence, not a completeness certification.
 These entries are **candidate evidence** until exact HEAD CI/VTE,
 negative security review and per-subPR release signoff. They
 must not be marked 100% PASS merely because these tests exist.
+
+
+## Patch(+15) evidence candidate: PR24.85
+
+- Source: `Implementation/property/PluginRestartCircuitPolicy.js`,
+  `Implementation/LinkCore/PluginHostInstallUnit.js`.
+- Unit/VTE: `Implementation/tests/pr24-restart-circuit-vte.test.js`.
+- Covers three escalating backoffs, repeat install 429,
+  uninstall/reinstall non-bypass, per-Provider isolation,
+  and Host-confirmed reset with denied unconsented reset.
+- Real Worker crash/port teardown remains covered by
+  `Implementation/e2e/pr24-upgrade-safety.spec.js`.
+- Not fully signed off: browser reload persistent quarantine,
+  multi-tab fault synchronization and large scale restart
+  resource benchmarks are still open; this is **partial**
+  evidence, not a release PASS.
