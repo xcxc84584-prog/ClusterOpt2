@@ -1,4 +1,6 @@
 import { PluginSessionUnit } from "./PluginSessionUnit.js";
+import { PluginRPCScopePolicy as Scopes } from
+  "../property/PluginRPCScopePolicy.js";
 import { PluginBidirectionalEnvelopePolicy as Envelope } from
   "../property/PluginBidirectionalEnvelopePolicy.js";
 
@@ -8,9 +10,28 @@ import { PluginBidirectionalEnvelopePolicy as Envelope } from
  * URU owns provider identity, HubUnit owns request permissions.
  */
 export class PluginHostRequestGateway {
-  constructor(core, sessions = new PluginSessionUnit()) {
+  constructor(core, sessions = new PluginSessionUnit(),
+    approvedRpcScopes = []) {
+    const checked = Scopes.inspect(approvedRpcScopes);
+    if (!checked.ok) {
+      throw new TypeError("Invalid Host-approved RPC scopes");
+    }
     this.core = core;
     this.sessions = sessions;
+    // Never derive permission from a Worker request or a Manifest alone.
+    this.approvedRpcScopes = checked.value;
+  }
+
+  #denied(session, value, action = "RPC.ScopeRejected") {
+    const audit = this.core.omu.record("EHU", session.objectId,
+      action, 403, value.target, { requestId: value.requestId });
+    const response = Envelope.inspect({
+      protocol: Envelope.protocol, direction: "plugin-to-host",
+      type: "response", requestId: value.requestId,
+      eventId: audit.eventId, status: 403, ok: false,
+      error: { code: "REQUEST_DENIED", message: "Access denied" }
+    });
+    return { ok: true, status: 200, value: response.value };
   }
 
   create(port, providerId) {
@@ -44,17 +65,11 @@ export class PluginHostRequestGateway {
     const grants = active && provider.permissions.every(permission =>
       this.core.checkPluginPermission(session.providerId, permission));
     if (!active || !grants) {
-      const audit = this.core.omu.record("EHU", session.objectId,
-        "RPC.PermissionRejected", 403, value.target,
-        { requestId: value.requestId });
-      const denied = Envelope.inspect({
-        protocol: Envelope.protocol,
-        direction: "plugin-to-host",
-        type: "response", requestId: value.requestId,
-        eventId: audit.eventId, status: 403, ok: false,
-        error: { code: "REQUEST_DENIED", message: "Access denied" }
-      });
-      return { ok: true, status: 200, value: denied.value };
+      return this.#denied(session, value, "RPC.PermissionRejected");
+    }
+    if (!Scopes.allows(this.approvedRpcScopes,
+      value.target, value.action, value.payload)) {
+      return this.#denied(session, value);
     }
 
     const event = this.core.omu.record("Log", session.objectId,
@@ -62,9 +77,13 @@ export class PluginHostRequestGateway {
       202, value.target,
       { requestId: value.requestId,
         parentEventId: value.parentEventId ?? null });
-    const result = await this.core.hub.request(
-      session.objectId, value.target, value.action, value.payload,
-      { origin: "user", signal: options.signal });
+    // Property.Read stays within HubUnit's EDPMU visibility gate.
+    // It cannot be turned into an arbitrary Host method invocation.
+    const result = value.target === "HubUnit" ?
+      this.core.hub.readProperty(session.objectId, value.payload.name) :
+      await this.core.hub.request(
+        session.objectId, value.target, value.action, value.payload,
+        { origin: "user", signal: options.signal });
     // A disabled or replaced Session cannot publish a stale Response.
     const latest = this.core.uru.getProvider(session.providerId);
     const stillAllowed = latest &&
@@ -73,7 +92,9 @@ export class PluginHostRequestGateway {
       latest.permissions.every(permission =>
         this.core.checkPluginPermission(session.providerId, permission));
     if (options.signal?.aborted || !session.owns(port) ||
-        session.state !== "ready" || !stillAllowed) {
+        session.state !== "ready" || !stillAllowed ||
+        !Scopes.allows(this.approvedRpcScopes,
+          value.target, value.action, value.payload)) {
       this.core.omu.record("EHU", session.objectId,
         "RPC.DiscardedAfterRevoke", 499, value.target,
         { requestId: value.requestId });
