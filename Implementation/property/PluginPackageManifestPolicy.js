@@ -1,4 +1,5 @@
 import { ProviderManifestPolicy } from "./ProviderManifestPolicy.js";
+import { PluginRPCScopePolicy } from "./PluginRPCScopePolicy.js";
 
 /**
  * PR13.1: Parse untrusted package metadata without executing plugin code.
@@ -10,7 +11,7 @@ const ENTRY = /^[A-Za-z0-9_./-]+\.m?js$/;
 const UI_ENTRY = /^[A-Za-z0-9_./-]+\.html?$/;
 const FIELDS = new Set([
   "packageVersion", "name", "entry", "uiEntry",
-  "provider", "description"
+  "provider", "description", "rpcScopes"
 ]);
 const encoder = new TextEncoder();
 
@@ -78,12 +79,15 @@ export const PluginPackageManifestPolicy = Object.freeze({
     if (provider.value.execution.isolation !== "worker") {
       return reject("External plugins must declare worker isolation");
     }
+    const scopes = PluginRPCScopePolicy.inspect(value.rpcScopes ?? []);
+    if (!scopes.ok) return reject("Invalid reverse RPC scopes");
     const result = Object.create(null);
     result.packageVersion = 1;
     result.name = value.name;
     result.entry = value.entry;
     if (value.uiEntry !== undefined) result.uiEntry = value.uiEntry;
     result.provider = provider.value;
+    result.rpcScopes = scopes.value;
     if (value.description !== undefined) {
       result.description = value.description;
     }
