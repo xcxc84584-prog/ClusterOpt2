@@ -1,7 +1,6 @@
 /**
- * PR24 transport adapter for real MessagePort communication.
- * The caller must supply a host-owned Provider ID after URU registration.
- * Every received RPC is authenticated and routed through the gateway.
+ * Host-side MessagePort adapter. Session identity never comes from Worker.
+ * Suspension keeps the Worker port but destroys all previous authority.
  */
 export class PluginHostRequestTransport {
   constructor(gateway, maxInflight = 16) {
@@ -24,7 +23,7 @@ export class PluginHostRequestTransport {
     if (!started.ok) return started;
     const entry = {
       sessionId: started.session.sessionId, inflight: 0,
-      active: true, listener: null
+      active: true, listener: null, controllers: new Set()
     };
     entry.listener = event => {
       void this.#handle(port, entry, event.data);
@@ -32,8 +31,7 @@ export class PluginHostRequestTransport {
     this.connections.set(port, entry);
     port.addEventListener("message", entry.listener);
     port.start?.();
-    return { ok: true, status: 201,
-      sessionId: entry.sessionId };
+    return { ok: true, status: 201, sessionId: entry.sessionId };
   }
 
   async #handle(port, entry, packet) {
@@ -43,35 +41,64 @@ export class PluginHostRequestTransport {
       if (!ready.ok) this.detach(port);
       return;
     }
-    // Ignore the separate legacy Host -> Plugin invoke protocol.
+    // Never take over the legacy invoke/response message channel.
     if (packet?.protocol !== "cluster.rpc/1") return;
     if (entry.inflight >= this.maxInflight) {
       this.gateway.core.omu.record("EHU", "PluginTransport",
         "RPC.Overloaded", 429);
       return;
     }
+    const controller = new AbortController();
+    entry.controllers.add(controller);
     entry.inflight++;
     try {
-      const result = await this.gateway.receive(port, packet);
-      if (entry.active && result.ok && result.value) {
+      const result = await this.gateway.receive(port, packet,
+        { signal: controller.signal });
+      if (entry.active && !controller.signal.aborted &&
+          result.ok && result.value) {
         port.postMessage(result.value);
       }
     } catch {
       this.gateway.core.omu.record("EHU", "PluginTransport",
         "RPC.Failed", 502);
     } finally {
+      entry.controllers.delete(controller);
       entry.inflight--;
     }
   }
 
-  detach(port) {
+  #remove(port, closePort, notify) {
     const entry = this.connections.get(port);
     if (!entry) return false;
+    // Disable new messages before cancellation of pending calls.
     entry.active = false;
     port.removeEventListener("message", entry.listener);
     this.connections.delete(port);
-    this.gateway.revoke(entry.sessionId);
+    if (notify) {
+      try {
+        port.postMessage({
+          kind: "cluster-session-suspended",
+          protocol: "cluster.rpc/1"
+        });
+      } catch {
+        // Failure to notify does not preserve any host-side authority.
+      }
+    }
+    for (const controller of entry.controllers) controller.abort();
+    this.gateway.revoke(entry.sessionId, { closePort });
     return true;
+  }
+
+  suspend(port) {
+    return this.#remove(port, false, true);
+  }
+
+  resume(port, providerId) {
+    return this.attach(port, providerId);
+  }
+
+  detach(port) {
+    return this.#remove(port, true, false);
   }
 
   detachAll() {
