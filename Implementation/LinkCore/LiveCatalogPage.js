@@ -48,6 +48,7 @@ function summary(kind, id, owner, descriptor) {
   return Object.freeze({
     kind, id, owner,
     version: descriptor.version ?? null,
+    audience: descriptor.audience ?? "HostInternal",
     visibility: descriptor.visibility,
     status: descriptor.deprecated ? "Deprecated" :
       (descriptor.unavailable ? "Unavailable" : "Available"),
@@ -124,6 +125,7 @@ export class LiveCatalogPage {
             id: action.service, version: action.version,
             action: action.action, visibility: "Public",
             permissions: provider.permissions,
+            audience: "PluginPublic",
             inputSchema: action.inputSchema,
             outputSchema: action.outputSchema,
             unavailable
