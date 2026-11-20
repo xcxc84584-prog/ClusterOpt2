@@ -11,6 +11,7 @@ import { PluginBidirectionalEnvelopePolicy as Envelope } from
  */
 export class PluginHostRequestGateway {
   #activeRpcScopes;
+  #reviewedRpcScopes;
 
   constructor(core, sessions = new PluginSessionUnit(),
     approvedRpcScopes = []) {
@@ -22,11 +23,43 @@ export class PluginHostRequestGateway {
     this.sessions = sessions;
     // Never derive permission from a Worker request or a Manifest alone.
     this.#activeRpcScopes = checked.value;
+    this.#reviewedRpcScopes = checked.value;
   }
 
   listRpcScopes() {
     // The result is a frozen snapshot. Only the Host can revoke a scope.
     return this.#activeRpcScopes;
+  }
+
+  /**
+   * Host-only reapproval. This is allowed only for a scope that was
+   * explicitly reviewed for this Bridge at installation. The caller
+   * must suspend the Session and commit the persistent deny removal
+   * before any Worker traffic resumes.
+   */
+  grantReviewedRpcScope(scope) {
+    const checked = Scopes.inspect([scope]);
+    if (!checked.ok) return { ok: false, status: 400 };
+    const candidate = checked.value[0];
+    const exact = entry =>
+      entry.target === candidate.target &&
+      entry.action === candidate.action &&
+      entry.property === candidate.property;
+    if (!this.#reviewedRpcScopes.some(exact)) {
+      return { ok: false, status: 403 };
+    }
+    if (this.#activeRpcScopes.some(exact)) {
+      return { ok: false, status: 409 };
+    }
+    this.#activeRpcScopes = Object.freeze([
+      ...this.#activeRpcScopes, candidate
+    ]);
+    this.core.omu.record("Log", "PluginGateway",
+      "RPC.ScopeReapproved", 200, candidate.target, {
+        action: candidate.action,
+        property: candidate.property ?? null
+      });
+    return { ok: true, status: 200 };
   }
 
   revokeRpcScope(scope) {
