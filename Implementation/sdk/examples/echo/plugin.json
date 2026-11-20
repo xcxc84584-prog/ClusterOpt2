@@ -1,0 +1,30 @@
+{
+  "packageVersion": 1,
+  "name": "SDK Echo (External)",
+  "entry": "worker.js",
+  "description": "Independent reverse-RPC provider fixture",
+  "provider": {
+    "manifestVersion": 1,
+    "providerId": "example.sdk.echo",
+    "objectId": "SDK.ExampleEcho",
+    "provides": [
+      {
+        "service": "example.sdk.echo",
+        "action": "echo",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        }
+      }
+    ],
+    "requires": [],
+    "permissions": [],
+    "execution": {
+      "isolation": "worker",
+      "concurrency": "serial"
+    }
+  }
+}
