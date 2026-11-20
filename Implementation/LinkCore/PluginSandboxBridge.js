@@ -27,11 +27,9 @@ let runner = null;
 window.addEventListener("message", event => {
   if (launched || event.source !== parent ||
       event.data?.kind !== "cluster-plugin-bootstrap" ||
-      event.ports.length !== 2) return;
+      event.ports.length !== 1) return;
   launched = true;
   const channel = event.ports[0];
-  const health = event.ports[1];
-  health.start();
   try {
     const url = URL.createObjectURL(new Blob([WORKER_SCRIPT],
       {type:"text/javascript"}));
@@ -40,19 +38,20 @@ window.addEventListener("message", event => {
     } finally {
       URL.revokeObjectURL(url);
     }
-    // The Worker owns the transferred RPC Port directly. The iframe
-    // owns only a separate, non-RPC health Port for crash notification.
+    const inner = new MessageChannel();
+    channel.onmessage = ({data}) => inner.port1.postMessage(data);
+    inner.port1.onmessage = ({data}) => channel.postMessage(data);
+    channel.start();
+    inner.port1.start();
     runner.onerror = () => {
-      try { health.postMessage({kind:"error",status:502}); }
-      catch { /* Worker termination remains authoritative. */ }
+      channel.postMessage({kind:"error",status:502});
       runner.terminate();
     };
     runner.postMessage({
       kind:"start",source:event.data.source,actions:event.data.actions
-    },[channel]);
+    },[inner.port2]);
   } catch {
-    try { health.postMessage({kind:"error",status:502}); }
-    catch { /* Bootstrap will also be bounded by the Host timer. */ }
+    channel.postMessage({kind:"error",status:502});
   }
 });
 window.addEventListener("message", event => {
@@ -81,7 +80,6 @@ export class PluginSandboxBridge {
     this.omu = omu;
     this.frame = null;
     this.port = null;
-    this.healthPort = null;
     this.manifest = null;
     this.pending = new Map();
     this.sequence = 0;
@@ -205,8 +203,6 @@ export class PluginSandboxBridge {
     this.hostController = null;
     this.hostTransport?.detachAll();
     this.hostTransport = null;
-    this.healthPort?.close();
-    this.healthPort = null;
     this.port?.close();
     this.port = null;
     // The isolated frame controls the worker, not plugin code.
@@ -244,9 +240,7 @@ export class PluginSandboxBridge {
       CSP + "\"><script>" + BOOTSTRAP + "<\/script>";
     this.frame = frame;
     const channel = new MessageChannel();
-    const health = new MessageChannel();
     this.port = channel.port1;
-    this.healthPort = health.port1;
     const timeout = Math.min(10000, Math.max(100,
       Number(options.timeoutMs) || 4000));
     const ready = new Promise(resolve => {
@@ -261,12 +255,6 @@ export class PluginSandboxBridge {
         this.terminate(504, "BootstrapTimeout");
         finish(reject(504, "Plugin sandbox bootstrap timed out"));
       }, timeout);
-      this.healthPort.onmessage = event => {
-        if (event.data?.kind !== "error") return;
-        this.terminate(502, "WorkerFault");
-        finish(reject(502, "Isolated Worker crashed"));
-      };
-      this.healthPort.start();
       this.port.onmessage = event => {
         const msg = event.data;
         if (msg?.kind === "ready") {
@@ -285,15 +273,10 @@ export class PluginSandboxBridge {
       };
       frame.addEventListener("load", () => {
         if (this.closed) return;
-        try {
-          frame.contentWindow?.postMessage({
-            kind: "cluster-plugin-bootstrap", source,
-            actions: manifest.provides.map(item => item.action)
-          }, "*", [channel.port2, health.port2]);
-        } catch {
-          this.terminate(502, "BootstrapPortTransferFailed");
-          finish(reject(502, "Plugin bootstrap port transfer failed"));
-        }
+        frame.contentWindow?.postMessage({
+          kind: "cluster-plugin-bootstrap", source,
+          actions: manifest.provides.map(item => item.action)
+        }, "*", [channel.port2]);
       }, { once: true });
     });
     (this.doc.body ?? this.doc.documentElement).append(frame);
