@@ -87,3 +87,16 @@ test("PR24.20 attack through non-owned port cannot use live session", () => {
   assert.equal(h.unit.ready(foreign, h.ready).status, 403);
   assert.equal(h.unit.activeCount, 1);
 });
+
+test("PR24.15 malformed handshake with getter fails without execution", () => {
+  const h = harness();
+  let touched = false;
+  const forged = {};
+  Object.defineProperty(forged, "kind", {
+    enumerable: true,
+    get() { touched = true; throw Error("getter must not run"); }
+  });
+  assert.equal(h.unit.ready(h.port, forged).status, 403);
+  assert.equal(touched, false);
+  assert.equal(h.create.session.state, "handshake");
+});
