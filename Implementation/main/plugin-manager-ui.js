@@ -296,6 +296,31 @@ export function mountPluginManagerUI(core,doc,options={}) {
         },"pm-mini",PluginPermissionPolicy.level(permission)==="core"));
       body.append(row);
     }
+    const rpcScopes=core.pluginHostInstaller?.listRpcScopes?.(
+      p.providerId)??[];
+    if(rpcScopes.length) {
+      body.append(dom(doc,"p","pm-muted",
+        t("已核准 RPC 路由：","Approved RPC routes: ")+
+        rpcScopes.length));
+    }
+    for(const scope of rpcScopes) {
+      const routeName=scope.target+" / "+scope.action+
+        (scope.property===undefined?"":" ["+scope.property+"]");
+      const row=dom(doc,"div","pm-permission-row");
+      row.append(dom(doc,"span","pm-permission-label",routeName),
+        btn(doc,t("撤銷路由","Revoke route"),()=>{
+          if(!doc.defaultView.confirm(
+            t("撤銷 RPC 路由？","Revoke RPC route?")+
+            "\\n"+routeName)) return;
+          const result=core.pluginHostInstaller.revokeRpcScope(
+            p.providerId,scope);
+          if(result.ok)render();
+          else doc.defaultView.alert(
+            t("撤銷失敗（狀態 ","Revoke failed (status ")+
+            result.status+").");
+        },"pm-mini"));
+      body.append(row);
+    }
     section.append(body);return section;
   }
   function logCard(p) {
