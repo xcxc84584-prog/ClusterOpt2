@@ -127,3 +127,33 @@ test("PR24.35 Hub failures become correlated EHU response", async () => {
   assert.ok(h.core.omu.snapshot().logs.some(x =>
     x.kind === "EHU" && x.details.requestId === "req-1"));
 });
+
+test("PR24.7 revoked Session cannot publish late Host response", async () => {
+  const h = harness();
+  let finish;
+  h.core.hub.request = () => new Promise(resolve => {
+    finish = resolve;
+  });
+  const pending = h.gateway.receive(h.port, h.request());
+  h.gateway.revoke(h.session.session.sessionId);
+  finish({ ok: true, status: 200, value: { secret: "stale" } });
+  const result = await pending;
+  assert.equal(result.status, 499);
+  assert.equal(result.value, undefined);
+  assert.ok(h.core.omu.snapshot().logs.some(event =>
+    event.action === "RPC.DiscardedAfterRevoke"));
+});
+
+test("PR24.7 grant revoked during dispatch discards late success", async () => {
+  const h = harness();
+  let finish;
+  h.core.hub.request = () => new Promise(resolve => {
+    finish = resolve;
+  });
+  const pending = h.gateway.receive(h.port, h.request());
+  h.revokeGrant();
+  finish({ ok: true, status: 200, value: { secret: "stale" } });
+  const result = await pending;
+  assert.equal(result.status, 499);
+  assert.equal(result.value, undefined);
+});
