@@ -150,7 +150,7 @@ export function renderContractDetail(doc, host, entry, t, onBack,
     const statement="await Cluster."+method+"("+
       JSON.stringify(target)+", "+
       JSON.stringify(descriptor.action??"unknown")+", {});";
-    usage.append(node(doc,"pre","pm-contract-json",statement));
+    usage.append(node(doc,"pre","pm-contract-example",statement));
     usage.append(node(doc,"p","pm-muted",t(
       "需先宣告並取得對應 rpcScopes 與 permissions 授權。",
       "Declare and obtain approval for exact rpcScopes and permissions.")));
@@ -216,7 +216,7 @@ export function renderContractDetail(doc, host, entry, t, onBack,
     const examples=section(doc,t("調用範例","Request / Response examples"));
     for (const item of descriptor.examples) {
       examples.append(node(doc,"h4","",item.title));
-      examples.append(node(doc,"pre","pm-contract-json",
+      examples.append(node(doc,"pre","pm-contract-example",
         JSON.stringify({request:item.request,response:item.response},null,2)));
     }
     host.append(examples);
