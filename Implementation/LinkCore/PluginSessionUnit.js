@@ -8,6 +8,7 @@ import { PluginSession } from "../object/PluginSession.js";
 export class PluginSessionUnit {
   #ports = new WeakMap();
   #sessions = new Map();
+  #livePorts = new Map();
 
   constructor(randomUUID = () => crypto.randomUUID()) {
     this.randomUUID = randomUUID;
@@ -31,6 +32,7 @@ export class PluginSessionUnit {
       return { ok: false, status: 400 };
     }
     this.#ports.set(port, session);
+    this.#livePorts.set(sessionId, port);
     this.#sessions.set(sessionId, session);
     return { ok: true, status: 201, session };
   }
@@ -49,12 +51,25 @@ export class PluginSessionUnit {
       { ok: false, status: 403, errorCode: "UNTRUSTED_PORT" };
   }
 
-  revoke(sessionId) {
+  revoke(sessionId, options = {}) {
     const session = this.#sessions.get(sessionId);
     if (!session) return { ok: false, status: 404 };
-    session.revoke();
+    session.revoke(options);
     this.#sessions.delete(sessionId);
+    // The stale port must not retain authority across a new handshake.
+    for (const port of this.#sessionsPorts(session)) {
+      this.#ports.delete(port);
+    }
     return { ok: true, status: 200 };
+  }
+
+  *#sessionsPorts(session) {
+    // Reverse lookup only for host-owned active Session handles.
+    const port = this.#livePorts.get(session.sessionId);
+    if (port) {
+      this.#livePorts.delete(session.sessionId);
+      yield port;
+    }
   }
 
   revokeProvider(providerId) {
