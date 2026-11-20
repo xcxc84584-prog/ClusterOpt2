@@ -247,6 +247,17 @@ test("PR24.22 production Host invokes Worker through Session Controller",
       if (!install.ok) return { install };
       const bridge = host.handles.get("example.sdk.echo");
       const emitted = [];
+      const inbound = [];
+      bridge.port.addEventListener("message", event => {
+        if (event.data?.direction === "host-to-plugin") {
+          inbound.push({
+            requestId: event.data.requestId,
+            type: event.data.type,
+            status: event.data.status,
+            protocol: event.data.protocol
+          });
+        }
+      });
       const send = bridge.port.postMessage.bind(bridge.port);
       bridge.port.postMessage = (...args) => {
         if (args[0]?.direction === "host-to-plugin") {
@@ -283,7 +294,7 @@ test("PR24.22 production Host invokes Worker through Session Controller",
           ready, direct, secondDirect, routed,
           history: routed.value?.history,
           workerSends: routed.value?.sends,
-          emitted, historyStatus: history.status,
+          emitted, inbound, historyStatus: history.status,
           responseEvents: events.length,
           lastEvent: events.at(-1)?.eventId,
           controllerPending: bridge.hostController.pendingCount,
