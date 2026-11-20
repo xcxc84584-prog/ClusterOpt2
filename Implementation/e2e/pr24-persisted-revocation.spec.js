@@ -173,3 +173,66 @@ test("PR24.47 explicit regrant rekeys Worker and removes durable denial",
     });
     expect(result.persisted).toEqual([]);
   });
+
+test("PR24.48 same-origin tab receives durable deny, never a grant",
+  async ({ context }) => {
+    const a = await context.newPage();
+    const b = await context.newPage();
+    const data = fixture();
+    try {
+      await Promise.all([a.goto("/"), b.goto("/")]);
+      const install = page => page.evaluate(async ({
+        snapshot, rpcScopes }) => {
+        const { linkCore } = await import(
+          "/Implementation/LinkCore/LinkCore.js");
+        return linkCore.pluginHostInstaller.install(snapshot, {
+          consented: true, approvedRpcScopes: rpcScopes
+        });
+      }, data);
+      const [first, second] = await Promise.all([
+        install(a), install(b)
+      ]);
+      expect(first.status).toBe(201);
+      expect(second.status).toBe(201);
+      const remote = await b.evaluate(async providerId => {
+        const { linkCore } = await import(
+          "/Implementation/LinkCore/LinkCore.js");
+        return linkCore.pluginHostInstaller.listRpcScopes(
+          providerId).length;
+      }, data.provider.providerId);
+      expect(remote).toBe(2);
+      const revoke = await a.evaluate(async ({
+        provider, rpcScopes }) => {
+        const { linkCore } = await import(
+          "/Implementation/LinkCore/LinkCore.js");
+        return linkCore.pluginHostInstaller.revokeRpcScopePersisted(
+          provider.providerId, rpcScopes[0]);
+      }, data);
+      expect(revoke.status).toBe(200);
+      await b.waitForFunction(async providerId => {
+        const { linkCore } = await import(
+          "/Implementation/LinkCore/LinkCore.js");
+        return linkCore.pluginHostInstaller.listRpcScopes(
+          providerId).length === 1;
+      }, data.provider.providerId, { timeout: 4000 });
+      const answer = await b.evaluate(async provider => {
+        const { linkCore } = await import(
+          "/Implementation/LinkCore/LinkCore.js");
+        return linkCore.request("ui", provider.objectId, "probe",
+          {}, { origin: "user" });
+      }, data.provider);
+      expect(answer.status).toBe(200);
+      expect(answer.value).toEqual({
+        denied: true, language: "zh-Hant"
+      });
+    } finally {
+      await Promise.all([a, b].map(async page => {
+        await page.evaluate(async providerId => {
+          const { linkCore } = await import(
+            "/Implementation/LinkCore/LinkCore.js");
+          linkCore.pluginHostInstaller.uninstall(providerId);
+        }, data.provider.providerId).catch(() => {});
+        await page.close();
+      }));
+    }
+  });
