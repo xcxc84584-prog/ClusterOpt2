@@ -27,7 +27,7 @@ export class PluginHostRequestGateway {
     return this.sessions.ready(port, packet);
   }
 
-  async receive(port, packet) {
+  async receive(port, packet, options = {}) {
     const parsed = this.sessions.inspect(port, packet);
     if (!parsed.ok) {
       this.core.omu.record("EHU", "PluginGateway",
@@ -64,7 +64,15 @@ export class PluginHostRequestGateway {
         parentEventId: value.parentEventId ?? null });
     const result = await this.core.hub.request(
       session.objectId, value.target, value.action, value.payload,
-      { origin: "user" });
+      { origin: "user", signal: options.signal });
+    // A disabled or replaced Session cannot publish a stale Response.
+    if (options.signal?.aborted || !session.owns(port) ||
+        session.state !== "ready") {
+      this.core.omu.record("EHU", session.objectId,
+        "RPC.DiscardedAfterRevoke", 499, value.target,
+        { requestId: value.requestId });
+      return { ok: false, status: 499, errorCode: "SESSION_REVOKED" };
+    }
     const status = Number.isInteger(result.status) ?
       result.status : 500;
     const details = {
@@ -99,8 +107,8 @@ export class PluginHostRequestGateway {
     return { ok: true, status: 200, value: checked.value };
   }
 
-  revoke(sessionId) {
-    return this.sessions.revoke(sessionId);
+  revoke(sessionId, options = {}) {
+    return this.sessions.revoke(sessionId, options);
   }
 
   revokeProvider(providerId) {
