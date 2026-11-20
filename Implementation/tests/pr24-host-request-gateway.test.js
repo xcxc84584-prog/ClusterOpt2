@@ -80,8 +80,9 @@ test("PR24.31 reverse RPC uses session caller, never payload caller", async () =
 test("PR24.43 fresh capability check denies revoked grant", async () => {
   const h = harness();
   h.revokeGrant();
-  assert.equal((await h.gateway.receive(h.port,
-    h.request())).status, 403);
+  const denied = await h.gateway.receive(h.port, h.request());
+  assert.equal(denied.value.status, 403);
+  assert.equal(denied.value.error.code, "REQUEST_DENIED");
   assert.equal(h.calls.length, 0);
   assert.ok(h.core.omu.snapshot().logs.some(x =>
     x.kind === "EHU" && x.action === "RPC.PermissionRejected"));
@@ -95,7 +96,7 @@ test("PR24.18 disabled provider and replay fail closed", async () => {
     h.request())).status, 409);
   h.disable();
   assert.equal((await h.gateway.receive(h.port,
-    h.request("req-2"))).status, 403);
+    h.request("req-2"))).value.status, 403);
   assert.equal(h.calls.length, 1);
   h.gateway.revokeProvider("plugin.alpha");
   assert.equal(h.port.closed, true);
