@@ -222,9 +222,9 @@ test("API explorer presents schema fields and raw contract",
     await expect(page.locator(".pm-contract-heading"))
       .toContainText("schema.service");
     await expect(page.locator(".pm-contract-section"))
-      .toHaveCount(4);
+      .toHaveCount(5);
     await expect(page.locator(".pm-contract-section"))
-      .toContainText(["契約概覽", "Request / Response", "輸入與輸出", "原始註冊契約"]);
+      .toContainText(["契約概覽", "Worker SDK", "Request / Response", "輸入與輸出", "原始註冊契約"]);
     await expect(page.locator(".pm-schema-row"))
       .toContainText(["輸入","message","輸出"]);
     await expect(page.locator(".pm-contract-json"))
