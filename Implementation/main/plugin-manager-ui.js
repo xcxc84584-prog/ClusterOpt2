@@ -98,6 +98,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
   let selected="",active="permissions",query="",pending=null;
   let selectedAPI=null,apiQuery="",sidebarOpen=true;
   let apiKind="api",apiPageSize=25,apiPageIndex=0;
+  let apiSort="owner",apiSortOrder="asc";
   let apiCursors=[null],apiRevision="",refreshAPIPage=null;
   let lastApiCheckTime=0;
   let lastView="",lastLocale="",lastSelected="",lastProviders="";
@@ -589,6 +590,20 @@ export function mountPluginManagerUI(core,doc,options={}) {
     }
     size.value=String(apiPageSize);
     size.setAttribute("aria-label",t("每頁筆數","Page size"));
+    const sort=dom(doc,"select","pm-api-sort");
+    for(const field of ["owner","id","version","status"]) {
+      const option=dom(doc,"option","",field);
+      option.value=field;sort.append(option);
+    }
+    sort.value=apiSort;
+    sort.setAttribute("aria-label",t("排序欄位","Sort by"));
+    const order=dom(doc,"select","pm-api-sort-order");
+    for(const value of ["asc","desc"]) {
+      const option=dom(doc,"option","",value);
+      option.value=value;order.append(option);
+    }
+    order.value=apiSortOrder;
+    order.setAttribute("aria-label",t("排序方向","Sort order"));
     const exportStatus=dom(doc,"span","pm-muted");
     const exportButton=btn(doc,t("匯出完整 API 契約",
       "Export all API contracts"),async()=>{
@@ -616,7 +631,8 @@ export function mountPluginManagerUI(core,doc,options={}) {
         exportButton.disabled=false;
       }
     },"pm-mini");
-    controls.append(kind,input,size,exportButton,exportStatus);
+    controls.append(kind,input,size,sort,order,
+      exportButton,exportStatus);
     body.append(controls);
     const container=dom(doc,"div","pm-api-table-wrap");
     const table=dom(doc,"table","pm-api-table");
@@ -657,6 +673,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
       const requestedPage=apiPageIndex;
       const result=core.discover("ui","page",apiKind,{
         term:apiQuery.trim(),limit:apiPageSize,
+        sortBy:apiSort,sortOrder:apiSortOrder,
         cursor:apiCursors[requestedPage]??null
       },{origin:"user"});
       rows.replaceChildren();
@@ -732,11 +749,18 @@ export function mountPluginManagerUI(core,doc,options={}) {
     input.addEventListener("input",()=>{
       apiQuery=input.value;resetPage();update();
     });
+    sort.addEventListener("change",()=>{
+      apiSort=sort.value;resetPage();update();
+    });
+    order.addEventListener("change",()=>{
+      apiSortOrder=order.value;resetPage();update();
+    });
     update();
     refreshAPIPage=()=>{
       if(!page.contains(section))return;
       const current=core.discover("ui","page",apiKind,{
-        term:apiQuery.trim(),limit:1
+        term:apiQuery.trim(),limit:1,
+        sortBy:apiSort,sortOrder:apiSortOrder
       },{origin:"user"});
       if(current.ok && current.value.snapshotRevision!==apiRevision) {
         resetPage();
