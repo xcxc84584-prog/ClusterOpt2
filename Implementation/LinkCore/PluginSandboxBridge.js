@@ -117,6 +117,17 @@ export class PluginSandboxBridge {
   }
 
   /**
+   * Trusted Host only. Caller first suspends the Session so an
+   * uncommitted reapproval can never reach the Worker.
+   */
+  grantReviewedHostRPCScope(scope) {
+    if (!this.hostTransport || this.closed) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.gateway.grantReviewedRpcScope(scope);
+  }
+
+  /**
    * Include both directions in the upgrade drain gate. Reverse Host
    * work may ignore AbortSignal, so count it until its promise settles.
    */
