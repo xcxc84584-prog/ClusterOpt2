@@ -49,6 +49,7 @@ test("PR06.08 permission management is fail-closed, no direct Grant",
     await page.locator("#toolBtn").click();
     await page.locator("#pluginBtn").click();
     await page.locator(".pm-tabs [role=tab]").nth(1).click();
+    await page.locator(".pm-api-kind").selectOption("service");
     await expect(page.locator(".pm-page"))
       .toContainText("test.preview");
     await page.locator(".pm-tabs [role=tab]").nth(0).click();
