@@ -234,15 +234,25 @@ test("PR24.22 production Host invokes Worker through Session Controller",
         if (!ready) return { ready };
         const direct = await bridge.invokeBidirectional(
           "example.sdk.echo", "echo", { message: "new-protocol" });
+        const secondDirect = await bridge.invokeBidirectional(
+          "example.sdk.echo", "echo", { message: "second-protocol" });
         const routed = await linkCore.request(
           "ui", "SDK.ExampleEcho", "echo",
           { message: "through-hub" }, { origin: "user" });
         const events = linkCore.getSnapshot().logs.filter(event =>
           event.action === "RPC.HostToPlugin.Response");
         return {
-          ready, direct, routed,
+          ready, direct, secondDirect, routed,
           responseEvents: events.length,
-          lastEvent: events.at(-1)?.eventId
+          lastEvent: events.at(-1)?.eventId,
+          controllerPending: bridge.hostController.pendingCount,
+          diagnostics: linkCore.getSnapshot().logs.filter(event =>
+            event.action.startsWith("Plugin.RPC.") ||
+            event.action.startsWith("RPC.HostToPlugin.") ||
+            event.action.startsWith("Plugin.Invoke.")).slice(-15)
+            .map(event => ({
+              action: event.action, status: event.status
+            }))
         };
       } finally {
         host.uninstall("example.sdk.echo");
@@ -253,6 +263,8 @@ test("PR24.22 production Host invokes Worker through Session Controller",
     expect(reply.direct.value).toEqual({
       echoed: "new-protocol", sdkVersion: "1.0.0"
     });
+    expect(reply.secondDirect.status,
+      JSON.stringify(reply)).toBe(200);
     expect(reply.routed.status, JSON.stringify(reply)).toBe(200);
     expect(reply.routed.value.echoed).toBe("through-hub");
     expect(reply.responseEvents).toBeGreaterThanOrEqual(2);
