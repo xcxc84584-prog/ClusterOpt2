@@ -191,3 +191,56 @@ test("PR24.46 consent UI renders exact target/action/property scopes",
     assert.ok(text.includes("HubUnit / Property.Read [Language]"));
     assert.equal(text.includes("UI_COLOR"), false);
   });
+
+test("PR24.47 host revokes one exact scope and never grants implicitly",
+  async () => {
+    const h = harness([READ, PROPERTY]);
+    const scopes = h.gateway.listRpcScopes();
+    assert.equal(Object.isFrozen(scopes), true);
+    assert.equal(Object.isFrozen(scopes[0]), true);
+    assert.equal(h.gateway.revokeRpcScope({
+      target: "UICO", action: "extensionAPI"
+    }).status, 404);
+    assert.equal(h.gateway.revokeRpcScope({
+      target: "UICO.*", action: "describe"
+    }).status, 400);
+    assert.equal(h.gateway.revokeRpcScope(READ).status, 200);
+    assert.equal(h.gateway.revokeRpcScope(READ).status, 404);
+    assert.deepEqual(h.gateway.listRpcScopes(), [PROPERTY]);
+    assert.deepEqual(scopes, [READ, PROPERTY]);
+    const denied = await h.gateway.receive(h.port,
+      h.request("read-after-revoke", "UICO", "describe"));
+    assert.equal(denied.value.status, 403);
+    assert.equal(h.requests.length, 0);
+    const unaffected = await h.gateway.receive(h.port,
+      h.request("property-still-authorized", "HubUnit",
+        "Property.Read", { name: "Language" }));
+    assert.equal(unaffected.value.data, "zh-Hant");
+    assert.equal(h.gateway.revokeRpcScope(PROPERTY).status, 200);
+    assert.equal((await h.gateway.receive(h.port,
+      h.request("property-revoked", "HubUnit",
+        "Property.Read", { name: "Language" }))).value.status, 403);
+    assert.ok(h.core.omu.snapshot().logs.some(entry =>
+      entry.action === "RPC.ScopeRevoked" && entry.status === 200));
+  });
+
+test("PR24.48 revoked scope suppresses non-cooperative in-flight Host data",
+  async () => {
+    const h = harness([READ]);
+    let finish;
+    h.core.hub.request = () => new Promise(resolve => {
+      finish = resolve;
+    });
+    const pending = h.gateway.receive(h.port,
+      h.request("revoked-pending", "UICO", "describe"));
+    assert.equal(typeof finish, "function");
+    assert.equal(h.gateway.revokeRpcScope(READ).status, 200);
+    finish({ ok: true, status: 200,
+      value: { confidential: "late response" } });
+    const result = await pending;
+    assert.equal(result.status, 499);
+    assert.equal(result.value, undefined);
+    assert.ok(h.core.omu.snapshot().logs.some(entry =>
+      entry.action === "RPC.DiscardedAfterRevoke" &&
+      entry.details.requestId === "revoked-pending"));
+  });
