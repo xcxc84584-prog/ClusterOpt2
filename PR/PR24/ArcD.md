@@ -97,3 +97,22 @@ state stays exclusively inside the trusted Bridge's Gateway. An
 aborted request may already have caused a Host side effect; no
 transaction rollback is asserted. No new public Host API or alternate
 permission registry is added.
+
+## PR24 Patch(+11) — durable deny and lifecycle chains
+| Chain | Stages | Authority / invariant |
+| --- | --- | --- |
+| EC24-14 | Host Manager revoke → Gateway revoke → deny-store.put | No plugin self-grant; storage failure disables Provider |
+| EC24-15 | Reload → new HostInstaller → deny-store.getAll → filtered scopes → Gateway | Removed route cannot silently reappear |
+| EC24-16 | Scope store unavailable → EHU 503 → block scoped bootstrap | Fail closed before untrusted code starts |
+| EC24-17 | Upgrade request → Hub providerInflight + Bridge reverse count → 409 if busy | Never tear down an active reverse request |
+| EC24-18 | Worker replacement fails → restore original URU/permissions/UI → rekey Session | Existing Bridge and grants only; no new capability |
+
+**New internal component:** `PluginRPCRevocationStoreUnit` owns
+IndexedDB deny-only metadata, not runtime positive authority.
+`PluginHostInstallUnit` evaluates denied scopes before code bootstrap.
+`PluginHostRequestGateway` remains sole active reverse scope gate.
+`PluginSandboxBridge.pendingHostRequestCount()` counts Host→Worker
+pending calls and active Plugin→Host transport reservations.
+When a Host method ignores AbortSignal, its in-flight reservation
+remains active until completion; upgrades cannot force safe rollback
+of side effects that have already occurred.
