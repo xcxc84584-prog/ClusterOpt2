@@ -224,3 +224,121 @@ test("PR24.7 overloaded transport returns typed 429 immediately", async () => {
     h.channel.port2.close();
   }
 });
+
+
+test("PR24.8 expired Host work sends one correlated 504, never late 200",
+  async () => {
+    const h = setup();
+    try {
+      const [hello] = await h.hello;
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready",
+        protocol: hello.protocol, challenge: hello.challenge
+      });
+      let finish;
+      let markStart;
+      const started = new Promise(resolve => { markStart = resolve; });
+      h.core.hub.request = () => new Promise(resolve => {
+        finish = resolve;
+        markStart();
+      });
+      const packets = [];
+      h.channel.port2.on("message", packet => packets.push(packet));
+      const response = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "expires-on-host",
+        target: "EchoObject", action: "Echo", payload: {},
+        deadlineMs: 40
+      });
+      await within(started, "slow Host started");
+      const [expired] = await within(response, "explicit Host timeout");
+      assert.equal(expired.requestId, "expires-on-host");
+      assert.equal(expired.status, 504);
+      assert.equal(expired.error.code, "RPC_TIMEOUT");
+      assert.ok(Number.isSafeInteger(expired.eventId));
+      finish({ ok: true, status: 200, value: { secret: "late" } });
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setImmediate(resolve));
+      assert.equal(packets.length, 1);
+      assert.equal(h.adapter.connections.get(h.channel.port1).inflight, 0);
+      assert.ok(h.core.omu.snapshot().logs.some(event =>
+        event.action === "RPC.DeadlineExceeded" &&
+        event.status === 504));
+    } finally {
+      h.adapter.detachAll();
+      h.channel.port2.close();
+    }
+  });
+
+test("PR24.8 rotating an in-flight Session rejects old reply and leaks no listener",
+  async () => {
+    const h = setup();
+    try {
+      const [hello] = await h.hello;
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready",
+        protocol: hello.protocol, challenge: hello.challenge
+      });
+      let finishOld;
+      let markStart;
+      const started = new Promise(resolve => { markStart = resolve; });
+      h.core.hub.request = () => new Promise(resolve => {
+        finishOld = resolve;
+        markStart();
+      });
+      const responses = [];
+      h.channel.port2.on("message", packet => {
+        if (packet?.type === "response") responses.push(packet);
+      });
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "old-pending",
+        target: "EchoObject", action: "Echo", payload: {},
+        deadlineMs: 1500
+      });
+      await within(started, "old Host started");
+      const notice = once(h.channel.port2, "message");
+      assert.equal(h.adapter.suspend(h.channel.port1), true);
+      assert.equal((await within(notice, "suspend"))[0].kind,
+        "cluster-session-suspended");
+      assert.equal(h.adapter.gateway.sessions.activeCount, 0);
+      assert.equal(h.channel.port1.listenerCount("message"), 0);
+
+      const rekey = once(h.channel.port2, "message");
+      const renewed = h.adapter.resume(h.channel.port1,
+        "example.provider");
+      assert.equal(renewed.status, 201);
+      const [freshHello] = await within(rekey, "rekey challenge");
+      assert.notEqual(freshHello.sessionId, hello.sessionId);
+      h.channel.port2.postMessage({
+        kind: "cluster-session-ready",
+        protocol: freshHello.protocol, challenge: freshHello.challenge
+      });
+      assert.equal(h.channel.port1.listenerCount("message"), 1);
+      h.core.hub.request = async () => ({
+        ok: true, status: 200, value: { echoed: "fresh" }
+      });
+      const freshResponse = once(h.channel.port2, "message");
+      h.channel.port2.postMessage({
+        protocol: "cluster.rpc/1", direction: "plugin-to-host",
+        type: "request", requestId: "new-pending",
+        target: "EchoObject", action: "Echo", payload: {}
+      });
+      const [answer] = await within(freshResponse, "new Host response");
+      assert.equal(answer.data.echoed, "fresh");
+      finishOld({ ok: true, status: 200,
+        value: { secret: "old-session" } });
+      await new Promise(resolve => setImmediate(resolve));
+      await new Promise(resolve => setImmediate(resolve));
+      assert.deepEqual(responses.map(packet => packet.requestId),
+        ["new-pending"]);
+      assert.equal(h.adapter.connections.get(h.channel.port1).inflight, 0);
+      assert.ok(h.core.omu.snapshot().logs.some(event =>
+        event.action === "RPC.DiscardedAfterRevoke"));
+    } finally {
+      h.adapter.detachAll();
+      assert.equal(h.channel.port1.listenerCount("message"), 0);
+      h.channel.port2.close();
+    }
+  });
