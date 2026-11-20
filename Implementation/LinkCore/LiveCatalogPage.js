@@ -93,7 +93,10 @@ export class LiveCatalogPage {
         const descriptors = object.ocda?.APIDescriptors;
         if (!Array.isArray(descriptors)) continue;
         for (const descriptor of descriptors) {
-          revisionParts.push(JSON.stringify([objectId, descriptor]));
+          revisionParts.push(JSON.stringify([
+            objectId, descriptor, object.authorization,
+            object.ocda?.UserAPI, object.ocda?.AgentAPI
+          ]));
           const entry = { owner: objectId, descriptor };
           if (!CatalogVisibilityPolicy.canSeeAPI(
             source, entry, object, origin)) continue;
