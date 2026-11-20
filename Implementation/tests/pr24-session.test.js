@@ -100,3 +100,17 @@ test("PR24.15 malformed handshake with getter fails without execution", () => {
   assert.equal(touched, false);
   assert.equal(h.create.session.state, "handshake");
 });
+
+test("PR24.7 replay budget auto-revoke clears host Session indexes", () => {
+  const h = harness();
+  assert.equal(h.unit.ready(h.port, h.ready).status, 200);
+  for (let i = 0; i < 1024; i++) {
+    const result = h.unit.inspect(h.port, h.request("request-" + i));
+    assert.equal(result.status, 200);
+  }
+  assert.equal(h.unit.activeCount, 1);
+  assert.equal(h.unit.inspect(h.port, h.request("over-budget")).status, 429);
+  assert.equal(h.port.closed, true);
+  assert.equal(h.unit.activeCount, 0);
+  assert.equal(h.unit.inspect(h.port, h.request("too-late")).status, 403);
+});
