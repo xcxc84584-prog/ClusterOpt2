@@ -69,11 +69,12 @@ test("PR24.31 reverse RPC uses session caller, never payload caller", async () =
   assert.equal(result.status, 200);
   assert.equal(result.value.status, 200);
   assert.equal(result.value.data.answer, 4);
+  assert.ok(result.value.eventId > result.value.parentEventId);
   assert.equal(h.calls.length, 1);
   assert.equal(h.calls[0].source, "PluginAlpha");
   assert.equal(h.calls[0].options.origin, "user");
   assert.equal(h.core.omu.snapshot().logs.some(x =>
-    x.action === "RPC.Response"), true);
+    x.action.startsWith("RPC.Response.")), true);
 });
 
 test("PR24.43 fresh capability check denies revoked grant", async () => {
