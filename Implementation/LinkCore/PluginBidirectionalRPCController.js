@@ -114,6 +114,16 @@ export class PluginBidirectionalRPCController {
     return true;
   }
 
+  /**
+   * Preflight before allocating a trusted OMU eventId for an untrusted
+   * Worker response. No outstanding request, no accepted response.
+   */
+  hasOutstanding(port, session, requestId) {
+    const task = this.#pending.get(requestId);
+    return Boolean(task && task.started &&
+      task.port === port && task.session === session);
+  }
+
   receive(port, session, packet) {
     if (!this.#eligible(port, session)) {
       return failure(403, "UNTRUSTED_PORT");
