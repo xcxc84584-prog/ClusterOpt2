@@ -28,6 +28,30 @@ export class PluginHostInstallUnit {
       status, providerId);
   }
 
+  /**
+   * UI-facing Host operation; no plugin-visible RPC exposes these calls.
+   * The live Bridge is the only scope state owner after consent.
+   */
+  listRpcScopes(providerId) {
+    if (!this.core.uru.getProvider(providerId) ||
+        !this.handles.has(providerId)) return Object.freeze([]);
+    return this.handles.get(providerId).listHostRPCScopes?.() ??
+      Object.freeze([]);
+  }
+
+  revokeRpcScope(providerId, scope) {
+    const provider = this.core.uru.getProvider(providerId);
+    const bridge = this.handles.get(providerId);
+    if (!provider || !bridge) return { ok: false, status: 404 };
+    if (typeof bridge.revokeHostRPCScope !== "function") {
+      return { ok: false, status: 503 };
+    }
+    const result = bridge.revokeHostRPCScope(scope);
+    this.record(result.status, result.ok ?
+      "RPCScopeRevoked" : "RPCScopeRevokeRejected", providerId);
+    return result;
+  }
+
   async install(snapshot, options = {}) {
     const checked = this.reader.inspectImport(snapshot);
     if (!checked.ok) return checked;
