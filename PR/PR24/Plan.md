@@ -195,3 +195,22 @@ for externally created native toolbar buttons, settings windows
 and tabs via `UICO.uiRequest`, exact route scopes, owner ACL,
 `ui.create.own`, `ui.window`, and cleanup. This does not
 authorize direct DOM access or erase native UI protections.
+
+## PR24 Patch(+13) — EventChain correlation and native UI visibility
+- Every RPC Host→Plugin response with a distinct requestId MUST receive
+  a fresh Host-generated OMU Event ID even within the 1-second PASS
+  log cooldown. Never use a cooled-out `null` audit record.
+- Uncorrelated duplicate PASS logs retain the existing cooldown and
+  bounded OMU log memory; EHU failures remain individually recorded.
+- A missing audit ID cannot be accepted as a success; the Bridge
+  must fail closed without an unhandled exception or silent timeout.
+- External `slot.plugin-toolbar` controls must be inserted into an
+  actually visible Host-owned header slot, not the hidden File Tool
+  submenu. No arbitrary DOM selector is accepted from plugin code.
+- Browser acceptance includes four consecutive same-Session Worker
+  calls (direct and HubUnit-routed), four unique Host event IDs and
+  native Button visibility. Keep old cancel/revoke/upgrade/rekey
+  tests unchanged.
+- Roll back exploratory port routing changes; preserve the previously
+  validated Worker sandbox, Session authentication, iframe relay and
+  crash teardown.
