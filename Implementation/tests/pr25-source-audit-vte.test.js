@@ -17,7 +17,8 @@ test("PR25 source mismatch emits EHU with exact file and line", () => {
   assert.equal(result.status, 409);
   assert.ok(result.failures.length >= 4);
   const issue = core.omu.snapshot().logs.find(x =>
-    x.action === "Catalog.SourceAudit");
+    x.action === "Catalog.SourceAudit" &&
+    x.details?.file === "Implementation/object/UICO.js");
   assert.equal(issue.kind, "EHU");
   assert.equal(issue.details.code, "CATALOG_STATIC_VERSION_MISMATCH");
   assert.equal(issue.details.file, "Implementation/object/UICO.js");
