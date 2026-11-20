@@ -20,6 +20,10 @@ test("PR25 live UI retains input and filters across pages", async ({page}) => {
   await expect(page.locator(".pm-api-pagination")).toContainText("2");
   await expect(kind).toHaveValue("api");
   await expect(size).toHaveValue("10");
+  await page.locator(".pm-api-sort").selectOption("id");
+  await page.locator(".pm-api-sort-order").selectOption("desc");
+  await expect(page.locator(".pm-api-sort")).toHaveValue("id");
+  await expect(page.locator(".pm-api-sort-order")).toHaveValue("desc");
   await input.fill("UICO");
   await expect(input).toHaveValue("UICO");
   await expect(page.locator(".pm-api-pagination")).toContainText("1");
