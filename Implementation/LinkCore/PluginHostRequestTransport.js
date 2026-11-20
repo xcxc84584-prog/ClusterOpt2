@@ -61,8 +61,22 @@ export class PluginHostRequestTransport {
       return;
     }
     if (entry.inflight >= this.maxInflight) {
-      this.gateway.core.omu.record("EHU", "PluginTransport",
-        "RPC.Overloaded", 429);
+      const audit = this.gateway.core.omu.record("EHU",
+        "PluginTransport", "RPC.Overloaded", 429);
+      if (validated.ok && validated.value.type === "request" &&
+          validated.value.direction === "plugin-to-host") {
+        const response = {
+          protocol: Envelope.protocol, direction: "plugin-to-host",
+          type: "response", requestId: validated.value.requestId,
+          eventId: audit.eventId, status: 429, ok: false,
+          error: { code: "RPC_BACKPRESSURE", message: "Busy" }
+        };
+        try {
+          port.postMessage(response);
+        } catch {
+          // The transport remains fail-closed on disconnected ports.
+        }
+      }
       return;
     }
     const controller = new AbortController();
@@ -76,6 +90,10 @@ export class PluginHostRequestTransport {
       return;
     }
     if (requestId) entry.requests.set(requestId, controller);
+    // Deadline covers the whole host-side request, not just scheduling.
+    const deadlineMs = requestId ?
+      (validated.value.deadlineMs ?? 5000) : 5000;
+    const timeout = setTimeout(() => controller.abort(), deadlineMs);
     entry.controllers.add(controller);
     entry.inflight++;
     try {
@@ -89,6 +107,7 @@ export class PluginHostRequestTransport {
       this.gateway.core.omu.record("EHU", "PluginTransport",
         "RPC.Failed", 502);
     } finally {
+      clearTimeout(timeout);
       entry.controllers.delete(controller);
       if (requestId) entry.requests.delete(requestId);
       entry.inflight--;
