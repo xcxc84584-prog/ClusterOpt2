@@ -116,6 +116,18 @@ export class PluginSandboxBridge {
   }
 
   /**
+   * Include both directions in the upgrade drain gate. Reverse Host
+   * work may ignore AbortSignal, so count it until its promise settles.
+   */
+  pendingHostRequestCount() {
+    let count = this.pending.size;
+    for (const entry of this.hostTransport?.connections.values() ?? []) {
+      count += entry.inflight;
+    }
+    return count;
+  }
+
+  /**
    * Disable the reverse API while retaining the isolated Worker.
    * A later resume always creates a new Session and handshake nonce.
    */
