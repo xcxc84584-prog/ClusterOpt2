@@ -101,6 +101,21 @@ export class PluginSandboxBridge {
   }
 
   /**
+   * Host-controlled scope revocation; never sent as a Worker command.
+   * A re-enabled Session retains the remaining reviewed scopes.
+   */
+  listHostRPCScopes() {
+    return this.hostTransport?.gateway.listRpcScopes() ?? Object.freeze([]);
+  }
+
+  revokeHostRPCScope(scope) {
+    if (!this.hostTransport || this.closed) {
+      return { ok: false, status: 503 };
+    }
+    return this.hostTransport.revokeRpcScope(scope);
+  }
+
+  /**
    * Disable the reverse API while retaining the isolated Worker.
    * A later resume always creates a new Session and handshake nonce.
    */
