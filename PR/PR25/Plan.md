@@ -41,3 +41,25 @@ Complete automatic source-linked static build checks, fully enumerated
 contracts, strict event lifecycle coverage, VTE developer tests and blind
 third-party acceptance. Ensure all five required CI workflows and
 cross-browser E2E pass on the final SHA before merge.
+
+## Patch(+5) current implementation
+- API LIST resolves only live URU/EDPMU declarations, with a five-kind
+  cursor, source-side search/sort and explicit PluginPublic/HostInternal
+  audience. Query refresh never recreates its input while unchanged.
+- LiveCatalogExport retrieves each complete descriptor through the
+  authorized describe path. All category counts/revisions must agree
+  before and after SHA-256 computation, including ACL changes.
+- Static UICO, Protocol and Event definitions have explicit source
+  version checks. CI rejects mismatch and prints EHU with owner, code,
+  file and line. This does not infer paths for third-party runtime code.
+- EDPMU PluginLifecycleEventPolicy publishes the real Worker
+  SessionChange and owned UI click subscription event contracts.
+- Public Worker SDK-only package install and RPC are exercised by an
+  automated docs-only E2E. This is not a human blind study.
+
+## Formal merge gate
+Do not claim 48/48 from green CI alone. The independent human
+documentation-only blind test and a separately reviewed inventory of
+every intended public API and event remain incomplete, as tracked in
+Acceptance-Matrix.md. Production merge requires explicit signoff or
+a change to acceptance scope by the project owner.
