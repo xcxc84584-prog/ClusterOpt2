@@ -86,11 +86,10 @@ export class PluginHostRequestTransport {
     return { ok: true, status: 200, cancelled };
   }
 
-  attach(port, providerId, hostMessage = null) {
+  attach(port, providerId) {
     if (!port || this.connections.has(port) ||
         typeof port.addEventListener !== "function" ||
-        typeof port.removeEventListener !== "function" ||
-        (hostMessage !== null && typeof hostMessage !== "function")) {
+        typeof port.removeEventListener !== "function") {
       return { ok: false, status: 409 };
     }
     const started = this.gateway.create(port, providerId);
@@ -100,16 +99,7 @@ export class PluginHostRequestTransport {
       active: true, listener: null, controllers: new Set(),
       requests: new Map()
     };
-    // Only this listener owns the Host MessagePort after bootstrap.
-    // Never race a second onmessage handler for response delivery.
     entry.listener = event => {
-      try {
-        if (hostMessage?.(event.data) === true) return;
-      } catch {
-        this.gateway.core.omu.record("EHU", "PluginTransport",
-          "RPC.HostMessageHandlerFailed", 502);
-        return;
-      }
       void this.#handle(port, entry, event.data);
     };
     this.connections.set(port, entry);
