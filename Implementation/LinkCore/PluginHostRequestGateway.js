@@ -44,10 +44,17 @@ export class PluginHostRequestGateway {
     const grants = active && provider.permissions.every(permission =>
       this.core.checkPluginPermission(session.providerId, permission));
     if (!active || !grants) {
-      this.core.omu.record("EHU", session.objectId,
+      const audit = this.core.omu.record("EHU", session.objectId,
         "RPC.PermissionRejected", 403, value.target,
         { requestId: value.requestId });
-      return { ok: false, status: 403 };
+      const denied = Envelope.inspect({
+        protocol: Envelope.protocol,
+        direction: "plugin-to-host",
+        type: "response", requestId: value.requestId,
+        eventId: audit.eventId, status: 403, ok: false,
+        error: { code: "REQUEST_DENIED", message: "Access denied" }
+      });
+      return { ok: true, status: 200, value: denied.value };
     }
 
     const event = this.core.omu.record("Log", session.objectId,
