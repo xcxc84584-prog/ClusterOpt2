@@ -3,6 +3,8 @@ import { PluginSandboxBridge } from "./PluginSandboxBridge.js";
 import { PluginUIHostUnit } from "./PluginUIHostUnit.js";
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
+import { PluginRPCScopePolicy } from
+  "../property/PluginRPCScopePolicy.js";
 
 /**
  * Host-owned activation transaction, NOT a second Provider registry.
@@ -29,13 +31,21 @@ export class PluginHostInstallUnit {
   async install(snapshot, options = {}) {
     const checked = this.reader.inspectImport(snapshot);
     if (!checked.ok) return checked;
-    const provider = JSON.parse(snapshot.manifestText).provider;
+    const manifest = JSON.parse(snapshot.manifestText);
+    const provider = manifest.provider;
     const review = PluginCapabilityReviewPolicy.inspect(provider,
       options.approvedPermissions ?? []);
     if (!review.ok) {
       this.record(review.status, "PermissionRejected",
         provider.providerId);
       return review;
+    }
+    const scopeReview = PluginRPCScopePolicy.review(
+      manifest.rpcScopes ?? [], options.approvedRpcScopes ?? []);
+    if (!scopeReview.ok) {
+      this.record(scopeReview.status, "RPCScopeRejected",
+        provider.providerId);
+      return scopeReview;
     }
     if (options.consented !== true) {
       this.record(403, "ConsentRequired", provider.providerId);
@@ -54,7 +64,7 @@ export class PluginHostInstallUnit {
           error: "Missing service dependency" };
       }
     }
-    const entry = JSON.parse(snapshot.manifestText).entry;
+    const entry = manifest.entry;
     let source;
     try {
       const binary = atob(snapshot.files[entry]);
@@ -112,7 +122,8 @@ export class PluginHostInstallUnit {
       // Session activation happens only after URU registration,
       // permission approval and UI mount have succeeded.
       if (typeof bridge.enableHostRequests === "function") {
-        const linked = bridge.enableHostRequests(this.core);
+        const linked = bridge.enableHostRequests(
+          this.core, scopeReview.value);
         if (!linked.ok) throw Error("Plugin RPC session failed");
       }
       this.handles.set(provider.providerId, bridge);
@@ -251,6 +262,10 @@ export class PluginHostInstallUnit {
     const review = PluginCapabilityReviewPolicy.inspect(next,
       options.approvedPermissions ?? []);
     if (!review.ok) return review;
+    const scopeReview = PluginRPCScopePolicy.review(
+      JSON.parse(snapshot.manifestText).rpcScopes ?? [],
+      options.approvedRpcScopes ?? []);
+    if (!scopeReview.ok) return scopeReview;
     // Re-registering the Provider creates a brief service gap.
     // Block the upgrade if active dependents lack alternatives.
     if (this.dependents(providerId).length) {
