@@ -253,3 +253,37 @@ a separate P0 acceptance condition.
 
 Validation gate: `pr24-multi-session-vte.test.js` plus the full
 Node, PR1 Browser and OCDA Browser CI suite on exact HEAD.
+
+
+## PR24 Patch(+15): per-Provider fault backoff and crash quarantine
+
+P0 PR24.85 requirements: a hostile or unstable Worker cannot
+restart without bound, exhaust Host resources, or force an
+unrelated Provider to stop. Restart eligibility must be controlled
+by a Host-only policy, not Worker or Manifest fields.
+
+Implementation:
+- `PluginRestartCircuitPolicy`: bounded 60-second recent-fault
+  window; first fault incurs 1500ms delay, second 6000ms, third
+  opens a 60000ms circuit. Policy is pure and clock-injected
+  in tests.
+- `PluginHostInstallUnit` remembers per-Provider Worker
+  faults in memory across uninstall/reinstall. Unexpected live
+  Worker fault disables only its Provider and increments history;
+  a subsequent explicitly consented install checks current
+  restart cooldown before activation.
+- A rejected start returns HTTP-like 429 and `retryAfterMs`,
+  with EHU. A confirmed Host-only `resetRestartCircuit`
+  removes memory history; unconsented calls return 403.
+- Deliberate disable/enable/uninstall are not themselves faults.
+  New unrelated Providers continue to function.
+
+Tests: `pr24-restart-circuit-vte.test.js` exercises
+pure window/backoff and the real VTE/URU Install Unit.
+Browser Worker crash E2E from Patch(+12) remains intact.
+
+Security/resource caveats: This is a Host **per-tab in-memory**
+backoff, not a durable browser-wide or cross-device quarantine.
+Web page reload still creates a new Installer; persistence,
+multi-tab atomic restarts and CPU/memory quotas remain separate
+release gates. It never resurrects disabled Providers by itself.
