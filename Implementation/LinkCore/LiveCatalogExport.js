@@ -5,6 +5,7 @@ import { LiveCatalogPage } from "./LiveCatalogPage.js";
  * all-record operation and is bounded by serialized byte size.
  */
 const MAX_EXPORT_BYTES = 64 * 1024 * 1024;
+const KINDS = ["api", "service", "property", "event", "protocol"];
 
 export class LiveCatalogExport {
   constructor(uru, edpmu, omu) {
@@ -15,9 +16,9 @@ export class LiveCatalogExport {
   }
 
   async export(source, origin = "user") {
-    const result = { api: [], property: [] };
+    const result = Object.fromEntries(KINDS.map(kind => [kind, []]));
     const revisions = {};
-    for (const kind of ["api", "property"]) {
+    for (const kind of KINDS) {
       let cursor = null;
       do {
         const response = this.page.page(source, kind, {
@@ -30,10 +31,24 @@ export class LiveCatalogExport {
             error: "Catalog changed during export" };
         }
         for (const item of response.value.items) {
-          const descriptor = kind === "api" ?
-            this.uru.objects.get(item.owner)?.ocda
-              ?.APIDescriptors?.find(x => x.id === item.id) :
-            this.edpmu.describeProperty(item.id).value;
+          let descriptor;
+          if (kind === "api" || kind === "event") {
+            descriptor = this.uru.objects.get(item.owner)?.ocda
+              ?.APIDescriptors?.find(x => x.id === item.id &&
+                (x.category === "Event") === (kind === "event"));
+          } else if (kind === "property") {
+            descriptor = this.edpmu.describeProperty(item.id).value;
+          } else if (kind === "protocol") {
+            descriptor = this.edpmu.get("HubProtocolPolicy")
+              ?.descriptions?.find(x => x.id === item.id);
+          } else if (kind === "service") {
+            for (const provider of this.uru.providers.values()) {
+              if (provider.objectId !== item.owner) continue;
+              descriptor = provider.provides.find(
+                x => x.service === item.id);
+              if (descriptor) break;
+            }
+          }
           if (!descriptor) {
             this.omu?.record("EHU", source, "Catalog.ExportStale",
               409, item.id, { code: "CATALOG_EXPORT_STALE" });
@@ -59,8 +74,8 @@ export class LiveCatalogExport {
     }
     const payload = {
       schemaVersion: 1, snapshotRevision: revisions,
-      counts: { api: result.api.length,
-        property: result.property.length },
+      counts: Object.fromEntries(KINDS.map(kind =>
+        [kind, result[kind].length])),
       contracts: result
     };
     const json = JSON.stringify(payload);
