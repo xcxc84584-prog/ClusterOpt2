@@ -19,6 +19,7 @@ export function createClusterAPIFacade(core) {
       discover("describe", kind, { id, owner }),
     query: (kind, filter = {}, page = {}) =>
       discover("query", kind, filter, page),
+    export: () => core.exportLiveCatalog("ui", "user"),
     docs: (format = "json") =>
       core.generateCatalogDocs("ui", format, { origin: "user" })
   });
