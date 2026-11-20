@@ -677,7 +677,8 @@ export function mountPluginManagerUI(core,doc,options={}) {
       for(const item of data.items) {
         const row=dom(doc,"tr","pm-api-table-row");
         const values=[
-          apiKind,item.id,item.owner,item.version??"—",
+          apiKind+" / "+item.audience,item.id,item.owner,
+          item.version??"—",
           item.status,(item.capability??[]).join(", ")||
             item.visibility
         ];
