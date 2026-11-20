@@ -186,3 +186,18 @@ Changes: `PluginHostRequestGateway` adds Host-private
 new URU Provider, EDPMU Property or plugin-facing API.
 Source evidence: `Implementation/tests/pr24-multi-session-vte.test.js`
 uses real Node MessagePorts and an isolated core/OMU harness.
+
+
+## PR24 Patch(+15): fault/backoff EventChain
+
+| Chain | Steps | Security invariant |
+| --- | --- | --- |
+| EC24-36 | Isolated Worker exception → Bridge.terminate → Host onFault → URU disable → RestartCircuitPolicy.fault → OMU EHU | Only live owner Provider is disabled; only Host records a fault |
+| EC24-37 | Explicit install → consent/review → per-Provider restart status → 429 or bootstrap | Uninstall cannot reset a cooling Provider |
+| EC24-38 | Explicit Host-confirmed restart reset → clear memory history → OMU Log | Worker cannot bypass lock through RPC |
+| EC24-39 | Provider A circuit open → unrelated Provider B install | No global lock; independent Provider survives |
+
+`PluginRestartCircuitPolicy` is a pure policy module in
+`Implementation/property`. `PluginHostInstallUnit.restartFaults`
+is Host-private lifecycle state, **not** an EDPMU Property, URU
+Provider, persisted positive authorization, or Plugin SDK method.
