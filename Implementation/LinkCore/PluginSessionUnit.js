@@ -44,6 +44,11 @@ export class PluginSessionUnit {
       { ok: false, status: 403, errorCode: "UNTRUSTED_PORT" };
   }
 
+  /** Host-only, port-bound Session reference; never serialized. */
+  sessionForPort(port) {
+    return this.#ports.get(port) ?? null;
+  }
+
   inspect(port, packet) {
     const session = this.#ports.get(port);
     if (!session) {
