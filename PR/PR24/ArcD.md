@@ -70,3 +70,30 @@ original URU, PluginPermission and HubUnit gates. For scoped Property
 reads, Gateway delegates only to HubUnit.readProperty. No arbitrary
 HubUnit action, privileged Property write or direct EDPMU access is
 exposed. Post-dispatch session and live grant checks are retained.
+
+## PR24 Patch(+10) — live scope revocation event chains
+| Chain | Steps | Invariant |
+| --- | --- | --- |
+| EC24-10 | Plugin Manager → HostInstaller.revokeRpcScope → Bridge → Transport → Gateway | Host-only; no Worker right to grant/revoke |
+| EC24-11 | Gateway scope removal → abort matching controllers → OMU EHU 403 → typed response | No other route affected |
+| EC24-12 | Late Host completion → Gateway scope recheck → EHU 499 → no stale response | No leaked data after revoke |
+| EC24-13 | Disable → session revoke → re-enable/rekey → Gateway active snapshot | Removed scope stays removed |
+
+### Event/log ownership
+- `Plugin.Install.RPCScopeRevoked` (Host Installer, Log 200)
+  captures the host user's revocation operation.
+- `RPC.ScopeRevoked` (Gateway, Log 200) captures the exact
+  Object/Action/Property gate update without logging request payloads.
+- `RPC.ScopeRevokedInflight` (Transport, EHU 403, requestId) is
+  generated for each canceled in-flight request; it owns eventId for
+  the Worker-visible 403 `RPC_SCOPE_REVOKED` envelope.
+- `RPC.DiscardedAfterRevoke` (Gateway, EHU 499) applies to late
+  noncooperative Host completions, including after Session renewal.
+
+### Boundaries
+URU remains the Provider identity authority, HubUnit retains action
+and Property ACLs, and EDPMU retains shared Property values. Scope
+state stays exclusively inside the trusted Bridge's Gateway. An
+aborted request may already have caused a Host side effect; no
+transaction rollback is asserted. No new public Host API or alternate
+permission registry is added.
