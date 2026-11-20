@@ -88,6 +88,80 @@ export class PluginHostInstallUnit {
     }
   }
 
+  /**
+   * Explicit Host-only reapproval of an originally reviewed scope.
+   * The Session is suspended while memory grants and IndexedDB
+   * tombstones change, so no uncommitted scope can serve Worker RPC.
+   */
+  async reapproveRpcScope(providerId, scope, options = {}) {
+    if (options.consented !== true) {
+      return { ok: false, status: 403 };
+    }
+    const provider = this.core.uru.getProvider(providerId);
+    const bridge = this.handles.get(providerId);
+    if (!provider || !bridge) return { ok: false, status: 404 };
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
+    this.revocationPending.add(providerId);
+    const disabled = this.core.uru.disabledProviders.has(providerId);
+    let suspended = false;
+    const restoreSession = () => {
+      if (!suspended) return { ok: true, status: 200 };
+      const result = bridge.resumeHostRequests?.();
+      if (result?.ok) return result;
+      this.core.setProviderEnabled(provider.objectId, providerId, false);
+      this.uiHost.setEnabled(providerId, false);
+      this.record(503, "RPCReapprovalSessionFailed", providerId);
+      return { ok: false, status: 503 };
+    };
+    try {
+      const checked = PluginRPCScopePolicy.inspect([scope]);
+      if (!checked.ok) return { ok: false, status: 400 };
+      const wanted = checked.value[0];
+      const stored = await this.revocationStore.list(providerId);
+      if (!stored.ok) return { ok: false, status: 503 };
+      const matches = item => item.target === wanted.target &&
+        item.action === wanted.action &&
+        item.property === wanted.property;
+      if (!stored.value.some(matches)) {
+        return { ok: false, status: 404 };
+      }
+      if (!disabled) {
+        if (!bridge.suspendHostRequests?.()) {
+          return { ok: false, status: 503 };
+        }
+        suspended = true;
+      }
+      const granted = bridge.grantReviewedHostRPCScope?.(wanted) ??
+        { ok: false, status: 503 };
+      if (!granted.ok) {
+        const recovered = restoreSession();
+        return recovered.ok ? granted : recovered;
+      }
+      // The Worker cannot use the new grant until a fresh handshake.
+      const cleared = await this.revocationStore.clear(
+        providerId, wanted);
+      if (!cleared.ok) {
+        bridge.revokeHostRPCScope(wanted);
+        const recovered = restoreSession();
+        this.record(503, "RPCReapprovalPersistenceFailed",
+          providerId);
+        return recovered.ok ? { ok: false, status: 503 } : recovered;
+      }
+      const resumed = restoreSession();
+      if (!resumed.ok) {
+        bridge.revokeHostRPCScope(wanted);
+        await this.revocationStore.mark(providerId, wanted);
+        return resumed;
+      }
+      this.record(200, "RPCReapproved", providerId);
+      return { ok: true, status: 200 };
+    } finally {
+      this.revocationPending.delete(providerId);
+    }
+  }
+
   async install(snapshot, options = {}) {
     const checked = this.reader.inspectImport(snapshot);
     if (!checked.ok) return checked;
@@ -258,6 +332,9 @@ export class PluginHostInstallUnit {
     const bridge = this.handles.get(providerId);
     const provider = this.core.uru.getProvider(providerId);
     if (!bridge || !provider) return { ok: false, status: 404 };
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
     if (this.core.uru.disabledProviders.has(providerId)) {
       return { ok: true, status: 200 };
     }
@@ -277,6 +354,9 @@ export class PluginHostInstallUnit {
     const provider = this.core.uru.getProvider(providerId);
     if (!bridge || !provider || bridge.closed) {
       return { ok: false, status: 404 };
+    }
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
     }
     for (const service of provider.requires) {
       if (!this.core.services.resolve(service).ok) {
@@ -303,6 +383,9 @@ export class PluginHostInstallUnit {
     const bridge = this.handles.get(providerId);
     const provider = this.core.uru.getProvider(providerId);
     if (!bridge || !provider) return { ok: false, status: 404 };
+    if (this.revocationPending.has(providerId)) {
+      return { ok: false, status: 409 };
+    }
     const blocked = this.blocked(providerId);
     if (blocked) return blocked;
     const result = this.core.unregisterProvider(
