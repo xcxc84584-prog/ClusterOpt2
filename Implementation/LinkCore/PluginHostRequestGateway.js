@@ -51,7 +51,8 @@ export class PluginHostRequestGateway {
     }
 
     const event = this.core.omu.record("Log", session.objectId,
-      "RPC.Request", 202, value.target,
+      "RPC.Request." + session.sessionId + "." + value.requestId,
+      202, value.target,
       { requestId: value.requestId,
         parentEventId: value.parentEventId ?? null });
     const result = await this.core.hub.request(
@@ -63,14 +64,17 @@ export class PluginHostRequestGateway {
       requestId: value.requestId,
       parentEventId: event?.eventId ?? value.parentEventId ?? null
     };
-    this.core.omu.record(result.ok ? "Log" : "EHU",
-      session.objectId, "RPC.Response", status, value.target, details);
+    const responseEvent = this.core.omu.record(
+      result.ok ? "Log" : "EHU",
+      session.objectId, "RPC.Response." + session.sessionId +
+        "." + value.requestId, status, value.target, details);
     const response = {
       protocol: Envelope.protocol,
       direction: "plugin-to-host",
       type: "response",
       requestId: value.requestId,
-      eventId: event?.eventId ?? 1,
+      eventId: responseEvent?.eventId ?? event.eventId,
+      parentEventId: event.eventId,
       status,
       ok: result.ok === true
     };
