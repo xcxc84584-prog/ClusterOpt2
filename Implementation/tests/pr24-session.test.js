@@ -45,6 +45,8 @@ test("PR24.11–15 handshake binds identity to actual MessagePort", () => {
   assert.equal(bound.status, 200);
   assert.equal(bound.session.providerId, "plugin.alpha");
   assert.equal(bound.session.objectId, "PluginAlpha");
+  assert.equal(bound.session.state, "ready");
+  assert.equal(bound.session.owns(h.port), true);
 });
 
 test("PR24.16–17 forged source and replay fail closed", () => {
