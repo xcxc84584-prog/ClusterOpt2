@@ -6,16 +6,19 @@ const NAME = /^[A-Za-z][A-Za-z0-9]*(?:[._-][A-Za-z0-9]+)*$/;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const VISIBILITY = new Set(["Public", "Protected", "Private"]);
 const EFFECT = new Set(["none", "read", "write", "external"]);
+const CATEGORY = new Set(["Object", "Event"]);
 const SCHEMA_TYPE = new Set([
   "object", "array", "string", "number", "integer", "boolean", "null"
 ]);
 const FIELDS = new Set([
   "apiVersion", "id", "owner", "action", "version", "visibility",
   "sideEffect", "inputSchema", "outputSchema", "description",
-  "since", "deprecated", "permissions", "errors", "examples"
+  "since", "deprecated", "permissions", "rpcScopes",
+  "category", "sourceLocation", "errors", "examples"
 ]);
 const SCHEMA_FIELDS = new Set([
-  "type", "properties", "required", "items", "additionalProperties"
+  "type", "properties", "required", "items", "additionalProperties",
+  "default", "enum", "minLength", "maxLength", "minimum", "maximum"
 ]);
 const FORBIDDEN = new Set(["__proto__", "prototype", "constructor"]);
 const MAX_BYTES = 16384;
@@ -36,6 +39,28 @@ function schemaValid(schema, depth = 0) {
   if (keys.length > MAX_KEYS ||
       keys.some(key => !SCHEMA_FIELDS.has(key))) return false;
   if (!SCHEMA_TYPE.has(schema.type)) return false;
+  if (schema.default !== undefined && !plainTree(schema.default)) return false;
+  if (schema.enum !== undefined &&
+      (!Array.isArray(schema.enum) || !schema.enum.length ||
+       schema.enum.length > 32 || !plainTree(schema.enum))) return false;
+  for (const key of ["minLength", "maxLength"]) {
+    if (schema[key] !== undefined &&
+        (schema.type !== "string" ||
+         !Number.isSafeInteger(schema[key]) || schema[key] < 0 ||
+         schema[key] > 1000000)) return false;
+  }
+  if (schema.minLength !== undefined &&
+      schema.maxLength !== undefined &&
+      schema.minLength > schema.maxLength) return false;
+  for (const key of ["minimum", "maximum"]) {
+    if (schema[key] !== undefined &&
+        (!["number", "integer"].includes(schema.type) ||
+         typeof schema[key] !== "number" ||
+         !Number.isFinite(schema[key]))) return false;
+  }
+  if (schema.minimum !== undefined &&
+      schema.maximum !== undefined &&
+      schema.minimum > schema.maximum) return false;
   if (schema.additionalProperties !== undefined &&
       typeof schema.additionalProperties !== "boolean") return false;
   if (schema.properties !== undefined) {
@@ -125,6 +150,18 @@ export const APIDescriptorPolicy = Object.freeze({
         !VERSION.test(candidate.version)) failures.push("version");
     if (!VISIBILITY.has(candidate.visibility)) failures.push("visibility");
     if (!EFFECT.has(candidate.sideEffect)) failures.push("sideEffect");
+    if (candidate.category !== undefined &&
+        !CATEGORY.has(candidate.category)) failures.push("category");
+    if (candidate.sourceLocation !== undefined) {
+      const location = candidate.sourceLocation;
+      if (!record(location) ||
+          Object.keys(location).some(key => !["file", "line"].includes(key)) ||
+          typeof location.file !== "string" ||
+          !/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9_./()+-]+$/.test(location.file) ||
+          !Number.isSafeInteger(location.line) || location.line < 1) {
+        failures.push("sourceLocation");
+      }
+    }
     if (!schemaValid(candidate.inputSchema)) failures.push("inputSchema");
     if (!schemaValid(candidate.outputSchema)) failures.push("outputSchema");
     if (candidate.description !== undefined &&
@@ -145,6 +182,14 @@ export const APIDescriptorPolicy = Object.freeze({
            typeof value !== "string" || !NAME.test(value)))) {
       failures.push("permissions");
     }
+    if (candidate.rpcScopes !== undefined &&
+        (!Array.isArray(candidate.rpcScopes) ||
+         candidate.rpcScopes.length > 64 ||
+         new Set(candidate.rpcScopes).size !== candidate.rpcScopes.length ||
+         candidate.rpcScopes.some(value =>
+           typeof value !== "string" || !NAME.test(value)))) {
+      failures.push("rpcScopes");
+    }
     // Typed, bounded documentation metadata. Descriptions never grant
     // privileges or become executable callbacks.
     if (candidate.errors !== undefined &&
@@ -153,12 +198,15 @@ export const APIDescriptorPolicy = Object.freeze({
          candidate.errors.some(item =>
            !record(item) ||
            Object.keys(item).some(key =>
-             !["status", "code", "message"].includes(key)) ||
+             !["status", "code", "message", "recovery"].includes(key)) ||
            !Number.isInteger(item.status) ||
            item.status < 400 || item.status > 599 ||
            typeof item.code !== "string" || !NAME.test(item.code) ||
            typeof item.message !== "string" ||
-           item.message.length > 256))) {
+           item.message.length > 256 ||
+           (item.recovery !== undefined &&
+             (typeof item.recovery !== "string" ||
+              item.recovery.length > 512))))) {
       failures.push("errors");
     }
     if (candidate.examples !== undefined &&
