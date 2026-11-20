@@ -48,8 +48,9 @@ test("PR25 complete export includes protocol and declared lifecycle Event",
       JSON.stringify(exported.error));
     const data = JSON.parse(exported.value.json);
     assert.ok(data.counts.protocol >= 6);
-    assert.equal(data.counts.event, 1);
-    const lifecycle = data.contracts.event[0].descriptor;
+    assert.equal(data.counts.event, 2);
+    const lifecycle = data.contracts.event.find(x =>
+      x.id === "WorkerSDK.SessionChange").descriptor;
     assert.deepEqual(lifecycle.payloadSchema.enum,
       ["ready", "suspended"]);
     assert.equal(Object.keys(data.counts).length, 5);
