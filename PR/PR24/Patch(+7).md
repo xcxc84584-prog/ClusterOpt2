@@ -40,3 +40,16 @@ Base main is unchanged. Prior Patch(+6) had 9/9 CI success.
 - CI result must be checked against this exact Patch(+7) head.
 - PR24.01–100 remain open pending end-to-end independent plugin
   conformance, VTE and rollback snapshot.
+
+## Patch(+7) CI failure and correction
+- The first PR24.7 browser run reported 155/157 passing with two
+  reverse-RPC tests failing.
+- Cause: PluginSessionUnit.inspect passed the Envelope.bind frozen
+  identity record as `session`, while Gateway's post-dispatch
+  liveness guard called `session.owns(port)`.
+- Corrected the host-only return to include the actual PluginSession
+  handle after validated envelope parsing. Plugin cannot access that
+  handle; no new capability is exposed.
+- Added a regression asserting Session.state and owns(port), without
+  weakening existing Playwright checks.
+- CI must be rechecked on the corrected head.
