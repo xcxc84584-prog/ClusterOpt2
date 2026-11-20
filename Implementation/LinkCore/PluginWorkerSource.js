@@ -16,8 +16,7 @@ const protocol = "cluster.rpc/1";
 
 function rejectPending(reason) {
   for (const task of pending.values()) {
-    clearTimeout(task.timer);
-    task.reject(Error(reason));
+    task.reject(reason);
   }
   pending.clear();
 }
@@ -35,12 +34,43 @@ self.Cluster = Object.freeze({
         deadlineMs < 1 || deadlineMs > 30000) {
       throw TypeError("Invalid deadline");
     }
+    if (options.signal?.aborted) throw Error("RPC cancelled");
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
+      let done = false;
+      let timer = null;
+      const signal = options.signal;
+      const finish = (success, value) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        signal?.removeEventListener?.("abort", abort);
         pending.delete(requestId);
-        reject(Error("RPC timeout"));
+        if (success) resolve(value);
+        else reject(Error(value));
+      };
+      const abort = () => {
+        try {
+          channel.postMessage({
+            protocol, direction: "plugin-to-host",
+            type: "cancel", requestId, reason: "ABORTED"
+          });
+        } catch {
+          // A disconnected transport still settles the local Promise.
+        }
+        finish(false, "RPC cancelled");
+      };
+      timer = setTimeout(() => {
+        abort();
       }, deadlineMs);
-      pending.set(requestId, { resolve, reject, timer });
+      pending.set(requestId, {
+        resolve: data => finish(true, data),
+        reject: reason => finish(false, reason)
+      });
+      signal?.addEventListener?.("abort", abort, { once: true });
+      if (signal?.aborted) {
+        abort();
+        return;
+      }
       try {
         channel.postMessage({
           protocol, direction: "plugin-to-host",
@@ -48,9 +78,7 @@ self.Cluster = Object.freeze({
           payload, deadlineMs
         });
       } catch {
-        clearTimeout(timer);
-        pending.delete(requestId);
-        reject(Error("RPC transport failed"));
+        finish(false, "RPC transport failed");
       }
     });
   }
@@ -61,8 +89,13 @@ self.addEventListener("message", async event => {
       event.ports.length !== 1) return;
   channel = event.ports[0];
   channel.onmessage = async ({data}) => {
+    if (data?.kind === "cluster-session-suspended") {
+      sessionReady = false;
+      rejectPending("Plugin session suspended");
+      return;
+    }
     if (data?.kind === "cluster-session-hello") {
-      if (sessionReady || data.protocol !== protocol ||
+      if (data.protocol !== protocol ||
           typeof data.challenge !== "string") return;
       channel.postMessage({
         kind: "cluster-session-ready", protocol,
@@ -77,10 +110,8 @@ self.addEventListener("message", async event => {
         data.direction === "plugin-to-host") {
       const task = pending.get(data.requestId);
       if (!task) return;
-      pending.delete(data.requestId);
-      clearTimeout(task.timer);
       if (data.ok) task.resolve(data.data);
-      else task.reject(Error(data.error?.code ?? "RPC denied"));
+      else task.reject(data.error?.code ?? "RPC denied");
       return;
     }
     if (data?.kind !== "invoke" ||
