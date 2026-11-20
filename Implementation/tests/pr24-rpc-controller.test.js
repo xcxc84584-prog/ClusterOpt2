@@ -113,3 +113,31 @@ test("PR24.29 failed transport settles without hanging", async () => {
   assert.equal(result.status, 502);
   assert.equal(h.rpc.pendingCount, 0);
 });
+
+test("PR24.25 queued work times out before dispatch", async () => {
+  const h = harness({ maxActive: 1, maxQueue: 1, timeoutMs: 12 });
+  const first = h.rpc.request(h.port, h.session, "Tool.A", "Run", {});
+  const queued = h.rpc.request(h.port, h.session, "Tool.B", "Run", {},
+    { deadlineMs: 5 });
+  assert.equal((await queued).status, 504);
+  assert.equal(h.sent.length, 1);
+  h.rpc.receive(h.port, h.session, h.answer(h.sent[0]));
+  assert.equal((await first).status, 200);
+  assert.equal(h.rpc.queuedCount, 0);
+});
+
+test("PR24.27 resource cap counts each pending task once", async () => {
+  const h = harness({ maxActive: 2, maxQueue: 2 });
+  const promises = [];
+  for (let i = 0; i < 4; i++) {
+    promises.push(h.rpc.request(h.port, h.session,
+      "Tool.Valid", "Run", { i }));
+  }
+  assert.equal(h.rpc.pendingCount, 4);
+  assert.equal(h.rpc.queuedCount, 2);
+  assert.equal((await h.rpc.request(h.port, h.session,
+    "Tool.Overflow", "Run", {})).status, 429);
+  h.rpc.close();
+  assert.deepEqual((await Promise.all(promises)).map(x => x.status),
+    [499, 499, 499, 499]);
+});
