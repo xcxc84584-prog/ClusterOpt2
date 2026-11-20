@@ -16,7 +16,7 @@ export const PluginLifecycleEventPolicy = Object.freeze({
       status: "Available",
       sourceLocation: Object.freeze({
         file: "Implementation/property/PluginLifecycleEventPolicy.js",
-        line: 13
+        line: 12
       }),
       triggerSourceLocation: Object.freeze({
         file: "Implementation/LinkCore/PluginWorkerSource.js",
