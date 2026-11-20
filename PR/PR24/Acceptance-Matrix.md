@@ -145,3 +145,15 @@ starting evidence, not a completeness certification.
 4. For each row, attach an explicit test method and verify a denial
    path plus the relevant lifecycle/rollback state.
 5. Update this table **only after** that row meets its definition of PASS.
+
+## Patch(+13) verification evidence additions
+- PR24.22/23: `Implementation/tests/pr24-omu-correlated-rpc.test.js`
+  and `Implementation/e2e/pr24-sdk-third-party.spec.js`
+  now cover four consecutive Host responses in one Session and
+  unique OMU Event IDs, correcting the 1-second Log cooldown bug.
+- PR24.62/63: `Implementation/object/PluginUIControlAdapter.js`
+  resolves the Host-visible toolbar; external native UI E2E
+  checks Button visibility, Tab navigation, owner ACL and teardown.
+- These are evidence **candidates**, not automatic formal PASS.
+  Final exact-HEAD CI, wider compatibility/security review and
+  individual acceptance signoff are still mandatory.
