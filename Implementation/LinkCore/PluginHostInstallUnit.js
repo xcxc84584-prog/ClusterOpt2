@@ -173,7 +173,10 @@ export class PluginHostInstallUnit {
     if (blocked) return blocked;
     const result = this.core.setProviderEnabled(
       provider.objectId, providerId, false);
-    if (result.ok) this.uiHost.setEnabled(providerId, false);
+    if (result.ok) {
+      bridge.suspendHostRequests?.();
+      this.uiHost.setEnabled(providerId, false);
+    }
     return result;
   }
 
@@ -192,7 +195,15 @@ export class PluginHostInstallUnit {
     }
     const result = this.core.setProviderEnabled(
       provider.objectId, providerId, true);
-    if (result.ok) this.uiHost.setEnabled(providerId, true);
+    if (result.ok) {
+      const resumed = bridge.resumeHostRequests?.();
+      if (resumed && !resumed.ok) {
+        this.core.setProviderEnabled(provider.objectId, providerId, false);
+        this.record(503, "SessionResumeFailed", providerId);
+        return { ok: false, status: 503 };
+      }
+      this.uiHost.setEnabled(providerId, true);
+    }
     return result;
   }
 
@@ -268,11 +279,14 @@ export class PluginHostInstallUnit {
     const disabled = this.core.setProviderEnabled(
       previous.objectId, providerId, false);
     if (!disabled.ok) return disabled;
+    previousBridge.suspendHostRequests?.();
     const removed = this.core.unregisterProvider(
       previous.objectId, providerId);
     if (!removed.ok) {
-      if (!wasDisabled) this.core.setProviderEnabled(
-        previous.objectId, providerId, true);
+      if (!wasDisabled) {
+        this.core.setProviderEnabled(previous.objectId, providerId, true);
+        previousBridge.resumeHostRequests?.();
+      }
       return removed;
     }
     this.core.unregister(previous.objectId);
@@ -282,6 +296,7 @@ export class PluginHostInstallUnit {
     if (installed.ok) {
       if (wasDisabled) {
         this.core.setProviderEnabled(previous.objectId, providerId, false);
+        this.handles.get(providerId)?.suspendHostRequests?.();
         this.uiHost.setEnabled(providerId, false);
       }
       previousBridge.terminate(200, "Upgraded");
@@ -302,6 +317,15 @@ export class PluginHostInstallUnit {
       if (wasDisabled) this.core.setProviderEnabled(
         previous.objectId, providerId, false);
       this.handles.set(providerId, previousBridge);
+      if (!wasDisabled) {
+        const resumed = previousBridge.resumeHostRequests?.();
+        if (resumed && !resumed.ok) {
+          this.core.setProviderEnabled(previous.objectId, providerId, false);
+          this.record(503, "RestoreSessionFailed", providerId);
+          return { ok: false, status: 503,
+            error: "Provider restored but RPC Session unavailable" };
+        }
+      }
       if (previousUI) {
         this.uiHost.mount(previousUI.snapshot, previousUI.provider);
         this.uiHost.setEnabled(providerId, !wasDisabled);
