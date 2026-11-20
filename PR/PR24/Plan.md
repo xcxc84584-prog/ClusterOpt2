@@ -151,3 +151,39 @@ full public SDK and Plugin→Plugin calls, external UI, quotas, E2E.
   data, storage failure and pending upgrade without losing old state.
 - Next: explicit revoked-route reapproval UX, durable consent
   version migration, multi-Session guard, plugin-independent SDK.
+
+## PR24 Patch(+12) — third-party conformance, reapproval and resilience
+- Publish a versioned ambient Worker SDK with `Cluster.handle`,
+  `Cluster.service/request`, `Cluster.onSessionChange`, structured
+  RPC error and bounded callback/resource contracts. Only approved
+  manifest-declared actions can be registered or invoked.
+- Provide standalone third-party sample packages under
+  `Implementation/sdk/examples/`: Echo and Delegate. Their source
+  files MUST NOT import internal LinkCore modules or bypass the Host.
+- Worker → Host → third-party Worker routing must pass URU, HubUnit,
+  Session authentication, per-Object/Action scopes and live ACL.
+- Introduce explicit consent-based reapproval of durable denials.
+  Suspend the Session, grant only an **originally reviewed** scope
+  in memory, clear the denial record, then resume with a new
+  challenge. If persistence fails, rollback memory grant first.
+- Broadcast deny-only notifications between same-origin tabs.
+  Receivers must re-read IndexedDB; never trust a broadcast as a
+  positive grant. Cross-tab synchronization is best-effort/eventual.
+- Give all sandboxed UI plugins Provider-specific workbench tabs
+  without first-party per-plugin source edits. Preserve the host
+  editor/PowerShell as separate native tab owners.
+- Add a Host-owned bounded reverse RPC timeout circuit (three
+  deadlines within 60 seconds). Reject future route work with typed
+  503 until explicit trusted Host reset. Do not erase circuit on rekey.
+- Continue Host→Worker migration to the symmetric protocol for
+  authenticated Session-ready calls; retain the old invoke protocol
+  during bootstrap for compatibility.
+- Isolate unexpected Worker faults by disabling only its registered
+  Provider and freeing the underlying Bridge/ports/listeners.
+- Tests: Node/VTE, independent external package E2E,
+  permission-negative tests, cross-tab browser tests, tabbed UI
+  isolation/cleanup, typed error, Host→Worker cancellation,
+  circuit/timeout, and real Worker crash.
+- Do not declare PR24.01–100 complete from one CI green result:
+  acceptance remains per-subPR, including performance, quotas,
+  cross-browser, accessibility, complete threat-model review.
