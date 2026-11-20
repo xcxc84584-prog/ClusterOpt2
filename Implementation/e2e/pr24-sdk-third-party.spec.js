@@ -197,3 +197,138 @@ test("PR24.62-70 external SDK UI creates isolated multi-tab view",
     await expect(pluginTab).toHaveCount(0);
     await expect(launch).toHaveCount(0);
   });
+
+test("PR24.22 production Host invokes Worker through Session Controller",
+  async ({ page }) => {
+    await page.goto("/");
+    const reply = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const root = "/Implementation/sdk/examples/echo/";
+      const [manifestText, worker, html] = await Promise.all([
+        fetch(root + "plugin.json").then(r => r.text()),
+        fetch(root + "worker.js").then(r => r.text()),
+        fetch(root + "index.html").then(r => r.text())
+      ]);
+      const host = linkCore.pluginHostInstaller;
+      const install = await host.install({
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText, files: {
+          "plugin.json": btoa(manifestText),
+          "worker.js": btoa(worker), "index.html": btoa(html)
+        }
+      }, { consented: true });
+      if (!install.ok) return { install };
+      const bridge = host.handles.get("example.sdk.echo");
+      try {
+        let ready = false;
+        for (let i = 0; i < 60; i++) {
+          const session = bridge.hostTransport.gateway.sessions
+            .sessionForPort(bridge.port);
+          if (session?.state === "ready") {
+            ready = true;
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        if (!ready) return { ready };
+        const direct = await bridge.invokeBidirectional(
+          "example.sdk.echo", "echo", { message: "new-protocol" });
+        const routed = await linkCore.request(
+          "ui", "SDK.ExampleEcho", "echo",
+          { message: "through-hub" }, { origin: "user" });
+        const events = linkCore.getSnapshot().logs.filter(event =>
+          event.action === "RPC.HostToPlugin.Response");
+        return {
+          ready, direct, routed,
+          responseEvents: events.length,
+          lastEvent: events.at(-1)?.eventId
+        };
+      } finally {
+        host.uninstall("example.sdk.echo");
+      }
+    });
+    expect(reply.ready, JSON.stringify(reply)).toBe(true);
+    expect(reply.direct.status, JSON.stringify(reply)).toBe(200);
+    expect(reply.direct.value).toEqual({
+      echoed: "new-protocol", sdkVersion: "1.0.0"
+    });
+    expect(reply.routed.status, JSON.stringify(reply)).toBe(200);
+    expect(reply.routed.value.echoed).toBe("through-hub");
+    expect(reply.responseEvents).toBeGreaterThanOrEqual(2);
+    expect(reply.lastEvent).toBeGreaterThan(0);
+  });
+
+test("PR24.25 Host-to-Plugin cancellation suppresses stale Worker reply",
+  async ({ page }) => {
+    await page.goto("/");
+    const result = await page.evaluate(async () => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const manifest = {
+        packageVersion: 1, name: "SDK cancellation",
+        entry: "worker.js",
+        provider: {
+          manifestVersion: 1,
+          providerId: "example.sdk.cancel",
+          objectId: "SDK.Cancel",
+          provides: [{
+            service: "example.sdk.cancel", action: "hang",
+            version: "1.0.0", inputSchema: { type: "object" },
+            outputSchema: { type: "object" }
+          }],
+          requires: [], permissions: [],
+          execution: { isolation: "worker", concurrency: "serial" }
+        }
+      };
+      const raw = JSON.stringify(manifest);
+      const source = [
+        "Cluster.handle('hang', (_payload, context) =>",
+        "  new Promise(resolve => {",
+        "    context.signal.addEventListener('abort', () =>",
+        "      resolve({ aborted: true }), { once: true });",
+        "  }));"
+      ].join("\n");
+      const host = linkCore.pluginHostInstaller;
+      const installed = await host.install({
+        format: "cluster-plugin-folder", formatVersion: 1,
+        manifestText: raw,
+        files: {
+          "plugin.json": btoa(raw), "worker.js": btoa(source)
+        }
+      }, { consented: true });
+      if (!installed.ok) return { installed };
+      const bridge = host.handles.get("example.sdk.cancel");
+      try {
+        let ready = false;
+        for (let i = 0; i < 60; i++) {
+          const session = bridge.hostTransport.gateway.sessions
+            .sessionForPort(bridge.port);
+          if (session?.state === "ready") {
+            ready = true;
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        if (!ready) return { ready };
+        const pending = bridge.invokeBidirectional(
+          "example.sdk.cancel", "hang", {}, 1200);
+        const requestId = "host-1";
+        const aborted = bridge.hostController.cancel(requestId);
+        const reply = await pending;
+        await new Promise(resolve => setTimeout(resolve, 20));
+        return {
+          ready, aborted: aborted.status, reply,
+          pending: bridge.hostController.pendingCount,
+          sessions: bridge.hostTransport.gateway.sessions.activeCount
+        };
+      } finally {
+        host.uninstall("example.sdk.cancel");
+      }
+    });
+    expect(result.ready, JSON.stringify(result)).toBe(true);
+    expect(result.aborted).toBe(200);
+    expect(result.reply.status).toBe(499);
+    expect(result.pending).toBe(0);
+    expect(result.sessions).toBe(1);
+  });
