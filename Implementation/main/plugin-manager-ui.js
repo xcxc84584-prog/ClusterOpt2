@@ -274,6 +274,26 @@ export function mountPluginManagerUI(core,doc,options={}) {
       controls.append(upgrade);
     }
     body.append(controls);
+    const circuit=core.pluginHostInstaller.getRPCCircuitState(
+      p.providerId);
+    if(circuit.open) {
+      const row=dom(doc,"div","pm-permission-row");
+      row.append(dom(doc,"span","pm-permission-label",
+        t("RPC 熔斷：請先確認插件狀態。",
+          "RPC circuit open: inspect plugin state first.")),
+        btn(doc,t("重設熔斷","Reset circuit"),event=>{
+          if(!event.isTrusted || !doc.defaultView.confirm(
+            t("確認重設此插件的 RPC 熔斷？",
+              "Reset this plugin's RPC circuit?")))return;
+          const result=core.pluginHostInstaller.resetRPCCircuit(
+            p.providerId,{consented:true});
+          if(!result.ok)doc.defaultView.alert(
+            t("重設失敗（狀態 ","Reset failed (status ")+
+            result.status+").");
+          render();
+        },"pm-mini"));
+      body.append(row);
+    }
     const grants=(p.permissions??[]).filter(name=>
       core.checkPluginPermission(p.providerId,name)).length;
     body.append(dom(doc,"p","pm-muted",
