@@ -1,28 +1,27 @@
 # PR25 — 48 acceptance conditions
 
-Legend: IMPLEMENTED = a code path exists; not final PASS.
-PARTIAL = incomplete coverage; PENDING = not demonstrated.
+IMPLEMENTED = a feature with automated test path, NOT final acceptance.
+PARTIAL = incomplete coverage or independent acceptance outstanding.
 
-| Module | Requirement 1 | Requirement 2 | Requirement 3 | Requirement 4 |
+| Module | 1 | 2 | 3 | 4 |
 | --- | --- | --- | --- | --- |
-| PR25 | PARTIAL Host vs Plugin taxonomy | IMPLEMENTED five live kinds | IMPLEMENTED ID/version/owner/capability/visibility | IMPLEMENTED state badges |
-| AL02 | PARTIAL Request schema coverage | PARTIAL Response schema coverage | PARTIAL required/type/limit/default | PARTIAL error and recovery coverage |
-| AL03 | IMPLEMENTED request examples | IMPLEMENTED Host vs Worker guide | PARTIAL success/denial examples | PARTIAL scopes and permissions |
-| AL04 | IMPLEMENTED manifest sample | IMPLEMENTED Worker/UI/CSP guide | PARTIAL folder/Snapshot/install | IMPLEMENTED independent sample |
-| AL05 | PARTIAL current plugin capability | PARTIAL read/owned/native distinction | IMPLEMENTED ACL/Scope/Session docs | IMPLEMENTED 403/409 examples |
-| AL06 | PENDING Event payload/trigger inventory | PARTIAL subscribe/order | PARTIAL Session lifecycle | PARTIAL race/cancel/revision |
-| AL07 | IMPLEMENTED bounded source paging | IMPLEMENTED summary-only page | IMPLEMENTED cursor/revision | IMPLEMENTED lazy descriptor |
-| AL08 | IMPLEMENTED previous/next/size/index | IMPLEMENTED source search/filter/sort | IMPLEMENTED retained query/sort | PARTIAL race/scroll E2E |
-| AL09 | IMPLEMENTED all-kind authorized export | IMPLEMENTED independent of page | PARTIAL contract content coverage | IMPLEMENTED count/SHA/revision |
-| AL10 | IMPLEMENTED copy schema and SDK calls | IMPLEMENTED ID/version/content search | IMPLEMENTED contract checker; VTE UI pending | IMPLEMENTED OMU EHU/check result |
-| AL11 | IMPLEMENTED URU/EDPMU authority | IMPLEMENTED live revision check | PARTIAL migration docs | IMPLEMENTED no schema guessing |
-| AL12 | IMPLEMENTED 100/1000/10000 unit tests | PARTIAL concurrent mutation E2E | IMPLEMENTED hash/count/revision test | PENDING independent blind test |
+| PR25 | IMPLEMENTED audience | IMPLEMENTED five kinds | IMPLEMENTED metadata | IMPLEMENTED states |
+| AL02 | PARTIAL request inventory | PARTIAL response inventory | IMPLEMENTED schema constraints | PARTIAL errors/recovery |
+| AL03 | IMPLEMENTED calls | IMPLEMENTED Host/Worker | PARTIAL action-specific examples | IMPLEMENTED scopes/permissions |
+| AL04 | IMPLEMENTED manifest | IMPLEMENTED Worker/UI/CSP | IMPLEMENTED Snapshot/install docs | IMPLEMENTED independent sample |
+| AL05 | IMPLEMENTED live grants | IMPLEMENTED read/own/native | IMPLEMENTED ACL/scope/session/revoke | IMPLEMENTED 403/409 |
+| AL06 | PARTIAL all Event types | IMPLEMENTED SessionChange payload/order | IMPLEMENTED Worker lifecycle | IMPLEMENTED race/cancel/revision |
+| AL07 | IMPLEMENTED bounded pages | IMPLEMENTED lazy descriptors | IMPLEMENTED cursor/revision | IMPLEMENTED selected descriptor |
+| AL08 | IMPLEMENTED navigation | IMPLEMENTED source filters/sort | IMPLEMENTED query preservation | IMPLEMENTED in-place refresh |
+| AL09 | IMPLEMENTED authorized all kinds | IMPLEMENTED page-independent | PARTIAL missing third-party docs | IMPLEMENTED count/SHA/revision |
+| AL10 | IMPLEMENTED copy tools | IMPLEMENTED contract search | IMPLEMENTED contract checker | IMPLEMENTED EHU/status |
+| AL11 | IMPLEMENTED registry authority | IMPLEMENTED live revision | PARTIAL legacy migration docs | IMPLEMENTED no guessing |
+| AL12 | IMPLEMENTED 100/1000/10000 | IMPLEMENTED stale/race/ACL | IMPLEMENTED export verification | PARTIAL automated proxy, human blind test pending |
 
-## Blocking merge conditions
-- Final exact-SHA CI/VTE/browser E2E must pass.
-- Complete native and Worker-facing API contract inventory.
-- Event lifecycle documentation from authoritative registration only.
-- Full static source provenance coverage.
-- Independent documentation-only plugin build and rollback acceptance.
-
-Do not treat passing a subset of tests as 48/48 PASS.
+Remaining blockers for strict 48/48 merge:
+1. Independent review of every intended Plugin Public API's Request,
+   Response, permissions, errors, recovery and example documentation.
+2. Full authoritative Event inventory; never guess unregistered events.
+3. Source/line coverage of all static host contracts and version guards.
+4. Independent human third-party documentation-only blind plugin test.
+5. Final exact-HEAD 5/5 CI and VTE/E2E PASS.
