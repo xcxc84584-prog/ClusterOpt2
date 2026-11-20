@@ -118,3 +118,25 @@ test("PR25 constrained schemas and structured RPC scopes are validated", () => {
   badScope.rpcScopes = [{ target: "HubUnit", action: "UI.Delete" }];
   assert.equal(APIDescriptorPolicy.validate(badScope).status, 400);
 });
+
+test("PR25 deprecated contract requires declared migration guidance", () => {
+  const base=example();
+  assert.equal(APIDescriptorPolicy.validate({
+    ...base, deprecated:true
+  }).status,400);
+  const accepted=APIDescriptorPolicy.validate({
+    ...base, deprecated:true,
+    compatibility:"Backward compatible until v2",
+    migration:{
+      replacementId:"editor.highlightV2",
+      since:"1.1.0",
+      guide:"Replace highlight with highlightV2"
+    }
+  });
+  assert.equal(accepted.status,200);
+  assert.equal(accepted.value.migration.replacementId,
+    "editor.highlightV2");
+  assert.equal(APIDescriptorPolicy.validate({
+    ...base, unavailable:true
+  }).status,200);
+});
