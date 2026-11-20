@@ -131,6 +131,11 @@ export function renderContractDetail(doc, host, entry, t, onBack,
       descriptor.sourceLocation.line : undefined],
     [t("已棄用", "Deprecated"), descriptor.deprecated === undefined ?
       undefined : String(descriptor.deprecated)],
+    ["Compatibility", descriptor.compatibility],
+    ["Migration", descriptor.migration ?
+      JSON.stringify(descriptor.migration) : undefined],
+    ["Availability", descriptor.unavailable ? "Unavailable" :
+      descriptor.deprecated ? "Deprecated" : "Available"],
     [t("型別", "Type"), descriptor.type],
     [t("可讀取", "Readable"), descriptor.readable === undefined ?
       undefined : String(descriptor.readable)],
