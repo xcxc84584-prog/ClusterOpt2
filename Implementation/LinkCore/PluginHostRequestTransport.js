@@ -16,6 +16,41 @@ export class PluginHostRequestTransport {
     this.connections = new Map();
   }
 
+  /**
+   * Host-only revocation. Abort only matching in-flight requests, send
+   * a correlated 403, and keep reservations until Host work settles.
+   * The Gateway retains revoked scopes after disable/enable rekey.
+   */
+  revokeRpcScope(scope) {
+    const revoked = this.gateway.revokeRpcScope(scope);
+    if (!revoked.ok) return revoked;
+    let cancelled = 0;
+    for (const [port, entry] of this.connections) {
+      for (const [requestId, task] of entry.requests) {
+        if (task.controller.signal.aborted ||
+            task.target !== scope.target || task.action !== scope.action ||
+            task.property !== scope.property) continue;
+        task.controller.abort();
+        cancelled++;
+        const audit = this.gateway.core.omu.record("EHU",
+          "PluginTransport", "RPC.ScopeRevokedInflight", 403,
+          task.target, { requestId });
+        const checked = Envelope.inspect({
+          protocol: Envelope.protocol, direction: "plugin-to-host",
+          type: "response", requestId, eventId: audit.eventId,
+          status: 403, ok: false,
+          error: { code: "RPC_SCOPE_REVOKED",
+            message: "RPC scope revoked by host" }
+        });
+        if (checked.ok && entry.active) {
+          try { port.postMessage(checked.value); }
+          catch { /* Revocation stays authoritative if port is gone. */ }
+        }
+      }
+    }
+    return { ok: true, status: 200, cancelled };
+  }
+
   attach(port, providerId) {
     if (!port || this.connections.has(port) ||
         typeof port.addEventListener !== "function" ||
@@ -58,7 +93,7 @@ export class PluginHostRequestTransport {
         validated.value.direction === "plugin-to-host") {
       const task = entry.requests.get(validated.value.requestId);
       if (task) {
-        task.abort();
+        task.controller.abort();
         this.gateway.core.omu.record("EHU", "PluginTransport",
           "RPC.Cancelled", 499, "", {
             requestId: validated.value.requestId
@@ -95,7 +130,15 @@ export class PluginHostRequestTransport {
         "RPC.DuplicateInflight", 409);
       return;
     }
-    if (requestId) entry.requests.set(requestId, controller);
+    if (requestId) {
+      entry.requests.set(requestId, {
+        controller, target: validated.value.target,
+        action: validated.value.action,
+        property: validated.value.target === "HubUnit" &&
+          validated.value.action === "Property.Read" ?
+          validated.value.payload?.name : undefined
+      });
+    }
     // Deadline covers the whole host-side request, not just scheduling.
     const deadlineMs = requestId ?
       (validated.value.deadlineMs ?? 5000) : 5000;
