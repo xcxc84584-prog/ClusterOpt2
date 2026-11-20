@@ -403,7 +403,7 @@ test("PR24.48 revoked in-flight route gets one 403; other route survives",
       assert.equal(successful.status, 200);
       assert.equal(successful.data.echoed, "allowed");
       finish({ ok: true, status: 200,
-        value: { secret: "revoked-data" } });
+        value: { confidential: "revoked-data" } });
       await new Promise(resolve => setImmediate(resolve));
       await new Promise(resolve => setImmediate(resolve));
       assert.deepEqual(messages.map(packet => packet.requestId),
