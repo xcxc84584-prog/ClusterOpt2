@@ -15,7 +15,7 @@
     "objectId": "SDK.NativeUI",
     "provides": [
       {
-        "service": "example.sdk.native-ui",
+        "service": "example.sdk.native-ui.createControls",
         "action": "createControls",
         "version": "1.0.0",
         "inputSchema": {
@@ -26,7 +26,7 @@
         }
       },
       {
-        "service": "example.sdk.native-ui",
+        "service": "example.sdk.native-ui.pressed",
         "action": "pressed",
         "version": "1.0.0",
         "inputSchema": {
@@ -37,7 +37,7 @@
         }
       },
       {
-        "service": "example.sdk.native-ui",
+        "service": "example.sdk.native-ui.status",
         "action": "status",
         "version": "1.0.0",
         "inputSchema": {
@@ -48,7 +48,7 @@
         }
       },
       {
-        "service": "example.sdk.native-ui",
+        "service": "example.sdk.native-ui.probeNativeACL",
         "action": "probeNativeACL",
         "version": "1.0.0",
         "inputSchema": {
