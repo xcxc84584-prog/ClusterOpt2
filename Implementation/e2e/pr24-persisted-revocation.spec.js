@@ -117,3 +117,59 @@ test("PR24.46 IndexedDB denial persists across browser reload",
     expect(fresh.remaining).toEqual([data.rpcScopes[1]]);
     expect(fresh.evidence).toBe(true);
   });
+
+test("PR24.47 explicit regrant rekeys Worker and removes durable denial",
+  async ({ page }) => {
+    const data = fixture();
+    await page.goto("/");
+    const result = await page.evaluate(async ({ snapshot, rpcScopes,
+      provider }) => {
+      const { linkCore } = await import(
+        "/Implementation/LinkCore/LinkCore.js");
+      const installer = linkCore.pluginHostInstaller;
+      const installed = await installer.install(snapshot, {
+        consented: true, approvedRpcScopes: rpcScopes
+      });
+      if (!installed.ok) return { installed };
+      const bridge = installer.handles.get(provider.providerId);
+      try {
+        const original = bridge.hostTransport.connections.get(
+          bridge.port).sessionId;
+        const denied = await installer.revokeRpcScopePersisted(
+          provider.providerId, rpcScopes[0]);
+        const noConsent = await installer.reapproveRpcScope(
+          provider.providerId, rpcScopes[0]);
+        const before = await linkCore.request("ui",
+          provider.objectId, "probe", {}, { origin: "user" });
+        const reapproved = await installer.reapproveRpcScope(
+          provider.providerId, rpcScopes[0], { consented: true });
+        const rotated = bridge.hostTransport.connections.get(
+          bridge.port).sessionId !== original;
+        const after = await linkCore.request("ui",
+          provider.objectId, "probe", {}, { origin: "user" });
+        const persisted = await installer.listRevokedRpcScopes(
+          provider.providerId);
+        return {
+          installed: installed.status, denied: denied.status,
+          noConsent: noConsent.status,
+          before: before.value, reapproved: reapproved.status,
+          rotated, after, persisted: persisted.value
+        };
+      } finally {
+        installer.uninstall(provider.providerId);
+      }
+    }, data);
+    expect(result.installed, JSON.stringify(result)).toBe(201);
+    expect(result.denied).toBe(200);
+    expect(result.noConsent).toBe(403);
+    expect(result.before).toEqual({
+      denied: true, language: "zh-Hant"
+    });
+    expect(result.reapproved, JSON.stringify(result)).toBe(200);
+    expect(result.rotated).toBe(true);
+    expect(result.after.status, JSON.stringify(result)).toBe(200);
+    expect(result.after.value).toEqual({
+      denied: false, language: "zh-Hant"
+    });
+    expect(result.persisted).toEqual([]);
+  });
