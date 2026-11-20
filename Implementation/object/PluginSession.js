@@ -1,5 +1,7 @@
 import { PluginBidirectionalEnvelopePolicy as Envelope } from
   "../property/PluginBidirectionalEnvelopePolicy.js";
+import { PluginMessagePolicy } from
+  "../property/PluginMessagePolicy.js";
 
 /**
  * Trusted host-owned session for exactly one transferred MessagePort.
@@ -67,10 +69,13 @@ export class PluginSession {
     if (this.#state !== "handshake") {
       return fail(409, "INVALID_SESSION_STATE");
     }
-    if (!message || Object.keys(message).length !== 3 ||
-        message.kind !== "cluster-session-ready" ||
-        message.protocol !== Envelope.protocol ||
-        message.challenge !== this.#challenge) {
+    const parsed = PluginMessagePolicy.inspect(message);
+    const value = parsed.value;
+    if (!parsed.ok || !value || Array.isArray(value) ||
+        Object.keys(value).length !== 3 ||
+        value.kind !== "cluster-session-ready" ||
+        value.protocol !== Envelope.protocol ||
+        value.challenge !== this.#challenge) {
       return fail(403, "INVALID_HANDSHAKE");
     }
     this.#challenge = null;
