@@ -42,7 +42,13 @@ export class PluginHostRequestTransport {
     if (!entry.active) return;
     if (packet?.kind === "cluster-session-ready") {
       const ready = this.gateway.ready(port, packet);
-      if (!ready.ok) this.detach(port);
+      if (!ready.ok) {
+        // An ACK from a suspended predecessor can arrive after
+        // Session rotation. It grants nothing; retain the new
+        // handshake until its own challenge is confirmed.
+        this.gateway.core.omu.record("EHU", "PluginTransport",
+          "RPC.HandshakeRejected", ready.status ?? 403);
+      }
       return;
     }
     // Never take over the legacy invoke/response message channel.
