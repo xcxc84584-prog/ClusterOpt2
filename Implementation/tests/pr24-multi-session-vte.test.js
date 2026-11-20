@@ -1,6 +1,5 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { once } from "node:events";
 import { MessageChannel } from "node:worker_threads";
 import { ObjectManagementUnit } from
   "../LinkCore/ObjectManagementUnit.js";
@@ -144,6 +143,20 @@ test("PR24.16 VTE two Worker Ports keep Session IDs and replay independent",
       assert.equal(b.attached.status, 201);
       assert.notEqual(a.hello.sessionId, b.hello.sessionId);
       assert.equal(h.sessions.activeCount, 2);
+      // A foreign Provider is never allowed to reuse this Gateway's
+      // authority, even though URU independently recognizes it.
+      const foreign = new MessageChannel();
+      try {
+        assert.equal(h.transport.attach(foreign.port1,
+          "provider.beta").status, 403);
+        assert.equal(h.sessions.activeCount, 2);
+        assert.ok(core.omu.snapshot().logs.some(entry =>
+          entry.action === "RPC.ForeignProviderRejected" &&
+          entry.status === 403));
+      } finally {
+        foreign.port1.close();
+        foreign.port2.close();
+      }
       const aReply = a.observer.wait(p => p.requestId === "shared-id");
       const bReply = b.observer.wait(p => p.requestId === "shared-id");
       a.channel.port2.postMessage(request(
