@@ -26,5 +26,6 @@
       "isolation": "worker",
       "concurrency": "serial"
     }
-  }
+  },
+  "uiEntry": "index.html"
 }
