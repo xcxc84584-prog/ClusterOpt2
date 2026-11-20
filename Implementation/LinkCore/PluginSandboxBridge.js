@@ -362,6 +362,13 @@ export class PluginSandboxBridge {
       packet.status, "PluginSandboxBridge", {
         requestId: packet.requestId
       });
+    if (!audit || !Number.isSafeInteger(audit.eventId)) {
+      // A missing audit ID must fail closed rather than leave a
+      // trusted caller hanging until the RPC deadline expires.
+      this.audit(503, "HostResponseAuditMissing");
+      this.hostController.cancel(packet.requestId, "AUDIT_UNAVAILABLE");
+      return;
+    }
     const checked = this.hostController.receive(
       this.port, session, {
         ...parsed.value, eventId: audit.eventId
