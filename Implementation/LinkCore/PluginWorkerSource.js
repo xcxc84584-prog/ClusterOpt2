@@ -12,7 +12,26 @@ let sessionReady = false;
 let resolveReady;
 const ready = new Promise(resolve => { resolveReady = resolve; });
 const pending = new Map();
+const handlers = new Map();
+const sessionListeners = new Set();
+const allowedActions = new Set();
 const protocol = "cluster.rpc/1";
+
+class PluginRPCError extends Error {
+  constructor(code, status = 500) {
+    super(code);
+    this.name = "PluginRPCError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
+function notifySession(state) {
+  for (const listener of [...sessionListeners]) {
+    try { listener(state); }
+    catch { /* An extension listener never breaks channel state. */ }
+  }
+}
 
 function rejectPending(reason) {
   for (const task of pending.values()) {
@@ -22,7 +41,28 @@ function rejectPending(reason) {
 }
 
 self.Cluster = Object.freeze({
+  version: "1.0.0",
+  RPCError: PluginRPCError,
   ready,
+  onSessionChange(listener) {
+    if (typeof listener !== "function") {
+      throw TypeError("Session listener must be callable");
+    }
+    sessionListeners.add(listener);
+    return () => sessionListeners.delete(listener);
+  },
+  handle(action, handler) {
+    if (!allowedActions.has(action) ||
+        typeof handler !== "function" ||
+        handlers.has(action)) {
+      throw TypeError("Undeclared or duplicate plugin handler");
+    }
+    handlers.set(action, handler);
+    return () => handlers.delete(action);
+  },
+  service(target, action, payload = {}, options = {}) {
+    return this.request(target, action, payload, options);
+  },
   request: async (target, action, payload = {}, options = {}) => {
     await ready;
     if (!sessionReady || !channel) {
@@ -46,7 +86,8 @@ self.Cluster = Object.freeze({
         signal?.removeEventListener?.("abort", abort);
         pending.delete(requestId);
         if (success) resolve(value);
-        else reject(Error(value));
+        else reject(value instanceof Error ? value :
+          new PluginRPCError(String(value), 500));
       };
       const abort = () => {
         try {
@@ -92,6 +133,7 @@ self.addEventListener("message", async event => {
     if (data?.kind === "cluster-session-suspended") {
       sessionReady = false;
       rejectPending("Plugin session suspended");
+      notifySession("suspended");
       return;
     }
     if (data?.kind === "cluster-session-hello") {
@@ -103,6 +145,7 @@ self.addEventListener("message", async event => {
       });
       sessionReady = true;
       resolveReady();
+      notifySession("ready");
       return;
     }
     if (data?.protocol === protocol &&
@@ -111,14 +154,16 @@ self.addEventListener("message", async event => {
       const task = pending.get(data.requestId);
       if (!task) return;
       if (data.ok) task.resolve(data.data);
-      else task.reject(data.error?.code ?? "RPC denied");
+      else task.reject(new PluginRPCError(
+        data.error?.code ?? "RPC_DENIED", data.status));
       return;
     }
     if (data?.kind !== "invoke" ||
         !Number.isSafeInteger(data.id)) return;
     try {
-      const fn = Object.hasOwn(plugin, data.action) ?
-        plugin[data.action] : null;
+      const fn = handlers.get(data.action) ??
+        (Object.hasOwn(plugin, data.action) ?
+          plugin[data.action] : null);
       if (typeof fn !== "function") {
         channel.postMessage({
           kind: "response", id: data.id,
@@ -142,6 +187,14 @@ self.addEventListener("message", async event => {
   try {
     if (typeof event.data.source !== "string") {
       throw Error("Source missing");
+    }
+    if (!Array.isArray(event.data.actions) ||
+        event.data.actions.some(action =>
+          typeof action !== "string" || !action)) {
+      throw Error("Invalid exported action declaration");
+    }
+    for (const action of event.data.actions) {
+      allowedActions.add(action);
     }
     const url = "data:text/javascript;charset=utf-8," +
       encodeURIComponent(event.data.source);
