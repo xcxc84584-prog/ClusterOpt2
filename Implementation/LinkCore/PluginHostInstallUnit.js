@@ -45,6 +45,14 @@ export class PluginHostInstallUnit {
       Object.freeze([]);
   }
 
+  async listRevokedRpcScopes(providerId) {
+    if (!this.core.uru.getProvider(providerId) ||
+        !this.handles.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    return this.revocationStore.list(providerId);
+  }
+
   revokeRpcScope(providerId, scope) {
     const provider = this.core.uru.getProvider(providerId);
     const bridge = this.handles.get(providerId);
