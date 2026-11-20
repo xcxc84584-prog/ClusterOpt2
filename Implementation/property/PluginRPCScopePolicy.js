@@ -55,16 +55,34 @@ function validScope(value) {
 export const PluginRPCScopePolicy = Object.freeze({
   inspect(candidate) {
     if (!Array.isArray(candidate) ||
-        candidate.length > MAX_SCOPES ||
-        !candidate.every(validScope)) {
+        candidate.length > MAX_SCOPES) {
       return deny(400, "INVALID_RPC_SCOPES");
     }
-    const scopes = candidate.map(item => Object.freeze({
-      target: item.target, action: item.action,
-      ...(item.property === undefined ? {} : {
-        property: item.property
-      })
-    }));
+    // Array.every and Array.map skip sparse indices. Never let a hole,
+    // inherited getter or additional own key bypass scope validation.
+    let scopes;
+    try {
+      const keys = Reflect.ownKeys(candidate);
+      if (keys.length !== candidate.length + 1) {
+        return deny(400, "INVALID_RPC_SCOPES");
+      }
+      scopes = [];
+      for (let i = 0; i < candidate.length; i++) {
+        if (!Object.hasOwn(candidate, i) ||
+            !validScope(candidate[i])) {
+          return deny(400, "INVALID_RPC_SCOPES");
+        }
+        const item = candidate[i];
+        scopes.push(Object.freeze({
+          target: item.target, action: item.action,
+          ...(item.property === undefined ? {} : {
+            property: item.property
+          })
+        }));
+      }
+    } catch {
+      return deny(400, "INVALID_RPC_SCOPES");
+    }
     if (new Set(scopes.map(scopeKey)).size !== scopes.length) {
       return deny(400, "DUPLICATE_RPC_SCOPE");
     }
