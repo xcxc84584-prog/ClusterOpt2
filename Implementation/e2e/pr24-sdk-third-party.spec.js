@@ -226,7 +226,7 @@ test("PR24.22 production Host invokes Worker through Session Controller",
         "    sdkVersion: Cluster.version };",
         "});",
         "Cluster.handle('history', () => ({ calls }));"
-      ].join("\\n");
+      ].join("\n");
       const host = linkCore.pluginHostInstaller;
       const install = await host.install({
         format: "cluster-plugin-folder", formatVersion: 1,
