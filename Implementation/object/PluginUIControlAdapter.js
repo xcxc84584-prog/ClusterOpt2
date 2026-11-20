@@ -70,6 +70,20 @@ export class PluginUIControlAdapter {
     this.nodes = new Map();
   }
 
+  /**
+   * A toolbar plugin must never be mounted inside hidden File Tool
+   * menus. Prefer the visible header; retain the old slot only when
+   * running a reduced/embedded Host lacking a header.
+   */
+  resolveSlot(parentId) {
+    if (!Object.hasOwn(SLOTS, parentId)) return null;
+    if (parentId === "slot.plugin-toolbar") {
+      return this.doc?.querySelector(".header-utility") ??
+        this.doc?.getElementById(SLOTS[parentId]);
+    }
+    return this.doc?.getElementById(SLOTS[parentId]);
+  }
+
   owned(uiId, source) {
     const item = this.nodes.get(uiId);
     if (!item) return fail(404, "UI control unavailable");
@@ -80,9 +94,10 @@ export class PluginUIControlAdapter {
   create(source, request) {
     if (!this.doc) return fail(503, "DOM host unavailable");
     const payload = request.payload;
-    const slotId = SLOTS[payload.parentId];
-    if (!slotId) return fail(403, "UI insertion slot denied");
-    const slot = this.doc.getElementById(slotId);
+    if (!Object.hasOwn(SLOTS, payload.parentId)) {
+      return fail(403, "UI insertion slot denied");
+    }
+    const slot = this.resolveSlot(payload.parentId);
     if (!slot) return fail(404, "UI slot unavailable");
     if (!["button", "panel", "window", "menu-item"].includes(payload.kind)) {
       return fail(400, "Unsupported UI control kind");
@@ -211,8 +226,7 @@ export class PluginUIControlAdapter {
       if (op.action === "UI.Create") {
         if (!this.doc) return fail(503, "DOM host unavailable");
         const p = op.payload;
-        const slotId = SLOTS[p.parentId];
-        if (!slotId || !this.doc.getElementById(slotId)) {
+        if (!this.resolveSlot(p.parentId)) {
           return fail(403, "Batch insertion slot denied");
         }
         if (!["button", "panel", "window", "menu-item"].includes(p.kind)) {
