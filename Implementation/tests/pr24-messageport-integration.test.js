@@ -51,7 +51,8 @@ function setup() {
   };
   let seed = 0;
   const gateway = new PluginHostRequestGateway(core,
-    new PluginSessionUnit(() => "id-" + ++seed));
+    new PluginSessionUnit(() => "id-" + ++seed),
+    [{ target: "EchoObject", action: "Echo" }]);
   const adapter = new PluginHostRequestTransport(gateway);
   const channel = new MessageChannel();
   const hello = once(channel.port2, "message");
