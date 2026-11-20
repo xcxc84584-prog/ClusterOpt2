@@ -44,9 +44,15 @@ export class LiveCatalogExport {
           } else if (kind === "service") {
             for (const provider of this.uru.providers.values()) {
               if (provider.objectId !== item.owner) continue;
-              descriptor = provider.provides.find(
+              const action = provider.provides.find(
                 x => x.service === item.id);
-              if (descriptor) break;
+              if (action) {
+                descriptor = { ...action, id: item.id,
+                  visibility: "Public", audience: "PluginPublic",
+                  permissions: provider.permissions,
+                  providerId: provider.providerId };
+                break;
+              }
             }
           }
           if (!descriptor) {
