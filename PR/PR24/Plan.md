@@ -125,3 +125,29 @@ not-yet-evidenced. Each subPR still requires independent source/test
 mapping, OCDA documentation, VTE, exact-HEAD CI and rollback evidence.
 Prioritize P0: persisted revoke safety, pending upgrade rollback,
 full public SDK and Plugin→Plugin calls, external UI, quotas, E2E.
+
+## PR24 Patch(+11) — persistent revocation and upgrade drain
+- New Host-owned IndexedDB **deny-only** `PluginRPCRevocationStoreUnit`
+  records exact providerId + target/action/property revoked scopes.
+  Denial metadata confers zero authority and is never imported as a
+  positive consent grant.
+- On install, the Host reads the persisted denial list before the
+  Worker bootstraps. An unchanged manifest and blanket
+  `approvedRpcScopes` do **not** restore a previously revoked scope.
+  A separate explicit regrant ceremony is pending; no silent recovery.
+- Plugin Manager uses asynchronous `revokeRpcScopePersisted`:
+  revoke the live Gateway immediately, then commit the denial record.
+  If persistence fails, the Provider is disabled/suspended and the
+  UI reports failure (503) rather than claiming durable success.
+- If denied scope storage cannot be loaded for a scoped plugin,
+  installation fails closed with 503 before Worker bootstrap.
+- Upgrade now blocks if either HubUnit's Host→Plugin
+  `providerInflight` or the isolated Bridge's Plugin→Host
+  request count is nonzero, before any Provider teardown.
+- Real Worker Playwright E2E exercises persisted deny after
+  `page.reload()`, reverse in-flight upgrade 409, failed Worker
+  replacement restoring previous URU Provider, Session and UI.
+- VTE/Unit tests exercise Host re-instantiation with shared denial
+  data, storage failure and pending upgrade without losing old state.
+- Next: explicit revoked-route reapproval UX, durable consent
+  version migration, multi-Session guard, plugin-independent SDK.
