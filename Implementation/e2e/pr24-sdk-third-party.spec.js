@@ -210,12 +210,29 @@ test("PR24.22 production Host invokes Worker through Session Controller",
         fetch(root + "worker.js").then(r => r.text()),
         fetch(root + "index.html").then(r => r.text())
       ]);
+      // A test-only handler records which Host requests reach the
+      // isolated Worker, without changing any application UI.
+      const scopedManifest = JSON.parse(manifestText);
+      scopedManifest.provider.provides.push({
+        service: "example.sdk.echo.history", action: "history",
+        version: "1.0.0", inputSchema: { type: "object" },
+        outputSchema: { type: "object" }
+      });
+      const scopedWorker = [
+        "const calls = [];",
+        "Cluster.handle('echo', payload => {",
+        "  calls.push(String(payload.message ?? ''));",
+        "  return { echoed: String(payload.message ?? ''),",
+        "    sdkVersion: Cluster.version };",
+        "});",
+        "Cluster.handle('history', () => ({ calls }));"
+      ].join("\\n");
       const host = linkCore.pluginHostInstaller;
       const install = await host.install({
         format: "cluster-plugin-folder", formatVersion: 1,
-        manifestText, files: {
-          "plugin.json": btoa(manifestText),
-          "worker.js": btoa(worker), "index.html": btoa(html)
+        manifestText: JSON.stringify(scopedManifest), files: {
+          "plugin.json": btoa(JSON.stringify(scopedManifest)),
+          "worker.js": btoa(scopedWorker), "index.html": btoa(html)
         }
       }, { consented: true });
       if (!install.ok) return { install };
@@ -239,10 +256,14 @@ test("PR24.22 production Host invokes Worker through Session Controller",
         const routed = await linkCore.request(
           "ui", "SDK.ExampleEcho", "echo",
           { message: "through-hub" }, { origin: "user" });
+        const history = await linkCore.request(
+          "ui", "SDK.ExampleEcho", "history", {},
+          { origin: "user" });
         const events = linkCore.getSnapshot().logs.filter(event =>
           event.action === "RPC.HostToPlugin.Response");
         return {
           ready, direct, secondDirect, routed,
+          history: history.value?.calls,
           responseEvents: events.length,
           lastEvent: events.at(-1)?.eventId,
           controllerPending: bridge.hostController.pendingCount,
