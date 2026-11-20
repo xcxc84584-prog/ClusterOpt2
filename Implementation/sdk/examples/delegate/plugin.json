@@ -1,0 +1,38 @@
+{
+  "packageVersion": 1,
+  "name": "SDK Delegate (External)",
+  "entry": "worker.js",
+  "description": "Independent Plugin-to-Plugin RPC fixture",
+  "rpcScopes": [
+    {
+      "target": "SDK.ExampleEcho",
+      "action": "echo"
+    }
+  ],
+  "provider": {
+    "manifestVersion": 1,
+    "providerId": "example.sdk.delegate",
+    "objectId": "SDK.ExampleDelegate",
+    "provides": [
+      {
+        "service": "example.sdk.delegate",
+        "action": "delegate",
+        "version": "1.0.0",
+        "inputSchema": {
+          "type": "object"
+        },
+        "outputSchema": {
+          "type": "object"
+        }
+      }
+    ],
+    "requires": [
+      "example.sdk.echo"
+    ],
+    "permissions": [],
+    "execution": {
+      "isolation": "worker",
+      "concurrency": "serial"
+    }
+  }
+}
