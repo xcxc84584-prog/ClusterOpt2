@@ -925,11 +925,11 @@ export class PluginUIHostUnit {
       toolbar.append(button);
       workspace.style.position = "relative";
       workspace.append(panel);
-      if (provider.providerId === "cluster.ai-agent-mcp") {
-        view.workbenchTab = new PluginWorkbenchTabUnit(
-          this.doc, view, sync);
-        view.workbenchTab.attach();
-      }
+      // Every external UI plugin owns an isolated workbench tab.
+      // The native editor and PowerShell remain Host-owned.
+      view.workbenchTab = new PluginWorkbenchTabUnit(
+        this.doc, view, sync);
+      view.workbenchTab.attach();
       if (provider.providerId === "cluster.ai-agent-mcp") {
         const onQuickSetup = event => {
           if (event.source !== frame.contentWindow ||
