@@ -12,6 +12,9 @@ export function createClusterAPIFacade(core) {
   };
   return Object.freeze({
     list: (kind, page = {}) => discover("list", kind, page),
+    page: (kind, page = {}) => discover("page", kind, page),
+    describeLive: (kind, id, owner = null) =>
+      discover("describeLive", kind, { id, owner }),
     describe: (kind, id, owner = null) =>
       discover("describe", kind, { id, owner }),
     query: (kind, filter = {}, page = {}) =>
