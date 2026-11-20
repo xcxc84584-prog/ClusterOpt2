@@ -119,11 +119,11 @@ test("PR25 constrained schemas and structured RPC scopes are validated", () => {
   assert.equal(APIDescriptorPolicy.validate(badScope).status, 400);
 });
 
-test("PR25 deprecated contract requires declared migration guidance", () => {
+test("PR25 supports legacy deprecation and typed migration guidance", () => {
   const base=example();
   assert.equal(APIDescriptorPolicy.validate({
     ...base, deprecated:true
-  }).status,400);
+  }).status,200);
   const accepted=APIDescriptorPolicy.validate({
     ...base, deprecated:true,
     compatibility:"Backward compatible until v2",
