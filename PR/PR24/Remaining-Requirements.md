@@ -1,7 +1,7 @@
-# PR24 — Reorganized Sub-PR Backlog (v24.10)
+# PR24 — Reorganized Sub-PR Backlog (v24.14)
 
 > 工作清單重整，不是 100 個已完成或已正式驗收的 GitHub PR。
-> 以 PR #80 最新 Patch(+10) 程式與 Plan/ArcD/Interface-Audit 為基準。
+> 以 PR #80 Patch(+14) 原始碼、Plan／ArcD、CI 與驗收矩陣為基準。
 > 保留原有 PR24.01–PR24.100 的十大群組；細項名稱和優先級為本次新整理的**提案**，後續可逐項對照舊 PR 文檔確認。
 
 **Source:** https://github.com/xcxc84584-prog/ClusterOpt2/pull/80
@@ -16,8 +16,8 @@
 ## Summary
 | Status | Count |
 | --- | ---: |
-| 部分 | 45 |
-| 待做 | 38 |
+| 部分 | 65 |
+| 待做 | 18 |
 | 基礎已實作 | 17 |
 | **正式逐項驗收 PASS** | **未建立逐項證據；不可宣稱數量** |
 
@@ -45,10 +45,10 @@
 | PR24.13 | Session ID 唯一性與不可由插件指定 | 基礎已實作 | P0 |
 | PR24.14 | Replay window、過期與濫用界限 | 基礎已實作 | P0 |
 | PR24.15 | 惡意/異常 Envelope 與外來 Port 測試 | 基礎已實作 | P0 |
-| PR24.16 | 同 Provider 多 Port／多 Worker 並行測試 | 待做 | P0 |
+| PR24.16 | 同 Provider 多 Port／多 Worker 並行測試 | 部分 | P0 |
 | PR24.17 | Session 中斷／重建後 request correlation | 部分 | P0 |
 | PR24.18 | iframe／Worker Crash 後 listener 和資源回收 | 部分 | P0 |
-| PR24.19 | 多 Session 升級切換不交叉授權 | 待做 | P0 |
+| PR24.19 | 多 Session 升級切換不交叉授權 | 部分 | P0 |
 | PR24.20 | 滲透測試：偽裝 caller、重放、跨 Session 注入 | 部分 | P0 |
 
 ## G3 · 雙向 RPC、取消及背壓（21–30）
@@ -58,7 +58,7 @@
 | PR24.21 | Plugin→Host Request/Response 真實 Port 通路 | 基礎已實作 | P0 |
 | PR24.22 | Host→Plugin Controller 接入正式雙向協議 | 部分 | P0 |
 | PR24.23 | Host→Plugin 多筆並發 correlation 與回應驗證 | 部分 | P0 |
-| PR24.24 | Plugin→Plugin 完整通路與相依服務解析 | 待做 | P0 |
+| PR24.24 | Plugin→Plugin 完整通路與相依服務解析 | 部分 | P0 |
 | PR24.25 | 雙方向 Cancel/AbortSignal 傳遞驗證 | 部分 | P0 |
 | PR24.26 | Deadline 504、取消 499、過載 429 標準化 | 基礎已實作 | P0 |
 | PR24.27 | 同一 Request 去重、超時與 late response 競態 | 部分 | P0 |
@@ -74,7 +74,7 @@
 | PR24.32 | URU 即時 Provider 狀態和 disabled 檢查 | 基礎已實作 | P0 |
 | PR24.33 | OMU Request/Response/EHU eventId 追溯 | 部分 | P0 |
 | PR24.34 | parentEventId 與跨物件完整事件鏈 | 部分 | P0 |
-| PR24.35 | 跨兩個第三方 Provider 的實際服務呼叫 | 待做 | P0 |
+| PR24.35 | 跨兩個第三方 Provider 的實際服務呼叫 | 部分 | P0 |
 | PR24.36 | EDPMU Property.Read 公開與私有權限測試 | 部分 | P0 |
 | PR24.37 | Property 其他合法操作的公開契約與權限設計 | 待做 | P1 |
 | PR24.38 | 動態 Provider 註冊／卸載後 Catalog 一致性 | 部分 | P0 |
@@ -92,24 +92,24 @@
 | PR24.45 | 撤權後晚到資料不得洩漏 | 基礎已實作 | P0 |
 | PR24.46 | 跨重新整理的持久化撤權（不得自動恢復） | 部分 | P0 |
 | PR24.47 | 儲存、匯入、升級的重新同意／差異審核 | 部分 | P0 |
-| PR24.48 | 多 Port／多 Worker 同步撤權與競態 | 待做 | P0 |
-| PR24.49 | 權限範圍縮減、版本改動及重新核准流程 | 待做 | P0 |
+| PR24.48 | 多 Port／多 Worker 同步撤權與競態 | 部分 | P0 |
+| PR24.49 | 權限範圍縮減、版本改動及重新核准流程 | 部分 | P0 |
 | PR24.50 | 完整 Capability Matrix 與正反向繞過測試 | 部分 | P0 |
 
 ## G6 · 獨立 Plugin SDK（51–60）
 
 | 子 PR | 要求（可獨立完成與驗收） | 現況 | 優先 |
 | --- | --- | --- | --- |
-| PR24.51 | 版本化 SDK 介面與套件格式定案 | 待做 | P0 |
+| PR24.51 | 版本化 SDK 介面與套件格式定案 | 部分 | P0 |
 | PR24.52 | 純第三方環境可用的 request facade | 部分 | P0 |
-| PR24.53 | Host→Plugin handler/listener 公開 SDK | 待做 | P0 |
-| PR24.54 | 型別定義（TypeScript/JSDoc）與範型 Schema | 待做 | P1 |
-| PR24.55 | SDK 統一錯誤型別／重試與 Deadline | 待做 | P0 |
+| PR24.53 | Host→Plugin handler/listener 公開 SDK | 部分 | P0 |
+| PR24.54 | 型別定義（TypeScript/JSDoc）與範型 Schema | 部分 | P1 |
+| PR24.55 | SDK 統一錯誤型別／重試與 Deadline | 部分 | P0 |
 | PR24.56 | SDK 的 Session ready、取消與重連事件 | 部分 | P0 |
 | PR24.57 | SDK 的 Provider discovery／capability 查詢 | 待做 | P1 |
-| PR24.58 | SDK Plugin→Plugin service 呼叫範例 | 待做 | P0 |
-| PR24.59 | SDK 相容性與版本升級／舊插件回歸 | 待做 | P0 |
-| PR24.60 | 無需修改核心的外部插件 SDK conformance test | 待做 | P0 |
+| PR24.58 | SDK Plugin→Plugin service 呼叫範例 | 部分 | P0 |
+| PR24.59 | SDK 相容性與版本升級／舊插件回歸 | 部分 | P0 |
+| PR24.60 | 無需修改核心的外部插件 SDK conformance test | 部分 | P0 |
 
 ## G7 · 通用 UI／UISP／插件頁面（61–70）
 
@@ -119,12 +119,12 @@
 | PR24.62 | 插件建立自有 Button/Menu/Tab，無核心改碼 | 部分 | P0 |
 | PR24.63 | 插件自訂帶多 Tab 的設定視窗 | 部分 | P0 |
 | PR24.64 | 插件隔離頁面（iframe）與主頁導覽 | 基礎已實作 | P0 |
-| PR24.65 | 跨 Plugin Window／Tab 命名與生命週期 | 待做 | P0 |
+| PR24.65 | 跨 Plugin Window／Tab 命名與生命週期 | 部分 | P0 |
 | PR24.66 | UI 擴充 API CRUD、原生不可刪除權限 | 部分 | P0 |
 | PR24.67 | UI 座標、大小、樣式、色系的 UISP 行為驗證 | 部分 | P1 |
 | PR24.68 | 深／淺色和縮放／行動端相容性 | 待做 | P1 |
 | PR24.69 | 卸載／Crash 後 UI 節點、事件與樣式完全清除 | 部分 | P0 |
-| PR24.70 | 真實外部 UI Plugin 的瀏覽器 E2E 及權限隔離 | 待做 | P0 |
+| PR24.70 | 真實外部 UI Plugin 的瀏覽器 E2E 及權限隔離 | 部分 | P0 |
 
 ## G8 · 套件、升級及持久化生命週期（71–80）
 
@@ -146,7 +146,7 @@
 | 子 PR | 要求（可獨立完成與驗收） | 現況 | 優先 |
 | --- | --- | --- | --- |
 | PR24.81 | 每插件 RPC inflight/queue 及公平分配 | 部分 | P0 |
-| PR24.82 | 超時無回應 Host 對排程佔用的熔斷策略 | 待做 | P0 |
+| PR24.82 | 超時無回應 Host 對排程佔用的熔斷策略 | 部分 | P0 |
 | PR24.83 | Worker CPU 占用／強制終止與防卡主頁 | 部分 | P0 |
 | PR24.84 | Memory/Message/Asset/Log 大小與壽命配額 | 部分 | P0 |
 | PR24.85 | 插件重啟速率、失敗退避及隔離熔斷 | 待做 | P0 |
@@ -160,23 +160,32 @@
 
 | 子 PR | 要求（可獨立完成與驗收） | 現況 | 優先 |
 | --- | --- | --- | --- |
-| PR24.91 | 至少兩個完全第三方的可安裝插件範例 | 待做 | P0 |
-| PR24.92 | SDK README、Manifest 範本和完整範例 | 待做 | P1 |
-| PR24.93 | 多插件呼叫與獨立 UI E2E | 待做 | P0 |
+| PR24.91 | 至少兩個完全第三方的可安裝插件範例 | 部分 | P0 |
+| PR24.92 | SDK README、Manifest 範本和完整範例 | 部分 | P1 |
+| PR24.93 | 多插件呼叫與獨立 UI E2E | 部分 | P0 |
 | PR24.94 | VTE 模擬註冊／撤權／回滾／故障全流程 | 部分 | P0 |
 | PR24.95 | CI 加入 SDK conformance、壓力及安全負測試 | 部分 | P0 |
 | PR24.96 | 跨瀏覽器／縮放／Storage 權限失敗回歸 | 待做 | P1 |
 | PR24.97 | 安全審核：權限、資料流、資訊洩漏和威脅模型 | 待做 | P0 |
-| PR24.98 | 100 個子 PR 各自建立證據、測試及驗收表 | 待做 | P0 |
+| PR24.98 | 100 個子 PR 各自建立證據、測試及驗收表 | 部分 | P0 |
 | PR24.99 | GitHub 可回復備份、合併衝突、Release Gate | 待做 | P0 |
 | PR24.100 | Exact-HEAD 全 CI/VTE PASS + 主分支核准合併 | 待做 | P0 |
 
-## Patch(+11) 進度註記（待 exact-HEAD CI 驗收）
-- PR24.46：已加入 Host 私有 IndexedDB deny-only 儲存與網頁重載 E2E，待最終 CI。
-- PR24.76：已加入 Host→Plugin 和 Plugin→Host 雙方向 upgrade-busy gate，待最終 CI。
-- PR24.77：已新增真實 Worker 升級失敗回滾／Session rekey 瀏覽器 E2E，全面 rollback 尚待驗收。
-- PR24.47：獨立的已撤權路由「重新授權」UI 尚未實作；**不允許**透過普通 install 自動恢復。
-- PR24.75：完整原子性回滾和 side-effect 邊界仍屬部分實作。
+## Patch(+14) 證據盤點（未逐項簽核）
+
+- 最新完成的 Patch(+13)：四項 GitHub workflow PASS，
+  OCDA Browser 172/172 PASS。
+- Patch(+14) 新增實際 MessagePort 多 Worker VTE，
+  對應 PR24.16 / .19 / .20 / .48；各自待最新 HEAD CI。
+- 完整第三方 Echo / Delegate / Native UI 插件已提供：
+  相關 PR24.24 / .35 / .51–60 / .62–70 / .91–93
+  不再視為「零實作」，但未完成全部相容性與安全簽核。
+- 撤權持久化與使用者明確重新授權已存在，普通安裝
+  不得重新授予已撤銷 Scope。
+- 待做清單仍包含完整 UISP CRUD、全系統資源配額、
+  可還原備份、跨瀏覽器／效能測試及獨立安全審核。
+- **所有 100 項正式子 PR PASS 仍未逐項簽核**；
+  下表是規劃現況，不能當成完成百分比。
 
 ## 建議執行順序（不必依編號線性開發）
 1. **Phase A / P0**：PR24.46、47、75–78 — 持久化撤權、升級中 pending 請求與回滾，先關閉升權風險。
@@ -196,10 +205,17 @@
 - [ ] VTE 隔離驗證、CI exact-HEAD 全通過，錯誤未被略過。
 - [ ] 完成 Patch(+n).md、逐項驗收證據、回滾節點、最新交接。
 
-## 阻擋發布的明確缺口
-1. 現有撤權快照只存在 Bridge 記憶體；瀏覽器重載後的授權維護缺少正式持久化契約。
-2. Host→Plugin 控制器已有基礎，但完整通用 SDK / 對外 handler 接口尚需接入與型別化。
-3. Plugin→Plugin 的端到端可用性與完整授權矩陣尚無足夠的獨立驗收。
-4. 真實 Worker 升級失敗／pending 反向請求／Session rekey／UI 回滾仍需真實 E2E。
-5. Host 取消不會撤銷已完成的 side effects；不合作物件會繼續佔用 in-flight slot，需要熔斷和資源治理。
-6. GitHub CI 綠燈僅表示現有 workflow 測試通過，並不自動證明 100 小項或第三方 SDK 發布門檻均通過。
+## 阻擋發布的明確缺口（Patch(+14)）
+
+1. 多 Session 並行與跨 Port 撤權新增 VTE，
+   但完整跨分頁併發與實際 Worker 壓力仍待獨立驗收。
+2. Host→Plugin 與 Plugin→Plugin 已有正式 Worker E2E，
+   但全 SDK 相容矩陣、Schema、完整服務探索仍未完成。
+3. UICO 原生 Button/Window/Tab 已有外部範例；
+   任意 UISP CRUD、樣式、座標、行動裝置矩陣仍未驗收。
+4. RPC 熔斷已存在；全域公平排程、記憶體/CPU/配額
+   與多插件大型負荷尚欠測試和性能基線。
+5. 備份／還原完整演練、跨版本升級、第三方安全審核、
+   API Catalog 覆蓋、100 項逐項正式驗收尚未完成。
+6. exact-HEAD CI 綠燈只證明現有測試全部通過，
+   不等於全數 PR24 發布條件滿足。
