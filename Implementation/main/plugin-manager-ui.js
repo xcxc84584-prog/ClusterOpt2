@@ -308,16 +308,21 @@ export function mountPluginManagerUI(core,doc,options={}) {
         (scope.property===undefined?"":" ["+scope.property+"]");
       const row=dom(doc,"div","pm-permission-row");
       row.append(dom(doc,"span","pm-permission-label",routeName),
-        btn(doc,t("撤銷路由","Revoke route"),()=>{
+        btn(doc,t("撤銷路由","Revoke route"),async()=>{
           if(!doc.defaultView.confirm(
             t("撤銷 RPC 路由？","Revoke RPC route?")+
             "\\n"+routeName)) return;
-          const result=core.pluginHostInstaller.revokeRpcScope(
-            p.providerId,scope);
-          if(result.ok)render();
-          else doc.defaultView.alert(
-            t("撤銷失敗（狀態 ","Revoke failed (status ")+
-            result.status+").");
+          const result=await core.pluginHostInstaller
+            .revokeRpcScopePersisted(p.providerId,scope);
+          if(!result.ok)doc.defaultView.alert(
+            result.status===503 ?
+              t("撤權已在本次執行中生效，但無法永久保存。" +
+                " 為安全起見，插件已停用。",
+                "Revoked in memory, but persistence failed." +
+                " Plugin disabled for safety.") :
+              t("撤銷失敗（狀態 ","Revoke failed (status ")+
+                result.status+").");
+          render();
         },"pm-mini"));
       body.append(row);
     }
