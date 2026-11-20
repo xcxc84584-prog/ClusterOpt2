@@ -7,6 +7,8 @@ import { PluginRPCScopePolicy } from
   "../property/PluginRPCScopePolicy.js";
 import { PluginRPCRevocationStoreUnit } from
   "./PluginRPCRevocationStoreUnit.js";
+import { PluginRestartCircuitPolicy } from
+  "../property/PluginRestartCircuitPolicy.js";
 
 /**
  * Host-owned activation transaction, NOT a second Provider registry.
@@ -15,7 +17,7 @@ import { PluginRPCRevocationStoreUnit } from
  */
 export class PluginHostInstallUnit {
   constructor(core, doc, bridgeFactory = null,
-    revocationStore = null) {
+    revocationStore = null, clock = () => Date.now()) {
     this.core = core;
     this.doc = doc;
     this.reader = new PluginFolderPackageUnit(core.omu);
@@ -26,6 +28,8 @@ export class PluginHostInstallUnit {
     this.revocationStore = revocationStore ??
       new PluginRPCRevocationStoreUnit(core.omu);
     this.revocationPending = new Set();
+    this.restartFaults = new Map();
+    this.clock = clock;
     this.revocationStore.subscribe?.(providerId => {
       void this.syncDurableRpcDenials(providerId);
     });
@@ -78,6 +82,43 @@ export class PluginHostInstallUnit {
         !this.handles.has(providerId)) return Object.freeze([]);
     return this.handles.get(providerId).listHostRPCScopes?.() ??
       Object.freeze([]);
+  }
+
+  /**
+   * Host-only crash quarantine. Uninstall cannot erase fault history,
+   * so uninstall/reinstall is not an automatic backoff bypass.
+   */
+  getRestartState(providerId) {
+    return PluginRestartCircuitPolicy.status(
+      this.restartFaults.get(providerId) ?? null,
+      this.clock());
+  }
+
+  recordWorkerFault(providerId) {
+    const previous = this.restartFaults.get(providerId);
+    const result = PluginRestartCircuitPolicy.fault(
+      previous?.history ?? [], this.clock());
+    if (!result.ok) {
+      this.record(503, "RestartPolicyFailed", providerId);
+      return result;
+    }
+    this.restartFaults.set(providerId, result);
+    this.record(result.open ? 429 : 502,
+      result.open ? "RestartCircuitOpened" :
+        "RestartBackoffApplied", providerId);
+    return result;
+  }
+
+  resetRestartCircuit(providerId, options = {}) {
+    if (options.consented !== true) {
+      return { ok: false, status: 403 };
+    }
+    if (!this.restartFaults.has(providerId)) {
+      return { ok: false, status: 404 };
+    }
+    this.restartFaults.delete(providerId);
+    this.record(200, "RestartCircuitReset", providerId);
+    return { ok: true, status: 200 };
   }
 
   getRPCCircuitState(providerId) {
@@ -269,6 +310,14 @@ export class PluginHostInstallUnit {
       this.record(403, "ConsentRequired", provider.providerId);
       return { ok: false, status: 403, error: "Consent required" };
     }
+    const restartState = this.getRestartState(provider.providerId);
+    if (!restartState.ok || !restartState.allowed) {
+      const status = restartState.ok ? 429 : 503;
+      this.record(status, "RestartCircuitRejected",
+        provider.providerId);
+      return { ok: false, status,
+        retryAfterMs: restartState.retryAfterMs ?? 0 };
+    }
     if (this.handles.has(provider.providerId) ||
         this.core.uru.getProvider(provider.providerId) ||
         this.core.uru.objects.has(provider.objectId)) {
@@ -303,6 +352,7 @@ export class PluginHostInstallUnit {
       this.core.setProviderEnabled(
         live.objectId, provider.providerId, false);
       this.uiHost.setEnabled(provider.providerId, false);
+      this.recordWorkerFault(provider.providerId);
       this.record(status, "WorkerFault." + reason,
         provider.providerId);
     };
