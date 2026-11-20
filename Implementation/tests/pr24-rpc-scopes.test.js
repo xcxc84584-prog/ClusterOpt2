@@ -8,6 +8,8 @@ import { PluginHostRequestGateway } from
   "../LinkCore/PluginHostRequestGateway.js";
 import { PluginSessionUnit } from
   "../LinkCore/PluginSessionUnit.js";
+import { describePluginRPCScopes } from
+  "../main/plugin-rpc-scope-review.js";
 import { ObjectManagementUnit } from
   "../LinkCore/ObjectManagementUnit.js";
 
@@ -178,4 +180,14 @@ test("PR24.45 Property.Read uses exact scope and HubUnit visibility gate",
     assert.equal(extra.value.status, 403);
     assert.equal(h.properties.length, 1);
     assert.equal(h.requests.length, 0);
+  });
+
+test("PR24.46 consent UI renders exact target/action/property scopes",
+  () => {
+    const translate = (_zh, en) => en;
+    assert.equal(describePluginRPCScopes([], translate), "None");
+    const text = describePluginRPCScopes([READ, PROPERTY], translate);
+    assert.ok(text.includes("UICO / describe"));
+    assert.ok(text.includes("HubUnit / Property.Read [Language]"));
+    assert.equal(text.includes("UI_COLOR"), false);
   });
