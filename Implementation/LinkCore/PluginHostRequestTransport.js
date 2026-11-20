@@ -43,6 +43,8 @@ export class PluginHostRequestTransport {
       if (!ready.ok) this.detach(port);
       return;
     }
+    // Ignore the separate legacy Host -> Plugin invoke protocol.
+    if (packet?.protocol !== "cluster.rpc/1") return;
     if (entry.inflight >= this.maxInflight) {
       this.gateway.core.omu.record("EHU", "PluginTransport",
         "RPC.Overloaded", 429);
