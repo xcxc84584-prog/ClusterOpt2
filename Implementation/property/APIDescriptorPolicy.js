@@ -16,7 +16,8 @@ const SCHEMA_TYPE = new Set([
 const FIELDS = new Set([
   "apiVersion", "id", "owner", "action", "version", "visibility",
   "sideEffect", "inputSchema", "outputSchema", "description",
-  "since", "deprecated", "permissions", "rpcScopes",
+  "since", "deprecated", "unavailable", "compatibility",
+  "migration", "permissions", "rpcScopes",
   "category", "audience", "sourceLocation", "errors", "examples"
 ]);
 const SCHEMA_FIELDS = new Set([
@@ -195,6 +196,33 @@ export const APIDescriptorPolicy = Object.freeze({
         typeof candidate.deprecated !== "boolean") {
       failures.push("deprecated");
     }
+    if (candidate.unavailable !== undefined &&
+        typeof candidate.unavailable !== "boolean") {
+      failures.push("unavailable");
+    }
+    if (candidate.compatibility !== undefined &&
+        (typeof candidate.compatibility !== "string" ||
+         candidate.compatibility.length > 1024)) {
+      failures.push("compatibility");
+    }
+    if (candidate.migration !== undefined) {
+      const migration = candidate.migration;
+      if (!record(migration) ||
+          Object.keys(migration).some(key =>
+            !["replacementId", "since", "guide"].includes(key)) ||
+          typeof migration.replacementId !== "string" ||
+          !NAME.test(migration.replacementId) ||
+          migration.replacementId.length > 128 ||
+          typeof migration.guide !== "string" ||
+          migration.guide.length > 1024 ||
+          (migration.since !== undefined &&
+            (typeof migration.since !== "string" ||
+             !VERSION.test(migration.since)))) {
+        failures.push("migration");
+      }
+    }
+    if (candidate.deprecated === true &&
+        candidate.migration === undefined) failures.push("migration");
     if (candidate.permissions !== undefined &&
         (!Array.isArray(candidate.permissions) ||
          candidate.permissions.length > 64 ||
