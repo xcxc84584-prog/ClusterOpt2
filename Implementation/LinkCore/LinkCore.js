@@ -11,6 +11,8 @@ import { PluginPackageManifestPolicy } from
 import { PluginRPCContractPolicy } from
   "../property/PluginRPCContractPolicy.js";
 import { HubProtocolPolicy } from "../property/HubProtocolPolicy.js";
+import { PluginLifecycleEventPolicy } from
+  "../property/PluginLifecycleEventPolicy.js";
 import { PluginCapabilityReviewPolicy } from
   "../property/PluginCapabilityReviewPolicy.js";
 import { PluginLocalPackageUnit } from "./PluginLocalPackageUnit.js";
@@ -120,6 +122,10 @@ export class LinkCore {
     }
     this.hub.registerProperty("HubProtocolPolicy",
       HubProtocolPolicy, {
+        owners: ["LinkCore"], visibility: "Public", readOnly: true
+      });
+    this.hub.registerProperty("PluginLifecycleEventPolicy",
+      PluginLifecycleEventPolicy, {
         owners: ["LinkCore"], visibility: "Public", readOnly: true
       });
     this.hub.registerProperty("PluginFolderPackagePolicy",
