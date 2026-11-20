@@ -129,6 +129,31 @@ export function renderContractDetail(doc, host, entry, t, onBack) {
   overview.append(node(doc,"p","pm-contract-description",
     descriptor.description || t("未提供描述","No description registered")));
   host.append(overview);
+  if (descriptor.inputSchema && descriptor.outputSchema &&
+      ["Request","Provider"].includes(entry.kind)) {
+    const usage=section(doc,t("Worker SDK 調用","Worker SDK usage"));
+    const method=entry.kind==="Provider"?"service":"request";
+    const target=entry.kind==="Provider" ? entry.id : entry.owner;
+    const statement="await Cluster."+method+"("+
+      JSON.stringify(target)+", "+
+      JSON.stringify(descriptor.action??"unknown")+", {});";
+    usage.append(node(doc,"pre","pm-contract-json",statement));
+    usage.append(node(doc,"p","pm-muted",t(
+      "需先宣告並取得對應 rpcScopes 與 permissions 授權。",
+      "Declare and obtain approval for exact rpcScopes and permissions.")));
+    const copy=node(doc,"button","pm-mini",t("複製調用","Copy call"));
+    copy.type="button";
+    copy.addEventListener("click",async()=>{
+      try {
+        await doc.defaultView.navigator.clipboard.writeText(statement);
+        copy.textContent=t("已複製","Copied");
+      } catch (_error) {
+        copy.textContent=t("複製失敗","Copy failed");
+      }
+    });
+    usage.append(copy);
+    host.append(usage);
+  }
   if (entry.kind === "Request" || entry.kind === "Provider" ||
       entry.kind === "Protocol" || entry.kind === "Action") {
     const envelopes=section(doc,t("Request / Response 對稱協議",
