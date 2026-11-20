@@ -97,7 +97,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
   const toolbar=dom(doc,"div","pm-search-row");
   let selected="",active="permissions",query="",pending=null;
   let selectedAPI=null,apiQuery="",sidebarOpen=true;
-  let apiKind="api",apiPageSize=25,apiPageIndex=0;
+  let apiKind="api",apiPageSize=50,apiPageIndex=0;
   let apiSort="owner",apiSortOrder="asc";
   let apiCursors=[null],apiRevision="",refreshAPIPage=null;
   let lastApiCheckTime=0;
@@ -560,7 +560,7 @@ export function mountPluginManagerUI(core,doc,options={}) {
   function renderAPIs() {
     const section=dom(doc,"section","pm-api-section");
     section.append(dom(doc,"h2","pm-resource-heading",
-      t("HubUnit API 列表","HubUnit API List")));
+      t("API 列表","API Reference")));
     const body=dom(doc,"div","pm-api-browser");
     const controls=dom(doc,"div","pm-api-toolbar");
     const input=dom(doc,"input","pm-api-search");
@@ -583,100 +583,10 @@ export function mountPluginManagerUI(core,doc,options={}) {
     }
     kind.value=apiKind;
     kind.setAttribute("aria-label",t("API 分類","API category"));
-    const size=dom(doc,"select","pm-api-size");
-    for(const value of [10,25,50,100]) {
-      const option=dom(doc,"option","",String(value));
-      option.value=String(value);size.append(option);
-    }
-    size.value=String(apiPageSize);
-    size.setAttribute("aria-label",t("每頁筆數","Page size"));
-    const sort=dom(doc,"select","pm-api-sort");
-    for(const field of ["owner","id","version","status"]) {
-      const option=dom(doc,"option","",field);
-      option.value=field;sort.append(option);
-    }
-    sort.value=apiSort;
-    sort.setAttribute("aria-label",t("排序欄位","Sort by"));
-    const order=dom(doc,"select","pm-api-sort-order");
-    for(const value of ["asc","desc"]) {
-      const option=dom(doc,"option","",value);
-      option.value=value;order.append(option);
-    }
-    order.value=apiSortOrder;
-    order.setAttribute("aria-label",t("排序方向","Sort order"));
-    const exportStatus=dom(doc,"span","pm-muted");
-    const exportButton=btn(doc,t("匯出完整 API 契約",
-      "Export all API contracts"),async()=>{
-      exportButton.disabled=true;
-      try {
-        const result=await core.exportLiveCatalog("ui","user");
-        if(!result.ok) {
-          exportStatus.textContent=t("匯出失敗：","Export failed: ")+
-            (result.error??String(result.status));
-          return;
-        }
-        const blob=new Blob([result.value.json],{
-          type:"application/json;charset=utf-8"
-        });
-        const url=URL.createObjectURL(blob);
-        const link=doc.createElement("a");
-        link.href=url;
-        link.download="ClusterOpt2-API-Contracts.json";
-        link.click();
-        URL.revokeObjectURL(url);
-        exportStatus.textContent="SHA-256: "+result.value.sha256;
-      } catch (_error) {
-        exportStatus.textContent=t("匯出失敗","Export failed");
-      } finally {
-        exportButton.disabled=false;
-      }
-    },"pm-mini");
-    const copyManifest=btn(doc,
-      t("複製 Manifest 範本","Copy manifest template"),async()=>{
-        try {
-          const url=new URL("../sdk/examples/echo/plugin.json",
-            import.meta.url);
-          const response=await doc.defaultView.fetch(url);
-          if(!response.ok) throw Error("Template unavailable");
-          const template=await response.text();
-          await doc.defaultView.navigator.clipboard.writeText(template);
-          exportStatus.textContent=t("已複製正式插件範本",
-            "Official plugin template copied");
-        } catch (_error) {
-          exportStatus.textContent=t("無法複製插件範本",
-            "Cannot copy plugin template");
-        }
-      },"pm-mini");
-    controls.append(kind,input,size,sort,order,
-      copyManifest,exportButton,exportStatus);
+    // API LIST is a discovery surface only: one category selector,
+    // one search field, then the live results table.
+    controls.append(kind,input);
     body.append(controls);
-    const selectedProvider=current();
-    if(selectedProvider) {
-      const capabilitySummary=dom(doc,"div","pm-api-capabilities");
-      capabilitySummary.append(dom(doc,"strong","",
-        t("目前插件可用 Capability","Selected plugin capabilities")+
-          ": "+selectedProvider.providerId));
-      for(const permission of selectedProvider.permissions) {
-        const approved=core.checkPluginPermission(
-          selectedProvider.providerId,permission);
-        capabilitySummary.append(dom(doc,"p","pm-muted",
-          permission+" — "+(approved ? "Allowed" : "Denied")));
-      }
-      const handle=core.pluginHostInstaller.handles.get(
-        selectedProvider.providerId);
-      for(const scope of handle?.listHostRPCScopes?.() ?? []) {
-        capabilitySummary.append(dom(doc,"p","pm-muted",
-          "RPC Scope — "+scope.target+"."+scope.action+
-          (scope.property ? "("+scope.property+")" : "")));
-      }
-      if(!selectedProvider.permissions.length &&
-          !(handle?.listHostRPCScopes?.()?.length)) {
-        capabilitySummary.append(dom(doc,"p","pm-muted",
-          t("此插件尚無已宣告的權限與 RPC Scope",
-            "No declared permissions or active RPC scopes")));
-      }
-      body.append(capabilitySummary);
-    }
     const container=dom(doc,"div","pm-api-table-wrap");
     const table=dom(doc,"table","pm-api-table");
     const head=dom(doc,"thead");
@@ -789,17 +699,8 @@ export function mountPluginManagerUI(core,doc,options={}) {
     kind.addEventListener("change",()=>{
       apiKind=kind.value;resetPage();update();
     });
-    size.addEventListener("change",()=>{
-      apiPageSize=Number(size.value);resetPage();update();
-    });
     input.addEventListener("input",()=>{
       apiQuery=input.value;resetPage();update();
-    });
-    sort.addEventListener("change",()=>{
-      apiSort=sort.value;resetPage();update();
-    });
-    order.addEventListener("change",()=>{
-      apiSortOrder=order.value;resetPage();update();
     });
     update();
     refreshAPIPage=()=>{
