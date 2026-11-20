@@ -12,8 +12,13 @@ export class ObjectManagementUnit {
   record(kind, source, action, status, target = "", details = {}) {
     const now = this.clock();
     const key = [source, action, target, status].join("|");
-    // EHU and failures are always recorded. Only ordinary PASS is cooled.
-    if (kind === "Log" && status >= 200 && status < 300) {
+    // A requestId identifies a distinct RPC/EventChain step. Such
+    // responses MUST receive an Event ID even inside the PASS cooldown.
+    // Only uncorrelated ordinary PASS events may be coalesced.
+    const correlated = typeof details?.requestId === "string" &&
+      details.requestId.length > 0;
+    if (kind === "Log" && status >= 200 && status < 300 &&
+        !correlated) {
       const previous = this.lastPass.get(key);
       if (previous !== undefined && now - previous < 1000) return null;
       this.lastPass.set(key, now);
