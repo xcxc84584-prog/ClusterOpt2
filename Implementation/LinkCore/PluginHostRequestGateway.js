@@ -1,0 +1,98 @@
+import { PluginSessionUnit } from "./PluginSessionUnit.js";
+import { PluginBidirectionalEnvelopePolicy as Envelope } from
+  "../property/PluginBidirectionalEnvelopePolicy.js";
+
+/**
+ * PR24: host-only, port-bound reverse request gateway.
+ * Caller identities come from PluginSessionUnit, not Worker payloads.
+ * URU owns provider identity, HubUnit owns request permissions.
+ */
+export class PluginHostRequestGateway {
+  constructor(core, sessions = new PluginSessionUnit()) {
+    this.core = core;
+    this.sessions = sessions;
+  }
+
+  create(port, providerId) {
+    const provider = this.core.uru.getProvider(providerId);
+    if (!provider ||
+        !this.core.uru.objects.has(provider.objectId) ||
+        this.core.uru.disabledProviders.has(providerId)) {
+      return { ok: false, status: 403 };
+    }
+    return this.sessions.create(port, providerId, provider.objectId);
+  }
+
+  ready(port, packet) {
+    return this.sessions.ready(port, packet);
+  }
+
+  async receive(port, packet) {
+    const parsed = this.sessions.inspect(port, packet);
+    if (!parsed.ok) {
+      this.core.omu.record("EHU", "PluginGateway",
+        "RPC.Rejected", parsed.status, "",
+        { errorCode: parsed.errorCode ?? "INVALID_SESSION" });
+      return { ok: false, status: parsed.status };
+    }
+    const { session, value } = parsed;
+    const provider = this.core.uru.getProvider(session.providerId);
+    const active = provider &&
+      provider.objectId === session.objectId &&
+      this.core.uru.objects.has(session.objectId) &&
+      !this.core.uru.disabledProviders.has(session.providerId);
+    const grants = active && provider.permissions.every(permission =>
+      this.core.checkPluginPermission(session.providerId, permission));
+    if (!active || !grants) {
+      this.core.omu.record("EHU", session.objectId,
+        "RPC.PermissionRejected", 403, value.target,
+        { requestId: value.requestId });
+      return { ok: false, status: 403 };
+    }
+
+    const event = this.core.omu.record("Log", session.objectId,
+      "RPC.Request", 202, value.target,
+      { requestId: value.requestId,
+        parentEventId: value.parentEventId ?? null });
+    const result = await this.core.hub.request(
+      session.objectId, value.target, value.action, value.payload,
+      { origin: "user" });
+    const status = Number.isInteger(result.status) ?
+      result.status : 500;
+    const details = {
+      requestId: value.requestId,
+      parentEventId: event?.eventId ?? value.parentEventId ?? null
+    };
+    this.core.omu.record(result.ok ? "Log" : "EHU",
+      session.objectId, "RPC.Response", status, value.target, details);
+    const response = {
+      protocol: Envelope.protocol,
+      direction: "plugin-to-host",
+      type: "response",
+      requestId: value.requestId,
+      eventId: event?.eventId ?? 1,
+      status,
+      ok: result.ok === true
+    };
+    if (result.ok) response.data = result.value ?? null;
+    else response.error = {
+      code: "REQUEST_DENIED",
+      message: "Host request failed"
+    };
+    const checked = Envelope.inspect(response);
+    if (!checked.ok) {
+      this.core.omu.record("EHU", session.objectId,
+        "RPC.InvalidResponse", 502, value.target, details);
+      return { ok: false, status: 502 };
+    }
+    return { ok: true, status: 200, value: checked.value };
+  }
+
+  revoke(sessionId) {
+    return this.sessions.revoke(sessionId);
+  }
+
+  revokeProvider(providerId) {
+    return this.sessions.revokeProvider(providerId);
+  }
+}
